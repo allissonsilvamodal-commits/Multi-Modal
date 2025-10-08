@@ -1,0 +1,1469 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Disparador de Mensagens</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    :root {
+      --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      --success-gradient: linear-gradient(135deg, #4ecdc4 0%, #44a08d 100%);
+      --warning-gradient: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+      --danger-gradient: linear-gradient(135deg, #ff5858 0%, #f09819 100%);
+      --admin-gradient: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+    }
+    
+    body { 
+      padding: 20px; 
+      background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+      min-height: 100vh;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    
+    .header-section { 
+      background: var(--primary-gradient);
+      color: white;
+      padding: 25px;
+      border-radius: 15px;
+      margin-bottom: 25px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .header-section::before {
+      content: '';
+      position: absolute;
+      top: -50%;
+      right: -50%;
+      width: 100%;
+      height: 100%;
+      background: rgba(255,255,255,0.1);
+      transform: rotate(30deg);
+    }
+    
+    .category-card { 
+      cursor: pointer; 
+      transition: all 0.3s ease; 
+      border: 2px solid #e9ecef;
+      border-radius: 12px;
+      background: white;
+    }
+    
+    .category-card:hover { 
+      transform: translateY(-5px) scale(1.02); 
+      box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+      border-color: #667eea;
+    }
+    
+    .category-card.active { 
+      border: 2px solid #0d6efd; 
+      background: var(--primary-gradient); 
+      color: #fff; 
+      box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+    }
+    
+    .contact-form { 
+      background-color: #fff; 
+      padding: 25px; 
+      border-radius: 15px; 
+      margin-bottom: 20px; 
+      box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+      border-left: 4px solid #667eea;
+    }
+    
+    .contact-list { 
+      max-height: 500px; 
+      overflow-y: auto; 
+      margin-top: 15px; 
+      border: 1px solid #e9ecef; 
+      border-radius: 10px; 
+      padding: 15px;
+      background: #f8f9fa;
+    }
+    
+    .contact-item { 
+      border-bottom: 1px solid #e9ecef; 
+      padding: 12px 0; 
+      transition: background-color 0.2s;
+      border-radius: 8px;
+      padding-left: 10px;
+      padding-right: 10px;
+    }
+    
+    .contact-item:hover {
+      background-color: #e9ecef;
+    }
+    
+    .contact-item:last-child { border-bottom: none; }
+    
+    .btn-stop { 
+      background: var(--danger-gradient);
+      border: none;
+      color: white;
+      transition: all 0.3s;
+    }
+    
+    .btn-stop:hover { 
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(220, 53, 69, 0.4);
+    }
+    
+    .btn-admin {
+      background: var(--admin-gradient);
+      border: none;
+      color: white;
+      transition: all 0.3s;
+    }
+    
+    .btn-admin:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(238, 90, 36, 0.4);
+    }
+    
+    .status-card { 
+      margin-bottom: 20px; 
+      border-radius: 15px;
+      overflow: hidden;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+      border: none;
+    }
+    
+    .status-card .card-header {
+      border-radius: 0;
+      font-weight: 600;
+    }
+    
+    .alert { 
+      border: none; 
+      border-radius: 12px; 
+      box-shadow: 0 3px 10px rgba(0,0,0,0.08);
+    }
+    
+    .btn-logout {
+      background: rgba(255,255,255,0.2);
+      border: 2px solid rgba(255,255,255,0.3);
+      color: white;
+      transition: all 0.3s;
+      border-radius: 10px;
+      font-weight: 500;
+    }
+    
+    .btn-logout:hover {
+      background: rgba(255,255,255,0.3);
+      border-color: rgba(255,255,255,0.5);
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+    }
+    
+    .user-info {
+      background: rgba(255,255,255,0.15);
+      padding: 12px 18px;
+      border-radius: 12px;
+      margin-top: 10px;
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255,255,255,0.2);
+    }
+    
+    .progress {
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .btn-success {
+      background: var(--success-gradient);
+      border: none;
+      transition: all 0.3s;
+    }
+    
+    .btn-success:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(78, 205, 196, 0.4);
+    }
+    
+    .btn-warning {
+      background: var(--warning-gradient);
+      border: none;
+      transition: all 0.3s;
+    }
+    
+    .btn-warning:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(240, 147, 251, 0.4);
+    }
+    
+    .btn-primary {
+      background: var(--primary-gradient);
+      border: none;
+      transition: all 0.3s;
+    }
+    
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+    }
+    
+    .btn-danger {
+      background: var(--danger-gradient);
+      border: none;
+      transition: all 0.3s;
+    }
+    
+    .btn-danger:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(255, 88, 88, 0.4);
+    }
+    
+    .form-control, .form-select {
+      border-radius: 10px;
+      padding: 10px 15px;
+      border: 2px solid #e9ecef;
+      transition: all 0.3s;
+    }
+    
+    .form-control:focus, .form-select:focus {
+      border-color: #667eea;
+      box-shadow: 0 0 0 0.25rem rgba(102, 126, 234, 0.25);
+    }
+    
+    .card {
+      border-radius: 12px;
+      overflow: hidden;
+      transition: transform 0.3s;
+    }
+    
+    .card:hover {
+      transform: translateY(-2px);
+    }
+    
+    /* Custom scrollbar */
+    .contact-list::-webkit-scrollbar {
+      width: 6px;
+    }
+    
+    .contact-list::-webkit-scrollbar-track {
+      background: #f1f1f1;
+      border-radius: 10px;
+    }
+    
+    .contact-list::-webkit-scrollbar-thumb {
+      background: #c1c1c1;
+      border-radius: 10px;
+    }
+    
+    .contact-list::-webkit-scrollbar-thumb:hover {
+      background: #a8a8a8;
+    }
+    
+    /* Loading animation */
+    @keyframes pulse {
+      0% { opacity: 1; }
+      50% { opacity: 0.5; }
+      100% { opacity: 1; }
+    }
+    
+    .loading {
+      animation: pulse 1.5s ease-in-out infinite;
+    }
+    
+    /* Badge improvements */
+    .badge {
+      border-radius: 8px;
+      font-weight: 500;
+    }
+    
+    /* Pagination Styles */
+    .pagination-container {
+      background: white;
+      padding: 15px;
+      border-radius: 10px;
+      margin-top: 15px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    
+    .page-size-selector {
+      max-width: 120px;
+    }
+    
+    .page-info {
+      font-weight: 500;
+      color: #495057;
+    }
+    
+    .contact-checkbox {
+      margin-right: 10px;
+      transform: scale(1.2);
+    }
+    
+    .selection-info {
+      background: var(--primary-gradient);
+      color: white;
+      padding: 10px 15px;
+      border-radius: 8px;
+      margin-bottom: 15px;
+    }
+    
+    .select-all-section {
+      background: #e9ecef;
+      padding: 10px 15px;
+      border-radius: 8px;
+      margin-bottom: 10px;
+      border-left: 4px solid #667eea;
+    }
+    
+    /* Admin badge */
+    .admin-badge {
+      background: var(--admin-gradient);
+      color: white;
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+    
+    /* Responsive improvements */
+    @media (max-width: 768px) {
+      body {
+        padding: 10px;
+      }
+      
+      .header-section {
+        padding: 20px 15px;
+      }
+      
+      .contact-form {
+        padding: 15px;
+      }
+      
+      .category-card {
+        margin-bottom: 10px;
+      }
+      
+      .pagination-container .d-flex {
+        flex-direction: column;
+        gap: 10px;
+      }
+      
+      .page-size-selector {
+        max-width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <!-- Header com Logout -->
+  <div class="header-section">
+    <div class="row align-items-center">
+      <div class="col">
+        <h1 class="mb-2"><i class="fas fa-rocket me-2"></i>Disparador de Mensagens WhatsApp</h1>
+        <div class="user-info">
+          <i class="fas fa-user me-1"></i> <span id="currentUser">Carregando...</span>
+          <span id="adminBadge" class="admin-badge ms-2" style="display: none;">ADMIN</span> | 
+          <i class="fas fa-plug me-1"></i> <span id="userInstance">Carregando instância...</span>
+        </div>
+      </div>
+      <div class="col-auto">
+        <button id="btnLogout" class="btn btn-logout">
+          <i class="fas fa-sign-out-alt me-1"></i> Sair do Sistema
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Alerta de Segurança -->
+  <div class="alert alert-info text-center">
+    <strong><i class="fas fa-shield-alt me-2"></i>Modo Seguro Ativo</strong> - Delay aleatório de <strong>30 segundos a 60 segundos</strong> entre mensagens para evitar bloqueios
+  </div>
+
+  <!-- Status do Sistema -->
+  <div class="card status-card">
+    <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+      <h5 class="mb-0"><i class="fas fa-cogs me-2"></i>Status do Sistema</h5>
+      <button onclick="verificarStatus()" class="btn btn-sm btn-outline-light"><i class="fas fa-sync-alt me-1"></i>Atualizar</button>
+    </div>
+    <div class="card-body">
+      <div id="evolutionStatus" class="evolution-status">
+        <div class="text-muted"><i class="fas fa-spinner fa-spin me-2"></i>Verificando conexão com o Evolution API...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Importar Contatos -->
+  <div class="card status-card">
+    <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+      <h5 class="mb-0"><i class="fas fa-download me-2"></i>Importar Contatos</h5>
+      <button id="btnResetContatos" class="btn btn-admin btn-sm" style="display: none;">
+        <i class="fas fa-trash-alt me-1"></i> Resetar Contatos
+      </button>
+    </div>
+    <div class="card-body">
+      <div class="row">
+        <div class="col-md-6">
+          <div class="card h-100">
+            <div class="card-body text-center">
+              <h6><i class="fas fa-sync me-2"></i>Do Arquivo CSV</h6>
+              <p class="card-text">Importa automaticamente do arquivo <code>contatos.csv</code></p>
+              <button onclick="atualizarDoCSV()" class="btn btn-success w-100"><i class="fas fa-file-csv me-2"></i>Importar CSV</button>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="card h-100">
+            <div class="card-body text-center">
+              <h6><i class="fas fa-upload me-2"></i>Upload de Arquivo</h6>
+              <p class="card-text">Faça upload de um arquivo CSV</p>
+              <input type="file" id="csvFile" class="form-control mb-2" accept=".csv">
+              <button onclick="importarCSVUpload()" class="btn btn-info w-100"><i class="fas fa-cloud-upload-alt me-2"></i>Fazer Upload</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div id="csvStatus" class="mt-3"></div>
+    </div>
+  </div>
+
+  <!-- Gerenciar Contatos -->
+  <div class="contact-form">
+    <h3><i class="fas fa-users me-2"></i>Gerenciar Contatos</h3>
+    <div class="row g-3 mb-3">
+      <div class="col-md-4">
+        <input type="text" id="newName" class="form-control" placeholder="Nome completo">
+      </div>
+      <div class="col-md-3">
+        <input type="text" id="newNumber" class="form-control" placeholder="Número (DDD + número)">
+      </div>
+      <div class="col-md-3">
+        <select id="newCategory" class="form-select">
+          <option value="sider">🚛 Sider</option>
+          <option value="grade_alta">📦 Grade Alta</option>
+          <option value="grade_baixa">📦 Grade Baixa</option>
+          <option value="bitrem">🚚 Bitrem</option>
+          <option value="rodotrem">🚛 Rodotrem</option>
+          <option value="prancha">🛻 Prancha</option>
+          <option value="bau">📦 Baú</option>
+          <option value="SIDER _ GRADE BAIXA">🛻 SIDER _ GRADE BAIXA</option>
+          <option value="GRADE BAIXA _GRANELEIRO">🛻 GRADE BAIXA _GRANELEIRO</option>
+          <option value="TRUCK _ GRANELEIRA">🚚 TRUCK _ GRANELEIRA</option>
+          <option value="GRANELEIRO">🚚 GRANELEIRO</option>
+        </select>
+      </div>
+      <div class="col-md-2">
+        <button id="addContact" class="btn btn-success w-100"><i class="fas fa-plus me-1"></i>Adicionar</button>
+      </div>
+    </div>
+    
+    <!-- Informações de Seleção -->
+    <div id="selectionInfo" class="selection-info" style="display: none;">
+      <i class="fas fa-check-circle me-2"></i>
+      <span id="selectedCount">0</span> contatos selecionados para envio
+    </div>
+    
+    <!-- Seção Selecionar Todos -->
+    <div id="selectAllSection" class="select-all-section" style="display: none;">
+      <div class="form-check">
+        <input class="form-check-input contact-checkbox" type="checkbox" id="selectAllCheckbox">
+        <label class="form-check-label fw-bold" for="selectAllCheckbox">
+          Selecionar todos os contatos desta página
+        </label>
+      </div>
+    </div>
+    
+    <div class="contact-list" id="contactsList">
+      <div class="text-center text-muted py-4">
+        <div><i class="fas fa-list-alt fa-2x mb-3"></i></div>
+        <div>📋 Selecione uma categoria para ver os contatos</div>
+        <small>Os contatos aparecerão aqui após selecionar uma categoria</small>
+      </div>
+    </div>
+    
+    <!-- Paginação -->
+    <div id="paginationContainer" class="pagination-container" style="display: none;">
+      <div class="d-flex justify-content-between align-items-center flex-wrap">
+        <div class="d-flex align-items-center gap-3">
+          <span class="page-info" id="pageInfo">Página 1 de 1</span>
+          <select id="pageSize" class="form-select page-size-selector">
+            <option value="50">50 por página</option>
+            <option value="100" selected>100 por página</option>
+            <option value="200">200 por página</option>
+            <option value="500">500 por página</option>
+          </select>
+        </div>
+        
+        <nav>
+          <ul class="pagination mb-0" id="pagination">
+            <!-- Paginação será gerada aqui -->
+          </ul>
+        </nav>
+      </div>
+    </div>
+  </div>
+
+  <!-- Teste Rápido -->
+  <div class="card status-card">
+    <div class="card-header bg-warning text-dark">
+      <h5 class="mb-0"><i class="fas fa-vial me-2"></i>Teste Rápido</h5>
+    </div>
+    <div class="card-body">
+      <div class="row g-3 align-items-end">
+        <div class="col-md-4">
+          <label class="form-label fw-bold">Número para teste</label>
+          <input type="text" id="testNumber" class="form-control" placeholder="5511999999999" value="5511999999999">
+        </div>
+        <div class="col-md-5">
+          <label class="form-label fw-bold">Mensagem de teste</label>
+          <input type="text" id="testMessage" class="form-control" value="✅ Teste do sistema de disparo">
+        </div>
+        <div class="col-md-3">
+          <button onclick="testarEnvio()" class="btn btn-warning w-100 fw-bold"><i class="fas fa-paper-plane me-1"></i>Enviar Teste</button>
+        </div>
+      </div>
+      <div id="testResult" class="mt-3"></div>
+    </div>
+  </div>
+
+  <!-- Categorias -->
+  <div class="card status-card">
+    <div class="card-header bg-primary text-white">
+      <h5 class="mb-0"><i class="fas fa-folder me-2"></i>Categorias de Contatos</h5>
+    </div>
+    <div class="card-body">
+      <div class="row g-3" id="categories">
+        <div class="col-6 col-md-4 col-lg-3">
+          <div class="card category-card text-center p-3" data-cat="sider">
+            <div class="fw-bold">🚛 Sider</div>
+          </div>
+        </div>
+        <div class="col-6 col-md-4 col-lg-3">
+          <div class="card category-card text-center p-3" data-cat="grade_alta">
+            <div class="fw-bold">📦 Grade Alta</div>
+          </div>
+        </div>
+        <div class="col-6 col-md-4 col-lg-3">
+          <div class="card category-card text-center p-3" data-cat="grade_baixa">
+            <div class="fw-bold">📦 Grade Baixa</div>
+          </div>
+        </div>
+        <div class="col-6 col-md-4 col-lg-3">
+          <div class="card category-card text-center p-3" data-cat="bitrem">
+            <div class="fw-bold">🚚 Bitrem</div>
+          </div>
+        </div>
+        <div class="col-6 col-md-4 col-lg-3">
+          <div class="card category-card text-center p-3" data-cat="rodotrem">
+            <div class="fw-bold">🚛 Rodotrem</div>
+          </div>
+        </div>
+        <div class="col-6 col-md-4 col-lg-3">
+          <div class="card category-card text-center p-3" data-cat="prancha">
+            <div class="fw-bold">🛻 Prancha</div>
+          </div>
+        </div>
+        <div class="col-6 col-md-4 col-lg-3">
+          <div class="card category-card text-center p-3" data-cat="bau">
+            <div class="fw-bold">📦 Baú</div>
+          </div>
+        </div>
+        <div class="col-6 col-md-4 col-lg-3">
+          <div class="card category-card text-center p-3" data-cat="SIDER _ GRADE BAIXA">
+            <div class="fw-bold">🛻 SIDER _ GRADE BAIXA</div>
+          </div>
+        </div>
+        <div class="col-6 col-md-4 col-lg-3">
+          <div class="card category-card text-center p-3" data-cat="GRADE BAIXA _GRANELEIRO">
+            <div class="fw-bold">🛻 GRADE BAIXA _GRANELEIRO</div>
+           </div>
+        </div>
+        <div class="col-6 col-md-4 col-lg-3">
+          <div class="card category-card text-center p-3" data-cat="TRUCK _ GRANELEIRA">
+            <div class="fw-bold">🚚 TRUCK _ GRANELEIRA</div>     
+          </div>
+        </div>
+        <div class="col-6 col-md-4 col-lg-3">
+          <div class="card category-card text-center p-3" data-cat="GRANELEIRO">
+            <div class="fw-bold">🚚 GRANELEIRO</div>     
+            </div>
+        </div>    
+      </div>
+    </div>
+  </div>
+
+  <!-- Informações dos Contatos -->
+  <div class="alert alert-info text-center" id="contactsInfo">
+    <i class="fas fa-hand-point-up me-2"></i>Selecione uma categoria acima para carregar os contatos
+  </div>
+
+  <!-- Mensagem e Envio -->
+  <div class="card status-card">
+    <div class="card-header bg-danger text-white">
+      <h5 class="mb-0"><i class="fas fa-rocket me-2"></i>Disparo em Massa</h5>
+    </div>
+    <div class="card-body">
+      <div class="mb-3">
+        <label for="msg" class="form-label fw-bold"><i class="fas fa-comment me-1"></i>Mensagem Personalizada:</label>
+        <textarea id="msg" class="form-control" rows="4" placeholder="Digite sua mensagem aqui...">Olá {{name}}, temos uma viagem disponível para você na categoria {{category}}.</textarea>
+        <small class="text-muted">
+          <i class="fas fa-tools me-1"></i>Variáveis disponíveis: <code>{{name}}</code>, <code>{{number}}</code>, <code>{{category}}</code>
+        </small>
+      </div>
+
+      <!-- Botões de Envio e Parada -->
+      <div class="row g-2 mb-3">
+        <div class="col-md-9">
+          <button id="sendBtn" class="btn btn-danger w-100 fw-bold py-2"><i class="fas fa-play me-2"></i>INICIAR DISPARO EM MASSA</button>
+        </div>
+        <div class="col-md-3">
+          <button id="stopBtn" class="btn btn-stop w-100 fw-bold py-2" style="display: none;"><i class="fas fa-stop me-2"></i>PARAR ENVIO</button>
+        </div>
+      </div>
+
+      <!-- Barra de Progresso -->
+      <div class="progress mb-2" style="height: 25px;">
+        <div id="progBar" class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%">
+          <span class="fw-bold" id="progressText">0%</span>
+        </div>
+      </div>
+      
+      <!-- Status Detalhado -->
+      <div id="status" class="text-center fw-semibold alert alert-light">
+        <i class="fas fa-check-circle text-success me-2"></i>Pronto para iniciar o disparo
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+// ========== CONFIGURAÇÕES GLOBAIS ==========
+const SERVER_URL = window.location.origin;
+let envioAtivo = false;
+let selectedCat = null;
+let contacts = [];
+let currentPage = 1;
+let pageSize = 100;
+let selectedContacts = new Set();
+let currentUser = '';
+let isAdmin = false;
+
+// ========== INICIALIZAÇÃO ==========
+document.addEventListener('DOMContentLoaded', function() {
+  verificarStatus();
+  carregarEventos();
+  carregarInformacoesUsuario();
+});
+
+// ========== FUNÇÕES DE USUÁRIO E LOGOUT ==========
+async function carregarInformacoesUsuario() {
+  try {
+    console.log('🔐 Verificando autenticação...');
+    
+    const response = await fetch(`${SERVER_URL}/api/auth/status`, {
+      credentials: 'include'
+    });
+    
+    console.log('📡 Status HTTP:', response.status);
+    
+    if (response.ok) {
+      const data = await response.json();
+      console.log('📊 Dados do usuário:', data);
+      
+      if (data.autenticado && data.usuario) {
+        currentUser = data.usuario;
+        console.log('✅ USUÁRIO AUTENTICADO:', currentUser);
+        document.getElementById('currentUser').textContent = currentUser;
+        
+        // ✅ VERIFICAR SE É ADMIN
+        isAdmin = currentUser.toLowerCase() === 'admin';
+        
+        if (isAdmin) {
+          console.log('🎯 USUÁRIO É ADMIN - Mostrando controles administrativos');
+          document.getElementById('adminBadge').style.display = 'inline-block';
+          document.getElementById('btnResetContatos').style.display = 'block';
+        }
+        
+        // ✅ MAPEAMENTO COMPLETO DE INSTÂNCIAS
+        const userInstances = {
+          'admin': 'TESTE',
+          'JBO': 'JBO',
+          'CABO': 'CABO',
+          'BA': 'BA',
+          'PB': 'PB',
+          'SP': 'SP', 
+          'AL': 'AL',
+          'AMBEV': 'AMBEV',
+          'USINA': 'USINA',
+          'DISP3': 'DISP3'
+        };
+        
+        // Usar a instância da configuração ou fallback para o mapeamento
+        const userInstance = data.config?.instanceName || userInstances[data.usuario] || 'Não configurada';
+        document.getElementById('userInstance').textContent = userInstance;
+        
+        console.log('🏷️ Instância do usuário:', userInstance);
+        
+      } else {
+        console.log('❌ USUÁRIO NÃO AUTENTICADO - Redirecionando...');
+        window.location.href = '/';
+      }
+    } else {
+      console.log('❌ ERRO HTTP - Redirecionando...');
+      window.location.href = '/';
+    }
+  } catch (error) {
+    console.error('❌ ERRO DE CONEXÃO:', error);
+    window.location.href = '/';
+  }
+}
+
+// ✅ FUNÇÃO DE LOGOUT
+async function fazerLogout() {
+  if (confirm('Deseja realmente sair do sistema?')) {
+    try {
+      console.log('🚪 Fazendo logout...');
+      
+      const response = await fetch(`${SERVER_URL}/api/logout`, {
+        method: 'POST',
+        credentials: 'include'
+      });
+      
+      if (response.ok) {
+        console.log('✅ Logout bem-sucedido');
+      }
+    } catch (error) {
+      console.error('❌ Erro no logout:', error);
+    } finally {
+      // Redireciona para login independente do resultado
+      window.location.href = '/';
+    }
+  }
+}
+
+// ========== FUNÇÕES ADMINISTRATIVAS ==========
+async function resetarContatos() {
+  if (!isAdmin) {
+    alert('❌ Apenas administradores podem executar esta ação');
+    return;
+  }
+  
+  if (!confirm(`🚨 RESET DE CONTATOS - ADMINISTRATIVO
+
+Esta ação irá:
+🗑️  APAGAR TODOS os contatos do sistema
+📊 Limpar completamente o banco de dados
+🔄 Requerer nova importação do CSV
+
+ATENÇÃO: Esta ação NÃO PODE ser desfeita!
+
+Deseja continuar?`)) {
+    return;
+  }
+
+  try {
+    console.log('🔄 Iniciando reset de contatos...');
+    
+    const statusDiv = document.getElementById('csvStatus');
+    statusDiv.innerHTML = `
+      <div class="alert alert-warning">
+        <strong><i class="fas fa-trash-alt fa-spin me-2"></i>Resetando contatos...</strong>
+        <div class="progress mt-2">
+          <div class="progress-bar progress-bar-striped progress-bar-animated bg-warning" style="width: 100%"></div>
+        </div>
+      </div>
+    `;
+    
+    // Buscar todos os contatos primeiro para deletar
+    const categorias = ['sider', 'grade_alta', 'grade_baixa', 'bitrem', 'rodotrem', 'prancha', 'bau', 'SIDER _ GRADE BAIXA', 'GRADE BAIXA _GRANELEIRO', 'TRUCK _ GRANELEIRA', 'GRANELEIRO'];
+    
+    let todosContatos = [];
+    let totalDeletados = 0;
+    
+    for (const cat of categorias) {
+      const response = await fetch(`/webhook/contatos?categoria=${cat}`);
+      if (response.ok) {
+        const contatos = await response.json();
+        if (contatos && contatos.length > 0) {
+          todosContatos = todosContatos.concat(contatos);
+        }
+      }
+    }
+    
+    console.log(`📊 Total de contatos para deletar: ${todosContatos.length}`);
+    
+    // Deletar todos os contatos
+    for (const contato of todosContatos) {
+      const deleteResponse = await fetch('/webhook/contatos', {
+        method: 'DELETE',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ number: contato.number })
+      });
+      
+      if (deleteResponse.ok) {
+        totalDeletados++;
+      }
+    }
+    
+    statusDiv.innerHTML = `
+      <div class="alert alert-success">
+        <strong><i class="fas fa-check-circle me-2"></i>Reset Concluído!</strong><br>
+        <i class="fas fa-trash-alt me-1"></i>Contatos removidos: ${totalDeletados}<br>
+        <i class="fas fa-database me-1"></i>Banco de dados limpo com sucesso
+      </div>
+    `;
+    
+    // Limpar lista de contatos na interface
+    contacts = [];
+    selectedContacts.clear();
+    document.getElementById('contactsList').innerHTML = `
+      <div class="text-center text-muted py-4">
+        <div><i class="fas fa-database fa-2x mb-3"></i></div>
+        <div>🗑️ Banco de dados resetado</div>
+        <small>Faça uma nova importação do CSV</small>
+      </div>
+    `;
+    
+    document.getElementById('contactsInfo').innerHTML = `
+      <div class="alert alert-warning">
+        <i class="fas fa-database me-2"></i>Banco de dados resetado - Importe o CSV novamente
+      </div>
+    `;
+    
+    // Ocultar elementos de paginação
+    document.getElementById('paginationContainer').style.display = 'none';
+    document.getElementById('selectAllSection').style.display = 'none';
+    document.getElementById('selectionInfo').style.display = 'none';
+    
+    console.log(`✅ Reset concluído: ${totalDeletados} contatos removidos`);
+    
+  } catch (error) {
+    console.error('❌ Erro no reset:', error);
+    document.getElementById('csvStatus').innerHTML = `
+      <div class="alert alert-danger">
+        <i class="fas fa-times-circle me-2"></i>Erro no reset: ${error.message}
+      </div>
+    `;
+  }
+}
+
+// ========== STATUS DO SISTEMA ==========
+async function verificarStatus() {
+  const statusDiv = document.getElementById('evolutionStatus');
+  statusDiv.innerHTML = '<div class="text-info"><i class="fas fa-spinner fa-spin me-2"></i>Verificando conexão com Evolution API...</div>';
+  
+  try {
+    const res = await fetch(`${SERVER_URL}/webhook/status-evolution`);
+    const data = await res.json();
+    
+    if (data.connected) {
+      statusDiv.innerHTML = `
+        <div class="alert alert-success">
+          <strong><i class="fas fa-check-circle me-2"></i>${data.message}</strong>
+          <div class="row mt-2">
+            <div class="col-6">
+              <small><i class="fas fa-code me-1"></i>Versão: <strong>${data.version || 'N/A'}</strong></small>
+            </div>
+            <div class="col-6">
+              <small><i class="fas fa-server me-1"></i>Instância: <strong>${data.instance || 'N/A'}</strong></small>
+            </div>
+          </div>
+        </div>
+      `;
+    } else {
+      statusDiv.innerHTML = `
+        <div class="alert alert-danger">
+          <strong><i class="fas fa-exclamation-triangle me-2"></i>${data.error || 'Erro de conexão'}</strong>
+          <div class="small">${data.message || ''}</div>
+        </div>
+      `;
+    }
+  } catch (err) {
+    statusDiv.innerHTML = `
+      <div class="alert alert-danger">
+        <strong><i class="fas fa-unlink me-2"></i>Servidor não responde</strong>
+        <div class="small">Verifique se o servidor está rodando na porta 5680</div>
+      </div>
+    `;
+  }
+}
+
+// ========== IMPORTAR CONTATOS ==========
+async function atualizarDoCSV() {
+  const statusDiv = document.getElementById('csvStatus');
+  statusDiv.innerHTML = `
+    <div class="alert alert-info">
+      <strong><i class="fas fa-sync fa-spin me-2"></i>Importando do contatos.csv...</strong>
+      <div class="progress mt-2">
+        <div class="progress-bar progress-bar-striped progress-bar-animated" style="width: 100%"></div>
+      </div>
+    </div>
+  `;
+  
+  try {
+    const response = await fetch(`${SERVER_URL}/webhook/importar-csv`);
+    const result = await response.json();
+    
+    if (result.success) {
+      statusDiv.innerHTML = `
+        <div class="alert alert-success">
+          <strong><i class="fas fa-check-circle me-2"></i>CSV Importado com Sucesso!</strong><br>
+          <i class="fas fa-chart-bar me-1"></i>Total processado: ${result.total} contatos<br>
+          <i class="fas fa-plus-circle me-1"></i>Novos inseridos: ${result.inseridos}<br>
+          <i class="fas fa-exclamation-triangle me-1"></i>Duplicados ignorados: ${result.erros}
+        </div>
+      `;
+      
+      // Recarregar categoria atual
+      if (selectedCat) {
+        setTimeout(() => carregarContatos(selectedCat), 1000);
+      }
+      
+    } else {
+      statusDiv.innerHTML = `<div class="alert alert-danger"><i class="fas fa-times-circle me-2"></i>${result.error}</div>`;
+    }
+    
+  } catch (err) {
+    statusDiv.innerHTML = '<div class="alert alert-danger"><i class="fas fa-unlink me-2"></i>Erro de conexão com o servidor</div>';
+  }
+}
+
+async function importarCSVUpload() {
+  const fileInput = document.getElementById('csvFile');
+  const file = fileInput.files[0];
+  const statusDiv = document.getElementById('csvStatus');
+  
+  if (!file) {
+    statusDiv.innerHTML = '<div class="alert alert-warning"><i class="fas fa-exclamation-triangle me-2"></i>Selecione um arquivo CSV</div>';
+    return;
+  }
+  
+  statusDiv.innerHTML = '<div class="alert alert-info"><i class="fas fa-spinner fa-spin me-2"></i>Processando arquivo...</div>';
+  
+  try {
+    const text = await file.text();
+    const contatos = [];
+    const lines = text.split('\n');
+    
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trim();
+      if (!line) continue;
+      
+      const parts = line.split(',');
+      if (parts.length >= 2) {
+        const name = parts[0].trim();
+        const number = parts[1].trim();
+        const category = parts[2] ? parts[2].trim() : 'sider';
+        
+        if (name && number) {
+          contatos.push({ name, number, category });
+        }
+      }
+    }
+    
+    if (contatos.length === 0) {
+      statusDiv.innerHTML = '<div class="alert alert-warning"><i class="fas fa-exclamation-triangle me-2"></i>Nenhum contato válido encontrado</div>';
+      return;
+    }
+    
+    // Enviar para o servidor
+    const response = await fetch(`${SERVER_URL}/webhook/contatos/lote`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ contatos })
+    });
+    
+    const result = await response.json();
+    
+    if (response.ok) {
+      statusDiv.innerHTML = `
+        <div class="alert alert-success">
+          <strong><i class="fas fa-check-circle me-2"></i>Upload Concluído!</strong><br>
+          <i class="fas fa-chart-bar me-1"></i>Total: ${result.total} contatos<br>
+          <i class="fas fa-plus-circle me-1"></i>Inseridos: ${result.inseridos} novos<br>
+          <i class="fas fa-exclamation-triangle me-1"></i>Duplicados: ${result.erros} ignorados
+        </div>
+      `;
+      
+      fileInput.value = '';
+      
+      // Recarregar contatos
+      if (selectedCat) {
+        setTimeout(() => carregarContatos(selectedCat), 1000);
+      }
+      
+    } else {
+      statusDiv.innerHTML = `<div class="alert alert-danger"><i class="fas fa-times-circle me-2"></i>Erro: ${result.error}</div>`;
+    }
+    
+  } catch (err) {
+    statusDiv.innerHTML = '<div class="alert alert-danger"><i class="fas fa-times-circle me-2"></i>Erro ao processar arquivo</div>';
+  }
+}
+
+// ========== TESTE RÁPIDO ==========
+async function testarEnvio() {
+  const testNumber = document.getElementById('testNumber').value.trim();
+  const testMessage = document.getElementById('testMessage').value.trim();
+  const resultDiv = document.getElementById('testResult');
+  
+  if (!testNumber) {
+    resultDiv.innerHTML = '<div class="alert alert-warning"><i class="fas fa-exclamation-triangle me-2"></i>Digite um número para teste</div>';
+    return;
+  }
+  
+  resultDiv.innerHTML = '<div class="alert alert-info"><i class="fas fa-paper-plane me-2"></i>Enviando mensagem de teste...</div>';
+  
+  try {
+    const response = await fetch(`${SERVER_URL}/webhook/send`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        number: testNumber,
+        message: testMessage,
+        category: 'teste',
+        meta: { name: 'Teste' }
+      })
+    });
+    
+    const result = await response.json();
+    
+    if (result.success) {
+      resultDiv.innerHTML = '<div class="alert alert-success"><i class="fas fa-check-circle me-2"></i>Mensagem enviada com sucesso!</div>';
+    } else {
+      resultDiv.innerHTML = `<div class="alert alert-danger"><i class="fas fa-times-circle me-2"></i>${result.error}</div>`;
+    }
+  } catch (err) {
+    resultDiv.innerHTML = '<div class="alert alert-danger"><i class="fas fa-unlink me-2"></i>Erro de conexão com o servidor</div>';
+  }
+}
+
+// ========== CARREGAR EVENTOS ==========
+function carregarEventos() {
+  // Categorias
+  document.querySelectorAll('.category-card').forEach(card => {
+    card.addEventListener('click', () => {
+      const categoria = card.dataset.cat;
+      carregarContatos(categoria);
+    });
+  });
+
+  // Adicionar contato
+  document.getElementById('addContact').addEventListener('click', adicionarContato);
+
+  // Botão de parar
+  document.getElementById('stopBtn').addEventListener('click', pararEnvio);
+
+  // ✅ Botão de logout
+  document.getElementById('btnLogout').addEventListener('click', fazerLogout);
+
+  // ✅ Botão de reset (admin)
+  document.getElementById('btnResetContatos').addEventListener('click', resetarContatos);
+
+  // Paginação - Tamanho da página
+  document.getElementById('pageSize').addEventListener('change', function() {
+    pageSize = parseInt(this.value);
+    currentPage = 1;
+    if (selectedCat) {
+      atualizarListaContatos();
+    }
+  });
+
+  // Selecionar todos
+  document.getElementById('selectAllCheckbox').addEventListener('change', function() {
+    const checkboxes = document.querySelectorAll('.contact-checkbox:not(#selectAllCheckbox)');
+    checkboxes.forEach(checkbox => {
+      checkbox.checked = this.checked;
+      const contactId = checkbox.dataset.contactId;
+      if (this.checked) {
+        selectedContacts.add(contactId);
+      } else {
+        selectedContacts.delete(contactId);
+      }
+    });
+    atualizarContadorSelecionados();
+  });
+}
+
+// ========== FUNÇÕES PRINCIPAIS ==========
+async function carregarContatos(categoria) {
+  // Resetar seleções
+  selectedContacts.clear();
+  currentPage = 1;
+  
+  // Ativar categoria
+  document.querySelectorAll('.category-card').forEach(c => c.classList.remove('active'));
+  document.querySelector(`[data-cat="${categoria}"]`).classList.add('active');
+  
+  selectedCat = categoria;
+  const contactsInfo = document.getElementById('contactsInfo');
+  const contactsList = document.getElementById('contactsList');
+  
+  contactsInfo.innerHTML = `<div class="alert alert-info"><i class="fas fa-spinner fa-spin me-2"></i>Carregando contatos para ${categoria}...</div>`;
+  contactsList.innerHTML = '<div class="text-center py-3"><i class="fas fa-spinner fa-spin me-2"></i>Carregando...</div>';
+
+  try {
+    const url = `${SERVER_URL}/webhook/contatos?categoria=${categoria}`;
+    const res = await fetch(url);
+    
+    if (!res.ok) throw new Error('Erro ao carregar contatos');
+    
+    contacts = await res.json();
+    contactsInfo.innerHTML = `
+      <div class="alert alert-success">
+        <strong><i class="fas fa-check-circle me-2"></i>${contacts.length} contatos encontrados</strong>
+        <div class="small"><i class="fas fa-tag me-1"></i>Categoria: ${categoria}</div>
+      </div>
+    `;
+    
+    atualizarListaContatos();
+  } catch (err) {
+    console.error('❌ Erro ao carregar contatos:', err);
+    contactsInfo.innerHTML = '<div class="alert alert-danger"><i class="fas fa-times-circle me-2"></i>Erro ao carregar contatos</div>';
+    contactsList.innerHTML = '<div class="text-center text-danger py-3"><i class="fas fa-times-circle me-2"></i>Erro ao carregar contatos</div>';
+  }
+}
+
+function atualizarListaContatos() {
+  const contactsList = document.getElementById('contactsList');
+  const paginationContainer = document.getElementById('paginationContainer');
+  const selectAllSection = document.getElementById('selectAllSection');
+  const selectionInfo = document.getElementById('selectionInfo');
+
+  if (contacts.length === 0) {
+    contactsList.innerHTML = '<div class="text-center text-muted py-4"><i class="fas fa-inbox fa-2x mb-3"></i><div>📭 Nenhum contato encontrado</div></div>';
+    paginationContainer.style.display = 'none';
+    selectAllSection.style.display = 'none';
+    selectionInfo.style.display = 'none';
+    return;
+  }
+
+  // Calcular paginação
+  const totalPages = Math.ceil(contacts.length / pageSize);
+  const startIndex = (currentPage - 1) * pageSize;
+  const endIndex = Math.min(startIndex + pageSize, contacts.length);
+  const currentContacts = contacts.slice(startIndex, endIndex);
+
+  // Mostrar/ocultar elementos de seleção
+  selectAllSection.style.display = 'block';
+  selectionInfo.style.display = 'block';
+  paginationContainer.style.display = 'block';
+
+  // Atualizar informações da página
+  document.getElementById('pageInfo').textContent = `Página ${currentPage} de ${totalPages} - ${startIndex + 1} a ${endIndex} de ${contacts.length} contatos`;
+
+  // Gerar lista de contatos
+  let html = '';
+  currentContacts.forEach((contact, index) => {
+    const contactId = `${contact.number}-${index}`;
+    const isSelected = selectedContacts.has(contactId);
+    
+    html += `
+      <div class="contact-item">
+        <div class="d-flex justify-content-between align-items-center">
+          <div class="d-flex align-items-center">
+            <input class="form-check-input contact-checkbox" type="checkbox" 
+                   data-contact-id="${contactId}" 
+                   ${isSelected ? 'checked' : ''}
+                   onchange="toggleContactSelection('${contactId}', this.checked)">
+            <div class="ms-3">
+              <strong><i class="fas fa-user me-1"></i>${contact.name}</strong><br>
+              <small class="text-muted"><i class="fas fa-phone me-1"></i>${contact.number}</small>
+            </div>
+          </div>
+          <span class="badge bg-secondary"><i class="fas fa-tag me-1"></i>${contact.category}</span>
+        </div>
+      </div>
+    `;
+  });
+  contactsList.innerHTML = html;
+
+  // Atualizar paginação
+  atualizarPaginacao(totalPages);
+  
+  // Atualizar contador de selecionados
+  atualizarContadorSelecionados();
+  
+  // Resetar selecionar todos
+  document.getElementById('selectAllCheckbox').checked = false;
+}
+
+function atualizarPaginacao(totalPages) {
+  const pagination = document.getElementById('pagination');
+  let html = '';
+
+  // Botão anterior
+  html += `
+    <li class="page-item ${currentPage === 1 ? 'disabled' : ''}">
+      <a class="page-link" href="#" onclick="mudarPagina(${currentPage - 1})">‹</a>
+    </li>
+  `;
+
+  // Páginas
+  for (let i = 1; i <= totalPages; i++) {
+    if (i === 1 || i === totalPages || (i >= currentPage - 2 && i <= currentPage + 2)) {
+      html += `
+        <li class="page-item ${i === currentPage ? 'active' : ''}">
+          <a class="page-link" href="#" onclick="mudarPagina(${i})">${i}</a>
+        </li>
+      `;
+    } else if (i === currentPage - 3 || i === currentPage + 3) {
+      html += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+    }
+  }
+
+  // Botão próximo
+  html += `
+    <li class="page-item ${currentPage === totalPages ? 'disabled' : ''}">
+      <a class="page-link" href="#" onclick="mudarPagina(${currentPage + 1})">›</a>
+    </li>
+  `;
+
+  pagination.innerHTML = html;
+}
+
+function mudarPagina(pagina) {
+  currentPage = pagina;
+  atualizarListaContatos();
+}
+
+function toggleContactSelection(contactId, isSelected) {
+  if (isSelected) {
+    selectedContacts.add(contactId);
+  } else {
+    selectedContacts.delete(contactId);
+  }
+  atualizarContadorSelecionados();
+  
+  // Atualizar checkbox "Selecionar todos"
+  const checkboxes = document.querySelectorAll('.contact-checkbox:not(#selectAllCheckbox)');
+  const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+  document.getElementById('selectAllCheckbox').checked = allChecked;
+}
+
+function atualizarContadorSelecionados() {
+  const selectedCount = document.getElementById('selectedCount');
+  selectedCount.textContent = selectedContacts.size;
+}
+
+async function adicionarContato() {
+  const name = document.getElementById('newName').value.trim();
+  const number = document.getElementById('newNumber').value.trim();
+  const category = document.getElementById('newCategory').value;
+  
+  if (!name || !number) {
+    alert('⚠️ Preencha nome e número');
+    return;
+  }
+  
+  try {
+    const res = await fetch(`${SERVER_URL}/webhook/contatos`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, number, category })
+    });
+    
+    if (res.ok) {
+      alert(`✅ Contato "${name}" adicionado com sucesso!`);
+      document.getElementById('newName').value = '';
+      document.getElementById('newNumber').value = '';
+      
+      // Recarregar contatos se a categoria for a mesma
+      if (selectedCat === category) {
+        carregarContatos(category);
+      }
+    } else {
+      alert('❌ Erro ao adicionar contato');
+    }
+  } catch (err) {
+    console.error('❌ Erro de conexão:', err);
+    alert('❌ Erro de conexão com o servidor');
+  }
+}
+
+function renderMessage(template, contact) {
+  return template
+    .replace(/{{\s*name\s*}}/gi, contact.name || '')
+    .replace(/{{\s*number\s*}}/gi, contact.number || '')
+    .replace(/{{\s*category\s*}}/gi, contact.category || '');
+}
+
+// ========== DISPARO EM MASSA COM SELEÇÃO ==========
+async function iniciarDisparo() {
+  if (!selectedCat) {
+    alert('⚠️ Selecione uma categoria primeiro');
+    return;
+  }
+  
+  if (selectedContacts.size === 0) {
+    alert('⚠️ Selecione pelo menos um contato para enviar');
+    return;
+  }
+
+  const template = document.getElementById('msg').value;
+  if (!template.trim()) {
+    alert('⚠️ Digite uma mensagem para enviar');
+    return;
+  }
+
+  // Filtrar contatos selecionados
+  const contactsToSend = contacts.filter(contact => {
+    const contactId = `${contact.number}-${contacts.indexOf(contact)}`;
+    return selectedContacts.has(contactId);
+  });
+
+  // Calcular tempo estimado (30-120 segundos por mensagem)
+  const tempoMin = Math.ceil((contactsToSend.length * 30) / 60);
+  const tempoMax = Math.ceil((contactsToSend.length * 120) / 60);
+  
+  if (!confirm(`🚀 Iniciar disparo para ${contactsToSend.length} contatos selecionados?\n\n⏰ Tempo estimado: ${tempoMin} a ${tempoMax} minutos\n🔒 Delay de segurança: 30s a 2min entre mensagens`)) {
+    return;
+  }
+
+  // Configurar interface para envio
+  envioAtivo = true;
+  const sendBtn = document.getElementById('sendBtn');
+  const stopBtn = document.getElementById('stopBtn');
+  const progBar = document.getElementById('progBar');
+  const progressText = document.getElementById('progressText');
+  const statusDiv = document.getElementById('status');
+  
+  sendBtn.disabled = true;
+  sendBtn.textContent = '⏳ Enviando...';
+  stopBtn.style.display = 'block';
+  progBar.style.width = '0%';
+  progressText.textContent = '0%';
+  
+  let completed = 0;
+  let successCount = 0;
+  let errorCount = 0;
+
+  // Enviar mensagens COM DELAY ALEATÓRIO
+  for (const contact of contactsToSend) {
+    if (!envioAtivo) break;
+    
+    const message = renderMessage(template, contact);
+    
+    try {
+      const res = await fetch(`${SERVER_URL}/webhook/send`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          number: contact.number, 
+          message: message, 
+          category: selectedCat, 
+          meta: { name: contact.name } 
+        })
+      });
+      
+      const result = await res.json();
+      
+      if (result.success) {
+        successCount++;
+        console.log(`✅ Enviado para: ${contact.name}`);
+      } else {
+        errorCount++;
+        console.error(`❌ Erro para ${contact.name}:`, result.error);
+      }
+    } catch (err) {
+      errorCount++;
+      console.error(`❌ Erro de conexão para ${contact.name}:`, err);
+    }
+    
+    // Atualizar progresso
+    completed++;
+    const progress = Math.round((completed / contactsToSend.length) * 100);
+    progBar.style.width = progress + '%';
+    progressText.textContent = `${progress}%`;
+    
+    // Aplicar delay aleatório entre mensagens (30s a 60s) - exceto na última
+    if (envioAtivo && completed < contactsToSend.length) {
+      const delaySeconds = Math.floor(Math.random() * (60 - 30 + 1)) + 30;
+      
+      statusDiv.innerHTML = `
+        <div class="text-center">
+          <strong><i class="fas fa-paper-plane me-2"></i>Enviando: ${completed} / ${contactsToSend.length}</strong><br>
+          <small><i class="fas fa-check-circle text-success me-1"></i>Sucessos: ${successCount} | <i class="fas fa-times-circle text-danger me-1"></i>Erros: ${errorCount}</small>
+          <div class="mt-1">
+            <small class="text-warning"><i class="fas fa-clock me-1"></i>Próxima mensagem em ${delaySeconds} segundos...</small>
+          </div>
+        </div>
+      `;
+      
+      console.log(`⏰ Aguardando ${delaySeconds} segundos para próxima mensagem...`);
+      
+      // Aguardar o delay
+      await new Promise(resolve => setTimeout(resolve, delaySeconds * 1000));
+    } else {
+      statusDiv.innerHTML = `
+        <div class="text-center">
+          <strong><i class="fas fa-paper-plane me-2"></i>Enviando: ${completed} / ${contactsToSend.length}</strong><br>
+          <small><i class="fas fa-check-circle text-success me-1"></i>Sucessos: ${successCount} | <i class="fas fa-times-circle text-danger me-1"></i>Erros: ${errorCount}</small>
+        </div>
+      `;
+    }
+  }
+
+  // Finalizar
+  finalizarEnvio(successCount, errorCount, contactsToSend.length);
+}
+
+function pararEnvio() {
+  envioAtivo = false;
+  const stopBtn = document.getElementById('stopBtn');
+  const statusDiv = document.getElementById('status');
+  
+  stopBtn.style.display = 'none';
+  statusDiv.innerHTML = '<div class="alert alert-warning"><i class="fas fa-stop-circle me-2"></i>Envio interrompido pelo usuário</div>';
+}
+
+function finalizarEnvio(successCount, errorCount, totalEnviados) {
+  envioAtivo = false;
+  const sendBtn = document.getElementById('sendBtn');
+  const stopBtn = document.getElementById('stopBtn');
+  const progBar = document.getElementById('progBar');
+  const progressText = document.getElementById('progressText');
+  const statusDiv = document.getElementById('status');
+  
+  // ✅ RESETAR TODA A INTERFACE
+  sendBtn.disabled = false;
+  sendBtn.textContent = '<i class="fas fa-play me-2"></i>INICIAR DISPARO EM MASSA';
+  stopBtn.style.display = 'none';
+  progBar.style.width = '100%';
+  progBar.classList.remove('progress-bar-animated');
+  progressText.textContent = '100%';
+  
+  let message = `✅ Disparo concluído!\n\n`;
+  message += `📊 Total selecionado: ${totalEnviados}\n`;
+  message += `✅ Mensagens enviadas: ${successCount}\n`;
+  
+  if (errorCount > 0) {
+    message += `❌ Erros: ${errorCount}`;
+  }
+  
+  alert(message);
+  
+  statusDiv.innerHTML = `
+    <div class="alert alert-success">
+      <strong><i class="fas fa-check-circle me-2"></i>Disparo Concluído!</strong><br>
+      <i class="fas fa-chart-bar me-1"></i>Total selecionado: ${totalEnviados} contatos<br>
+      <i class="fas fa-check-circle me-1"></i>Sucessos: ${successCount} mensagens<br>
+      ${errorCount > 0 ? `<i class="fas fa-times-circle me-1"></i>Erros: ${errorCount} mensagens` : '<i class="fas fa-party-horn me-1"></i>Todos os envios foram bem-sucedidos!'}
+    </div>
+  `;
+  
+  console.log('✅ Interface resetada após envio');
+}
+
+// Configurar botão de envio
+document.getElementById('sendBtn').addEventListener('click', iniciarDisparo);
+
+console.log('✅ Sistema carregado com sucesso!');
+console.log('🔒 Modo seguro ativo: Delay aleatório de 30s a 60s entre mensagens');
+console.log('📄 Sistema de paginação ativo: Selecione contatos específicos para envio');
+console.log('👑 Controle administrativo: Botão de reset visível apenas para admin');
+</script>
+</body>
+</html>
