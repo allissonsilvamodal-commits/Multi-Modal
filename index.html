@@ -1,0 +1,731 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Sistemas Multi Modal</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --secondary-gradient: linear-gradient(135deg, #2c3e50 0%, #3498db 100%);
+            --success-gradient: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%);
+            --warning-gradient: linear-gradient(135deg, #f39c12 0%, #f1c40f 100%);
+            --card-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
+            --transition: all 0.3s ease;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: var(--primary-gradient);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            padding: 20px;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        /* Efeitos de fundo animados */
+        .bg-animation {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            opacity: 0.1;
+        }
+
+        .bubble {
+            position: absolute;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.1);
+            animation: float 15s infinite ease-in-out;
+        }
+
+        .bubble:nth-child(1) {
+            width: 80px;
+            height: 80px;
+            top: 10%;
+            left: 10%;
+            animation-delay: 0s;
+        }
+
+        .bubble:nth-child(2) {
+            width: 120px;
+            height: 120px;
+            top: 60%;
+            left: 80%;
+            animation-delay: 2s;
+        }
+
+        .bubble:nth-child(3) {
+            width: 60px;
+            height: 60px;
+            top: 80%;
+            left: 20%;
+            animation-delay: 4s;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0) rotate(0deg); }
+            50% { transform: translateY(-20px) rotate(10deg); }
+        }
+
+        .login-container {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            box-shadow: var(--card-shadow);
+            overflow: hidden;
+            width: 100%;
+            max-width: 450px;
+            transition: var(--transition);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .login-container:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+        }
+
+        .login-header {
+            background: var(--secondary-gradient);
+            color: white;
+            padding: 35px 30px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .login-header::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+            animation: pulse 8s infinite linear;
+        }
+
+        @keyframes pulse {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .login-header h1 {
+            margin: 0;
+            font-size: 1.9rem;
+            font-weight: 700;
+            position: relative;
+            text-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+        }
+
+        .login-header p {
+            margin: 10px 0 0;
+            opacity: 0.9;
+            font-size: 1rem;
+            position: relative;
+        }
+
+        .login-body {
+            padding: 35px 30px 30px;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+            position: relative;
+        }
+
+        .form-label {
+            display: flex;
+            align-items: center;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #2c3e50;
+            font-size: 0.95rem;
+        }
+
+        .form-label i {
+            margin-right: 8px;
+            width: 20px;
+            text-align: center;
+        }
+
+        .form-control {
+            border-radius: 12px;
+            border: 2px solid #e9ecef;
+            padding: 14px 16px;
+            transition: var(--transition);
+            font-size: 1rem;
+            background: #f8f9fa;
+        }
+
+        .form-control:focus {
+            border-color: #3498db;
+            box-shadow: 0 0 0 0.25rem rgba(52, 152, 219, 0.25);
+            background: white;
+        }
+
+        .input-with-icon {
+            position: relative;
+        }
+
+        .input-icon {
+            position: absolute;
+            left: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #6c757d;
+            z-index: 5;
+        }
+
+        .input-with-icon .form-control {
+            padding-left: 45px;
+        }
+
+        .password-toggle {
+            cursor: pointer;
+            position: absolute;
+            right: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #6c757d;
+            transition: var(--transition);
+            z-index: 5;
+        }
+
+        .password-toggle:hover {
+            color: #3498db;
+        }
+
+        .btn-login {
+            background: var(--success-gradient);
+            border: none;
+            border-radius: 12px;
+            color: white;
+            padding: 14px;
+            font-weight: 600;
+            font-size: 1.05rem;
+            transition: var(--transition);
+            margin-top: 10px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-login::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+            transition: var(--transition);
+        }
+
+        .btn-login:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 7px 20px rgba(39, 174, 96, 0.4);
+        }
+
+        .btn-login:hover::before {
+            left: 100%;
+        }
+
+        .btn-login:active {
+            transform: translateY(-1px);
+        }
+
+        .btn-login:disabled {
+            opacity: 0.7;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .btn-content {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 18px;
+            height: 18px;
+            border: 2px solid transparent;
+            border-top: 2px solid #ffffff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .login-footer {
+            text-align: center;
+            margin-top: 25px;
+            padding-top: 20px;
+            border-top: 1px solid #e9ecef;
+        }
+
+        .login-footer p {
+            margin: 0;
+            color: #6c757d;
+            font-size: 0.85rem;
+        }
+
+        .system-info {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 12px 15px;
+            margin-top: 20px;
+            font-size: 0.8rem;
+            color: #6c757d;
+            text-align: center;
+            border: 1px solid #e9ecef;
+        }
+
+        .users-info {
+            background: #e8f4fd;
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 15px;
+            border-left: 4px solid #3498db;
+        }
+
+        .users-info h6 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+            font-size: 0.9rem;
+        }
+
+        .user-badge {
+            display: inline-block;
+            background: #3498db;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            margin: 2px;
+        }
+
+        .user-badge.admin {
+            background: linear-gradient(135deg, #e74c3c, #c0392b);
+        }
+
+        .user-badge.user {
+            background: linear-gradient(135deg, #27ae60, #219a52);
+        }
+
+        .alert {
+            border-radius: 12px;
+            border: none;
+            padding: 14px 16px;
+            font-size: 0.95rem;
+        }
+
+        .alert-success {
+            background: rgba(39, 174, 96, 0.1);
+            color: #27ae60;
+            border-left: 4px solid #27ae60;
+        }
+
+        .alert-danger {
+            background: rgba(231, 76, 60, 0.1);
+            color: #e74c3c;
+            border-left: 4px solid #e74c3c;
+        }
+
+        .alert-warning {
+            background: rgba(243, 156, 18, 0.1);
+            color: #f39c12;
+            border-left: 4px solid #f39c12;
+        }
+
+        .alert-info {
+            background: rgba(52, 152, 219, 0.1);
+            color: #3498db;
+            border-left: 4px solid #3498db;
+        }
+
+        /* Responsividade */
+        @media (max-width: 480px) {
+            .login-container {
+                max-width: 100%;
+                border-radius: 15px;
+            }
+            
+            .login-header {
+                padding: 25px 20px;
+            }
+            
+            .login-body {
+                padding: 25px 20px 20px;
+            }
+            
+            .login-header h1 {
+                font-size: 1.7rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Efeitos de fundo animados -->
+    <div class="bg-animation">
+        <div class="bubble"></div>
+        <div class="bubble"></div>
+        <div class="bubble"></div>
+    </div>
+
+    <div class="login-container">
+        <div class="login-header">
+            <h1><i class="fas fa-comment-dots"></i> Sistemas Multi Modal</h1>
+            <p>Sistema Multi-Usuários com Instâncias Individuais</p>
+        </div>
+        
+        <div class="login-body">
+            <form id="loginForm">
+                <div class="form-group">
+                    <label for="usuario" class="form-label">
+                        <i class="fas fa-user"></i> Usuário
+                    </label>
+                    <div class="input-with-icon">
+                        <i class="fas fa-user input-icon"></i>
+                        <input type="text" class="form-control" id="usuario" placeholder="Digite seu usuário" required autocomplete="username">
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="senha" class="form-label">
+                        <i class="fas fa-lock"></i> Senha
+                    </label>
+                    <div class="input-with-icon">
+                        <i class="fas fa-lock input-icon"></i>
+                        <input type="password" class="form-control" id="senha" placeholder="Digite sua senha" required autocomplete="current-password">
+                        <span class="password-toggle" onclick="togglePassword()">
+                            <i class="fas fa-eye"></i>
+                        </span>
+                    </div>
+                </div>
+                
+                <button type="submit" class="btn btn-login w-100" id="submitBtn">
+                    <div class="btn-content">
+                        <i class="fas fa-sign-in-alt"></i>
+                        <span class="btn-text">Entrar no Sistema</span>
+                        <span class="btn-loading" style="display: none;">
+                            <span class="loading-spinner"></span>
+                            <span>Entrando...</span>
+                        </span>
+                    </div>
+                </button>
+            </form>
+            
+            <div id="loginAlert" class="alert mt-3" style="display: none;"></div>
+            
+            <!-- Informações dos Usuários -->
+            <div class="users-info">
+                <h6><i class="fas fa-users"></i> Usuários do Sistema:</h6>
+                <div>
+                    <span class="user-badge admin">(Administrador)</span>
+                    <span class="user-badge user">(Usuário Comum)</span>
+                </div>
+                <small class="text-muted">Só usuario administrador tem acesso ao painel administrativo</small>
+            </div>
+            
+            <div class="login-footer">
+                <p><i class="fas fa-shield-alt"></i> Sistema seguro com autenticação multi-usuário</p>
+                <div class="system-info" id="systemInfo">
+                    <i class="fas fa-server"></i> Conectando ao servidor...
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    // ========== CONFIGURAÇÕES ==========
+    const SERVER_URL = window.location.origin;
+    
+    // ========== ELEMENTOS DOM ==========
+    const loginForm = document.getElementById('loginForm');
+    const submitBtn = document.getElementById('submitBtn');
+    const alertDiv = document.getElementById('loginAlert');
+    const systemInfo = document.getElementById('systemInfo');
+
+    // ========== FUNÇÕES UTILITÁRIAS ==========
+    function togglePassword() {
+        const senhaInput = document.getElementById('senha');
+        const toggleIcon = document.querySelector('.password-toggle i');
+        
+        if (senhaInput.type === 'password') {
+            senhaInput.type = 'text';
+            toggleIcon.className = 'fas fa-eye-slash';
+        } else {
+            senhaInput.type = 'password';
+            toggleIcon.className = 'fas fa-eye';
+        }
+    }
+    
+    function showLoading(show = true) {
+        if (show) {
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<div class="btn-content"><span class="loading-spinner"></span> Entrando...</div>';
+        } else {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<div class="btn-content"><i class="fas fa-sign-in-alt"></i> Entrar no Sistema</div>';
+        }
+    }
+    
+    function showAlert(message, type = 'danger') {
+        alertDiv.className = `alert alert-${type} mt-3`;
+        alertDiv.innerHTML = message;
+        alertDiv.style.display = 'block';
+        
+        if (type === 'success') {
+            setTimeout(() => {
+                alertDiv.style.display = 'none';
+            }, 3000);
+        }
+    }
+    
+    function updateSystemInfo(message, type = 'info') {
+        const icon = type === 'success' ? 'fa-check-circle' : 
+                     type === 'error' ? 'fa-exclamation-circle' : 'fa-server';
+        systemInfo.innerHTML = `<i class="fas ${icon}"></i> ${message}`;
+    }
+
+    // ========== SISTEMA DE AUTENTICAÇÃO ==========
+    async function fazerLogin(usuario, senha) {
+        console.log('🔐 Tentando login para:', usuario);
+        
+        const response = await fetch(`${SERVER_URL}/api/login`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ usuario, senha }),
+            credentials: 'include'
+        });
+        
+        console.log('📡 Status:', response.status);
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        return await response.json();
+    }
+
+    // ========== SISTEMA DE STORAGE ==========
+    function salvarUsuarioLocalStorage(usuario) {
+        try {
+            // ✅ DETERMINAR SE É ADMIN BASEADO NO USERNAME (APÓS LOGIN BEM-SUCEDIDO)
+            const isAdmin = usuario.toLowerCase() === 'admin';
+            const userData = {
+                email: usuario,
+                nome: usuario,
+                isAdmin: isAdmin,
+                departamento: isAdmin ? 'admin' : 'user',
+                loginTimestamp: Date.now(),
+                authenticated: true // ✅ MARCA COMO AUTENTICADO
+            };
+            
+            localStorage.setItem('loggedInUser', JSON.stringify(userData));
+            console.log('✅ Usuário salvo no localStorage:', userData);
+            
+            return userData;
+        } catch (error) {
+            console.error('❌ Erro ao salvar no localStorage:', error);
+            return null;
+        }
+    }
+
+    function verificarUsuarioLocalStorage() {
+        try {
+            const userData = localStorage.getItem('loggedInUser');
+            if (!userData) {
+                return null;
+            }
+            
+            const user = JSON.parse(userData);
+            
+            // ✅ VERIFICAR SE FOI AUTENTICADO CORRETAMENTE
+            if (!user.authenticated) {
+                console.log('❌ Usuário não autenticado no localStorage');
+                return null;
+            }
+            
+            // Verificar se a sessão expirou (12 horas)
+            const now = Date.now();
+            const sessionAge = now - user.loginTimestamp;
+            const SESSION_TIMEOUT = 12 * 60 * 60 * 1000; // 12 horas
+            
+            if (sessionAge > SESSION_TIMEOUT) {
+                console.log('🕒 Sessão expirada, limpando localStorage');
+                localStorage.removeItem('loggedInUser');
+                return null;
+            }
+            
+            console.log('✅ Usuário autenticado encontrado no localStorage:', user);
+            return user;
+        } catch (error) {
+            console.error('❌ Erro ao verificar localStorage:', error);
+            return null;
+        }
+    }
+
+    // ========== TESTES DE CONEXÃO ==========
+    async function testarConexao() {
+        try {
+            console.log('🧪 Testando conexão...');
+            updateSystemInfo('Testando conexão com servidor...');
+            
+            const response = await fetch(`${SERVER_URL}/test`);
+            
+            if (response.ok) {
+                const data = await response.json();
+                console.log('✅ Servidor respondendo:', data);
+                updateSystemInfo('Conectado ao servidor', 'success');
+                return true;
+            }
+            return false;
+        } catch (error) {
+            console.error('❌ Erro de conexão:', error);
+            updateSystemInfo('Erro ao conectar com servidor', 'error');
+            return false;
+        }
+    }
+
+    // ========== VERIFICAÇÃO DE LOGIN ==========
+    async function verificarLoginExistente() {
+        try {
+            console.log('🔐 Verificando autenticação existente...');
+            
+            // ✅ PRIMEIRO VERIFICAR NO SERVIDOR (MAIS CONFIÁVEL)
+            const response = await fetch(`${SERVER_URL}/api/auth/status`, {
+                credentials: 'include'
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                console.log('📊 Status auth do servidor:', data);
+                
+                if (data.autenticado && data.usuario) {
+                    // ✅ SALVAR NO LOCALSTORAGE COM AUTENTICAÇÃO
+                    const userData = salvarUsuarioLocalStorage(data.usuario);
+                    if (userData) {
+                        console.log('✅ Usuário já logado (servidor), redirecionando...');
+                        showAlert(`<i class="fas fa-check-circle"></i> Bem-vindo de volta, ${data.usuario}!`, 'success');
+                        
+                        setTimeout(() => {
+                            window.location.href = '/portal.html';
+                        }, 1500);
+                        return true;
+                    }
+                }
+            }
+            
+            // ✅ SE NÃO TEM NO SERVIDOR, VERIFICAR NO LOCALSTORAGE (COM VALIDAÇÃO)
+            const localUser = verificarUsuarioLocalStorage();
+            if (localUser && localUser.authenticated) {
+                console.log('✅ Usuário já logado (localStorage), redirecionando...');
+                showAlert(`<i class="fas fa-check-circle"></i> Bem-vindo de volta, ${localUser.nome}!`, 'success');
+                
+                setTimeout(() => {
+                    window.location.href = '/portal.html';
+                }, 1500);
+                return true;
+            }
+            
+        } catch (error) {
+            console.log('🔐 Usuário não autenticado');
+        }
+        
+        return false;
+    }
+
+    // ========== EVENTO DE LOGIN ==========
+    loginForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const usuario = document.getElementById('usuario').value.trim();
+        const senha = document.getElementById('senha').value;
+        
+        if (!usuario || !senha) {
+            showAlert('<i class="fas fa-exclamation-triangle"></i> Preencha todos os campos');
+            return;
+        }
+        
+        showLoading(true);
+        alertDiv.style.display = 'none';
+        
+        try {
+            const resultado = await fazerLogin(usuario, senha);
+            
+            if (resultado.success) {
+                // ✅ SALVAR NO LOCALSTORAGE APÓS LOGIN BEM-SUCEDIDO
+                const userData = salvarUsuarioLocalStorage(usuario);
+                
+                showAlert(`<i class="fas fa-check-circle"></i> Login realizado! Redirecionando...`, 'success');
+                updateSystemInfo(`Usuário ${usuario} autenticado`, 'success');
+                
+                setTimeout(() => {
+                    window.location.href = '/portal.html';
+                }, 1500);
+                
+            } else {
+                showAlert(`<i class="fas fa-times-circle"></i> ${resultado.error || 'Credenciais inválidas'}`);
+                updateSystemInfo('Falha na autenticação', 'error');
+            }
+            
+        } catch (error) {
+            console.error('❌ Erro completo:', error);
+            showAlert(`
+                <i class="fas fa-network-wired"></i> Erro de conexão<br>
+                <small>${error.message}</small>
+            `);
+            updateSystemInfo('Erro de conexão', 'error');
+        } finally {
+            showLoading(false);
+        }
+    });
+
+    // ========== INICIALIZAÇÃO ==========
+    document.addEventListener('DOMContentLoaded', async () => {
+        console.log('🚀 Sistema de Login inicializado');
+        console.log('📍 Servidor:', SERVER_URL);
+        
+        // Foco no campo de usuário
+        document.getElementById('usuario').focus();
+        
+        // Testar conexão
+        const conexaoOk = await testarConexao();
+        
+        if (conexaoOk) {
+            // Verificar se já está logado (APENAS SE CONEXÃO OK)
+            await verificarLoginExistente();
+        }
+    });
+
+    // Enter key submission
+    document.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            loginForm.dispatchEvent(new Event('submit'));
+        }
+    });
+    </script>
+</body>
+</html>

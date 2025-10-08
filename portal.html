@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portal - Sistema de Ferramentas</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --secondary-gradient: linear-gradient(135deg, #2c3e50 0%, #3498db 100%);
+            --success-gradient: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%);
+            --warning-gradient: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
+            --danger-gradient: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+            --card-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
+            --transition: all 0.3s ease;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: var(--primary-gradient);
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        /* Header */
+        .portal-header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 2rem 0;
+            text-align: center;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+            position: relative;
+        }
+
+        .logo {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: #2c3e50;
+            margin-bottom: 0.5rem;
+        }
+
+        .subtitle {
+            color: #7f8c8d;
+            font-size: 1.1rem;
+        }
+
+        .user-info-panel {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(52, 152, 219, 0.1);
+            padding: 10px 15px;
+            border-radius: 10px;
+            border: 1px solid rgba(52, 152, 219, 0.2);
+        }
+
+        .admin-badge {
+            background: var(--danger-gradient);
+            color: white;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.7rem;
+            margin-left: 5px;
+        }
+
+        /* Main Content */
+        .portal-main {
+            padding: 3rem 1rem;
+        }
+
+        .tools-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .tool-card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 2.5rem;
+            text-align: center;
+            box-shadow: var(--card-shadow);
+            transition: var(--transition);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .tool-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 5px;
+            background: var(--secondary-gradient);
+        }
+
+        .tool-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+        }
+
+        .tool-icon {
+            font-size: 3.5rem;
+            margin-bottom: 1.5rem;
+            background: var(--secondary-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .tool-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #2c3e50;
+            margin-bottom: 1rem;
+        }
+
+        .tool-description {
+            color: #7f8c8d;
+            margin-bottom: 2rem;
+            line-height: 1.6;
+        }
+
+        .btn-tool {
+            background: var(--success-gradient);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 12px;
+            font-weight: 600;
+            text-decoration: none;
+            display: inline-block;
+            transition: var(--transition);
+            position: relative;
+            overflow: hidden;
+            cursor: pointer;
+        }
+
+        .btn-tool::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+            transition: var(--transition);
+        }
+
+        .btn-tool:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 7px 20px rgba(39, 174, 96, 0.4);
+            color: white;
+            text-decoration: none;
+        }
+
+        .btn-tool:hover::before {
+            left: 100%;
+        }
+
+        .btn-tool.warning {
+            background: var(--warning-gradient);
+        }
+
+        .btn-tool.warning:hover {
+            box-shadow: 0 7px 20px rgba(243, 156, 18, 0.4);
+        }
+
+        .btn-tool:disabled {
+            background: #bdc3c7;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .btn-tool:disabled:hover {
+            transform: none;
+            box-shadow: none;
+        }
+
+        .access-badge {
+            display: inline-block;
+            background: #e74c3c;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            margin-top: 1rem;
+            font-weight: 600;
+        }
+
+        .access-badge.general {
+            background: #27ae60;
+        }
+
+        /* Footer */
+        .portal-footer {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 2rem 0;
+            text-align: center;
+            margin-top: 3rem;
+        }
+
+        .user-info {
+            color: #7f8c8d;
+            font-size: 0.9rem;
+        }
+
+        /* Loading */
+        .loading {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 9999;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-size: 1.2rem;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .tools-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .tool-card {
+                padding: 2rem;
+            }
+            
+            .logo {
+                font-size: 2rem;
+            }
+            
+            .user-info-panel {
+                position: static;
+                margin: 15px auto;
+                text-align: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Loading -->
+    <div id="loading" class="loading">
+        <div class="text-center">
+            <div class="spinner-border mb-3" role="status"></div>
+            <div>Processando...</div>
+        </div>
+    </div>
+
+    <!-- Header -->
+    <header class="portal-header">
+        <div class="container">
+            <div class="logo">
+                <i class="fas fa-toolbox"></i> Portal de Ferramentas
+            </div>
+            <p class="subtitle">Sistema integrado de gestão e comunicação</p>
+            
+            <!-- Painel de Informações do Usuário -->
+            <div id="userInfoPanel" class="user-info-panel" style="display: none;">
+                <i class="fas fa-user"></i> 
+                <span id="userName"></span>
+                <span id="adminBadge" class="admin-badge" style="display: none;">ADMIN</span>
+                <button onclick="fazerLogoff()" class="btn btn-sm btn-outline-danger ms-2">
+                    <i class="fas fa-sign-out-alt"></i> Sair
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="portal-main">
+        <div class="container">
+            <div class="tools-grid">
+                <!-- Sistema de Disparos -->
+                <div class="tool-card">
+                    <div class="tool-icon">
+                        <i class="fas fa-comment-dots"></i>
+                    </div>
+                    <h3 class="tool-title">Sistema de Disparos</h3>
+                    <p class="tool-description">
+                        Disparo automatizado de mensagens via WhatsApp com múltiplas instâncias individuais para cada usuário.
+                    </p>
+                    <a href="painel.html" class="btn-tool" id="disparadorBtn">
+                        <i class="fas fa-play-circle"></i> Acessar Disparador
+                    </a>
+                    <div class="access-badge">
+                        <i class="fas fa-user-shield"></i> Acesso Restrito
+                    </div>
+                </div>
+
+                <!-- Sistema de Planilhas -->
+                <div class="tool-card">
+                    <div class="tool-icon">
+                        <i class="fas fa-table"></i>
+                    </div>
+                    <h3 class="tool-title">Sistema de Coletas</h3>
+                    <p class="tool-description">
+                        Gestão completa do fluxo de coletas com acompanhamento em tempo real e controle de etapas.
+                    </p>
+                    <a href="coletas.html" class="btn-tool warning">
+                        <i class="fas fa-chart-line"></i> Acessar Coletas
+                    </a>
+                    <div class="access-badge general">
+                        <i class="fas fa-users"></i> Acesso Geral
+                    </div>
+                </div>
+
+                <!-- Sistema de Configurações (Só para Admin) -->
+                <div class="tool-card" id="settingsCard" style="display: none;">
+                    <div class="tool-icon">
+                        <i class="fas fa-cogs"></i>
+                    </div>
+                    <h3 class="tool-title">Configurações do Sistema</h3>
+                    <p class="tool-description">
+                        Gestão de usuários, permissões e configurações gerais do sistema.
+                    </p>
+                    <a href="settings.html" class="btn-tool" style="background: var(--danger-gradient);">
+                        <i class="fas fa-sliders-h"></i> Acessar Configurações
+                    </a>
+                    <div class="access-badge" style="background: #8e44ad;">
+                        <i class="fas fa-crown"></i> Apenas Administradores
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="portal-footer">
+        <div class="container">
+            <div class="user-info">
+                <i class="fas fa-info-circle"></i> 
+                Escolha a ferramenta adequada para sua necessidade
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // ========== SISTEMA DE AUTENTICAÇÃO COM LOCALSTORAGE ==========
+        
+        function showLoading(show = true) {
+            document.getElementById('loading').style.display = show ? 'flex' : 'none';
+        }
+
+        function verificarAutenticacao() {
+            try {
+                const userData = localStorage.getItem('loggedInUser');
+                
+                if (!userData) {
+                    console.log('❌ Usuário não autenticado, redirecionando para login...');
+                    window.location.href = '/index.html';
+                    return null;
+                }
+                
+                const user = JSON.parse(userData);
+                
+                // Verificar se sessão expirou (12 horas)
+                const now = Date.now();
+                const sessionAge = now - user.loginTimestamp;
+                const SESSION_TIMEOUT = 12 * 60 * 60 * 1000; // 12 horas
+                
+                if (sessionAge > SESSION_TIMEOUT) {
+                    console.log('🕒 Sessão expirada, fazendo logoff...');
+                    fazerLogoff();
+                    return null;
+                }
+                
+                console.log('✅ Usuário autenticado:', user);
+                return user;
+                
+            } catch (error) {
+                console.error('❌ Erro ao verificar autenticação:', error);
+                window.location.href = '/index.html';
+                return null;
+            }
+        }
+
+        function mostrarInformacoesUsuario(user) {
+            const userInfoPanel = document.getElementById('userInfoPanel');
+            const userName = document.getElementById('userName');
+            const adminBadge = document.getElementById('adminBadge');
+            
+            userName.textContent = user.nome;
+            
+            if (user.isAdmin) {
+                adminBadge.style.display = 'inline-block';
+                // Mostrar card de configurações para admin
+                document.getElementById('settingsCard').style.display = 'block';
+            }
+            
+            userInfoPanel.style.display = 'block';
+        }
+
+        // ✅ FUNÇÃO DE LOGOFF COMPLETA
+        async function fazerLogoff() {
+            if (confirm('Deseja realmente sair do sistema?')) {
+                showLoading(true);
+                
+                try {
+                    // 1. Limpar localStorage
+                    localStorage.removeItem('loggedInUser');
+                    localStorage.removeItem('lastActivity');
+                    
+                    // 2. Tentar logout no servidor também (se existir)
+                    try {
+                        await fetch('/api/logout', {
+                            method: 'POST',
+                            credentials: 'include'
+                        });
+                    } catch (serverError) {
+                        console.log('Logoff local apenas');
+                    }
+                    
+                    console.log('✅ Logoff realizado com sucesso');
+                    
+                    // 3. Redirecionar para login
+                    setTimeout(() => {
+                        window.location.href = '/index.html';
+                    }, 1000);
+                    
+                } catch (error) {
+                    console.error('❌ Erro no logoff:', error);
+                    // Mesmo com erro, limpa o localStorage e redireciona
+                    localStorage.removeItem('loggedInUser');
+                    localStorage.removeItem('lastActivity');
+                    window.location.href = '/index.html';
+                }
+            }
+        }
+
+        // ✅ ATUALIZAR ATIVIDADE DO USUÁRIO
+        function atualizarAtividadeUsuario() {
+            const userData = localStorage.getItem('loggedInUser');
+            if (userData) {
+                localStorage.setItem('lastActivity', Date.now().toString());
+            }
+        }
+
+        // ✅ VERIFICAR SE É ADMIN (para o settings)
+        function verificarAcessoAdmin() {
+            const user = verificarAutenticacao();
+            return user && user.isAdmin;
+        }
+
+        // ✅ INICIALIZAÇÃO
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🚀 Portal inicializando...');
+            
+            // Verificar autenticação
+            const user = verificarAutenticacao();
+            if (user) {
+                // Mostrar informações do usuário
+                mostrarInformacoesUsuario(user);
+                
+                // Atualizar timestamp de atividade
+                atualizarAtividadeUsuario();
+                
+                console.log('✅ Portal carregado para:', user.nome);
+            }
+
+            // Atualizar atividade a cada movimento do mouse
+            document.addEventListener('mousemove', atualizarAtividadeUsuario);
+
+            // Verificar inatividade a cada minuto
+            setInterval(() => {
+                const lastActivity = localStorage.getItem('lastActivity');
+                if (lastActivity) {
+                    const now = Date.now();
+                    const inactiveTime = now - parseInt(lastActivity);
+                    const INACTIVITY_TIMEOUT = 30 * 60 * 1000; // 30 minutos
+                    
+                    if (inactiveTime > INACTIVITY_TIMEOUT) {
+                        console.log('🕒 Usuário inativo por muito tempo, fazendo logoff...');
+                        fazerLogoff();
+                    }
+                }
+            }, 60000); // Verificar a cada minuto
+        });
+
+        // ✅ PREVENIR ACESSO VIA BROWSER BUTTON
+        window.addEventListener('beforeunload', function() {
+            atualizarAtividadeUsuario();
+        });
+
+        // ✅ BOTÃO DE VOLTA DO BROWSER
+        window.addEventListener('popstate', function(event) {
+            atualizarAtividadeUsuario();
+        });
+    </script>
+</body>
+</html>

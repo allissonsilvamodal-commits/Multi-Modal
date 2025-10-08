@@ -1,0 +1,3577 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Coletas - Portal de Ferramentas</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --azul-escuro: #002776;
+            --vermelho: #C60C30;
+            --branco: #FFFFFF;
+            --cinza-claro: #F5F5F5;
+            --cinza-escuro: #333333;
+            --azul-claro: #4A7BFF;
+            --verde: #28a745;
+            --laranja: #fd7e14;
+            --roxo: #6f42c1;
+            --ciano: #20c997;
+            --gradient-primary: linear-gradient(135deg, #002776 0%, #0044AA 100%);
+            --gradient-danger: linear-gradient(135deg, #C60C30 0%, #E63946 100%);
+            --gradient-success: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            --gradient-warning: linear-gradient(135deg, #fd7e14 0%, #ffc107 100%);
+            --gradient-purple: linear-gradient(135deg, #6f42c1 0%, #8B5FBF 100%);
+            --shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            --card-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+            --hover-shadow: 0 15px 40px rgba(0, 0, 0, 0.15);
+            --border-radius: 16px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background: var(--cinza-claro);
+            color: var(--cinza-escuro);
+            line-height: 1.6;
+            min-height: 100vh;
+            transition: var(--transition);
+            overflow-x: hidden;
+        }
+
+        /* Header Moderno */
+        .main-header {
+            background: var(--gradient-primary);
+            color: var(--branco);
+            padding: 1.5rem 0;
+            box-shadow: var(--shadow);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .main-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 320"><path fill="%23ffffff" fill-opacity="0.1" d="M0,96L48,112C96,128,192,160,288,186.7C384,213,480,235,576,213.3C672,192,768,128,864,128C960,128,1056,192,1152,197.3C1248,203,1344,149,1392,122.7L1440,96L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z"></path></svg>');
+            background-size: cover;
+            animation: wave 10s linear infinite;
+        }
+
+        @keyframes wave {
+            0% { transform: translateX(0); }
+            50% { transform: translateX(-30px); }
+            100% { transform: translateX(0); }
+        }
+
+        .header-content {
+            position: relative;
+            z-index: 1;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1.5rem;
+        }
+
+        .header-title {
+            font-size: 2.2rem;
+            font-weight: 800;
+            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .header-title i {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 0.8rem;
+            border-radius: 12px;
+            backdrop-filter: blur(10px);
+        }
+
+        .header-subtitle {
+            font-size: 1.1rem;
+            opacity: 0.9;
+            font-weight: 300;
+            margin-top: 0.5rem;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(10px);
+            padding: 0.6rem 1rem;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .user-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: var(--branco);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--azul-escuro);
+            font-weight: bold;
+        }
+
+        .user-details {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .user-name {
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        .user-role {
+            font-size: 0.75rem;
+            opacity: 0.8;
+        }
+
+        /* Botões Modernos */
+        .btn-modern {
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(10px);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            color: var(--branco);
+            padding: 0.8rem 1.5rem;
+            border-radius: 12px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            gap: 0.7rem;
+            text-decoration: none;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-modern::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transition: var(--transition);
+        }
+
+        .btn-modern:hover {
+            background: rgba(255, 255, 255, 0.25);
+            transform: translateY(-3px);
+            box-shadow: 0 10px 25px rgba(255, 255, 255, 0.2);
+        }
+
+        .btn-modern:hover::before {
+            left: 100%;
+        }
+
+        /* Container Principal */
+        .main-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        /* Filtros e Controles */
+        .controls-container {
+            background: var(--branco);
+            border-radius: var(--border-radius);
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: var(--card-shadow);
+            border: 1px solid rgba(0, 0, 0, 0.05);
+        }
+
+        .filters-row {
+            display: flex;
+            gap: 1.5rem;
+            flex-wrap: wrap;
+            margin-bottom: 1.5rem;
+        }
+
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.7rem;
+            min-width: 200px;
+            flex: 1;
+        }
+
+        .filter-group label {
+            font-weight: 600;
+            color: var(--azul-escuro);
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .filter-group select,
+        .filter-group input {
+            padding: 0.8rem 1rem;
+            border: 2px solid #e9ecef;
+            border-radius: 10px;
+            font-size: 0.9rem;
+            background: var(--branco);
+            color: var(--cinza-escuro);
+            transition: var(--transition);
+        }
+
+        .filter-group select:focus,
+        .filter-group input:focus {
+            outline: none;
+            border-color: var(--azul-escuro);
+            box-shadow: 0 0 0 3px rgba(0, 39, 118, 0.1);
+            transform: translateY(-2px);
+        }
+
+        /* Filtros de Data Específicos */
+        .date-filters {
+            display: flex;
+            gap: 1rem;
+            align-items: end;
+            flex-wrap: wrap;
+            padding: 1.5rem;
+            background: rgba(0, 39, 118, 0.05);
+            border-radius: 15px;
+            margin-bottom: 1.5rem;
+            border: 1px solid rgba(0, 39, 118, 0.1);
+        }
+
+        .date-filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.7rem;
+            min-width: 180px;
+            flex: 1;
+        }
+
+        .date-filter-group label {
+            font-weight: 600;
+            color: var(--azul-escuro);
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .quick-date-buttons {
+            display: flex;
+            gap: 0.7rem;
+            flex-wrap: wrap;
+            margin-top: 0.5rem;
+        }
+
+        .quick-date-btn {
+            padding: 0.5rem 1rem;
+            border: 1px solid var(--azul-escuro);
+            background: transparent;
+            color: var(--azul-escuro);
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            font-weight: 600;
+            transition: var(--transition);
+        }
+
+        .quick-date-btn:hover,
+        .quick-date-btn.active {
+            background: var(--azul-escuro);
+            color: var(--branco);
+        }
+
+        .stats-container {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .stat-card {
+            color: var(--branco);
+            padding: 1.5rem;
+            border-radius: var(--border-radius);
+            text-align: center;
+            min-width: 140px;
+            flex: 1;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            transition: var(--transition);
+        }
+
+        .stat-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+        }
+
+        .stat-number {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 0.3rem;
+        }
+
+        .stat-label {
+            font-size: 0.8rem;
+            opacity: 0.9;
+            font-weight: 500;
+        }
+
+        /* Grid de Cards de Coletas - DESIGN MODERNIZADO */
+        .coletas-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+            gap: 2rem;
+            margin-bottom: 3rem;
+        }
+
+        .coleta-card {
+            background: var(--branco);
+            border-radius: var(--border-radius);
+            padding: 1.5rem;
+            box-shadow: var(--card-shadow);
+            transition: var(--transition);
+            border: 1px solid rgba(0, 0, 0, 0.05);
+            position: relative;
+            overflow: hidden;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .coleta-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+        }
+
+        .coleta-card.pendente::before { background: var(--vermelho); }
+        .coleta-card.andamento::before { background: var(--laranja); }
+        .coleta-card.concluida::before { background: var(--verde); }
+        .coleta-card.cancelada::before { background: #6c757d; }
+
+        .coleta-card:hover {
+            transform: translateY(-8px);
+            box-shadow: var(--hover-shadow);
+        }
+
+        /* Header do Card Modernizado */
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 1rem;
+        }
+
+        .card-title-section {
+            flex: 1;
+        }
+
+        .card-title {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: var(--cinza-escuro);
+            margin-bottom: 0.5rem;
+            line-height: 1.3;
+        }
+
+        .card-id {
+            font-size: 0.8rem;
+            color: var(--cinza-escuro);
+            background: var(--cinza-claro);
+            padding: 0.3rem 0.8rem;
+            border-radius: 20px;
+            font-weight: 600;
+            display: inline-block;
+        }
+
+        .status-section {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 0.5rem;
+        }
+
+        .status-badge {
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            white-space: nowrap;
+        }
+
+        .status-pendente { 
+            background: rgba(198, 12, 48, 0.1); 
+            color: var(--vermelho); 
+            border: 1px solid var(--vermelho); 
+        }
+        .status-andamento { 
+            background: rgba(253, 126, 20, 0.1); 
+            color: var(--laranja); 
+            border: 1px solid var(--laranja); 
+        }
+        .status-concluida { 
+            background: rgba(40, 167, 69, 0.1); 
+            color: var(--verde); 
+            border: 1px solid var(--verde); 
+        }
+        .status-cancelada { 
+            background: rgba(108, 117, 125, 0.1); 
+            color: #6c757d; 
+            border: 1px solid #6c757d; 
+        }
+
+        .valor-badge {
+            background: var(--gradient-primary);
+            color: var(--branco);
+            padding: 0.4rem 0.8rem;
+            border-radius: 12px;
+            font-size: 0.9rem;
+            font-weight: 700;
+            box-shadow: 0 2px 8px rgba(0, 39, 118, 0.3);
+        }
+
+        /* Conteúdo do Card Modernizado */
+        .card-content {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        .info-item {
+            display: flex;
+            flex-direction: column;
+            gap: 0.3rem;
+        }
+
+        .info-label {
+            font-size: 0.75rem;
+            color: #6c757d;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .info-value {
+            font-size: 0.9rem;
+            color: var(--cinza-escuro);
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .info-value i {
+            color: var(--azul-escuro);
+            width: 16px;
+        }
+
+        /* Seção de Anexos nos Cards */
+        .anexos-section {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 1rem;
+            margin-top: 0.5rem;
+            border: 1px solid #e9ecef;
+        }
+
+        .anexos-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.8rem;
+        }
+
+        .anexos-title {
+            font-size: 0.85rem;
+            color: var(--azul-escuro);
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn-anexar {
+            background: var(--gradient-success);
+            border: none;
+            color: var(--branco);
+            padding: 0.4rem 0.8rem;
+            border-radius: 8px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+        }
+
+        .btn-anexar:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
+        }
+
+        .anexos-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            max-height: 150px;
+            overflow-y: auto;
+        }
+
+        .anexo-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.6rem 0.8rem;
+            background: var(--branco);
+            border-radius: 8px;
+            border-left: 3px solid var(--azul-escuro);
+            transition: var(--transition);
+        }
+
+        .anexo-item:hover {
+            background: #f8f9fa;
+            transform: translateX(2px);
+        }
+
+        .anexo-info {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            flex: 1;
+        }
+
+        .anexo-icon {
+            font-size: 1rem;
+            width: 20px;
+            text-align: center;
+        }
+
+        .anexo-details {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .anexo-nome {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--cinza-escuro);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .anexo-tamanho {
+            font-size: 0.7rem;
+            color: #6c757d;
+        }
+
+        .anexo-actions {
+            display: flex;
+            gap: 0.3rem;
+        }
+
+        .btn-anexo-action {
+            background: transparent;
+            border: none;
+            padding: 0.4rem;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: var(--transition);
+            font-size: 0.8rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 32px;
+            height: 32px;
+        }
+
+        .btn-anexo-view {
+            color: var(--azul-escuro);
+            border: 1px solid var(--azul-escuro);
+        }
+
+        .btn-anexo-view:hover {
+            background: var(--azul-escuro);
+            color: white;
+        }
+
+        .btn-anexo-download {
+            color: var(--verde);
+            border: 1px solid var(--verde);
+        }
+
+        .btn-anexo-download:hover {
+            background: var(--verde);
+            color: white;
+        }
+
+        .btn-anexo-delete {
+            color: var(--vermelho);
+            border: 1px solid var(--vermelho);
+        }
+
+        .btn-anexo-delete:hover {
+            background: var(--vermelho);
+            color: white;
+        }
+
+        /* Barra de Progresso das Etapas Modernizada */
+        .etapas-container {
+            margin: 1rem 0;
+        }
+
+        .etapas-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.8rem;
+        }
+
+        .etapas-title {
+            font-size: 0.9rem;
+            color: #6c757d;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .progress-text {
+            font-size: 0.8rem;
+            color: var(--azul-escuro);
+            font-weight: 600;
+        }
+
+        .etapas-progress {
+            display: flex;
+            height: 8px;
+            background: #e9ecef;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 1rem;
+        }
+
+        .etapa-progress {
+            height: 100%;
+            transition: var(--transition);
+        }
+
+        .etapa-cs { background: var(--azul-claro); }
+        .etapa-contratacao { background: var(--azul-escuro); }
+        .etapa-gr { background: var(--verde); }
+        .etapa-documentacao { background: var(--vermelho); }
+        .etapa-controladoria { background: var(--roxo); }
+        .etapa-contas-pagar { background: #480ca8; }
+        .etapa-contas-receber { background: #3f37c9; }
+        .etapa-price { background: var(--laranja); }
+        .etapa-comercial { background: var(--ciano); }
+
+        .etapas-labels {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+
+        .etapa-badge {
+            padding: 0.4rem 0.8rem;
+            border-radius: 15px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            background: var(--cinza-claro);
+            color: #6c757d;
+            border: 1px solid #ddd;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+        }
+
+        .etapa-badge.ativa {
+            background: var(--azul-escuro);
+            color: var(--branco);
+            border-color: var(--azul-escuro);
+        }
+
+        .etapa-badge.concluida {
+            background: var(--verde);
+            color: var(--branco);
+            border-color: var(--verde);
+        }
+
+        /* Footer do Card Modernizado */
+        .card-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-top: 1rem;
+            border-top: 1px solid #e9ecef;
+            margin-top: auto;
+        }
+
+        .card-actions {
+            display: flex;
+            gap: 0.7rem;
+        }
+
+        .action-btn {
+            padding: 0.6rem 1rem;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-weight: 600;
+        }
+
+        .action-btn.primary {
+            background: var(--azul-escuro);
+            color: var(--branco);
+        }
+
+        .action-btn.success {
+            background: var(--verde);
+            color: var(--branco);
+        }
+
+        .action-btn.warning {
+            background: var(--vermelho);
+            color: var(--branco);
+        }
+
+        .action-btn.chat {
+            background: var(--gradient-purple);
+            color: var(--branco);
+        }
+
+        .action-btn.danger {
+            background: var(--gradient-danger);
+            color: var(--branco);
+        }
+
+        .action-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+
+        .card-date {
+            font-size: 0.8rem;
+            color: #6c757d;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        /* Modal de Detalhes */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(5px);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            padding: 2rem;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .modal-content {
+            background: var(--branco);
+            border-radius: var(--border-radius);
+            padding: 2rem;
+            max-width: 800px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: var(--hover-shadow);
+            border: 1px solid rgba(0, 0, 0, 0.05);
+            position: relative;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid #e9ecef;
+        }
+
+        .modal-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--azul-escuro);
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .close-modal {
+            background: var(--vermelho);
+            color: var(--branco);
+            border: none;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: var(--transition);
+        }
+
+        .close-modal:hover {
+            transform: rotate(90deg) scale(1.1);
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .form-group label {
+            font-weight: 600;
+            color: var(--azul-escuro);
+            font-size: 0.9rem;
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            padding: 0.8rem 1rem;
+            border: 2px solid #e9ecef;
+            border-radius: 10px;
+            font-size: 0.9rem;
+            background: var(--branco);
+            color: var(--cinza-escuro);
+            transition: var(--transition);
+        }
+
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: var(--azul-escuro);
+            box-shadow: 0 0 0 3px rgba(0, 39, 118, 0.1);
+        }
+
+        .form-group.full-width {
+            grid-column: 1 / -1;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 1rem;
+            justify-content: flex-end;
+            margin-top: 2rem;
+        }
+
+        /* Modal de Anexos */
+        .modal-anexos {
+            max-width: 600px;
+        }
+
+        .upload-area {
+            border: 2px dashed #dee2e6;
+            border-radius: 12px;
+            padding: 2rem;
+            text-align: center;
+            background: #f8f9fa;
+            cursor: pointer;
+            transition: var(--transition);
+            margin-bottom: 1.5rem;
+        }
+
+        .upload-area:hover {
+            border-color: var(--azul-escuro);
+            background: #e9ecef;
+        }
+
+        .upload-area.dragover {
+            border-color: var(--verde);
+            background: #d4edda;
+        }
+
+        .upload-icon {
+            font-size: 3rem;
+            color: #6c757d;
+            margin-bottom: 1rem;
+        }
+
+        .upload-text h5 {
+            color: var(--azul-escuro);
+            margin-bottom: 0.5rem;
+        }
+
+        .upload-text p {
+            color: #6c757d;
+            font-size: 0.9rem;
+        }
+
+        .file-types {
+            display: flex;
+            justify-content: center;
+            gap: 0.5rem;
+            margin-top: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .file-type-badge {
+            padding: 0.3rem 0.6rem;
+            background: var(--azul-escuro);
+            color: var(--branco);
+            border-radius: 15px;
+            font-size: 0.7rem;
+            font-weight: 600;
+        }
+
+        .selected-files {
+            margin-top: 1.5rem;
+        }
+
+        .file-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.8rem;
+            background: var(--branco);
+            border-radius: 8px;
+            margin-bottom: 0.5rem;
+            border: 1px solid #e9ecef;
+        }
+
+        .file-info {
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+            flex: 1;
+        }
+
+        .file-icon {
+            font-size: 1.2rem;
+            width: 24px;
+            text-align: center;
+        }
+
+        .file-details {
+            flex: 1;
+        }
+
+        .file-name {
+            font-weight: 600;
+            color: var(--cinza-escuro);
+            font-size: 0.9rem;
+        }
+
+        .file-size {
+            font-size: 0.8rem;
+            color: #6c757d;
+        }
+
+        .file-remove {
+            background: var(--vermelho);
+            color: var(--branco);
+            border: none;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: var(--transition);
+        }
+
+        .file-remove:hover {
+            transform: scale(1.1);
+        }
+
+        .upload-progress {
+            margin-top: 1rem;
+            display: none;
+        }
+
+        .progress-bar {
+            height: 8px;
+            background: #e9ecef;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 0.5rem;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: var(--gradient-success);
+            border-radius: 10px;
+            transition: width 0.3s ease;
+        }
+
+        .progress-text {
+            font-size: 0.8rem;
+            color: #6c757d;
+            text-align: center;
+        }
+
+        /* Modal de Visualização de Arquivos */
+        .modal-visualizador {
+            max-width: 90%;
+            max-height: 90vh;
+        }
+
+        .visualizador-container {
+            display: flex;
+            flex-direction: column;
+            height: 70vh;
+        }
+
+        .visualizador-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem;
+            border-bottom: 1px solid #e9ecef;
+            background: var(--azul-escuro);
+            color: white;
+            border-radius: 12px 12px 0 0;
+        }
+
+        .visualizador-content {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 2rem;
+            background: #f8f9fa;
+            overflow: auto;
+        }
+
+        .visualizador-actions {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            padding: 1rem;
+            border-top: 1px solid #e9ecef;
+            background: white;
+            border-radius: 0 0 12px 12px;
+        }
+
+        .btn-download {
+            background: var(--gradient-success);
+            color: white;
+            border: none;
+            padding: 0.8rem 1.5rem;
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-weight: 600;
+            transition: var(--transition);
+        }
+
+        .btn-download:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
+        }
+
+        .preview-pdf {
+            width: 100%;
+            height: 100%;
+            border: none;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .preview-image {
+            max-width: 100%;
+            max-height: 100%;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .preview-document {
+            width: 100%;
+            height: 100%;
+            border: none;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .unsupported-file {
+            text-align: center;
+            color: #6c757d;
+        }
+
+        .unsupported-file i {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+            opacity: 0.5;
+        }
+
+        .file-info-preview {
+            background: white;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .file-info-preview h4 {
+            color: var(--azul-escuro);
+            margin-bottom: 0.5rem;
+        }
+
+        .file-details-preview {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.5rem;
+            font-size: 0.9rem;
+        }
+
+        .file-detail {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.3rem 0;
+            border-bottom: 1px solid #f1f1f1;
+        }
+
+        .file-detail-label {
+            font-weight: 600;
+            color: var(--azul-escuro);
+        }
+
+        .file-detail-value {
+            color: #6c757d;
+        }
+
+        /* Modal de Chat */
+        .modal-chat {
+            max-width: 800px;
+            height: 80vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .chat-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1.5rem;
+            background: var(--gradient-primary);
+            color: white;
+            border-radius: 12px 12px 0 0;
+        }
+
+        .chat-info {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .chat-coleta-id {
+            font-size: 1.2rem;
+            font-weight: 700;
+        }
+
+        .chat-cliente {
+            font-size: 0.9rem;
+            opacity: 0.9;
+        }
+
+        .chat-close {
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            color: white;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: var(--transition);
+        }
+
+        .chat-close:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: scale(1.1);
+        }
+
+        .chat-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: #f8f9fa;
+        }
+
+        .chat-messages {
+            flex: 1;
+            padding: 1.5rem;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .message {
+            max-width: 80%;
+            padding: 1rem;
+            border-radius: 18px;
+            position: relative;
+            animation: messageAppear 0.3s ease;
+        }
+
+        @keyframes messageAppear {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .message.sent {
+            align-self: flex-end;
+            background: var(--gradient-primary);
+            color: white;
+            border-bottom-right-radius: 4px;
+        }
+
+        .message.received {
+            align-self: flex-start;
+            background: white;
+            color: var(--cinza-escuro);
+            border-bottom-left-radius: 4px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .message-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.5rem;
+            font-size: 0.8rem;
+        }
+
+        .message-sender {
+            font-weight: 600;
+        }
+
+        .message-time {
+            opacity: 0.7;
+        }
+
+        .message-content {
+            line-height: 1.4;
+        }
+
+        .chat-input-container {
+            padding: 1.5rem;
+            background: white;
+            border-top: 1px solid #e9ecef;
+            border-radius: 0 0 12px 12px;
+        }
+
+        .chat-input-wrapper {
+            display: flex;
+            gap: 1rem;
+            align-items: end;
+        }
+
+        .chat-input {
+            flex: 1;
+            padding: 1rem;
+            border: 2px solid #e9ecef;
+            border-radius: 24px;
+            resize: none;
+            font-family: inherit;
+            font-size: 0.9rem;
+            transition: var(--transition);
+            max-height: 120px;
+            min-height: 50px;
+        }
+
+        .chat-input:focus {
+            outline: none;
+            border-color: var(--azul-escuro);
+            box-shadow: 0 0 0 3px rgba(0, 39, 118, 0.1);
+        }
+
+        .chat-send {
+            background: var(--gradient-primary);
+            border: none;
+            color: white;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: var(--transition);
+        }
+
+        .chat-send:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 12px rgba(0, 39, 118, 0.3);
+        }
+
+        .chat-send:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        /* Botões Flutuantes */
+        .floating-action-buttons {
+            position: fixed;
+            bottom: 2.5rem;
+            right: 2.5rem;
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .fab-main {
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            background: var(--gradient-primary);
+            border: none;
+            color: var(--branco);
+            font-size: 1.8rem;
+            cursor: pointer;
+            box-shadow: 0 8px 25px rgba(0, 39, 118, 0.4);
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .fab-main:hover {
+            transform: scale(1.1) rotate(90deg);
+            box-shadow: 0 12px 35px rgba(0, 39, 118, 0.6);
+        }
+
+        .fab-secondary {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: var(--gradient-danger);
+            border: none;
+            color: var(--branco);
+            font-size: 1.5rem;
+            cursor: pointer;
+            box-shadow: 0 8px 25px rgba(198, 12, 48, 0.4);
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .fab-secondary:hover {
+            transform: scale(1.1);
+            box-shadow: 0 12px 35px rgba(198, 12, 48, 0.6);
+        }
+
+        /* Footer */
+        .main-footer {
+            text-align: center;
+            padding: 3rem 2rem;
+            margin-top: 4rem;
+            background: var(--azul-escuro);
+            color: var(--branco);
+            border-top-left-radius: 30px;
+            border-top-right-radius: 30px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .main-footer::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 320"><path fill="%23ffffff" fill-opacity="0.05" d="M0,96L48,112C96,128,192,160,288,186.7C384,213,480,235,576,213.3C672,192,768,128,864,128C960,128,1056,192,1152,197.3C1248,203,1344,149,1392,122.7L1440,96L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z"></path></svg>');
+            background-size: cover;
+        }
+
+        .footer-content {
+            max-width: 600px;
+            margin: 0 auto;
+            position: relative;
+            z-index: 1;
+        }
+
+        .footer-logo {
+            font-size: 2rem;
+            font-weight: 800;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.8rem;
+        }
+
+        /* Notificações */
+        .notification {
+            position: fixed;
+            top: 2rem;
+            right: 2rem;
+            padding: 1.2rem 1.8rem;
+            border-radius: 12px;
+            color: var(--branco);
+            font-weight: 600;
+            z-index: 1000;
+            opacity: 0;
+            transform: translateX(100%);
+            transition: var(--transition);
+            max-width: 400px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+        }
+
+        .notification.show {
+            opacity: 1;
+            transform: translateX(0);
+        }
+
+        .notification.success { 
+            background: linear-gradient(135deg, rgba(40, 167, 69, 0.9) 0%, rgba(33, 136, 56, 0.9) 100%);
+        }
+        .notification.error { 
+            background: linear-gradient(135deg, rgba(198, 12, 48, 0.9) 0%, rgba(166, 10, 40, 0.9) 100%);
+        }
+        .notification.info { 
+            background: linear-gradient(135deg, rgba(0, 39, 118, 0.9) 0%, rgba(0, 29, 87, 0.9) 100%);
+        }
+
+        /* Histórico */
+        .historico-container {
+            margin-top: 1.5rem;
+            padding: 1rem;
+            background: #f8f9fa;
+            border-radius: 12px;
+            border: 1px solid #e9ecef;
+        }
+
+        .historico-title {
+            font-size: 0.9rem;
+            color: var(--azul-escuro);
+            font-weight: 600;
+            margin-bottom: 0.8rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .historico-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .historico-item {
+            padding: 0.7rem;
+            background: white;
+            border-radius: 8px;
+            border-left: 3px solid var(--azul-escuro);
+            font-size: 0.8rem;
+        }
+
+        .historico-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.3rem;
+        }
+
+        .historico-usuario {
+            font-weight: 600;
+            color: var(--azul-escuro);
+        }
+
+        .historico-data {
+            color: #6c757d;
+            font-size: 0.7rem;
+        }
+
+        .historico-acao {
+            color: var(--cinza-escuro);
+        }
+
+        /* Responsividade */
+        @media (max-width: 768px) {
+            .header-content {
+                flex-direction: column;
+                text-align: center;
+                gap: 1rem;
+            }
+
+            .coletas-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .filters-row {
+                flex-direction: column;
+            }
+
+            .filter-group {
+                min-width: auto;
+            }
+
+            .date-filters {
+                flex-direction: column;
+            }
+
+            .date-filter-group {
+                min-width: auto;
+            }
+
+            .stats-container {
+                justify-content: center;
+            }
+
+            .modal-content {
+                margin: 1rem;
+                padding: 1.5rem;
+            }
+
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .floating-action-buttons {
+                bottom: 1.5rem;
+                right: 1.5rem;
+            }
+
+            .fab-main {
+                width: 60px;
+                height: 60px;
+                font-size: 1.5rem;
+            }
+
+            .fab-secondary {
+                width: 50px;
+                height: 50px;
+                font-size: 1.3rem;
+            }
+
+            .info-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .card-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .status-section {
+                flex-direction: row;
+                align-items: center;
+                width: 100%;
+                justify-content: space-between;
+                margin-top: 0.5rem;
+            }
+
+            .message {
+                max-width: 90%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="main-header">
+        <div class="header-content">
+            <div>
+                <h1 class="header-title">
+                    <i class="fas fa-truck-loading"></i> Sistema de Coletas
+                </h1>
+                <p class="header-subtitle">Gestão completa de operações logísticas</p>
+            </div>
+            <div class="header-actions">
+                <div class="user-info">
+                    <div class="user-avatar" id="userAvatar">US</div>
+                    <div class="user-details">
+                        <div class="user-name" id="userName">Carregando...</div>
+                        <div class="user-role" id="userRole">Usuário</div>
+                    </div>
+                </div>
+                <a href="portal.html" class="btn-modern">
+                    <i class="fas fa-home"></i> Voltar ao Portal
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <!-- Conteúdo Principal -->
+    <div class="main-container">
+        <!-- Controles e Filtros -->
+        <div class="controls-container">
+            <!-- Filtros de Data -->
+            <div class="date-filters">
+                <div class="date-filter-group">
+                    <label for="dataInicio"><i class="fas fa-calendar-alt"></i> Data Início</label>
+                    <input type="date" id="dataInicio" onchange="filterColetas()">
+                </div>
+                <div class="date-filter-group">
+                    <label for="dataFim"><i class="fas fa-calendar-alt"></i> Data Fim</label>
+                    <input type="date" id="dataFim" onchange="filterColetas()">
+                </div>
+                <div class="date-filter-group">
+                    <label><i class="fas fa-bolt"></i> Período Rápido</label>
+                    <div class="quick-date-buttons">
+                        <button class="quick-date-btn" onclick="setQuickDate('hoje')">Hoje</button>
+                        <button class="quick-date-btn" onclick="setQuickDate('semana')">Esta Semana</button>
+                        <button class="quick-date-btn" onclick="setQuickDate('mes')">Este Mês</button>
+                        <button class="quick-date-btn" onclick="setQuickDate('trimestre')">Este Trimestre</button>
+                        <button class="quick-date-btn" onclick="clearDateFilters()">Limpar</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="filters-row">
+                <div class="filter-group">
+                    <label for="statusFilter"><i class="fas fa-filter"></i> Status</label>
+                    <select id="statusFilter" onchange="filterColetas()">
+                        <option value="">Todos os Status</option>
+                        <option value="pendente">Pendente</option>
+                        <option value="andamento">Em Andamento</option>
+                        <option value="concluida">Concluída</option>
+                        <option value="cancelada">Cancelada</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="etapaFilter"><i class="fas fa-layer-group"></i> Etapa</label>
+                    <select id="etapaFilter" onchange="filterColetas()">
+                        <option value="">Todas as Etapas</option>
+                        <option value="comercial">Comercial</option>
+                        <option value="price">Price</option>
+                        <option value="cs">CS</option>
+                        <option value="contratacao">Contratação</option>
+                        <option value="gr">GR</option>
+                        <option value="documentacao">Documentação</option>
+                        <option value="controladoria">Controladoria</option>
+                        <option value="contas-pagar">Contas a Pagar</option>
+                        <option value="contas-receber">Contas a Receber</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="filialFilter"><i class="fas fa-building"></i> Filial</label>
+                    <select id="filialFilter" onchange="filterColetas()">
+                        <option value="">Todas as Filiais</option>
+                        <option value="JBO">Jaboatão</option>
+                        <option value="CABO">CABO</option>
+                        <option value="AL">Alagoas</option>
+                        <option value="SP">São Paulo</option>
+                        <option value="BA">Bahia</option>
+                        <option value="CE">Ceará</option>
+                        <option value="SE">Sergipe</option>
+                        <option value="PB">Paraíba</option>
+                        <option value="AMBEV">Ambev</option>
+                        <option value="US">Usinas</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="searchFilter"><i class="fas fa-search"></i> Buscar</label>
+                    <input type="text" id="searchFilter" placeholder="Cliente, origem, destino..." onkeyup="filterColetas()">
+                </div>
+            </div>
+            
+            <div class="stats-container">
+                <div class="stat-card" style="background: var(--gradient-primary);">
+                    <div class="stat-number" id="totalColetas">0</div>
+                    <div class="stat-label">Total</div>
+                </div>
+                <div class="stat-card" style="background: var(--gradient-danger);">
+                    <div class="stat-number" id="pendentesCount">0</div>
+                    <div class="stat-label">Pendentes</div>
+                </div>
+                <div class="stat-card" style="background: var(--gradient-warning);">
+                    <div class="stat-number" id="andamentoCount">0</div>
+                    <div class="stat-label">Em Andamento</div>
+                </div>
+                <div class="stat-card" style="background: var(--gradient-success);">
+                    <div class="stat-number" id="concluidasCount">0</div>
+                    <div class="stat-label">Concluídas</div>
+                </div>
+                <div class="stat-card" style="background: var(--gradient-purple);">
+                    <div class="stat-number" id="canceladasCount">0</div>
+                    <div class="stat-label">Canceladas</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Grid de Coletas -->
+        <div class="coletas-grid" id="coletasGrid">
+            <!-- Cards serão gerados dinamicamente via JavaScript -->
+        </div>
+    </div>
+
+    <!-- Modal de Detalhes da Coleta -->
+    <div class="modal-overlay" id="coletaModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">
+                    <i class="fas fa-truck-loading"></i>
+                    <span id="modalTitle">Nova Coleta</span>
+                </h2>
+                <button class="close-modal" onclick="closeModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <form id="coletaForm">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="filial">Filial *</label>
+                        <input type="text" id="filial" name="filial" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="cliente">Cliente *</label>
+                        <input type="text" id="cliente" name="cliente" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="dataRecebimento">Data Recebimento *</label>
+                        <input type="date" id="dataRecebimento" name="dataRecebimento" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="origem">Origem *</label>
+                        <input type="text" id="origem" name="origem" placeholder="Cidade - UF" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="destino">Destino *</label>
+                        <input type="text" id="destino" name="destino" placeholder="Cidade - UF" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="valor">Valor (R$) *</label>
+                        <input type="number" id="valor" name="valor" step="0.01" min="0" placeholder="0,00" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="km">KM</label>
+                        <input type="number" id="km" name="km" step="0.1" min="0" placeholder="0">
+                    </div>
+                    <div class="form-group">
+                        <label for="veiculo">Veículo</label>
+                        <select id="veiculo" name="veiculo">
+                            <option value="">Selecione o veículo</option>
+                            <option value="VUC">VUC</option>
+                            <option value="Bitruck">Bitruck</option>
+                            <option value="Truck">Truck</option>
+                            <option value="Carreta">Carreta</option>
+                            <option value="Bitrem">Bitrem</option>
+                            <option value="Rodotrem">Rodotrem</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="status">Status</label>
+                        <select id="status" name="status">
+                            <option value="pendente">Pendente</option>
+                            <option value="andamento">Em Andamento</option>
+                            <option value="concluida">Concluída</option>
+                            <option value="cancelada">Cancelada</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="etapaAtual">Etapa Atual</label>
+                        <select id="etapaAtual" name="etapaAtual">
+                            <option value="comercial">Comercial</option>
+                            <option value="price">Price</option>
+                            <option value="cs">CS</option>
+                            <option value="contratacao">Contratação</option>
+                            <option value="gr">GR</option>
+                            <option value="documentacao">Documentação</option>
+                            <option value="controladoria">Controladoria</option>
+                            <option value="contas-pagar">Contas a Pagar</option>
+                            <option value="contas-receber">Contas a Receber</option>
+                        </select>
+                    </div>
+                    <div class="form-group full-width">
+                        <label for="observacoes">Observações</label>
+                        <textarea id="observacoes" name="observacoes" rows="3" placeholder="Informações adicionais sobre a coleta..."></textarea>
+                    </div>
+                </div>
+                
+                <!-- Histórico de Movimentações -->
+                <div class="historico-container" id="historicoContainer" style="display: none;">
+                    <div class="historico-title">
+                        <i class="fas fa-history"></i> Histórico de Movimentações
+                    </div>
+                    <div class="historico-list" id="historicoList">
+                        <!-- Histórico será preenchido aqui -->
+                    </div>
+                </div>
+                
+                <div class="modal-actions">
+                    <button type="button" class="action-btn warning" onclick="closeModal()">
+                        <i class="fas fa-times"></i> Cancelar
+                    </button>
+                    <button type="submit" class="action-btn success">
+                        <i class="fas fa-save"></i> Salvar Coleta
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal de Anexos -->
+    <div class="modal-overlay" id="anexosModal">
+        <div class="modal-content modal-anexos">
+            <div class="modal-header">
+                <h2 class="modal-title">
+                    <i class="fas fa-paperclip"></i>
+                    <span id="modalAnexosTitle">Anexos da Coleta</span>
+                </h2>
+                <button class="close-modal" onclick="closeAnexosModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <div class="upload-area" id="uploadArea" onclick="document.getElementById('fileInput').click()">
+                <div class="upload-icon">
+                    <i class="fas fa-cloud-upload-alt"></i>
+                </div>
+                <div class="upload-text">
+                    <h5>Arraste arquivos aqui ou clique para selecionar</h5>
+                    <p>PDF, imagens, Excel, Word (Máx. 10MB por arquivo)</p>
+                </div>
+                <div class="file-types">
+                    <span class="file-type-badge">PDF</span>
+                    <span class="file-type-badge">XLS/XLSX</span>
+                    <span class="file-type-badge">JPG/PNG</span>
+                    <span class="file-type-badge">DOC/DOCX</span>
+                </div>
+            </div>
+            
+            <input type="file" id="fileInput" multiple style="display: none;" 
+                   accept=".pdf,.jpg,.jpeg,.png,.xls,.xlsx,.doc,.docx" onchange="handleFileSelect(this.files)">
+            
+            <div class="selected-files" id="selectedFiles" style="display: none;">
+                <h6>Arquivos selecionados:</h6>
+                <div id="filesList" class="mt-2"></div>
+            </div>
+            
+            <div class="upload-progress" id="uploadProgress">
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill" style="width: 0%"></div>
+                </div>
+                <div class="progress-text" id="progressText">0%</div>
+            </div>
+
+            <div class="anexos-list-modal" id="anexosListModal">
+                <!-- Lista de anexos será preenchida aqui -->
+            </div>
+            
+            <div class="modal-actions">
+                <button type="button" class="action-btn warning" onclick="closeAnexosModal()">
+                    <i class="fas fa-times"></i> Fechar
+                </button>
+                <button type="button" class="action-btn success" id="btnUpload" onclick="fazerUpload()" disabled>
+                    <i class="fas fa-upload"></i> Enviar Arquivos
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Visualização de Arquivos -->
+    <div class="modal-overlay" id="visualizadorModal">
+        <div class="modal-content modal-visualizador">
+            <div class="visualizador-header">
+                <h3 id="visualizadorTitle">Visualizando Arquivo</h3>
+                <button class="close-modal" onclick="closeVisualizador()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <div class="file-info-preview">
+                <h4 id="fileNamePreview"></h4>
+                <div class="file-details-preview">
+                    <div class="file-detail">
+                        <span class="file-detail-label">Tipo:</span>
+                        <span class="file-detail-value" id="fileTypePreview"></span>
+                    </div>
+                    <div class="file-detail">
+                        <span class="file-detail-label">Tamanho:</span>
+                        <span class="file-detail-value" id="fileSizePreview"></span>
+                    </div>
+                    <div class="file-detail">
+                        <span class="file-detail-label">Coleta:</span>
+                        <span class="file-detail-value" id="fileColetaPreview"></span>
+                    </div>
+                    <div class="file-detail">
+                        <span class="file-detail-label">Data:</span>
+                        <span class="file-detail-value" id="fileDatePreview"></span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="visualizador-content" id="visualizadorContent">
+                <!-- Conteúdo do arquivo será carregado aqui -->
+            </div>
+
+            <div class="visualizador-actions">
+                <button class="btn-download" onclick="downloadArquivo()">
+                    <i class="fas fa-download"></i> Baixar Arquivo
+                </button>
+                <button class="action-btn primary" onclick="closeVisualizador()">
+                    <i class="fas fa-times"></i> Fechar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Chat -->
+    <div class="modal-overlay" id="chatModal">
+        <div class="modal-content modal-chat">
+            <div class="chat-header">
+                <div class="chat-info">
+                    <div class="chat-coleta-id" id="chatColetaId">COL-001</div>
+                    <div class="chat-cliente" id="chatCliente">Cliente A Ltda</div>
+                </div>
+                <button class="chat-close" onclick="closeChatModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <div class="chat-container">
+                <div class="chat-messages" id="chatMessages">
+                    <!-- Mensagens serão carregadas aqui -->
+                </div>
+                
+                <div class="chat-input-container">
+                    <div class="chat-input-wrapper">
+                        <textarea class="chat-input" id="chatInput" placeholder="Digite sua mensagem..." rows="1"></textarea>
+                        <button class="chat-send" id="chatSend" onclick="sendMessage()">
+                            <i class="fas fa-paper-plane"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Botões Flutuantes -->
+    <div class="floating-action-buttons">
+        <button class="fab-secondary" onclick="window.location.href='relatorios.html'" title="Relatórios">
+            <i class="fas fa-chart-bar"></i>
+        </button>
+        <button class="fab-main" onclick="openNewColetaModal()" title="Nova Coleta">
+            <i class="fas fa-plus"></i>
+        </button>
+    </div>
+
+    <!-- Footer -->
+    <footer class="main-footer">
+        <div class="footer-content">
+            <div class="footer-logo">
+                <i class="fas fa-truck-moving"></i> Multi Modal
+            </div>
+            <p>Sistema de Gestão de Operações Logísticas</p>
+            <p>© 2025 - Todos os direitos reservados</p>
+        </div>
+    </footer>
+
+    <!-- Notificação -->
+    <div id="notification" class="notification"></div>
+
+    <script>
+        // ========== SISTEMA DE AUTENTICAÇÃO ==========
+        
+        // Dados do usuário logado - será carregado do localStorage
+        let currentUser = null;
+        
+        // Dados das coletas
+        let coletasData = [];
+        let currentEditingId = null;
+        let currentAnexosColetaId = null;
+        let selectedFiles = [];
+        let currentViewingFile = null;
+        let currentViewingColeta = null;
+        let currentChatColetaId = null;
+
+        // Dados de chat
+        let chatMessages = {};
+
+        // Etapas do processo
+        const ETAPAS = [
+            { id: 'comercial', nome: 'Comercial', ordem: 1 },
+            { id: 'price', nome: 'Price', ordem: 2 },
+            { id: 'cs', nome: 'CS', ordem: 3 },
+            { id: 'contratacao', nome: 'Contratação', ordem: 4 },
+            { id: 'gr', nome: 'GR', ordem: 5 },
+            { id: 'documentacao', nome: 'Documentação', ordem: 6 },
+            { id: 'controladoria', nome: 'Controladoria', ordem: 7 },
+            { id: 'contas-pagar', nome: 'Contas a Pagar', ordem: 8 },
+            { id: 'contas-receber', nome: 'Contas a Receber', ordem: 9 }
+        ];
+
+        // === FUNÇÕES DE AUTENTICAÇÃO ===
+
+        // Verificar autenticação do usuário
+        function verificarAutenticacao() {
+            try {
+                const userData = localStorage.getItem('loggedInUser');
+                
+                if (!userData) {
+                    console.log('❌ Usuário não autenticado, redirecionando para portal...');
+                    window.location.href = 'portal.html';
+                    return null;
+                }
+                
+                const user = JSON.parse(userData);
+                
+                // Verificar se sessão expirou (12 horas)
+                const now = Date.now();
+                const sessionAge = now - user.loginTimestamp;
+                const SESSION_TIMEOUT = 12 * 60 * 60 * 1000; // 12 horas
+                
+                if (sessionAge > SESSION_TIMEOUT) {
+                    console.log('🕒 Sessão expirada, redirecionando...');
+                    fazerLogoff();
+                    return null;
+                }
+                
+                console.log('✅ Usuário autenticado:', user);
+                return user;
+                
+            } catch (error) {
+                console.error('❌ Erro ao verificar autenticação:', error);
+                window.location.href = 'portal.html';
+                return null;
+            }
+        }
+
+        // Configurar informações do usuário no header
+        function setupUserInfo(user) {
+            document.getElementById('userName').textContent = user.nome;
+            document.getElementById('userAvatar').textContent = user.nome.substring(0, 2).toUpperCase();
+            
+            if (user.isAdmin) {
+                document.getElementById('userRole').textContent = 'Administrador';
+            } else {
+                document.getElementById('userRole').textContent = 'Usuário';
+            }
+        }
+
+        // Fazer logoff
+        function fazerLogoff() {
+            if (confirm('Deseja realmente sair do sistema?')) {
+                localStorage.removeItem('loggedInUser');
+                localStorage.removeItem('lastActivity');
+                window.location.href = 'portal.html';
+            }
+        }
+
+        // === FUNÇÕES DE LOCALSTORAGE ===
+
+        // Salvar todas as coletas no localStorage
+        function salvarColetasNoStorage() {
+            try {
+                localStorage.setItem('coletasData', JSON.stringify(coletasData));
+                console.log('✅ Coletas salvas no localStorage:', coletasData.length, 'itens');
+            } catch (error) {
+                console.error('❌ Erro ao salvar no localStorage:', error);
+                showNotification('Erro ao salvar dados localmente', 'error');
+            }
+        }
+
+        // Carregar coletas do localStorage
+        function carregarColetasDoStorage() {
+            try {
+                const coletasSalvas = localStorage.getItem('coletasData');
+                if (coletasSalvas) {
+                    coletasData = JSON.parse(coletasSalvas);
+                    console.log('📦 Coletas carregadas do localStorage:', coletasData.length, 'itens');
+                } else {
+                    console.log('📝 Nenhum dado salvo encontrado, usando dados de exemplo');
+                    carregarDadosExemplo();
+                    salvarColetasNoStorage();
+                }
+            } catch (error) {
+                console.error('❌ Erro ao carregar do localStorage:', error);
+                carregarDadosExemplo();
+                showNotification('Erro ao carregar dados salvos', 'error');
+            }
+        }
+
+        // Salvar mensagens de chat no localStorage
+        function salvarChatNoStorage() {
+            try {
+                localStorage.setItem('chatMessages', JSON.stringify(chatMessages));
+            } catch (error) {
+                console.error('❌ Erro ao salvar chat no localStorage:', error);
+            }
+        }
+
+        // Carregar mensagens de chat do localStorage
+        function carregarChatDoStorage() {
+            try {
+                const chatSalvo = localStorage.getItem('chatMessages');
+                if (chatSalvo) {
+                    chatMessages = JSON.parse(chatSalvo);
+                    console.log('💬 Chat carregado do localStorage');
+                } else {
+                    console.log('💬 Nenhum chat salvo encontrado');
+                    chatMessages = {};
+                }
+            } catch (error) {
+                console.error('❌ Erro ao carregar chat do localStorage:', error);
+                chatMessages = {};
+            }
+        }
+
+        // === SISTEMA DE EXCLUSÃO PARA ADMIN ===
+
+        // Verificar se usuário é admin
+        function isAdmin() {
+            return currentUser && currentUser.isAdmin;
+        }
+
+        // Excluir coleta
+        function excluirColeta(coletaId) {
+            if (!isAdmin()) {
+                showNotification('Apenas administradores podem excluir coletas', 'error');
+                return;
+            }
+            
+            if (!confirm('Tem certeza que deseja excluir esta coleta? Esta ação não pode ser desfeita.')) {
+                return;
+            }
+            
+            const coletaIndex = coletasData.findIndex(c => c.id === coletaId);
+            if (coletaIndex === -1) return;
+            
+            const coletaExcluida = coletasData[coletaIndex];
+            
+            // Remover do array
+            coletasData.splice(coletaIndex, 1);
+            
+            // Remover mensagens de chat relacionadas
+            if (chatMessages[coletaId]) {
+                delete chatMessages[coletaId];
+                salvarChatNoStorage();
+            }
+            
+            // Salvar no localStorage
+            salvarColetasNoStorage();
+            
+            // Atualizar interface
+            renderColetas();
+            showNotification(`Coleta ${coletaId} excluída com sucesso`, 'success');
+            
+            // Fechar modais se estiverem abertos
+            closeModal();
+            closeAnexosModal();
+            closeChatModal();
+        }
+
+        // === SISTEMA DE HISTÓRICO DE MOVIMENTAÇÕES ===
+
+        // Adicionar entrada no histórico
+        function adicionarHistorico(coletaId, acao, etapaAnterior = null, novaEtapa = null) {
+            const coletaIndex = coletasData.findIndex(c => c.id === coletaId);
+            if (coletaIndex === -1) return;
+            
+            if (!coletasData[coletaIndex].historico) {
+                coletasData[coletaIndex].historico = [];
+            }
+            
+            const entradaHistorico = {
+                id: 'hist-' + Date.now(),
+                usuario: currentUser.nome,
+                usuarioId: currentUser.id,
+                acao: acao,
+                etapaAnterior: etapaAnterior,
+                novaEtapa: novaEtapa,
+                data: new Date().toISOString(),
+                timestamp: Date.now()
+            };
+            
+            coletasData[coletaIndex].historico.unshift(entradaHistorico);
+            
+            // Manter apenas as últimas 50 entradas para não ficar muito pesado
+            if (coletasData[coletaIndex].historico.length > 50) {
+                coletasData[coletaIndex].historico = coletasData[coletaIndex].historico.slice(0, 50);
+            }
+            
+            salvarColetasNoStorage();
+        }
+
+        // Obter texto descritivo da ação
+        function getTextoAcao(acao, etapaAnterior, novaEtapa) {
+            const etapasMap = {
+                'comercial': 'Comercial',
+                'price': 'Price',
+                'cs': 'CS',
+                'contratacao': 'Contratação',
+                'gr': 'GR',
+                'documentacao': 'Documentação',
+                'controladoria': 'Controladoria',
+                'contas-pagar': 'Contas a Pagar',
+                'contas-receber': 'Contas a Receber'
+            };
+            
+            switch(acao) {
+                case 'avancar_etapa':
+                    return `Avançou etapa de ${etapasMap[etapaAnterior]} para ${etapasMap[novaEtapa]}`;
+                case 'criar_coleta':
+                    return 'Criou a coleta';
+                case 'editar_coleta':
+                    return 'Editou informações da coleta';
+                case 'adicionar_anexo':
+                    return 'Adicionou anexo';
+                case 'excluir_anexo':
+                    return 'Excluiu anexo';
+                case 'enviar_mensagem':
+                    return 'Enviou mensagem no chat';
+                default:
+                    return acao;
+            }
+        }
+
+        // Carregar histórico no modal
+        function carregarHistorico(coletaId) {
+            const coleta = coletasData.find(c => c.id === coletaId);
+            const historicoList = document.getElementById('historicoList');
+            const historicoContainer = document.getElementById('historicoContainer');
+            
+            if (!coleta || !coleta.historico || coleta.historico.length === 0) {
+                historicoContainer.style.display = 'none';
+                return;
+            }
+            
+            historicoContainer.style.display = 'block';
+            
+            historicoList.innerHTML = coleta.historico.map(entrada => `
+                <div class="historico-item">
+                    <div class="historico-header">
+                        <span class="historico-usuario">${entrada.usuario}</span>
+                        <span class="historico-data">${formatarDataHora(entrada.data)}</span>
+                    </div>
+                    <div class="historico-acao">
+                        ${getTextoAcao(entrada.acao, entrada.etapaAnterior, entrada.novaEtapa)}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // === FUNÇÕES PRINCIPAIS ===
+
+        // Inicialização
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🚚 Sistema de Coletas inicializando...');
+            
+            // Verificar autenticação
+            currentUser = verificarAutenticacao();
+            if (currentUser) {
+                // Configurar informações do usuário
+                setupUserInfo(currentUser);
+                
+                // Inicializar sistema
+                initializeDateFilters();
+                carregarColetasDoStorage();
+                carregarChatDoStorage();
+                updateStats();
+                setupDragAndDrop();
+                setupChatInput();
+                
+                console.log('✅ Sistema de Coletas carregado para:', currentUser.nome);
+            }
+        });
+
+        // Configurar chat input
+        function setupChatInput() {
+            const chatInput = document.getElementById('chatInput');
+            const chatSend = document.getElementById('chatSend');
+            
+            chatInput.addEventListener('input', function() {
+                this.style.height = 'auto';
+                this.style.height = (this.scrollHeight) + 'px';
+                
+                // Habilitar/desabilitar botão de envio
+                chatSend.disabled = this.value.trim() === '';
+            });
+            
+            chatInput.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    if (!chatSend.disabled) {
+                        sendMessage();
+                    }
+                }
+            });
+        }
+
+        // Configurar drag and drop
+        function setupDragAndDrop() {
+            const uploadArea = document.getElementById('uploadArea');
+            
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                uploadArea.addEventListener(eventName, preventDefaults, false);
+            });
+            
+            function preventDefaults(e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+            
+            ['dragenter', 'dragover'].forEach(eventName => {
+                uploadArea.addEventListener(eventName, highlight, false);
+            });
+            
+            ['dragleave', 'drop'].forEach(eventName => {
+                uploadArea.addEventListener(eventName, unhighlight, false);
+            });
+            
+            function highlight() {
+                uploadArea.classList.add('dragover');
+            }
+            
+            function unhighlight() {
+                uploadArea.classList.remove('dragover');
+            }
+            
+            uploadArea.addEventListener('drop', handleDrop, false);
+            
+            function handleDrop(e) {
+                const dt = e.dataTransfer;
+                const files = dt.files;
+                handleFileSelect(files);
+            }
+        }
+
+        // Inicializar filtros de data
+        function initializeDateFilters() {
+            const hoje = new Date();
+            const inicioMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+            
+            document.getElementById('dataInicio').value = formatarDataParaInput(inicioMes);
+            document.getElementById('dataFim').value = formatarDataParaInput(hoje);
+        }
+
+        // Carregar dados de exemplo (apenas se não houver dados salvos)
+        function carregarDadosExemplo() {
+            const hoje = new Date();
+            const datas = [
+                formatarDataParaInput(new Date(hoje.getTime() - 2 * 24 * 60 * 60 * 1000)), // 2 dias atrás
+                formatarDataParaInput(new Date(hoje.getTime() - 5 * 24 * 60 * 60 * 1000)), // 5 dias atrás
+                formatarDataParaInput(new Date(hoje.getTime() - 10 * 24 * 60 * 60 * 1000)), // 10 dias atrás
+                formatarDataParaInput(hoje) // hoje
+            ];
+
+            coletasData = [
+                {
+                    id: 'COL-001',
+                    filial: 'JBO',
+                    cliente: 'Cliente A Ltda',
+                    dataRecebimento: datas[0],
+                    origem: 'São Paulo - SP',
+                    destino: 'Rio de Janeiro - RJ',
+                    km: 450,
+                    veiculo: 'Bitruck',
+                    status: 'andamento',
+                    etapaAtual: 'gr',
+                    etapasConcluidas: ['cs', 'contratacao'],
+                    valor: 2500.00,
+                    observacoes: 'Coleta urgente - cliente preferencial',
+                    anexos: [
+                        { id: '1', nome: 'nota_fiscal.pdf', tamanho: 2400000, tipo: 'pdf' },
+                        { id: '2', nome: 'planilha_custos.xlsx', tamanho: 156000, tipo: 'excel' }
+                    ],
+                    historico: [
+                        {
+                            id: 'hist-1',
+                            usuario: currentUser ? currentUser.nome : 'Sistema',
+                            usuarioId: currentUser ? currentUser.id : 'system',
+                            acao: 'criar_coleta',
+                            data: new Date(hoje.getTime() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+                            timestamp: Date.now() - 2 * 24 * 60 * 60 * 1000
+                        }
+                    ]
+                },
+                {
+                    id: 'COL-002',
+                    filial: 'JBO',
+                    cliente: 'Empresa B S/A',
+                    dataRecebimento: datas[1],
+                    origem: 'Belo Horizonte - MG',
+                    destino: 'Vitória - ES',
+                    km: 520,
+                    veiculo: 'Carreta',
+                    status: 'pendente',
+                    etapaAtual: 'contratacao',
+                    etapasConcluidas: ['cs'],
+                    valor: 3200.00,
+                    observacoes: 'Aguardando aprovação do cliente',
+                    anexos: [],
+                    historico: [
+                        {
+                            id: 'hist-2',
+                            usuario: currentUser ? currentUser.nome : 'Sistema',
+                            usuarioId: currentUser ? currentUser.id : 'system',
+                            acao: 'criar_coleta',
+                            data: new Date(hoje.getTime() - 5 * 24 * 60 * 60 * 1000).toISOString(),
+                            timestamp: Date.now() - 5 * 24 * 60 * 60 * 1000
+                        }
+                    ]
+                },
+                {
+                    id: 'COL-003',
+                    filial: 'JBO',
+                    cliente: 'Comércio C ME',
+                    dataRecebimento: datas[2],
+                    origem: 'Curitiba - PR',
+                    destino: 'Porto Alegre - RS',
+                    km: 700,
+                    veiculo: 'Truck',
+                    status: 'concluida',
+                    etapaAtual: 'comercial',
+                    etapasConcluidas: ETAPAS.map(e => e.id),
+                    valor: 1800.00,
+                    observacoes: 'Entrega realizada com sucesso',
+                    anexos: [
+                        { id: '3', nome: 'foto_entrega.jpg', tamanho: 1800000, tipo: 'image' }
+                    ],
+                    historico: [
+                        {
+                            id: 'hist-3',
+                            usuario: currentUser ? currentUser.nome : 'Sistema',
+                            usuarioId: currentUser ? currentUser.id : 'system',
+                            acao: 'criar_coleta',
+                            data: new Date(hoje.getTime() - 10 * 24 * 60 * 60 * 1000).toISOString(),
+                            timestamp: Date.now() - 10 * 24 * 60 * 60 * 1000
+                        }
+                    ]
+                }
+            ];
+        }
+
+        // Renderizar cards de coletas - DESIGN MODERNIZADO
+        function renderColetas(filteredData = null) {
+            const grid = document.getElementById('coletasGrid');
+            const dataToRender = filteredData || coletasData;
+
+            grid.innerHTML = '';
+
+            if (dataToRender.length === 0) {
+                grid.innerHTML = `
+                    <div style="grid-column: 1 / -1; text-align: center; padding: 3rem; color: #6c757d;">
+                        <i class="fas fa-inbox" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.5;"></i>
+                        <h3>Nenhuma coleta encontrada</h3>
+                        <p>Tente ajustar os filtros para ver mais resultados</p>
+                    </div>
+                `;
+                return;
+            }
+
+            dataToRender.forEach(coleta => {
+                const card = createColetaCard(coleta);
+                grid.appendChild(card);
+            });
+
+            updateStats(dataToRender);
+        }
+
+        // Criar card de coleta - DESIGN MODERNIZADO
+        function createColetaCard(coleta) {
+            const card = document.createElement('div');
+            card.className = `coleta-card ${coleta.status}`;
+            card.onclick = () => openEditColetaModal(coleta.id);
+
+            const progresso = calcularProgressoEtapas(coleta);
+            
+            card.innerHTML = `
+                <div class="card-header">
+                    <div class="card-title-section">
+                        <h3 class="card-title">${coleta.cliente}</h3>
+                        <div class="card-id">${coleta.id}</div>
+                    </div>
+                    <div class="status-section">
+                        <div class="status-badge status-${coleta.status}">
+                            ${getStatusText(coleta.status)}
+                        </div>
+                        <div class="valor-badge">
+                            R$ ${coleta.valor?.toFixed(2) || '0,00'}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card-content">
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <div class="info-label">Origem</div>
+                            <div class="info-value">
+                                <i class="fas fa-map-marker-alt"></i>
+                                ${coleta.origem}
+                            </div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">Destino</div>
+                            <div class="info-value">
+                                <i class="fas fa-flag-checkered"></i>
+                                ${coleta.destino}
+                            </div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">Veículo</div>
+                            <div class="info-value">
+                                <i class="fas fa-truck"></i>
+                                ${coleta.veiculo || '-'}
+                            </div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">KM</div>
+                            <div class="info-value">
+                                <i class="fas fa-road"></i>
+                                ${coleta.km || '0'} km
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Seção de Anexos -->
+                    <div class="anexos-section">
+                        <div class="anexos-header">
+                            <div class="anexos-title">
+                                <i class="fas fa-paperclip"></i> Anexos
+                                <span class="badge" style="background: var(--azul-escuro); color: white; margin-left: 0.5rem; font-size: 0.7rem;">
+                                    ${coleta.anexos?.length || 0}
+                                </span>
+                            </div>
+                            <button class="btn-anexar" onclick="event.stopPropagation(); abrirModalAnexos('${coleta.id}')">
+                                <i class="fas fa-plus"></i> Adicionar
+                            </button>
+                        </div>
+                        <div class="anexos-list">
+                            ${(coleta.anexos && coleta.anexos.length > 0) ? 
+                                coleta.anexos.map(anexo => `
+                                    <div class="anexo-item">
+                                        <div class="anexo-info">
+                                            <div class="anexo-icon ${getFileIconClass(anexo.tipo)}">
+                                                <i class="fas ${getFileIcon(anexo.tipo)}"></i>
+                                            </div>
+                                            <div class="anexo-details">
+                                                <div class="anexo-nome">${anexo.nome}</div>
+                                                <div class="anexo-tamanho">${formatFileSize(anexo.tamanho)}</div>
+                                            </div>
+                                        </div>
+                                        <div class="anexo-actions">
+                                            <button class="btn-anexo-action btn-anexo-view" onclick="event.stopPropagation(); visualizarAnexo('${anexo.id}')" title="Visualizar">
+                                                <i class="fas fa-eye"></i>
+                                            </button>
+                                            <button class="btn-anexo-action btn-anexo-download" onclick="event.stopPropagation(); downloadAnexoDireto('${coleta.id}', '${anexo.id}')" title="Baixar">
+                                                <i class="fas fa-download"></i>
+                                            </button>
+                                            <button class="btn-anexo-action btn-anexo-delete" onclick="event.stopPropagation(); excluirAnexo('${coleta.id}', '${anexo.id}')" title="Excluir">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                `).join('') : 
+                                '<div style="text-align: center; color: #6c757d; font-size: 0.8rem; padding: 1rem;">Nenhum anexo adicionado</div>'
+                            }
+                        </div>
+                    </div>
+                </div>
+
+                <div class="etapas-container">
+                    <div class="etapas-header">
+                        <div class="etapas-title">
+                            <i class="fas fa-project-diagram"></i> Etapas do Processo
+                        </div>
+                        <div class="progress-text">
+                            ${progresso.concluidas}/${progresso.total} etapas
+                        </div>
+                    </div>
+                    <div class="etapas-progress">
+                        ${ETAPAS.map(etapa => `
+                            <div class="etapa-progress etapa-${etapa.id}" 
+                                 style="width: ${100/ETAPAS.length}%"
+                                 title="${etapa.nome}">
+                            </div>
+                        `).join('')}
+                    </div>
+                    <div class="etapas-labels">
+                        ${ETAPAS.map(etapa => {
+                            const isConcluida = coleta.etapasConcluidas.includes(etapa.id);
+                            const isAtiva = coleta.etapaAtual === etapa.id;
+                            const classe = isConcluida ? 'concluida' : (isAtiva ? 'ativa' : '');
+                            const icon = isConcluida ? 'fa-check' : (isAtiva ? 'fa-play' : 'fa-clock');
+                            return `
+                                <span class="etapa-badge ${classe}">
+                                    <i class="fas ${icon}"></i>
+                                    ${etapa.nome}
+                                </span>
+                            `;
+                        }).join('')}
+                    </div>
+                </div>
+
+                <div class="card-footer">
+                    <div class="card-actions">
+                        <button class="action-btn chat" onclick="event.stopPropagation(); openChatModal('${coleta.id}')">
+                            <i class="fas fa-comment"></i> Chat
+                        </button>
+                        <button class="action-btn primary" onclick="event.stopPropagation(); avancarEtapa('${coleta.id}')">
+                            <i class="fas fa-arrow-right"></i> Avançar
+                        </button>
+                        <button class="action-btn warning" onclick="event.stopPropagation(); openEditColetaModal('${coleta.id}')">
+                            <i class="fas fa-edit"></i> Editar
+                        </button>
+                        ${isAdmin() ? `
+                        <button class="action-btn danger" onclick="event.stopPropagation(); excluirColeta('${coleta.id}')">
+                            <i class="fas fa-trash"></i> Excluir
+                        </button>
+                        ` : ''}
+                    </div>
+                    <div class="card-date">
+                        <i class="fas fa-calendar"></i>
+                        ${formatarData(coleta.dataRecebimento)}
+                    </div>
+                </div>
+            `;
+
+            // Atualizar cores da barra de progresso
+            setTimeout(() => {
+                ETAPAS.forEach((etapa, index) => {
+                    const progressBar = card.querySelector(`.etapa-${etapa.id}`);
+                    if (coleta.etapasConcluidas.includes(etapa.id)) {
+                        progressBar.style.opacity = '1';
+                    } else if (coleta.etapaAtual === etapa.id) {
+                        progressBar.style.opacity = '0.8';
+                    } else {
+                        progressBar.style.opacity = '0.2';
+                    }
+                });
+            }, 100);
+
+            return card;
+        }
+
+        // === SISTEMA DE CHAT ===
+
+        // Abrir modal de chat
+        function openChatModal(coletaId) {
+            currentChatColetaId = coletaId;
+            const coleta = coletasData.find(c => c.id === coletaId);
+            
+            if (!coleta) return;
+            
+            document.getElementById('chatColetaId').textContent = coleta.id;
+            document.getElementById('chatCliente').textContent = coleta.cliente;
+            
+            // Carregar mensagens
+            carregarMensagensChat(coletaId);
+            
+            // Focar no input
+            setTimeout(() => {
+                document.getElementById('chatInput').focus();
+            }, 300);
+            
+            document.getElementById('chatModal').classList.add('active');
+        }
+
+        // Fechar modal de chat
+        function closeChatModal() {
+            document.getElementById('chatModal').classList.remove('active');
+            currentChatColetaId = null;
+            
+            // Resetar input
+            const chatInput = document.getElementById('chatInput');
+            chatInput.value = '';
+            chatInput.style.height = 'auto';
+            document.getElementById('chatSend').disabled = true;
+        }
+
+        // Carregar mensagens do chat
+        function carregarMensagensChat(coletaId) {
+            const chatMessagesContainer = document.getElementById('chatMessages');
+            chatMessagesContainer.innerHTML = '';
+            
+            // Inicializar array de mensagens se não existir
+            if (!chatMessages[coletaId]) {
+                chatMessages[coletaId] = [
+                    {
+                        id: 'msg-1',
+                        senderId: 'system',
+                        senderName: 'Sistema',
+                        content: 'Chat iniciado para esta coleta. Use este espaço para comunicação interna sobre a operação.',
+                        timestamp: new Date().toISOString(),
+                        type: 'system'
+                    }
+                ];
+                salvarChatNoStorage();
+            }
+            
+            // Ordenar mensagens por timestamp
+            const mensagens = chatMessages[coletaId].sort((a, b) => 
+                new Date(a.timestamp) - new Date(b.timestamp)
+            );
+            
+            // Renderizar mensagens
+            mensagens.forEach(msg => {
+                const messageElement = document.createElement('div');
+                
+                if (msg.type === 'system') {
+                    messageElement.className = 'message system';
+                    messageElement.innerHTML = `
+                        <div class="message-content" style="text-align: center; font-style: italic; color: #6c757d;">
+                            ${msg.content}
+                        </div>
+                    `;
+                } else {
+                    const isSent = msg.senderId === currentUser.id;
+                    messageElement.className = `message ${isSent ? 'sent' : 'received'}`;
+                    
+                    messageElement.innerHTML = `
+                        <div class="message-header">
+                            <span class="message-sender">${msg.senderName}</span>
+                            <span class="message-time">${formatarHora(msg.timestamp)}</span>
+                        </div>
+                        <div class="message-content">${msg.content}</div>
+                    `;
+                }
+                
+                chatMessagesContainer.appendChild(messageElement);
+            });
+            
+            // Scroll para baixo
+            chatMessagesContainer.scrollTop = chatMessagesContainer.scrollHeight;
+        }
+
+        // Enviar mensagem (corrigida - sempre como usuário logado)
+        function sendMessage() {
+            const chatInput = document.getElementById('chatInput');
+            const messageContent = chatInput.value.trim();
+            
+            if (!messageContent || !currentChatColetaId) return;
+            
+            // Criar nova mensagem SEMPRE com o usuário logado
+            const newMessage = {
+                id: 'msg-' + Date.now(),
+                senderId: currentUser.id,
+                senderName: currentUser.nome,
+                content: messageContent,
+                timestamp: new Date().toISOString(),
+                type: 'user'
+            };
+            
+            // Adicionar ao array de mensagens
+            if (!chatMessages[currentChatColetaId]) {
+                chatMessages[currentChatColetaId] = [];
+            }
+            chatMessages[currentChatColetaId].push(newMessage);
+            
+            // Adicionar ao histórico
+            adicionarHistorico(currentChatColetaId, 'enviar_mensagem');
+            
+            // Salvar no localStorage
+            salvarChatNoStorage();
+            
+            // Recarregar mensagens
+            carregarMensagensChat(currentChatColetaId);
+            
+            // Limpar input
+            chatInput.value = '';
+            chatInput.style.height = 'auto';
+            document.getElementById('chatSend').disabled = true;
+        }
+
+        // === SISTEMA DE ANEXOS ===
+
+        // Abrir modal de anexos
+        function abrirModalAnexos(coletaId) {
+            currentAnexosColetaId = coletaId;
+            const coleta = coletasData.find(c => c.id === coletaId);
+            
+            if (!coleta) return;
+            
+            document.getElementById('modalAnexosTitle').textContent = `Anexos - ${coleta.id}`;
+            
+            // Resetar o modal
+            document.getElementById('selectedFiles').style.display = 'none';
+            document.getElementById('uploadProgress').style.display = 'none';
+            document.getElementById('btnUpload').disabled = true;
+            document.getElementById('filesList').innerHTML = '';
+            selectedFiles = [];
+            
+            // Carregar lista de anexos existentes
+            carregarListaAnexos(coleta);
+            
+            const modal = document.getElementById('anexosModal');
+            modal.classList.add('active');
+        }
+
+        // Fechar modal de anexos
+        function closeAnexosModal() {
+            document.getElementById('anexosModal').classList.remove('active');
+            currentAnexosColetaId = null;
+        }
+
+        // Carregar lista de anexos existentes
+        function carregarListaAnexos(coleta) {
+            const anexosList = document.getElementById('anexosListModal');
+            
+            if (!coleta.anexos || coleta.anexos.length === 0) {
+                anexosList.innerHTML = `
+                    <div style="text-align: center; color: #6c757d; padding: 2rem;">
+                        <i class="fas fa-inbox" style="font-size: 2rem; margin-bottom: 1rem; opacity: 0.5;"></i>
+                        <p>Nenhum anexo adicionado ainda</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            anexosList.innerHTML = `
+                <h6 style="margin-bottom: 1rem; color: var(--azul-escuro);">Anexos existentes:</h6>
+                ${coleta.anexos.map(anexo => `
+                    <div class="file-item">
+                        <div class="file-info">
+                            <div class="file-icon ${getFileIconClass(anexo.tipo)}">
+                                <i class="fas ${getFileIcon(anexo.tipo)}"></i>
+                            </div>
+                            <div class="file-details">
+                                <div class="file-name">${anexo.nome}</div>
+                                <div class="file-size">${formatFileSize(anexo.tamanho)}</div>
+                            </div>
+                        </div>
+                        <div class="anexo-actions">
+                            <button class="btn-anexo-action btn-anexo-view" onclick="visualizarAnexo('${anexo.id}')" title="Visualizar">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                            <button class="btn-anexo-action btn-anexo-download" onclick="downloadAnexoDireto('${coleta.id}', '${anexo.id}')" title="Baixar">
+                                <i class="fas fa-download"></i>
+                            </button>
+                            <button class="btn-anexo-action btn-anexo-delete" onclick="excluirAnexo('${coleta.id}', '${anexo.id}')" title="Excluir">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                `).join('')}
+            `;
+        }
+
+        // Manipular seleção de arquivos
+        function handleFileSelect(files) {
+            selectedFiles = Array.from(files);
+            const filesList = document.getElementById('filesList');
+            filesList.innerHTML = '';
+            
+            selectedFiles.forEach((file, index) => {
+                const fileType = getFileType(file.type);
+                const fileElement = document.createElement('div');
+                fileElement.className = 'file-item';
+                fileElement.innerHTML = `
+                    <div class="file-info">
+                        <div class="file-icon ${getFileIconClass(fileType)}">
+                            <i class="fas ${getFileIcon(fileType)}"></i>
+                        </div>
+                        <div class="file-details">
+                            <div class="file-name">${file.name}</div>
+                            <div class="file-size">${formatFileSize(file.size)}</div>
+                        </div>
+                    </div>
+                    <button class="file-remove" onclick="removerArquivo(${index})">
+                        <i class="fas fa-times"></i>
+                    </button>
+                `;
+                filesList.appendChild(fileElement);
+            });
+            
+            document.getElementById('selectedFiles').style.display = 'block';
+            document.getElementById('btnUpload').disabled = false;
+        }
+
+        // Função para obter ícone baseado no tipo de arquivo
+        function getFileIcon(fileType) {
+            const icons = {
+                'pdf': 'fa-file-pdf',
+                'excel': 'fa-file-excel',
+                'image': 'fa-image',
+                'word': 'fa-file-word',
+                'default': 'fa-file'
+            };
+            
+            return icons[fileType] || icons.default;
+        }
+
+        // Função para obter classe CSS baseada no tipo de arquivo
+        function getFileIconClass(fileType) {
+            const classes = {
+                'pdf': 'text-danger',
+                'excel': 'text-success',
+                'image': 'text-info',
+                'word': 'text-primary',
+                'default': 'text-secondary'
+            };
+            
+            return classes[fileType] || classes.default;
+        }
+
+        // Determinar tipo de arquivo
+        function getFileType(mimeType) {
+            if (mimeType.includes('pdf')) return 'pdf';
+            if (mimeType.includes('spreadsheet') || mimeType.includes('excel')) return 'excel';
+            if (mimeType.includes('image')) return 'image';
+            if (mimeType.includes('word') || mimeType.includes('document')) return 'word';
+            return 'default';
+        }
+
+        // Formatar tamanho do arquivo
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        // Remover arquivo da lista
+        function removerArquivo(index) {
+            selectedFiles.splice(index, 1);
+            handleFileSelect(selectedFiles);
+            if (selectedFiles.length === 0) {
+                document.getElementById('selectedFiles').style.display = 'none';
+                document.getElementById('btnUpload').disabled = true;
+            }
+        }
+
+        // Simular upload de arquivos
+        function fazerUpload() {
+            const progressFill = document.getElementById('progressFill');
+            const progressText = document.getElementById('progressText');
+            const uploadProgress = document.getElementById('uploadProgress');
+            
+            uploadProgress.style.display = 'block';
+            document.getElementById('btnUpload').disabled = true;
+            
+            let progress = 0;
+            const interval = setInterval(() => {
+                progress += 5;
+                progressFill.style.width = progress + '%';
+                progressText.textContent = progress + '%';
+                
+                if (progress >= 100) {
+                    clearInterval(interval);
+                    
+                    // Simular sucesso do upload
+                    setTimeout(() => {
+                        adicionarAnexosNaColeta();
+                        showNotification('Arquivos enviados com sucesso!', 'success');
+                        
+                        // Recarregar a lista de anexos
+                        const coleta = coletasData.find(c => c.id === currentAnexosColetaId);
+                        if (coleta) {
+                            carregarListaAnexos(coleta);
+                        }
+                        
+                        // Resetar interface de upload
+                        document.getElementById('selectedFiles').style.display = 'none';
+                        document.getElementById('uploadProgress').style.display = 'none';
+                        document.getElementById('filesList').innerHTML = '';
+                        selectedFiles = [];
+                        
+                        // Atualizar cards
+                        renderColetas();
+                    }, 500);
+                }
+            }, 100);
+        }
+
+        // Adicionar anexos à coleta
+        function adicionarAnexosNaColeta() {
+            const coletaIndex = coletasData.findIndex(c => c.id === currentAnexosColetaId);
+            if (coletaIndex === -1) return;
+            
+            if (!coletasData[coletaIndex].anexos) {
+                coletasData[coletaIndex].anexos = [];
+            }
+            
+            selectedFiles.forEach(file => {
+                const fileType = getFileType(file.type);
+                const novoAnexo = {
+                    id: Date.now().toString() + Math.random().toString(36).substr(2, 5),
+                    nome: file.name,
+                    tamanho: file.size,
+                    tipo: fileType,
+                    arquivo: file // Em produção, isso seria enviado para o servidor
+                };
+                
+                coletasData[coletaIndex].anexos.push(novoAnexo);
+            });
+            
+            // Adicionar ao histórico
+            adicionarHistorico(currentAnexosColetaId, 'adicionar_anexo');
+            
+            // Salvar no localStorage
+            salvarColetasNoStorage();
+        }
+
+        // === SISTEMA DE VISUALIZAÇÃO E DOWNLOAD ===
+
+        // Função para visualizar arquivo
+        function visualizarAnexo(anexoId) {
+            // Encontrar o anexo em todas as coletas
+            let anexoEncontrado = null;
+            let coletaEncontrada = null;
+            
+            for (const coleta of coletasData) {
+                if (coleta.anexos) {
+                    anexoEncontrado = coleta.anexos.find(a => a.id === anexoId);
+                    if (anexoEncontrado) {
+                        coletaEncontrada = coleta;
+                        break;
+                    }
+                }
+            }
+            
+            if (anexoEncontrado) {
+                currentViewingFile = anexoEncontrado;
+                currentViewingColeta = coletaEncontrada;
+                abrirVisualizador(anexoEncontrado, coletaEncontrada);
+            } else {
+                showNotification('Anexo não encontrado', 'error');
+            }
+        }
+
+        // Função para abrir o visualizador
+        function abrirVisualizador(anexo, coleta) {
+            document.getElementById('visualizadorTitle').textContent = `Visualizando: ${anexo.nome}`;
+            document.getElementById('fileNamePreview').textContent = anexo.nome;
+            document.getElementById('fileTypePreview').textContent = anexo.tipo.toUpperCase();
+            document.getElementById('fileSizePreview').textContent = formatFileSize(anexo.tamanho);
+            document.getElementById('fileColetaPreview').textContent = coleta.id;
+            document.getElementById('fileDatePreview').textContent = formatarData(coleta.dataRecebimento);
+
+            const visualizadorContent = document.getElementById('visualizadorContent');
+            visualizadorContent.innerHTML = '';
+
+            // Criar URL temporária para o arquivo (em produção, isso viria do servidor)
+            let fileUrl = null;
+            if (anexo.arquivo) {
+                fileUrl = URL.createObjectURL(anexo.arquivo);
+            }
+
+            switch (anexo.tipo) {
+                case 'pdf':
+                    if (fileUrl) {
+                        visualizadorContent.innerHTML = `
+                            <iframe src="${fileUrl}" class="preview-pdf" 
+                                    title="Visualização do PDF: ${anexo.nome}">
+                            </iframe>
+                        `;
+                    } else {
+                        visualizadorContent.innerHTML = `
+                            <div class="unsupported-file">
+                                <i class="fas fa-file-pdf"></i>
+                                <h4>Pré-visualização não disponível</h4>
+                                <p>O arquivo PDF precisa ser baixado para visualização.</p>
+                                <p><small>Arquivo: ${anexo.nome}</small></p>
+                            </div>
+                        `;
+                    }
+                    break;
+
+                case 'image':
+                    if (fileUrl) {
+                        visualizadorContent.innerHTML = `
+                            <img src="${fileUrl}" alt="${anexo.nome}" class="preview-image"
+                                 onerror="this.style.display='none'; document.getElementById('imageError').style.display='block'">
+                            <div id="imageError" style="display: none;" class="unsupported-file">
+                                <i class="fas fa-exclamation-triangle"></i>
+                                <h4>Erro ao carregar imagem</h4>
+                                <p>Não foi possível carregar a pré-visualização da imagem.</p>
+                            </div>
+                        `;
+                    } else {
+                        visualizadorContent.innerHTML = `
+                            <div class="unsupported-file">
+                                <i class="fas fa-image"></i>
+                                <h4>Pré-visualização não disponível</h4>
+                                <p>A imagem precisa ser baixada para visualização.</p>
+                                <p><small>Arquivo: ${anexo.nome}</small></p>
+                            </div>
+                        `;
+                    }
+                    break;
+
+                case 'excel':
+                    visualizadorContent.innerHTML = `
+                        <div class="unsupported-file">
+                            <i class="fas fa-file-excel"></i>
+                            <h4>Pré-visualização não disponível</h4>
+                            <p>Arquivos Excel precisam ser baixados para visualização.</p>
+                            <p><small>Arquivo: ${anexo.nome}</small></p>
+                            <p><small>Dica: Use o Microsoft Excel ou Google Sheets para abrir este arquivo.</small></p>
+                        </div>
+                    `;
+                    break;
+
+                case 'word':
+                    visualizadorContent.innerHTML = `
+                        <div class="unsupported-file">
+                            <i class="fas fa-file-word"></i>
+                            <h4>Pré-visualização não disponível</h4>
+                            <p>Arquivos Word precisam ser baixados para visualização.</p>
+                            <p><small>Arquivo: ${anexo.nome}</small></p>
+                            <p><small>Dica: Use o Microsoft Word ou Google Docs para abrir este arquivo.</small></p>
+                        </div>
+                    `;
+                    break;
+
+                default:
+                    visualizadorContent.innerHTML = `
+                        <div class="unsupported-file">
+                            <i class="fas fa-file"></i>
+                            <h4>Tipo de arquivo não suportado</h4>
+                            <p>Este tipo de arquivo não pode ser visualizado no navegador.</p>
+                            <p><small>Arquivo: ${anexo.nome}</small></p>
+                            <p><small>Tipo: ${anexo.tipo}</small></p>
+                        </div>
+                    `;
+            }
+
+            document.getElementById('visualizadorModal').classList.add('active');
+        }
+
+        // Função para fechar o visualizador
+        function closeVisualizador() {
+            document.getElementById('visualizadorModal').classList.remove('active');
+            currentViewingFile = null;
+            currentViewingColeta = null;
+            
+            // Limpar URLs temporárias para liberar memória
+            const iframes = document.querySelectorAll('.preview-pdf');
+            iframes.forEach(iframe => {
+                iframe.src = '';
+            });
+        }
+
+        // Função para baixar arquivo
+        function downloadArquivo() {
+            if (!currentViewingFile) return;
+
+            if (currentViewingFile.arquivo) {
+                // Criar link de download temporário
+                const url = URL.createObjectURL(currentViewingFile.arquivo);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = currentViewingFile.nome;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                
+                showNotification(`Download iniciado: ${currentViewingFile.nome}`, 'success');
+            } else {
+                // Em produção, aqui faria o download do servidor
+                showNotification('Arquivo não disponível para download', 'error');
+            }
+        }
+
+        // Função para baixar diretamente (sem abrir visualizador)
+        function downloadAnexoDireto(coletaId, anexoId) {
+            // Encontrar o anexo
+            const coleta = coletasData.find(c => c.id === coletaId);
+            if (!coleta || !coleta.anexos) return;
+
+            const anexo = coleta.anexos.find(a => a.id === anexoId);
+            if (!anexo) return;
+
+            if (anexo.arquivo) {
+                const url = URL.createObjectURL(anexo.arquivo);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = anexo.nome;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                
+                showNotification(`Download iniciado: ${anexo.nome}`, 'success');
+            } else {
+                showNotification('Arquivo não disponível para download', 'error');
+            }
+        }
+
+        // Excluir anexo
+        function excluirAnexo(coletaId, anexoId) {
+            if (!confirm('Tem certeza que deseja excluir este anexo?')) {
+                return;
+            }
+            
+            const coletaIndex = coletasData.findIndex(c => c.id === coletaId);
+            if (coletaIndex === -1) return;
+            
+            if (coletasData[coletaIndex].anexos) {
+                coletasData[coletaIndex].anexos = coletasData[coletaIndex].anexos.filter(a => a.id !== anexoId);
+                
+                // Adicionar ao histórico
+                adicionarHistorico(coletaId, 'excluir_anexo');
+                
+                // Salvar no localStorage
+                salvarColetasNoStorage();
+                
+                // Atualizar interface
+                if (currentAnexosColetaId === coletaId) {
+                    const coleta = coletasData[coletaIndex];
+                    carregarListaAnexos(coleta);
+                }
+                
+                renderColetas();
+                showNotification('Anexo excluído com sucesso', 'success');
+            }
+        }
+
+        // === FUNÇÕES EXISTENTES DO SISTEMA ===
+
+        // Calcular progresso das etapas
+        function calcularProgressoEtapas(coleta) {
+            const etapaAtualIndex = ETAPAS.findIndex(e => e.id === coleta.etapaAtual);
+            const etapasConcluidasCount = coleta.etapasConcluidas.length;
+            const totalEtapas = ETAPAS.length;
+            
+            return {
+                concluidas: etapasConcluidasCount,
+                total: totalEtapas,
+                porcentagem: (etapasConcluidasCount / totalEtapas) * 100,
+                etapaAtual: ETAPAS[etapaAtualIndex]?.nome || 'Não definida'
+            };
+        }
+
+        // Abrir modal para nova coleta
+        function openNewColetaModal() {
+            currentEditingId = null;
+            document.getElementById('modalTitle').textContent = 'Nova Coleta';
+            document.getElementById('coletaForm').reset();
+            document.getElementById('dataRecebimento').valueAsDate = new Date();
+            document.getElementById('status').value = 'pendente';
+            document.getElementById('etapaAtual').value = 'cs';
+            document.getElementById('filial').value = 'JBO';
+            document.getElementById('historicoContainer').style.display = 'none';
+            
+            document.getElementById('coletaModal').classList.add('active');
+        }
+
+        // Abrir modal para editar coleta
+        function openEditColetaModal(coletaId) {
+            const coleta = coletasData.find(c => c.id === coletaId);
+            if (!coleta) return;
+
+            currentEditingId = coletaId;
+            document.getElementById('modalTitle').textContent = `Editar Coleta - ${coleta.id}`;
+            
+            // Preencher formulário
+            Object.keys(coleta).forEach(key => {
+                const input = document.getElementById(key);
+                if (input) input.value = coleta[key];
+            });
+
+            // Carregar histórico
+            carregarHistorico(coletaId);
+            
+            document.getElementById('coletaModal').classList.add('active');
+        }
+
+        // Fechar modal
+        function closeModal() {
+            document.getElementById('coletaModal').classList.remove('active');
+            currentEditingId = null;
+        }
+
+        // Salvar coleta
+        document.getElementById('coletaForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            const coletaData = Object.fromEntries(formData);
+            
+            // Processar dados
+            coletaData.km = parseFloat(coletaData.km) || 0;
+            coletaData.valor = parseFloat(coletaData.valor) || 0;
+            coletaData.etapasConcluidas = coletaData.etapasConcluidas || ['cs'];
+            coletaData.anexos = coletaData.anexos || [];
+            
+            if (currentEditingId) {
+                // Editar coleta existente
+                const index = coletasData.findIndex(c => c.id === currentEditingId);
+                coletasData[index] = { ...coletasData[index], ...coletaData };
+                
+                // Adicionar ao histórico
+                adicionarHistorico(currentEditingId, 'editar_coleta');
+                
+                showNotification('Coleta atualizada com sucesso!', 'success');
+            } else {
+                // Nova coleta
+                const novaColeta = {
+                    id: 'COL-' + (coletasData.length + 1).toString().padStart(3, '0'),
+                    ...coletaData,
+                    etapasConcluidas: ['cs'],
+                    anexos: [],
+                    historico: []
+                };
+                coletasData.unshift(novaColeta);
+                
+                // Adicionar ao histórico
+                adicionarHistorico(novaColeta.id, 'criar_coleta');
+                
+                showNotification('Nova coleta criada com sucesso!', 'success');
+            }
+            
+            // Salvar no localStorage
+            salvarColetasNoStorage();
+            renderColetas();
+            closeModal();
+        });
+
+        // Avançar etapa com histórico
+        function avancarEtapa(coletaId) {
+            const coleta = coletasData.find(c => c.id === coletaId);
+            if (!coleta) return;
+
+            const etapaAtualIndex = ETAPAS.findIndex(e => e.id === coleta.etapaAtual);
+            if (etapaAtualIndex < ETAPAS.length - 1) {
+                const etapaAnterior = coleta.etapaAtual;
+                
+                // Marcar etapa atual como concluída
+                if (!coleta.etapasConcluidas.includes(coleta.etapaAtual)) {
+                    coleta.etapasConcluidas.push(coleta.etapaAtual);
+                }
+                
+                // Avançar para próxima etapa
+                coleta.etapaAtual = ETAPAS[etapaAtualIndex + 1].id;
+                
+                // Se é a última etapa, marcar como concluída
+                if (etapaAtualIndex + 1 === ETAPAS.length - 1) {
+                    coleta.status = 'concluida';
+                    coleta.etapasConcluidas.push(coleta.etapaAtual);
+                } else {
+                    coleta.status = 'andamento';
+                }
+                
+                // Adicionar ao histórico
+                adicionarHistorico(coletaId, 'avancar_etapa', etapaAnterior, coleta.etapaAtual);
+                
+                // Salvar no localStorage
+                salvarColetasNoStorage();
+                renderColetas();
+                showNotification(`Etapa avançada para ${ETAPAS[etapaAtualIndex + 1].nome}`, 'success');
+            }
+        }
+
+        // Filtrar coletas
+        function filterColetas() {
+            const statusFilter = document.getElementById('statusFilter').value;
+            const etapaFilter = document.getElementById('etapaFilter').value;
+            const filialFilter = document.getElementById('filialFilter').value;
+            const searchFilter = document.getElementById('searchFilter').value.toLowerCase();
+            const dataInicio = document.getElementById('dataInicio').value;
+            const dataFim = document.getElementById('dataFim').value;
+
+            const filtered = coletasData.filter(coleta => {
+                // Filtro por status
+                if (statusFilter && coleta.status !== statusFilter) return false;
+                
+                // Filtro por etapa
+                if (etapaFilter && coleta.etapaAtual !== etapaFilter) return false;
+                
+                // Filtro por filial (simplificado - poderia ser por UF de origem)
+                if (filialFilter && !coleta.origem.includes(filialFilter)) return false;
+                
+                // Filtro por data
+                if (dataInicio && coleta.dataRecebimento < dataInicio) return false;
+                if (dataFim && coleta.dataRecebimento > dataFim) return false;
+                
+                // Filtro por busca
+                if (searchFilter) {
+                    const searchableText = `${coleta.cliente} ${coleta.origem} ${coleta.destino} ${coleta.id}`.toLowerCase();
+                    if (!searchableText.includes(searchFilter)) return false;
+                }
+                
+                return true;
+            });
+
+            renderColetas(filtered);
+        }
+
+        // Definir período rápido
+        function setQuickDate(periodo) {
+            const hoje = new Date();
+            let dataInicio, dataFim;
+
+            switch(periodo) {
+                case 'hoje':
+                    dataInicio = hoje;
+                    dataFim = hoje;
+                    break;
+                case 'semana':
+                    dataInicio = new Date(hoje.getTime() - 6 * 24 * 60 * 60 * 1000); // 7 dias atrás
+                    dataFim = hoje;
+                    break;
+                case 'mes':
+                    dataInicio = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+                    dataFim = hoje;
+                    break;
+                case 'trimestre':
+                    const trimestreAtual = Math.floor(hoje.getMonth() / 3);
+                    dataInicio = new Date(hoje.getFullYear(), trimestreAtual * 3, 1);
+                    dataFim = hoje;
+                    break;
+            }
+
+            document.getElementById('dataInicio').value = formatarDataParaInput(dataInicio);
+            document.getElementById('dataFim').value = formatarDataParaInput(dataFim);
+            
+            // Ativar botão selecionado
+            document.querySelectorAll('.quick-date-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            filterColetas();
+        }
+
+        // Limpar filtros de data
+        function clearDateFilters() {
+            document.getElementById('dataInicio').value = '';
+            document.getElementById('dataFim').value = '';
+            document.querySelectorAll('.quick-date-btn').forEach(btn => btn.classList.remove('active'));
+            filterColetas();
+        }
+
+        // Atualizar estatísticas
+        function updateStats(data = coletasData) {
+            document.getElementById('totalColetas').textContent = data.length;
+            document.getElementById('pendentesCount').textContent = data.filter(c => c.status === 'pendente').length;
+            document.getElementById('andamentoCount').textContent = data.filter(c => c.status === 'andamento').length;
+            document.getElementById('concluidasCount').textContent = data.filter(c => c.status === 'concluida').length;
+            document.getElementById('canceladasCount').textContent = data.filter(c => c.status === 'cancelada').length;
+        }
+
+        // Funções utilitárias
+        function getStatusText(status) {
+            const statusMap = {
+                'pendente': 'Pendente',
+                'andamento': 'Em Andamento',
+                'concluida': 'Concluída',
+                'cancelada': 'Cancelada'
+            };
+            return statusMap[status] || status;
+        }
+
+        function formatarData(dataString) {
+            const data = new Date(dataString);
+            return data.toLocaleDateString('pt-BR');
+        }
+
+        function formatarDataHora(dataString) {
+            const data = new Date(dataString);
+            return data.toLocaleString('pt-BR');
+        }
+
+        function formatarHora(dataString) {
+            const data = new Date(dataString);
+            return data.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+        }
+
+        function formatarDataParaInput(data) {
+            return data.toISOString().split('T')[0];
+        }
+
+        function showNotification(message, type = 'info') {
+            const notification = document.getElementById('notification');
+            notification.textContent = message;
+            notification.className = `notification ${type} show`;
+            
+            setTimeout(() => {
+                notification.classList.remove('show');
+            }, 4000);
+        }
+
+        // Fechar modal ao clicar fora
+        document.getElementById('coletaModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeModal();
+            }
+        });
+
+        document.getElementById('anexosModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeAnexosModal();
+            }
+        });
+
+        document.getElementById('visualizadorModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeVisualizador();
+            }
+        });
+
+        document.getElementById('chatModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeChatModal();
+            }
+        });
+    </script>
+</body>
+</html>
