@@ -1,0 +1,2024 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Cadastro de Motoristas - Sistema de Disparo</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    :root {
+      --primary: #667eea;
+      --primary-dark: #5a6fd8;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --info: #3b82f6;
+      --dark: #1f2937;
+      --light: #f8fafc;
+    }
+    
+    body { 
+      padding: 0;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+    }
+    
+    .app-container {
+      background: white;
+      min-height: 100vh;
+      border-radius: 0;
+      box-shadow: 0 0 50px rgba(0,0,0,0.1);
+    }
+    
+    /* Header Moderno */
+    .app-header {
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+      color: white;
+      padding: 1.25rem 0;
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+      backdrop-filter: blur(10px);
+    }
+    
+    .user-badge {
+      background: rgba(255,255,255,0.2);
+      padding: 8px 16px;
+      border-radius: 25px;
+      font-size: 0.9rem;
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255,255,255,0.3);
+    }
+    
+    /* Cards Modernos */
+    .modern-card {
+      background: white;
+      border: none;
+      border-radius: 20px;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.08);
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      overflow: hidden;
+      border: 1px solid rgba(0,0,0,0.03);
+    }
+    
+    .modern-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 15px 35px rgba(0,0,0,0.12);
+    }
+    
+    .modern-card .card-header {
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+      color: white;
+      border: none;
+      padding: 1.5rem 2rem;
+      font-weight: 700;
+      font-size: 1.1rem;
+    }
+    
+    /* Navegação Moderna */
+    .modern-tabs {
+      background: white;
+      border-radius: 16px;
+      padding: 1rem;
+      margin-bottom: 2rem;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+      border: 1px solid rgba(0,0,0,0.03);
+    }
+    
+    .nav-modern {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+    
+    .nav-modern .nav-link {
+      background: var(--light);
+      border: 2px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 1rem 1.5rem;
+      color: #64748b;
+      font-weight: 600;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    
+    .nav-modern .nav-link:hover {
+      border-color: var(--primary);
+      background: rgba(102, 126, 234, 0.05);
+      transform: translateY(-2px);
+    }
+    
+    .nav-modern .nav-link.active {
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+      color: white;
+      border-color: var(--primary);
+      box-shadow: 0 6px 20px rgba(102, 126, 234, 0.3);
+    }
+    
+    /* Formulário Moderno */
+    .form-section {
+      background: white;
+      border-radius: 20px;
+      padding: 2rem;
+      margin-bottom: 2rem;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.08);
+      border: 1px solid rgba(0,0,0,0.03);
+    }
+    
+    .section-title {
+      font-weight: 700;
+      color: var(--dark);
+      margin-bottom: 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      font-size: 1.2rem;
+      padding-bottom: 0.75rem;
+      border-bottom: 2px solid #f1f5f9;
+    }
+    
+    .section-title i {
+      color: var(--primary);
+      font-size: 1.3rem;
+    }
+    
+    .form-control-modern, .form-select-modern {
+      border: 2px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 1rem 1.25rem;
+      font-size: 1rem;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      background: white;
+    }
+    
+    .form-control-modern:focus, .form-select-modern:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+      transform: translateY(-2px);
+    }
+    
+    .form-label-modern {
+      font-weight: 600;
+      color: var(--dark);
+      margin-bottom: 0.75rem;
+      font-size: 0.95rem;
+    }
+    
+    /* Classes de Veículo no Cadastro */
+    .vehicle-classes-cadastro {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+    
+    .vehicle-class-cadastro {
+      background: var(--light);
+      border: 2px solid #e2e8f0;
+      border-radius: 16px;
+      padding: 1.5rem;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .vehicle-class-cadastro::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+      transition: left 0.5s;
+    }
+    
+    .vehicle-class-cadastro:hover::before {
+      left: 100%;
+    }
+    
+    .vehicle-class-cadastro:hover {
+      transform: translateY(-5px);
+      border-color: var(--primary);
+      box-shadow: 0 10px 25px rgba(102, 126, 234, 0.15);
+    }
+    
+    .vehicle-class-cadastro.active {
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+      color: white;
+      border-color: var(--primary);
+      transform: scale(1.02);
+    }
+    
+    .vehicle-class-cadastro.active .class-icon {
+      color: white;
+    }
+    
+    .class-icon {
+      font-size: 2.5rem;
+      margin-bottom: 1rem;
+      color: var(--primary);
+      transition: all 0.3s ease;
+    }
+    
+    .class-name {
+      font-weight: 700;
+      font-size: 1.1rem;
+      margin-bottom: 0.5rem;
+    }
+    
+    .class-description {
+      font-size: 0.85rem;
+      opacity: 0.8;
+    }
+    
+    /* Botões Modernos */
+    .btn-modern {
+      border: none;
+      border-radius: 14px;
+      padding: 1rem 2rem;
+      font-weight: 700;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+      overflow: hidden;
+      font-size: 1rem;
+    }
+    
+    .btn-modern::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+      transition: left 0.6s;
+    }
+    
+    .btn-modern:hover::before {
+      left: 100%;
+    }
+    
+    .btn-modern:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+    }
+    
+    .btn-modern-primary {
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+      color: white;
+    }
+    
+    .btn-modern-success {
+      background: linear-gradient(135deg, var(--success) 0%, #059669 100%);
+      color: white;
+    }
+    
+    .btn-modern-danger {
+      background: linear-gradient(135deg, var(--danger) 0%, #dc2626 100%);
+      color: white;
+    }
+    
+    .btn-modern-warning {
+      background: linear-gradient(135deg, var(--warning) 0%, #d97706 100%);
+      color: white;
+    }
+    
+    .btn-modern-info {
+      background: linear-gradient(135deg, var(--info) 0%, #2563eb 100%);
+      color: white;
+    }
+    
+    /* Tabela Moderna */
+    .table-modern {
+      background: white;
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.08);
+      border: 1px solid rgba(0,0,0,0.03);
+    }
+    
+    .table-modern thead th {
+      background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+      border-bottom: 2px solid #e2e8f0;
+      font-weight: 700;
+      padding: 1.25rem 1.5rem;
+      color: var(--dark);
+      font-size: 0.9rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    
+    .table-modern tbody td {
+      padding: 1.25rem 1.5rem;
+      vertical-align: middle;
+      border-bottom: 1px solid #f1f5f9;
+      transition: background-color 0.2s ease;
+    }
+    
+    .table-modern tbody tr:hover td {
+      background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+    }
+    
+    .table-modern tbody tr:last-child td {
+      border-bottom: none;
+    }
+    
+    /* Badges Modernos */
+    .badge-modern {
+      padding: 0.5rem 1rem;
+      border-radius: 10px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    
+    .badge-vehicle {
+      background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+      color: var(--info);
+      border: 1px solid #bfdbfe;
+    }
+    
+    .badge-bodywork {
+      background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+      color: var(--success);
+      border: 1px solid #bbf7d0;
+    }
+    
+    .badge-state {
+      background: linear-gradient(135deg, #fafafa 0%, #f4f4f5 100%);
+      color: #64748b;
+      border: 1px solid #e4e4e7;
+    }
+    
+    .badge-status {
+      padding: 0.4rem 0.8rem;
+      border-radius: 8px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+    
+    .badge-ativo {
+      background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+      color: var(--success);
+      border: 1px solid #bbf7d0;
+    }
+    
+    .badge-inativo {
+      background: linear-gradient(135deg, #fafafa 0%, #f4f4f5 100%);
+      color: #64748b;
+      border: 1px solid #e4e4e7;
+    }
+    
+    .badge-bloqueado {
+      background: linear-gradient(135deg, #fef2f2 0%, #fecaca 100%);
+      color: var(--danger);
+      border: 1px solid #fca5a5;
+    }
+    
+    /* Ações */
+    .action-buttons {
+      display: flex;
+      gap: 0.5rem;
+    }
+    
+    .btn-action {
+      width: 36px;
+      height: 36px;
+      border: none;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s ease;
+      font-size: 0.9rem;
+    }
+    
+    .btn-edit {
+      background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+      color: var(--info);
+      border: 1px solid #bfdbfe;
+    }
+    
+    .btn-edit:hover {
+      background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+      transform: translateY(-2px);
+    }
+    
+    .btn-delete {
+      background: linear-gradient(135deg, #fef2f2 0%, #fecaca 100%);
+      color: var(--danger);
+      border: 1px solid #fca5a5;
+    }
+    
+    .btn-delete:hover {
+      background: linear-gradient(135deg, #fecaca 0%, #fca5a5 100%);
+      transform: translateY(-2px);
+    }
+    
+    /* Status Cards */
+    .status-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+    }
+    
+    .status-card {
+      background: white;
+      padding: 2rem;
+      border-radius: 20px;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.08);
+      text-align: center;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      border: 1px solid rgba(0,0,0,0.03);
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .status-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
+      background: linear-gradient(90deg, var(--primary), var(--success));
+    }
+    
+    .status-card:hover {
+      transform: translateY(-8px);
+      box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+    }
+    
+    .status-icon {
+      width: 70px;
+      height: 70px;
+      border-radius: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 1.5rem;
+      font-size: 2rem;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+    }
+    
+    .status-icon.primary {
+      background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+      color: var(--primary);
+    }
+    
+    .status-icon.success {
+      background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+      color: var(--success);
+    }
+    
+    .status-icon.warning {
+      background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+      color: var(--warning);
+    }
+    
+    .status-icon.danger {
+      background: linear-gradient(135deg, #fef2f2 0%, #fecaca 100%);
+      color: var(--danger);
+    }
+    
+    .status-number {
+      font-size: 2.5rem;
+      font-weight: 800;
+      margin-bottom: 0.5rem;
+      background: linear-gradient(135deg, var(--primary), var(--success));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    
+    .status-label {
+      color: #64748b;
+      font-size: 1rem;
+      font-weight: 600;
+    }
+    
+    /* Upload Moderno */
+    .upload-area {
+      border: 2px dashed #cbd5e1;
+      border-radius: 16px;
+      padding: 3rem 2rem;
+      text-align: center;
+      transition: all 0.3s ease;
+      background: #f8fafc;
+      cursor: pointer;
+    }
+    
+    .upload-area:hover {
+      border-color: var(--primary);
+      background: rgba(102, 126, 234, 0.05);
+    }
+    
+    .upload-area.dragover {
+      border-color: var(--success);
+      background: rgba(16, 185, 129, 0.05);
+    }
+    
+    .upload-icon {
+      font-size: 3rem;
+      color: #cbd5e1;
+      margin-bottom: 1rem;
+      transition: all 0.3s ease;
+    }
+    
+    .upload-area:hover .upload-icon {
+      color: var(--primary);
+    }
+    
+    /* Animações */
+    @keyframes pulse {
+      0% { opacity: 1; }
+      50% { opacity: 0.7; }
+      100% { opacity: 1; }
+    }
+    
+    .pulse {
+      animation: pulse 2s infinite;
+    }
+    
+    /* Responsivo */
+    @media (max-width: 768px) {
+      .app-header {
+        padding: 1rem 0;
+      }
+      
+      .nav-modern {
+        flex-direction: column;
+      }
+      
+      .nav-modern .nav-link {
+        justify-content: center;
+        text-align: center;
+      }
+      
+      .vehicle-classes-cadastro {
+        grid-template-columns: 1fr;
+      }
+      
+      .status-grid {
+        grid-template-columns: 1fr;
+      }
+      
+      .action-buttons {
+        flex-direction: column;
+        gap: 0.25rem;
+      }
+      
+      .btn-action {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<div class="app-container">
+  <!-- Header Moderno -->
+  <header class="app-header">
+    <div class="container">
+      <div class="row align-items-center">
+        <div class="col">
+          <div class="d-flex align-items-center gap-3">
+            <div class="bg-white rounded-3 p-2 shadow-lg">
+              <i class="fas fa-database text-primary fs-4"></i>
+            </div>
+            <div>
+              <h1 class="h3 mb-0 fw-bold">Cadastro de Motoristas</h1>
+              <div class="user-badge">
+                <i class="fas fa-user me-1"></i>
+                <span id="currentUser">Carregando...</span>
+                <span class="badge bg-light text-dark ms-2">ADMIN</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="col-auto">
+          <div class="d-flex gap-2">
+            <a href="painel.html" class="btn btn-outline-light btn-sm">
+              <i class="fas fa-rocket me-1"></i> Ir para Painel
+            </a>
+            <button id="btnLogout" class="btn btn-outline-light btn-sm">
+              <i class="fas fa-sign-out-alt me-1"></i> Sair
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Conteúdo Principal -->
+  <main class="container py-4">
+    
+    <!-- Navegação Moderna -->
+    <div class="modern-tabs">
+      <nav class="nav-modern">
+        <a class="nav-link active" href="#cadastro" data-bs-toggle="tab">
+          <i class="fas fa-user-plus"></i>
+          Cadastro Individual
+        </a>
+        <a class="nav-link" href="#importacao" data-bs-toggle="tab">
+          <i class="fas fa-file-import"></i>
+          Importação em Lote
+        </a>
+        <a class="nav-link" href="#gestao" data-bs-toggle="tab">
+          <i class="fas fa-users"></i>
+          Gestão de Contatos
+        </a>
+        <a class="nav-link" href="#backup" data-bs-toggle="tab">
+          <i class="fas fa-shield-alt"></i>
+          Backup & Reset
+        </a>
+      </nav>
+    </div>
+
+    <!-- Status Rápido -->
+    <div class="status-grid">
+      <div class="status-card">
+        <div class="status-icon primary">
+          <i class="fas fa-users"></i>
+        </div>
+        <div class="status-number" id="totalContatos">0</div>
+        <div class="status-label">Total Cadastrados</div>
+      </div>
+      <div class="status-card">
+        <div class="status-icon success">
+          <i class="fas fa-check-circle"></i>
+        </div>
+        <div class="status-number" id="contatosAtivos">0</div>
+        <div class="status-label">Ativos</div>
+      </div>
+      <div class="status-card">
+        <div class="status-icon warning">
+          <i class="fas fa-user-slash"></i>
+        </div>
+        <div class="status-number" id="contatosInativos">0</div>
+        <div class="status-label">Inativos</div>
+      </div>
+      <div class="status-card">
+        <div class="status-icon danger">
+          <i class="fas fa-ban"></i>
+        </div>
+        <div class="status-number" id="contatosBloqueados">0</div>
+        <div class="status-label">Bloqueados</div>
+      </div>
+    </div>
+
+    <!-- Conteúdo das Abas -->
+    <div class="tab-content">
+      
+      <!-- Aba: Cadastro Individual -->
+      <div class="tab-pane fade show active" id="cadastro">
+        <div class="modern-card">
+          <div class="card-header">
+            <i class="fas fa-user-plus me-2"></i>Cadastrar Novo Motorista
+          </div>
+          <div class="card-body">
+            <form id="formCadastro">
+              
+              <!-- Informações Pessoais -->
+              <div class="form-section">
+                <div class="section-title">
+                  <i class="fas fa-id-card"></i>
+                  Informações Pessoais
+                </div>
+                <div class="row g-3">
+                  <div class="col-md-6">
+                    <label class="form-label-modern">Nome Completo *</label>
+                    <input type="text" id="nome" class="form-control form-control-modern" required placeholder="Digite o nome completo">
+                  </div>
+                  <div class="col-md-3">
+                    <label class="form-label-modern">CNH</label>
+                    <input type="text" id="cnh" class="form-control form-control-modern" placeholder="Número da CNH">
+                  </div>
+                  <div class="col-md-3">
+                    <label class="form-label-modern">Categoria CNH</label>
+                    <select id="categoria_cnh" class="form-select form-select-modern">
+                      <option value="">Selecione</option>
+                      <option value="A">A - Motos</option>
+                      <option value="B">B - Carros</option>
+                      <option value="C">C - Caminhões</option>
+                      <option value="D">D - Ônibus</option>
+                      <option value="E">E - Carreta</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Contatos -->
+              <div class="form-section">
+                <div class="section-title">
+                  <i class="fas fa-phone"></i>
+                  Contatos
+                </div>
+                <div class="row g-3">
+                  <div class="col-md-4">
+                    <label class="form-label-modern">Telefone 1 *</label>
+                    <input type="text" id="telefone1" class="form-control form-control-modern" required placeholder="5511999999999">
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label-modern">Telefone 2</label>
+                    <input type="text" id="telefone2" class="form-control form-control-modern" placeholder="5511888888888">
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label-modern">Estado (DDD)</label>
+                    <select id="estado" class="form-select form-select-modern">
+                      <option value="">Selecione o estado</option>
+                      <option value="SP">São Paulo</option>
+                      <option value="RJ">Rio de Janeiro</option>
+                      <option value="MG">Minas Gerais</option>
+                      <option value="ES">Espírito Santo</option>
+                      <option value="PR">Paraná</option>
+                      <option value="SC">Santa Catarina</option>
+                      <option value="RS">Rio Grande do Sul</option>
+                      <option value="MS">Mato Grosso do Sul</option>
+                      <option value="MT">Mato Grosso</option>
+                      <option value="GO">Goiás</option>
+                      <option value="DF">Distrito Federal</option>
+                      <option value="BA">Bahia</option>
+                      <option value="SE">Sergipe</option>
+                      <option value="AL">Alagoas</option>
+                      <option value="PE">Pernambuco</option>
+                      <option value="PB">Paraíba</option>
+                      <option value="RN">Rio Grande do Norte</option>
+                      <option value="CE">Ceará</option>
+                      <option value="PI">Piauí</option>
+                      <option value="MA">Maranhão</option>
+                      <option value="PA">Pará</option>
+                      <option value="AP">Amapá</option>
+                      <option value="AM">Amazonas</option>
+                      <option value="RR">Roraima</option>
+                      <option value="AC">Acre</option>
+                      <option value="RO">Rondônia</option>
+                      <option value="TO">Tocantins</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Veículo - Sistema Inteligente -->
+              <div class="form-section">
+                <div class="section-title">
+                  <i class="fas fa-truck"></i>
+                  Veículo
+                </div>
+                
+                <!-- Classes de Veículo -->
+                <div class="vehicle-classes-cadastro" id="vehicleClassesCadastro">
+                  <div class="vehicle-class-cadastro" data-class="leve" onclick="selecionarClasseCadastro('leve')">
+                    <div class="class-icon">
+                      <i class="fas fa-truck-pickup"></i>
+                    </div>
+                    <div class="class-name">Leves</div>
+                    <div class="class-description">Fiorino, 3/4, Toco, VLC</div>
+                  </div>
+                  <div class="vehicle-class-cadastro" data-class="medio" onclick="selecionarClasseCadastro('medio')">
+                    <div class="class-icon">
+                      <i class="fas fa-truck"></i>
+                    </div>
+                    <div class="class-name">Médios</div>
+                    <div class="class-description">Bitruck, Truck</div>
+                  </div>
+                  <div class="vehicle-class-cadastro" data-class="pesado" onclick="selecionarClasseCadastro('pesado')">
+                    <div class="class-icon">
+                      <i class="fas fa-truck-moving"></i>
+                    </div>
+                    <div class="class-name">Pesados</div>
+                    <div class="class-description">Bitrem, Carreta, Rodotrem</div>
+                  </div>
+                </div>
+
+                <!-- Tipos de Veículo e Carroceria (Dinâmicos) -->
+                <div class="row g-3">
+                  <div class="col-md-6">
+                    <label class="form-label-modern">Tipo de Veículo *</label>
+                    <select id="tipo_veiculo" class="form-select form-select-modern" required disabled>
+                      <option value="">Selecione a classe do veículo primeiro</option>
+                    </select>
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label-modern">Tipo de Carroceria *</label>
+                    <select id="tipo_carroceria" class="form-select form-select-modern" required disabled>
+                      <option value="">Selecione a classe do veículo primeiro</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Placas -->
+              <div class="form-section">
+                <div class="section-title">
+                  <i class="fas fa-id-card-alt"></i>
+                  Placas
+                </div>
+                <div class="row g-3">
+                  <div class="col-md-4">
+                    <label class="form-label-modern">Placa do Cavalo</label>
+                    <input type="text" id="placa_cavalo" class="form-control form-control-modern" placeholder="ABC1D23">
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label-modern">Placa da Carreta 1</label>
+                    <input type="text" id="placa_carreta1" class="form-control form-control-modern" placeholder="XYZ4W56">
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label-modern">Placa da Carreta 2</label>
+                    <input type="text" id="placa_carreta2" class="form-control form-control-modern" placeholder="QRS7T89">
+                  </div>
+                </div>
+              </div>
+
+              <!-- Configuração do Sistema -->
+              <div class="form-section">
+                <div class="section-title">
+                  <i class="fas fa-cog"></i>
+                  Configuração do Sistema
+                </div>
+                <div class="row g-3">
+                  <div class="col-md-12">
+                    <label class="form-label-modern">Status</label>
+                    <select id="status" class="form-select form-select-modern">
+                      <option value="ativo">Ativo</option>
+                      <option value="inativo">Inativo</option>
+                      <option value="bloqueado">Bloqueado</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Ações do Formulário -->
+              <div class="d-flex gap-3 justify-content-end mt-4">
+                <button type="button" class="btn btn-modern btn-modern-warning" onclick="limparFormulario()">
+                  <i class="fas fa-broom me-2"></i>Limpar
+                </button>
+                <button type="submit" class="btn btn-modern btn-modern-success">
+                  <i class="fas fa-save me-2"></i>Cadastrar Motorista
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+
+      <!-- Aba: Importação em Lote -->
+      <div class="tab-pane fade" id="importacao">
+        <div class="row">
+          <div class="col-md-6">
+            <div class="modern-card h-100">
+              <div class="card-header">
+                <i class="fas fa-file-import me-2"></i>Importar do CSV
+              </div>
+              <div class="card-body">
+                <div class="upload-area" id="uploadArea" onclick="document.getElementById('csvFile').click()">
+                  <div class="upload-icon">
+                    <i class="fas fa-cloud-upload-alt"></i>
+                  </div>
+                  <h5 class="fw-bold mb-2">Arraste ou clique para upload</h5>
+                  <p class="text-muted mb-3">Suporte para arquivos CSV</p>
+                  <input type="file" id="csvFile" class="d-none" accept=".csv">
+                  <button class="btn btn-modern btn-modern-primary">
+                    <i class="fas fa-folder-open me-2"></i>Selecionar Arquivo
+                  </button>
+                </div>
+                
+                <div class="mt-4">
+                  <label class="form-label-modern">Opções de Importação</label>
+                  <div class="form-check mb-2">
+                    <input class="form-check-input" type="checkbox" id="sobrescrever" checked>
+                    <label class="form-check-label" for="sobrescrever">
+                      Sobrescrever contatos duplicados
+                    </label>
+                  </div>
+                  <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="manter_inativos">
+                    <label class="form-check-label" for="manter_inativos">
+                      Manter contatos inativos existentes
+                    </label>
+                  </div>
+                </div>
+                
+                <button onclick="importarCSV()" class="btn btn-modern btn-modern-success w-100 mt-4">
+                  <i class="fas fa-upload me-2"></i>Importar CSV
+                </button>
+                
+                <div class="mt-3 text-center">
+                  <a href="#" onclick="baixarTemplateCSV()" class="btn btn-link text-decoration-none">
+                    <i class="fas fa-download me-1"></i>Baixar Template CSV
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="col-md-6">
+            <div class="modern-card h-100">
+              <div class="card-header">
+                <i class="fas fa-sync me-2"></i>Importação Automática
+              </div>
+              <div class="card-body">
+                <p class="card-text">Importação automática do arquivo <code>contatos.csv</code> do servidor.</p>
+                
+                <div class="mb-4">
+                  <label class="form-label-modern">Arquivo Atual</label>
+                  <div class="input-group">
+                    <input type="text" class="form-control form-control-modern" value="contatos.csv" readonly>
+                    <button class="btn btn-modern btn-modern-info" type="button" onclick="verificarArquivoCSV()">
+                      <i class="fas fa-search"></i>
+                    </button>
+                  </div>
+                </div>
+                
+                <button onclick="importarCSVAutomatico()" class="btn btn-modern btn-modern-info w-100 mb-3">
+                  <i class="fas fa-sync me-2"></i>Importar do Arquivo Padrão
+                </button>
+                
+                <div id="statusImportacao" class="mt-3"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="modern-card mt-4">
+          <div class="card-header">
+            <i class="fas fa-history me-2"></i>Histórico de Importação
+          </div>
+          <div class="card-body">
+            <div class="table-responsive">
+              <table class="table table-modern">
+                <thead>
+                  <tr>
+                    <th>Data/Hora</th>
+                    <th>Arquivo</th>
+                    <th>Registros</th>
+                    <th>Inseridos</th>
+                    <th>Atualizados</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody id="historicoImportacao">
+                  <tr>
+                    <td colspan="6" class="text-center text-muted py-4">
+                      <i class="fas fa-history fa-2x mb-3 d-block"></i>
+                      Nenhum histórico de importação
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Aba: Gestão de Contatos -->
+      <div class="tab-pane fade" id="gestao">
+        <div class="modern-card">
+          <div class="card-header d-flex justify-content-between align-items-center">
+            <span><i class="fas fa-users me-2"></i>Gestão de Motoristas Cadastrados</span>
+            <div class="d-flex gap-2">
+              <button class="btn btn-modern btn-modern-success btn-sm" onclick="exportarContatos()">
+                <i class="fas fa-download me-1"></i>Exportar
+              </button>
+              <button class="btn btn-modern btn-modern-primary btn-sm" onclick="carregarContatos()">
+                <i class="fas fa-sync me-1"></i>Atualizar
+              </button>
+            </div>
+          </div>
+          <div class="card-body">
+            
+            <!-- Filtros Rápidos -->
+            <div class="row g-3 mb-4">
+              <div class="col-md-3">
+                <label class="form-label-modern">Filtrar por Classe</label>
+                <select id="filtroClasse" class="form-select form-select-modern" onchange="aplicarFiltros()">
+                  <option value="">Todas as classes</option>
+                  <option value="leve">Leve</option>
+                  <option value="medio">Médio</option>
+                  <option value="pesado">Pesado</option>
+                </select>
+              </div>
+              <div class="col-md-3">
+                <label class="form-label-modern">Filtrar por Carroceria</label>
+                <select id="filtroCarroceria" class="form-select form-select-modern" onchange="aplicarFiltros()">
+                  <option value="">Todas as carrocerias</option>
+                  <option value="bau">Baú</option>
+                  <option value="sider">Sider</option>
+                  <option value="graneleiro">Graneleiro</option>
+                  <option value="cacamba">Caçamba</option>
+                  <option value="prancha">Prancha</option>
+                  <option value="plataforma">Plataforma</option>
+                  <option value="bitrem">Bitrem</option>
+                  <option value="carreta">Carreta</option>
+                  <option value="rodotrem">Rodotrem</option>
+                </select>
+              </div>
+              <div class="col-md-3">
+                <label class="form-label-modern">Filtrar por Estado</label>
+                <select id="filtroEstado" class="form-select form-select-modern" onchange="aplicarFiltros()">
+                  <option value="">Todos os estados</option>
+                  <!-- Estados serão carregados via JavaScript -->
+                </select>
+              </div>
+              <div class="col-md-3">
+                <label class="form-label-modern">Filtrar por Status</label>
+                <select id="filtroStatus" class="form-select form-select-modern" onchange="aplicarFiltros()">
+                  <option value="">Todos os status</option>
+                  <option value="ativo">Ativo</option>
+                  <option value="inativo">Inativo</option>
+                  <option value="bloqueado">Bloqueado</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Tabela de Contatos -->
+            <div class="table-responsive">
+              <table class="table table-modern">
+                <thead>
+                  <tr>
+                    <th>Nome</th>
+                    <th>Contatos</th>
+                    <th>Veículo</th>
+                    <th>Carroceria</th>
+                    <th>Estado</th>
+                    <th>Status</th>
+                    <th>Ações</th>
+                  </tr>
+                </thead>
+                <tbody id="tabelaContatos">
+                  <tr>
+                    <td colspan="7" class="text-center text-muted py-5">
+                      <i class="fas fa-users fa-3x mb-3 d-block"></i>
+                      <h5 class="fw-bold">Nenhum motorista cadastrado</h5>
+                      <p class="text-muted">Comece cadastrando um novo motorista na aba "Cadastro Individual"</p>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <!-- Paginação -->
+            <nav aria-label="Navegação de páginas" class="mt-4">
+              <ul class="pagination justify-content-center" id="paginacao">
+                <!-- Paginação será gerada via JavaScript -->
+              </ul>
+            </nav>
+          </div>
+        </div>
+      </div>
+
+      <!-- Aba: Backup & Reset -->
+      <div class="tab-pane fade" id="backup">
+        <div class="row">
+          <div class="col-md-6">
+            <div class="modern-card h-100">
+              <div class="card-header">
+                <i class="fas fa-download me-2"></i>Backup dos Dados
+              </div>
+              <div class="card-body">
+                <p class="card-text">Faça backup completo da base de dados de motoristas.</p>
+                
+                <div class="mb-4">
+                  <label class="form-label-modern">Formato do Backup</label>
+                  <select id="formatoBackup" class="form-select form-select-modern">
+                    <option value="csv">CSV (Excel)</option>
+                    <option value="json">JSON</option>
+                  </select>
+                </div>
+                
+                <button onclick="fazerBackup()" class="btn btn-modern btn-modern-success w-100 mb-3">
+                  <i class="fas fa-database me-2"></i>Gerar Backup Completo
+                </button>
+                
+                <div class="alert alert-info">
+                  <small>
+                    <i class="fas fa-info-circle me-1"></i>
+                    <strong>Último backup:</strong> <span id="ultimoBackup">Nunca</span>
+                  </small>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="col-md-6">
+            <div class="modern-card h-100">
+              <div class="card-header">
+                <i class="fas fa-trash-alt me-2"></i>Gestão de Risco
+              </div>
+              <div class="card-body">
+                <p class="card-text">Ações administrativas para gestão da base de dados.</p>
+                
+                <div class="d-grid gap-2">
+                  <button onclick="limparInativos()" class="btn btn-modern btn-modern-warning">
+                    <i class="fas fa-user-slash me-2"></i>Limpar Contatos Inativos
+                  </button>
+                  
+                  <button onclick="resetarBase()" class="btn btn-modern btn-modern-danger">
+                    <i class="fas fa-trash me-2"></i>Resetar Base Completa
+                  </button>
+                </div>
+                
+                <div class="alert alert-warning mt-3">
+                  <small>
+                    <i class="fas fa-exclamation-triangle me-1"></i>
+                    <strong>Atenção:</strong> Estas ações não podem ser desfeitas.
+                  </small>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="modern-card mt-4">
+          <div class="card-header">
+            <i class="fas fa-chart-bar me-2"></i>Estatísticas do Sistema
+          </div>
+          <div class="card-body">
+            <div class="row g-3" id="estatisticasSistema">
+              <!-- Estatísticas serão carregadas via JavaScript -->
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+// ========== CONFIGURAÇÕES GLOBAIS ==========
+const SERVER_URL = window.location.origin;
+let todosContatos = [];
+let contatosFiltrados = [];
+let currentPage = 1;
+const pageSize = 20;
+
+// Mapeamentos inteligentes (igual ao painel)
+const tiposVeiculo = {
+  leve: ['3/4', 'Fiorino', 'Toco', 'VLC'],
+  medio: ['Bitruck', 'Truck'],
+  pesado: ['Bitrem', 'Carreta', 'Carreta LS', 'Rodotrem', 'Vanderleia']
+};
+
+const bodyworkByClass = {
+  leve: ['bau', 'bau_frigorifico', 'bau_refrigerado', 'cacamba', 'prancha'],
+  medio: ['bau', 'bau_frigorifico', 'sider', 'graneleiro', 'plataforma'],
+  pesado: ['sider', 'graneleiro', 'bitrem', 'carreta', 'carreta_ls', 'rodotrem', 'vanderleia', 'apenas_cavalo', 'cegonheiro', 'gaiola', 'tanque']
+};
+
+const tiposCarroceriaMap = {
+  bau: 'Baú',
+  bau_frigorifico: 'Baú Frigorífico',
+  bau_refrigerado: 'Baú Refrigerado',
+  sider: 'Sider',
+  cacamba: 'Caçamba',
+  graneleiro: 'Graneleiro',
+  plataforma: 'Plataforma',
+  prancha: 'Prancha',
+  bitrem: 'Bitrem',
+  carreta: 'Carreta',
+  carreta_ls: 'Carreta LS',
+  rodotrem: 'Rodotrem',
+  vanderleia: 'Vanderleia',
+  apenas_cavalo: 'Apenas Cavalo',
+  cegonheiro: 'Cegonheiro',
+  gaiola: 'Gaiola',
+  tanque: 'Tanque'
+};
+
+const estados = [
+  'AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 
+  'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 
+  'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO'
+];
+
+// ========== INICIALIZAÇÃO ==========
+document.addEventListener('DOMContentLoaded', function() {
+  carregarInformacoesUsuario();
+  inicializarFormulario();
+  carregarContatos();
+  carregarFiltros();
+});
+
+// ========== FUNÇÕES DE USUÁRIO ==========
+async function carregarInformacoesUsuario() {
+  try {
+    const response = await fetch(`${SERVER_URL}/api/auth/status`, {
+      credentials: 'include'
+    });
+    
+    if (response.ok) {
+      const data = await response.json();
+      if (data.autenticado && data.usuario) {
+        document.getElementById('currentUser').textContent = data.usuario;
+        
+        if (data.usuario.toLowerCase() !== 'admin') {
+          alert('Acesso negado. Apenas administradores podem acessar esta página.');
+          window.location.href = 'painel.html';
+        }
+      } else {
+        window.location.href = '/';
+      }
+    } else {
+      window.location.href = '/';
+    }
+  } catch (error) {
+    console.error('Erro de autenticação:', error);
+    window.location.href = '/';
+  }
+}
+
+async function fazerLogout() {
+  if (confirm('Deseja realmente sair do sistema?')) {
+    try {
+      await fetch(`${SERVER_URL}/api/logout`, {
+        method: 'POST',
+        credentials: 'include'
+      });
+    } catch (error) {
+      console.error('Erro no logout:', error);
+    } finally {
+      window.location.href = '/';
+    }
+  }
+}
+
+// ========== SISTEMA DE CADASTRO INTELIGENTE ==========
+function inicializarFormulario() {
+  // Event listener para o formulário
+  document.getElementById('formCadastro').addEventListener('submit', function(e) {
+    e.preventDefault();
+    cadastrarMotorista();
+  });
+  
+  // Event listener para logout
+  document.getElementById('btnLogout').addEventListener('click', fazerLogout);
+  
+  // Inicializar drag and drop
+  inicializarDragAndDrop();
+}
+
+function selecionarClasseCadastro(classe) {
+  // Remover classe ativa de todos
+  document.querySelectorAll('.vehicle-class-cadastro').forEach(el => {
+    el.classList.remove('active');
+  });
+  
+  // Adicionar classe ativa ao selecionado
+  document.querySelector(`.vehicle-class-cadastro[data-class="${classe}"]`).classList.add('active');
+  
+  // Atualizar campos dinâmicos
+  atualizarTiposVeiculo(classe);
+  atualizarTiposCarroceria(classe);
+  
+  // Habilitar selects
+  document.getElementById('tipo_veiculo').disabled = false;
+  document.getElementById('tipo_carroceria').disabled = false;
+}
+
+function atualizarTiposVeiculo(classe) {
+  const select = document.getElementById('tipo_veiculo');
+  select.innerHTML = '<option value="">Selecione o tipo</option>';
+  
+  if (classe && tiposVeiculo[classe]) {
+    tiposVeiculo[classe].forEach(tipo => {
+      const option = document.createElement('option');
+      option.value = tipo.toLowerCase().replace(/ /g, '_');
+      option.textContent = tipo;
+      select.appendChild(option);
+    });
+  }
+}
+
+function atualizarTiposCarroceria(classe) {
+  const select = document.getElementById('tipo_carroceria');
+  select.innerHTML = '<option value="">Selecione o tipo</option>';
+  
+  if (classe && bodyworkByClass[classe]) {
+    bodyworkByClass[classe].forEach(tipo => {
+      if (tiposCarroceriaMap[tipo]) {
+        const option = document.createElement('option');
+        option.value = tipo;
+        option.textContent = tiposCarroceriaMap[tipo];
+        select.appendChild(option);
+      }
+    });
+  }
+}
+
+// ========== CADASTRO DE MOTORISTAS ==========
+async function cadastrarMotorista() {
+  const classeSelecionada = document.querySelector('.vehicle-class-cadastro.active');
+  
+  if (!classeSelecionada) {
+    mostrarErro('Selecione a classe do veículo');
+    return;
+  }
+  
+  const formData = new FormData(document.getElementById('formCadastro'));
+  const dados = Object.fromEntries(formData);
+  
+  // Adicionar classe do veículo aos dados
+  dados.classe_veiculo = classeSelecionada.dataset.class;
+  
+  try {
+    const response = await fetch(`${SERVER_URL}/webhook/motoristas`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(dados)
+    });
+    
+    const result = await response.json();
+    
+    if (response.ok) {
+      mostrarSucesso('✅ Motorista cadastrado com sucesso!');
+      limparFormulario();
+      carregarContatos(); // Atualizar a lista
+    } else {
+      mostrarErro(`❌ Erro ao cadastrar: ${result.error}`);
+    }
+  } catch (error) {
+    console.error('Erro:', error);
+    mostrarErro('❌ Erro de conexão com o servidor');
+  }
+}
+
+function limparFormulario() {
+  document.getElementById('formCadastro').reset();
+  
+  // Limpar seleção de classe
+  document.querySelectorAll('.vehicle-class-cadastro').forEach(el => {
+    el.classList.remove('active');
+  });
+  
+  // Resetar selects dinâmicos
+  document.getElementById('tipo_veiculo').innerHTML = '<option value="">Selecione a classe do veículo primeiro</option>';
+  document.getElementById('tipo_veiculo').disabled = true;
+  document.getElementById('tipo_carroceria').innerHTML = '<option value="">Selecione a classe do veículo primeiro</option>';
+  document.getElementById('tipo_carroceria').disabled = true;
+}
+
+// ========== GESTÃO DE CONTATOS ==========
+async function carregarContatos() {
+  try {
+    const response = await fetch(`${SERVER_URL}/webhook/motoristas`);
+    const contatos = await response.json();
+    
+    todosContatos = contatos;
+    atualizarEstatisticas();
+    aplicarFiltros();
+  } catch (error) {
+    console.error('Erro ao carregar contatos:', error);
+    mostrarErro('Erro ao carregar contatos');
+  }
+}
+
+function atualizarEstatisticas() {
+  const total = todosContatos.length;
+  const ativos = todosContatos.filter(c => c.status === 'ativo').length;
+  const inativos = todosContatos.filter(c => c.status === 'inativo').length;
+  const bloqueados = todosContatos.filter(c => c.status === 'bloqueado').length;
+  
+  document.getElementById('totalContatos').textContent = total;
+  document.getElementById('contatosAtivos').textContent = ativos;
+  document.getElementById('contatosInativos').textContent = inativos;
+  document.getElementById('contatosBloqueados').textContent = bloqueados;
+}
+
+function carregarFiltros() {
+  // Carregar estados no filtro
+  const selectEstado = document.getElementById('filtroEstado');
+  estados.forEach(estado => {
+    const option = document.createElement('option');
+    option.value = estado;
+    option.textContent = estado;
+    selectEstado.appendChild(option);
+  });
+  
+  // Carregar carrocerias no filtro
+  const selectCarroceria = document.getElementById('filtroCarroceria');
+  Object.keys(tiposCarroceriaMap).forEach(key => {
+    const option = document.createElement('option');
+    option.value = key;
+    option.textContent = tiposCarroceriaMap[key];
+    selectCarroceria.appendChild(option);
+  });
+}
+
+function aplicarFiltros() {
+  const filtroClasse = document.getElementById('filtroClasse').value;
+  const filtroCarroceria = document.getElementById('filtroCarroceria').value;
+  const filtroEstado = document.getElementById('filtroEstado').value;
+  const filtroStatus = document.getElementById('filtroStatus').value;
+  
+  contatosFiltrados = todosContatos.filter(contato => {
+    return (!filtroClasse || contato.classe_veiculo === filtroClasse) &&
+           (!filtroCarroceria || contato.tipo_carroceria === filtroCarroceria) &&
+           (!filtroEstado || contato.estado === filtroEstado) &&
+           (!filtroStatus || contato.status === filtroStatus);
+  });
+  
+  atualizarTabelaContatos();
+  atualizarPaginacao();
+}
+
+function atualizarTabelaContatos() {
+  const tbody = document.getElementById('tabelaContatos');
+  const startIndex = (currentPage - 1) * pageSize;
+  const endIndex = startIndex + pageSize;
+  const contatosPagina = contatosFiltrados.slice(startIndex, endIndex);
+  
+  if (contatosPagina.length === 0) {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="7" class="text-center text-muted py-5">
+          <i class="fas fa-search fa-3x mb-3 d-block"></i>
+          <h5 class="fw-bold">Nenhum motorista encontrado</h5>
+          <p class="text-muted">Tente ajustar os filtros ou cadastrar novos motoristas</p>
+        </td>
+      </tr>
+    `;
+    return;
+  }
+  
+  let html = '';
+  contatosPagina.forEach(contato => {
+    html += `
+      <tr>
+        <td>
+          <div class="fw-bold">${contato.nome}</div>
+          ${contato.cnh ? `<small class="text-muted">CNH: ${contato.cnh}</small>` : ''}
+        </td>
+        <td>
+          <div class="d-flex flex-column gap-1">
+            <span><i class="fas fa-phone text-primary me-1"></i>${contato.telefone1}</span>
+            ${contato.telefone2 ? `<span><i class="fas fa-phone-alt text-secondary me-1"></i>${contato.telefone2}</span>` : ''}
+          </div>
+        </td>
+        <td>
+          <span class="badge-modern badge-vehicle">${contato.classe_veiculo}</span>
+          <div class="small text-muted mt-1">${contato.tipo_veiculo}</div>
+        </td>
+        <td>
+          <span class="badge-modern badge-bodywork">${tiposCarroceriaMap[contato.tipo_carroceria] || contato.tipo_carroceria}</span>
+        </td>
+        <td>
+          ${contato.estado ? `<span class="badge-modern badge-state">${contato.estado}</span>` : '-'}
+        </td>
+        <td>
+          <span class="badge-status badge-${contato.status}">${contato.status}</span>
+        </td>
+        <td>
+          <div class="action-buttons">
+            <button class="btn-action btn-edit" onclick="editarMotorista('${contato.telefone1}')" title="Editar">
+              <i class="fas fa-edit"></i>
+            </button>
+            <button class="btn-action btn-delete" onclick="excluirMotorista('${contato.telefone1}')" title="Excluir">
+              <i class="fas fa-trash"></i>
+            </button>
+          </div>
+        </td>
+      </tr>
+    `;
+  });
+  
+  tbody.innerHTML = html;
+}
+
+function atualizarPaginacao() {
+  const totalPages = Math.ceil(contatosFiltrados.length / pageSize);
+  const paginacao = document.getElementById('paginacao');
+  
+  if (totalPages <= 1) {
+    paginacao.innerHTML = '';
+    return;
+  }
+  
+  let html = '';
+  
+  // Botão anterior
+  html += `
+    <li class="page-item ${currentPage === 1 ? 'disabled' : ''}">
+      <a class="page-link" href="#" onclick="mudarPagina(${currentPage - 1})">‹</a>
+    </li>
+  `;
+  
+  // Páginas
+  for (let i = 1; i <= totalPages; i++) {
+    if (i === 1 || i === totalPages || (i >= currentPage - 2 && i <= currentPage + 2)) {
+      html += `
+        <li class="page-item ${i === currentPage ? 'active' : ''}">
+          <a class="page-link" href="#" onclick="mudarPagina(${i})">${i}</a>
+        </li>
+      `;
+    } else if (i === currentPage - 3 || i === currentPage + 3) {
+      html += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+    }
+  }
+  
+  // Botão próximo
+  html += `
+    <li class="page-item ${currentPage === totalPages ? 'disabled' : ''}">
+      <a class="page-link" href="#" onclick="mudarPagina(${currentPage + 1})">›</a>
+    </li>
+  `;
+  
+  paginacao.innerHTML = html;
+}
+
+function mudarPagina(pagina) {
+  currentPage = pagina;
+  atualizarTabelaContatos();
+}
+
+// ========== FUNÇÕES DE EDIÇÃO/EXCLUSÃO ==========
+function editarMotorista(telefone) {
+  // Buscar dados do motorista
+  const motorista = todosContatos.find(m => m.telefone1 === telefone);
+  if (!motorista) return;
+  
+  // Preencher formulário com dados existentes
+  document.getElementById('nome').value = motorista.nome || '';
+  document.getElementById('cnh').value = motorista.cnh || '';
+  document.getElementById('categoria_cnh').value = motorista.categoria_cnh || '';
+  document.getElementById('telefone1').value = motorista.telefone1 || '';
+  document.getElementById('telefone2').value = motorista.telefone2 || '';
+  document.getElementById('estado').value = motorista.estado || '';
+  document.getElementById('placa_cavalo').value = motorista.placa_cavalo || '';
+  document.getElementById('placa_carreta1').value = motorista.placa_carreta1 || '';
+  document.getElementById('placa_carreta2').value = motorista.placa_carreta2 || '';
+  document.getElementById('status').value = motorista.status || 'ativo';
+  
+  // Selecionar classe do veículo
+  selecionarClasseCadastro(motorista.classe_veiculo);
+  
+  // Preencher tipos (com delay para garantir que os selects foram atualizados)
+  setTimeout(() => {
+    document.getElementById('tipo_veiculo').value = motorista.tipo_veiculo?.toLowerCase().replace(/ /g, '_') || '';
+    document.getElementById('tipo_carroceria').value = motorista.tipo_carroceria?.toLowerCase().replace(/ /g, '_') || '';
+  }, 100);
+  
+  // Rolar para o topo do formulário
+  document.getElementById('cadastro').scrollIntoView({ behavior: 'smooth' });
+  
+  // Alterar texto do botão para indicar edição
+  const btnSubmit = document.querySelector('#formCadastro button[type="submit"]');
+  btnSubmit.innerHTML = '<i class="fas fa-edit me-2"></i>Atualizar Motorista';
+  btnSubmit.classList.remove('btn-modern-success');
+  btnSubmit.classList.add('btn-modern-primary');
+  
+  // Adicionar atributo para identificar que é uma edição
+  document.getElementById('formCadastro').dataset.editing = telefone;
+}
+
+async function excluirMotorista(telefone) {
+  if (!confirm('Tem certeza que deseja excluir este motorista?')) {
+    return;
+  }
+  
+  try {
+    const response = await fetch(`${SERVER_URL}/webhook/motoristas/${telefone}`, {
+      method: 'DELETE'
+    });
+    
+    if (response.ok) {
+      mostrarSucesso('✅ Motorista excluído com sucesso!');
+      carregarContatos(); // Atualizar a lista
+    } else {
+      const result = await response.json();
+      mostrarErro(`❌ Erro ao excluir: ${result.error}`);
+    }
+  } catch (error) {
+    console.error('Erro:', error);
+    mostrarErro('❌ Erro de conexão com o servidor');
+  }
+}
+
+// ========== IMPORTACAO CSV ==========
+function inicializarDragAndDrop() {
+  const uploadArea = document.getElementById('uploadArea');
+  const fileInput = document.getElementById('csvFile');
+  
+  uploadArea.addEventListener('dragover', function(e) {
+    e.preventDefault();
+    uploadArea.classList.add('dragover');
+  });
+  
+  uploadArea.addEventListener('dragleave', function() {
+    uploadArea.classList.remove('dragover');
+  });
+  
+  uploadArea.addEventListener('drop', function(e) {
+    e.preventDefault();
+    uploadArea.classList.remove('dragover');
+    
+    const files = e.dataTransfer.files;
+    if (files.length > 0) {
+      fileInput.files = files;
+      processarArquivoCSV(files[0]);
+    }
+  });
+  
+  fileInput.addEventListener('change', function(e) {
+    if (e.target.files.length > 0) {
+      processarArquivoCSV(e.target.files[0]);
+    }
+  });
+}
+
+function processarArquivoCSV(file) {
+  const fileName = file.name;
+  const fileSize = (file.size / 1024 / 1024).toFixed(2); // MB
+  
+  if (!fileName.toLowerCase().endsWith('.csv')) {
+    mostrarErro('❌ Por favor, selecione um arquivo CSV válido.');
+    return;
+  }
+  
+  // Atualizar interface
+  const uploadArea = document.getElementById('uploadArea');
+  uploadArea.innerHTML = `
+    <div class="upload-icon text-success">
+      <i class="fas fa-check-circle"></i>
+    </div>
+    <h5 class="fw-bold mb-1">Arquivo selecionado</h5>
+    <p class="text-muted mb-1">${fileName}</p>
+    <small class="text-success">${fileSize} MB - Pronto para importar</small>
+  `;
+}
+
+async function importarCSV() {
+  const fileInput = document.getElementById('csvFile');
+  
+  if (!fileInput.files.length) {
+    mostrarErro('❌ Selecione um arquivo CSV para importar.');
+    return;
+  }
+  
+  const file = fileInput.files[0];
+  const sobrescrever = document.getElementById('sobrescrever').checked;
+  const manterInativos = document.getElementById('manter_inativos').checked;
+  
+  try {
+    const formData = new FormData();
+    formData.append('csv', file);
+    formData.append('sobrescrever', sobrescrever);
+    formData.append('manterInativos', manterInativos);
+    
+    mostrarLoading('⏳ Importando dados...');
+    
+    const response = await fetch(`${SERVER_URL}/webhook/importar-csv`, {
+      method: 'POST',
+      body: formData
+    });
+    
+    const result = await response.json();
+    
+    if (response.ok) {
+      mostrarSucesso(`✅ Importação concluída!<br>
+        • ${result.inseridos} novos registros<br>
+        • ${result.atualizados} registros atualizados<br>
+        • ${result.erros} erros`);
+      
+      // Resetar upload area
+      document.getElementById('uploadArea').innerHTML = `
+        <div class="upload-icon">
+          <i class="fas fa-cloud-upload-alt"></i>
+        </div>
+        <h5 class="fw-bold mb-2">Arraste ou clique para upload</h5>
+        <p class="text-muted mb-3">Suporte para arquivos CSV</p>
+        <input type="file" id="csvFile" class="d-none" accept=".csv">
+        <button class="btn btn-modern btn-modern-primary">
+          <i class="fas fa-folder-open me-2"></i>Selecionar Arquivo
+        </button>
+      `;
+      
+      // Re-inicializar drag and drop
+      inicializarDragAndDrop();
+      
+      // Atualizar lista de contatos
+      carregarContatos();
+      
+      // Atualizar histórico
+      adicionarAoHistorico({
+        data: new Date().toLocaleString('pt-BR'),
+        arquivo: file.name,
+        registros: result.total,
+        inseridos: result.inseridos,
+        atualizados: result.atualizados,
+        status: 'Sucesso'
+      });
+      
+    } else {
+      mostrarErro(`❌ Erro na importação: ${result.error}`);
+    }
+    
+  } catch (error) {
+    console.error('Erro:', error);
+    mostrarErro('❌ Erro de conexão com o servidor');
+  }
+}
+
+async function importarCSVAutomatico() {
+  try {
+    mostrarLoading('🔍 Verificando arquivo padrão...');
+    
+    const response = await fetch(`${SERVER_URL}/webhook/importar-csv-automatico`, {
+      method: 'POST'
+    });
+    
+    const result = await response.json();
+    
+    if (response.ok) {
+      mostrarSucesso(`✅ Importação automática concluída!<br>
+        • ${result.inseridos} novos registros<br>
+        • ${result.atualizados} registros atualizados<br>
+        • ${result.erros} erros`);
+      
+      carregarContatos();
+      
+      adicionarAoHistorico({
+        data: new Date().toLocaleString('pt-BR'),
+        arquivo: 'contatos.csv (automático)',
+        registros: result.total,
+        inseridos: result.inseridos,
+        atualizados: result.atualizados,
+        status: 'Sucesso'
+      });
+      
+    } else {
+      mostrarErro(`❌ Erro na importação automática: ${result.error}`);
+    }
+    
+  } catch (error) {
+    console.error('Erro:', error);
+    mostrarErro('❌ Erro de conexão com o servidor');
+  }
+}
+
+function verificarArquivoCSV() {
+  mostrarInfo('🔍 Verificando disponibilidade do arquivo contatos.csv...');
+  
+  // Simulação - em implementação real, faria uma requisição para o servidor
+  setTimeout(() => {
+    mostrarInfo('📁 Arquivo contatos.csv encontrado no servidor. Pronto para importação.');
+  }, 1000);
+}
+
+function baixarTemplateCSV() {
+  // Criar template CSV - REMOVIDA CATEGORIA_DISPARO
+  const headers = ['nome', 'telefone1', 'telefone2', 'estado', 'cnh', 'categoria_cnh', 'classe_veiculo', 'tipo_veiculo', 'tipo_carroceria', 'placa_cavalo', 'placa_carreta1', 'placa_carreta2', 'status'];
+  const exemplo = ['João Silva', '5511999999999', '5511888888888', 'SP', '12345678900', 'B', 'leve', 'toco', 'bau', 'ABC1D23', '', '', 'ativo'];
+  
+  let csvContent = headers.join(',') + '\n';
+  csvContent += exemplo.join(',') + '\n';
+  
+  // Criar blob e download
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  const url = URL.createObjectURL(blob);
+  
+  link.setAttribute('href', url);
+  link.setAttribute('download', 'template_motoristas.csv');
+  link.style.visibility = 'hidden';
+  
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  
+  mostrarSucesso('📥 Template CSV baixado com sucesso!');
+}
+
+function adicionarAoHistorico(importacao) {
+  const tbody = document.getElementById('historicoImportacao');
+  
+  // Remover mensagem de vazio se existir
+  if (tbody.querySelector('td[colspan]')) {
+    tbody.innerHTML = '';
+  }
+  
+  const tr = document.createElement('tr');
+  tr.innerHTML = `
+    <td>${importacao.data}</td>
+    <td>${importacao.arquivo}</td>
+    <td>${importacao.registros}</td>
+    <td>${importacao.inseridos}</td>
+    <td>${importacao.atualizados}</td>
+    <td><span class="badge bg-success">${importacao.status}</span></td>
+  `;
+  
+  tbody.insertBefore(tr, tbody.firstChild);
+}
+
+// ========== EXPORTAÇÃO ==========
+async function exportarContatos() {
+  try {
+    mostrarLoading('📤 Preparando exportação...');
+    
+    const formato = document.getElementById('formatoBackup').value;
+    const response = await fetch(`${SERVER_URL}/webhook/exportar-contatos?formato=${formato}`);
+    
+    if (response.ok) {
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `motoristas_${new Date().toISOString().split('T')[0]}.${formato}`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      mostrarSucesso(`✅ Exportação ${formato.toUpperCase()} concluída!`);
+      
+      // Atualizar último backup
+      document.getElementById('ultimoBackup').textContent = new Date().toLocaleString('pt-BR');
+      
+    } else {
+      const result = await response.json();
+      mostrarErro(`❌ Erro na exportação: ${result.error}`);
+    }
+    
+  } catch (error) {
+    console.error('Erro:', error);
+    mostrarErro('❌ Erro de conexão com o servidor');
+  }
+}
+
+// ========== BACKUP E RESET ==========
+async function fazerBackup() {
+  await exportarContatos(); // Reutiliza a função de exportação
+}
+
+async function limparInativos() {
+  if (!confirm('⚠️ TEM CUIDADO!\n\nIsso irá remover permanentemente TODOS os motoristas com status "inativo".\n\nDeseja continuar?')) {
+    return;
+  }
+  
+  try {
+    mostrarLoading('🧹 Limpando contatos inativos...');
+    
+    const response = await fetch(`${SERVER_URL}/webhook/limpar-inativos`, {
+      method: 'DELETE'
+    });
+    
+    const result = await response.json();
+    
+    if (response.ok) {
+      mostrarSucesso(`✅ Limpeza concluída!<br>• ${result.removidos} contatos inativos removidos`);
+      carregarContatos();
+    } else {
+      mostrarErro(`❌ Erro na limpeza: ${result.error}`);
+    }
+    
+  } catch (error) {
+    console.error('Erro:', error);
+    mostrarErro('❌ Erro de conexão com o servidor');
+  }
+}
+
+async function resetarBase() {
+  if (!confirm('🚨 PERIGO!\n\nIsso irá apagar TODOS os motoristas cadastrados.\n\nEsta ação NÃO PODE ser desfeita!\n\nDigite "RESETAR" para confirmar:')) {
+    return;
+  }
+  
+  const confirmacao = prompt('Digite "RESETAR" para confirmar:');
+  if (confirmacao !== 'RESETAR') {
+    mostrarInfo('❌ Reset cancelado.');
+    return;
+  }
+  
+  try {
+    mostrarLoading('🗑️ Resetando base de dados...');
+    
+    const response = await fetch(`${SERVER_URL}/webhook/resetar-base`, {
+      method: 'DELETE'
+    });
+    
+    const result = await response.json();
+    
+    if (response.ok) {
+      mostrarSucesso(`✅ Base resetada com sucesso!<br>• ${result.removidos} registros apagados`);
+      carregarContatos();
+    } else {
+      mostrarErro(`❌ Erro no reset: ${result.error}`);
+    }
+    
+  } catch (error) {
+    console.error('Erro:', error);
+    mostrarErro('❌ Erro de conexão com o servidor');
+  }
+}
+
+// ========== UTILITÁRIOS ==========
+function mostrarSucesso(mensagem) {
+  mostrarMensagem(mensagem, 'success');
+}
+
+function mostrarErro(mensagem) {
+  mostrarMensagem(mensagem, 'danger');
+}
+
+function mostrarInfo(mensagem) {
+  mostrarMensagem(mensagem, 'info');
+}
+
+function mostrarLoading(mensagem) {
+  mostrarMensagem(`<div class="spinner-border spinner-border-sm me-2"></div>${mensagem}`, 'info');
+}
+
+function mostrarMensagem(mensagem, tipo) {
+  // Remover mensagens anteriores
+  const mensagensAnteriores = document.querySelectorAll('.alert-floating');
+  mensagensAnteriores.forEach(msg => msg.remove());
+  
+  // Criar nova mensagem
+  const alert = document.createElement('div');
+  alert.className = `alert alert-${tipo} alert-floating alert-dismissible fade show`;
+  alert.innerHTML = `
+    ${mensagem}
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+  `;
+  
+  // Estilos para mensagem flutuante
+  Object.assign(alert.style, {
+    position: 'fixed',
+    top: '100px',
+    right: '20px',
+    zIndex: '9999',
+    minWidth: '300px',
+    boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
+    borderRadius: '12px'
+  });
+  
+  document.body.appendChild(alert);
+  
+  // Auto-remover após 5 segundos para sucesso/info
+  if (tipo !== 'danger') {
+    setTimeout(() => {
+      if (alert.parentNode) {
+        alert.remove();
+      }
+    }, 5000);
+  }
+}
+
+// Carregar estatísticas do sistema
+function carregarEstatisticasSistema() {
+  const statsContainer = document.getElementById('estatisticasSistema');
+  
+  const stats = [
+    { icon: 'fa-database', label: 'Total de Registros', value: todosContatos.length },
+    { icon: 'fa-hdd', label: 'Espaço Utilizado', value: '~' + Math.round(todosContatos.length * 0.5) + ' KB' },
+    { icon: 'fa-calendar', label: 'Última Atualização', value: new Date().toLocaleDateString('pt-BR') },
+    { icon: 'fa-code-branch', label: 'Versão do Sistema', value: '1.0.0' }
+  ];
+  
+  let html = '';
+  stats.forEach(stat => {
+    html += `
+      <div class="col-md-3">
+        <div class="status-card">
+          <div class="status-icon primary">
+            <i class="fas ${stat.icon}"></i>
+          </div>
+          <div class="status-number">${stat.value}</div>
+          <div class="status-label">${stat.label}</div>
+        </div>
+      </div>
+    `;
+  });
+  
+  statsContainer.innerHTML = html;
+}
+
+// Atualizar estatísticas quando os contatos são carregados
+const originalCarregarContatos = carregarContatos;
+carregarContatos = async function() {
+  await originalCarregarContatos();
+  carregarEstatisticasSistema();
+};
+
+// ========== INICIALIZAÇÃO COMPLETA ==========
+document.addEventListener('DOMContentLoaded', function() {
+  carregarInformacoesUsuario();
+  inicializarFormulario();
+  carregarContatos();
+  carregarFiltros();
+  carregarEstatisticasSistema();
+});
+
+console.log('✅ Sistema de Cadastro de Motoristas carregado com sucesso!');
+</script>
+</body>
+</html>

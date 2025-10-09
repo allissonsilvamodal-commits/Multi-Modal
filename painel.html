@@ -643,10 +643,10 @@
 const SERVER_URL = window.location.origin;
 let envioAtivo = false;
 let selectedCat = null;
-let contacts = [];
+let allContacts = []; // Todos os contatos da categoria
 let currentPage = 1;
 let pageSize = 100;
-let selectedContacts = new Set();
+let selectedContacts = new Set(); // Armazena números selecionados
 let currentUser = '';
 let isAdmin = false;
 
@@ -816,7 +816,7 @@ Deseja continuar?`)) {
     `;
     
     // Limpar lista de contatos na interface
-    contacts = [];
+    allContacts = [];
     selectedContacts.clear();
     document.getElementById('contactsList').innerHTML = `
       <div class="text-center text-muted py-4">
@@ -1073,18 +1073,25 @@ function carregarEventos() {
 
   // Selecionar todos
   document.getElementById('selectAllCheckbox').addEventListener('change', function() {
+    const currentContacts = getCurrentPageContacts();
     const checkboxes = document.querySelectorAll('.contact-checkbox:not(#selectAllCheckbox)');
+    
     checkboxes.forEach(checkbox => {
       checkbox.checked = this.checked;
-      const contactId = checkbox.dataset.contactId;
+      const contactNumber = checkbox.dataset.contactNumber;
+      
       if (this.checked) {
-        selectedContacts.add(contactId);
+        selectedContacts.add(contactNumber);
       } else {
-        selectedContacts.delete(contactId);
+        selectedContacts.delete(contactNumber);
       }
     });
+    
     atualizarContadorSelecionados();
   });
+
+  // Botão de envio
+  document.getElementById('sendBtn').addEventListener('click', iniciarDisparo);
 }
 
 // ========== FUNÇÕES PRINCIPAIS ==========
@@ -1110,10 +1117,10 @@ async function carregarContatos(categoria) {
     
     if (!res.ok) throw new Error('Erro ao carregar contatos');
     
-    contacts = await res.json();
+    allContacts = await res.json();
     contactsInfo.innerHTML = `
       <div class="alert alert-success">
-        <strong><i class="fas fa-check-circle me-2"></i>${contacts.length} contatos encontrados</strong>
+        <strong><i class="fas fa-check-circle me-2"></i>${allContacts.length} contatos encontrados</strong>
         <div class="small"><i class="fas fa-tag me-1"></i>Categoria: ${categoria}</div>
       </div>
     `;
@@ -1126,13 +1133,19 @@ async function carregarContatos(categoria) {
   }
 }
 
+function getCurrentPageContacts() {
+  const startIndex = (currentPage - 1) * pageSize;
+  const endIndex = Math.min(startIndex + pageSize, allContacts.length);
+  return allContacts.slice(startIndex, endIndex);
+}
+
 function atualizarListaContatos() {
   const contactsList = document.getElementById('contactsList');
   const paginationContainer = document.getElementById('paginationContainer');
   const selectAllSection = document.getElementById('selectAllSection');
   const selectionInfo = document.getElementById('selectionInfo');
 
-  if (contacts.length === 0) {
+  if (allContacts.length === 0) {
     contactsList.innerHTML = '<div class="text-center text-muted py-4"><i class="fas fa-inbox fa-2x mb-3"></i><div>📭 Nenhum contato encontrado</div></div>';
     paginationContainer.style.display = 'none';
     selectAllSection.style.display = 'none';
@@ -1141,10 +1154,8 @@ function atualizarListaContatos() {
   }
 
   // Calcular paginação
-  const totalPages = Math.ceil(contacts.length / pageSize);
-  const startIndex = (currentPage - 1) * pageSize;
-  const endIndex = Math.min(startIndex + pageSize, contacts.length);
-  const currentContacts = contacts.slice(startIndex, endIndex);
+  const totalPages = Math.ceil(allContacts.length / pageSize);
+  const currentContacts = getCurrentPageContacts();
 
   // Mostrar/ocultar elementos de seleção
   selectAllSection.style.display = 'block';
@@ -1152,22 +1163,23 @@ function atualizarListaContatos() {
   paginationContainer.style.display = 'block';
 
   // Atualizar informações da página
-  document.getElementById('pageInfo').textContent = `Página ${currentPage} de ${totalPages} - ${startIndex + 1} a ${endIndex} de ${contacts.length} contatos`;
+  const startIndex = (currentPage - 1) * pageSize;
+  const endIndex = Math.min(startIndex + pageSize, allContacts.length);
+  document.getElementById('pageInfo').textContent = `Página ${currentPage} de ${totalPages} - ${startIndex + 1} a ${endIndex} de ${allContacts.length} contatos`;
 
   // Gerar lista de contatos
   let html = '';
-  currentContacts.forEach((contact, index) => {
-    const contactId = `${contact.number}-${index}`;
-    const isSelected = selectedContacts.has(contactId);
+  currentContacts.forEach((contact) => {
+    const isSelected = selectedContacts.has(contact.number);
     
     html += `
       <div class="contact-item">
         <div class="d-flex justify-content-between align-items-center">
           <div class="d-flex align-items-center">
             <input class="form-check-input contact-checkbox" type="checkbox" 
-                   data-contact-id="${contactId}" 
+                   data-contact-number="${contact.number}" 
                    ${isSelected ? 'checked' : ''}
-                   onchange="toggleContactSelection('${contactId}', this.checked)">
+                   onchange="toggleContactSelection('${contact.number}', this.checked)">
             <div class="ms-3">
               <strong><i class="fas fa-user me-1"></i>${contact.name}</strong><br>
               <small class="text-muted"><i class="fas fa-phone me-1"></i>${contact.number}</small>
@@ -1229,11 +1241,11 @@ function mudarPagina(pagina) {
   atualizarListaContatos();
 }
 
-function toggleContactSelection(contactId, isSelected) {
+function toggleContactSelection(contactNumber, isSelected) {
   if (isSelected) {
-    selectedContacts.add(contactId);
+    selectedContacts.add(contactNumber);
   } else {
-    selectedContacts.delete(contactId);
+    selectedContacts.delete(contactNumber);
   }
   atualizarContadorSelecionados();
   
@@ -1309,10 +1321,17 @@ async function iniciarDisparo() {
   }
 
   // Filtrar contatos selecionados
-  const contactsToSend = contacts.filter(contact => {
-    const contactId = `${contact.number}-${contacts.indexOf(contact)}`;
-    return selectedContacts.has(contactId);
-  });
+  const contactsToSend = allContacts.filter(contact => 
+    selectedContacts.has(contact.number)
+  );
+
+  console.log(`📨 Contatos para enviar: ${contactsToSend.length}`);
+  console.log('📋 Lista de contatos selecionados:', contactsToSend);
+
+  if (contactsToSend.length === 0) {
+    alert('❌ Nenhum contato válido encontrado para envio. Verifique a seleção.');
+    return;
+  }
 
   // Calcular tempo estimado (30-120 segundos por mensagem)
   const tempoMin = Math.ceil((contactsToSend.length * 30) / 60);
@@ -1331,7 +1350,7 @@ async function iniciarDisparo() {
   const statusDiv = document.getElementById('status');
   
   sendBtn.disabled = true;
-  sendBtn.textContent = '⏳ Enviando...';
+  sendBtn.innerHTML = '<i class="fas fa-play me-2"></i>⏳ ENVIANDO...';
   stopBtn.style.display = 'block';
   progBar.style.width = '0%';
   progressText.textContent = '0%';
@@ -1362,7 +1381,7 @@ async function iniciarDisparo() {
       
       if (result.success) {
         successCount++;
-        console.log(`✅ Enviado para: ${contact.name}`);
+        console.log(`✅ Enviado para: ${contact.name} (${contact.number})`);
       } else {
         errorCount++;
         console.error(`❌ Erro para ${contact.name}:`, result.error);
@@ -1429,7 +1448,7 @@ function finalizarEnvio(successCount, errorCount, totalEnviados) {
   
   // ✅ RESETAR TODA A INTERFACE
   sendBtn.disabled = false;
-  sendBtn.textContent = '<i class="fas fa-play me-2"></i>INICIAR DISPARO EM MASSA';
+  sendBtn.innerHTML = '<i class="fas fa-play me-2"></i>INICIAR DISPARO EM MASSA';
   stopBtn.style.display = 'none';
   progBar.style.width = '100%';
   progBar.classList.remove('progress-bar-animated');
@@ -1456,9 +1475,6 @@ function finalizarEnvio(successCount, errorCount, totalEnviados) {
   
   console.log('✅ Interface resetada após envio');
 }
-
-// Configurar botão de envio
-document.getElementById('sendBtn').addEventListener('click', iniciarDisparo);
 
 console.log('✅ Sistema carregado com sucesso!');
 console.log('🔒 Modo seguro ativo: Delay aleatório de 30s a 60s entre mensagens');
