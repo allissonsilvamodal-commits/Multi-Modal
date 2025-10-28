@@ -3,1637 +3,1530 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Relatórios - Sistema de Coletas</title>
+    <title>Relatórios - Multimodal</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+    <script src="https://cdn.jsdelivr.net/npm/particles.js@2.0.0/particles.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script>
+        window.supabase = supabase;
+    </script>
+    <script src="js/permissions.js"></script>
     <style>
         :root {
-            --primary: #002776;
-            --secondary: #0044AA;
-            --success: #28a745;
-            --warning: #fd7e14;
-            --danger: #C60C30;
-            --info: #4A7BFF;
-            --light: #f8f9fa;
-            --dark: #212529;
-            --text: #2b2d42;
-            --text-light: #6c757d;
-            --border: #dee2e6;
-            --shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
-            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            --gradient-primary: linear-gradient(135deg, #002776 0%, #0044AA 100%);
-            --gradient-success: linear-gradient(135deg, #28a745 0%, #20c997 100%);
-            --gradient-warning: linear-gradient(135deg, #fd7e14 0%, #ffc107 100%);
-            --gradient-danger: linear-gradient(135deg, #C60C30 0%, #E63946 100%);
-            --gradient-dark: linear-gradient(135deg, #212529 0%, #343a40 100%);
-            --card-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
-            --hover-shadow: 0 15px 40px rgba(0, 0, 0, 0.15);
-            --border-radius: 16px;
+            --primary: #667eea;
+            --secondary: #764ba2;
+            --accent: #f093fb;
+            --success: #11998e;
+            --warning: #ffc107;
+            --danger: #dc3545;
+            --info: #17a2b8;
+            --dark: #0f0f23;
+            --glass: rgba(255, 255, 255, 0.1);
+            --glass-border: rgba(255, 255, 255, 0.2);
+            --text-primary: #ffffff;
+            --text-secondary: rgba(255, 255, 255, 0.8);
+            --border-radius: 25px;
+            --box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+            --transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
-        .dark-mode {
-            --primary: #4cc9f0;
-            --secondary: #4895ef;
-            --success: #4361ee;
-            --warning: #f72585;
-            --danger: #e63946;
-            --info: #7209b7;
-            --light: #343a40;
-            --dark: #f8f9fa;
-            --text: #e9ecef;
-            --text-light: #adb5bd;
-            --border: #495057;
-            --shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-            --gradient-primary: linear-gradient(135deg, #4cc9f0 0%, #4895ef 100%);
-            --gradient-dark: linear-gradient(135deg, #343a40 0%, #212529 100%);
-            --card-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
-            --hover-shadow: 0 15px 40px rgba(0, 0, 0, 0.5);
-        }
-
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
 
         body {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: var(--text);
-            line-height: 1.6;
+            font-family: 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 50%, #16213e 100%);
             min-height: 100vh;
-            transition: var(--transition);
+            color: var(--text-primary);
             overflow-x: hidden;
-        }
-
-        /* Header Moderno */
-        .main-header {
-            background: var(--gradient-primary);
-            color: white;
-            padding: 1.5rem 0;
-            box-shadow: var(--shadow);
             position: relative;
-            overflow: hidden;
         }
 
-        .main-header::before {
-            content: '';
-            position: absolute;
+        #particles-js {
+            position: fixed;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 320"><path fill="%23ffffff" fill-opacity="0.1" d="M0,96L48,112C96,128,192,160,288,186.7C384,213,480,235,576,213.3C672,192,768,128,864,128C960,128,1056,192,1152,197.3C1248,203,1344,149,1392,122.7L1440,96L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z"></path></svg>');
-            background-size: cover;
-            animation: wave 10s linear infinite;
+            z-index: -1;
         }
 
-        @keyframes wave {
-            0% { transform: translateX(0); }
-            50% { transform: translateX(-30px); }
-            100% { transform: translateX(0); }
+        .light-effect {
+            position: absolute;
+            width: 400px;
+            height: 400px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(102, 126, 234, 0.4) 0%, transparent 70%);
+            filter: blur(60px);
+            animation: float 8s ease-in-out infinite;
         }
 
-        .header-content {
-            position: relative;
-            z-index: 1;
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 0 2rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 1.5rem;
+        .light-effect:nth-child(1) {
+            top: -100px;
+            left: -100px;
+            animation-delay: 0s;
         }
 
-        .header-title {
-            font-size: 2.2rem;
+        .light-effect:nth-child(2) {
+            bottom: -100px;
+            right: -100px;
+            animation-delay: 3s;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px) scale(1); }
+            50% { transform: translateY(-30px) scale(1.2); }
+        }
+
+        .navbar {
+            background: rgba(15, 15, 35, 0.95);
+            backdrop-filter: blur(30px);
+            border-bottom: 1px solid var(--glass-border);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            padding: 1.5rem 2rem;
+        }
+
+        .navbar-brand {
             font-weight: 800;
-            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
-            display: flex;
-            align-items: center;
-            gap: 1rem;
+            font-size: 2rem;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-shadow: 0 0 40px rgba(102, 126, 234, 0.6);
         }
 
-        .header-title i {
-            background: rgba(255, 255, 255, 0.2);
-            padding: 0.8rem;
-            border-radius: 12px;
-            backdrop-filter: blur(10px);
-        }
+        .container { padding: 3rem 1rem; position: relative; }
 
-        .header-subtitle {
-            font-size: 1.1rem;
-            opacity: 0.9;
-            font-weight: 300;
-            margin-top: 0.5rem;
-        }
-
-        .header-actions {
-            display: flex;
-            gap: 1rem;
-            align-items: center;
-        }
-
-        /* Botões Modernos */
-        .btn-modern {
-            background: rgba(255, 255, 255, 0.15);
-            backdrop-filter: blur(10px);
-            border: 2px solid rgba(255, 255, 255, 0.3);
-            color: white;
-            padding: 0.8rem 1.5rem;
-            border-radius: 12px;
-            cursor: pointer;
-            font-weight: 600;
+        .card-tech {
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
+            backdrop-filter: blur(40px);
+            border: 2px solid rgba(255, 255, 255, 0.25);
+            border-radius: var(--border-radius);
+            box-shadow: inset 0 0 40px rgba(102, 126, 234, 0.15), 0 20px 60px rgba(0, 0, 0, 0.5);
             transition: var(--transition);
-            display: flex;
-            align-items: center;
-            gap: 0.7rem;
-            text-decoration: none;
             position: relative;
             overflow: hidden;
         }
 
-        .btn-modern::before {
+        .card-tech::before {
             content: '';
             position: absolute;
             top: 0;
             left: -100%;
             width: 100%;
             height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
-            transition: var(--transition);
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: all 1s;
+            z-index: 1;
         }
 
-        .btn-modern:hover {
-            background: rgba(255, 255, 255, 0.25);
-            transform: translateY(-3px);
-            box-shadow: 0 10px 25px rgba(255, 255, 255, 0.2);
-        }
-
-        .btn-modern:hover::before {
-            left: 100%;
-        }
-
-        .dark-mode-toggle {
-            background: rgba(255, 255, 255, 0.15);
-            backdrop-filter: blur(10px);
-            border: 2px solid rgba(255, 255, 255, 0.3);
-            color: white;
-            width: 50px;
-            height: 50px;
-            border-radius: 50%;
-            cursor: pointer;
-            font-size: 1.3rem;
-            transition: var(--transition);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .dark-mode-toggle:hover {
-            background: rgba(255, 255, 255, 0.25);
-            transform: rotate(15deg) scale(1.1);
-        }
-
-        /* Container Principal */
-        .main-container {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 2rem;
-        }
-
-        /* Filtros e Controles - DESIGN MODERNIZADO */
-        .controls-container {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
-            border-radius: var(--border-radius);
-            padding: 2rem;
-            margin-bottom: 2rem;
-            box-shadow: var(--card-shadow);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-        }
-
-        .filters-row {
-            display: flex;
-            gap: 1.5rem;
-            flex-wrap: wrap;
-            margin-bottom: 1.5rem;
-        }
-
-        .filter-group {
-            display: flex;
-            flex-direction: column;
-            gap: 0.7rem;
-            min-width: 200px;
-            flex: 1;
-        }
-
-        .filter-group label {
-            font-weight: 600;
-            color: var(--primary);
-            font-size: 0.9rem;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .filter-group select,
-        .filter-group input {
-            padding: 0.8rem 1rem;
-            border: 2px solid var(--border);
-            border-radius: 10px;
-            font-size: 0.9rem;
-            background: rgba(255, 255, 255, 0.9);
-            color: var(--text);
-            transition: var(--transition);
-        }
-
-        .filter-group select:focus,
-        .filter-group input:focus {
-            outline: none;
-            border-color: var(--primary);
-            box-shadow: 0 0 0 3px rgba(0, 39, 118, 0.1);
-            transform: translateY(-2px);
-        }
-
-        /* Filtros de Data */
-        .date-filters {
-            display: flex;
-            gap: 1rem;
-            align-items: end;
-            flex-wrap: wrap;
-            padding: 1.5rem;
-            background: rgba(0, 39, 118, 0.05);
-            border-radius: 15px;
-            margin-bottom: 1.5rem;
-            border: 1px solid rgba(0, 39, 118, 0.1);
-        }
-
-        .date-filter-group {
-            display: flex;
-            flex-direction: column;
-            gap: 0.7rem;
-            min-width: 180px;
-            flex: 1;
-        }
-
-        .quick-date-buttons {
-            display: flex;
-            gap: 0.7rem;
-            flex-wrap: wrap;
-            margin-top: 0.5rem;
-        }
-
-        .quick-date-btn {
-            padding: 0.5rem 1rem;
-            border: 1px solid var(--primary);
-            background: transparent;
-            color: var(--primary);
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 0.8rem;
-            font-weight: 600;
-            transition: var(--transition);
-        }
-
-        .quick-date-btn:hover,
-        .quick-date-btn.active {
-            background: var(--primary);
-            color: white;
-        }
-
-        /* Botões de Ação */
-        .action-buttons {
-            display: flex;
-            gap: 1rem;
-            justify-content: flex-end;
-            margin-top: 1.5rem;
-        }
-
-        .action-btn {
-            padding: 0.8rem 1.5rem;
-            border: none;
-            border-radius: 10px;
-            cursor: pointer;
-            font-weight: 600;
-            transition: var(--transition);
-            display: flex;
-            align-items: center;
-            gap: 0.7rem;
-            font-size: 0.9rem;
-        }
-
-        .action-btn.primary {
-            background: var(--primary);
-            color: white;
-        }
-
-        .action-btn.success {
-            background: var(--success);
-            color: white;
-        }
-
-        .action-btn.warning {
-            background: var(--warning);
-            color: white;
-        }
-
-        .action-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
-        }
-
-        /* Grid de Relatórios - DESIGN MODERNIZADO */
-        .reports-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
-            gap: 2rem;
-            margin-bottom: 3rem;
-        }
-
-        .report-card {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
-            border-radius: var(--border-radius);
-            padding: 2rem;
-            box-shadow: var(--card-shadow);
-            transition: var(--transition);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            position: relative;
-            overflow: hidden;
-        }
-
-        .report-card::before {
+        .card-tech:hover::before { left: 100%; }
+        
+        .card-tech::after {
             content: '';
             position: absolute;
             top: 0;
             left: 0;
-            width: 100%;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.2), rgba(118, 75, 162, 0.2));
+            opacity: 0;
+            transition: all 0.5s;
+            z-index: 0;
+        }
+
+        .card-tech:hover::after { opacity: 1; }
+        
+        .card-tech:hover { 
+            transform: translateY(-20px) scale(1.02) rotateX(2deg); 
+            box-shadow: inset 0 0 60px rgba(102, 126, 234, 0.4), 0 30px 80px rgba(102, 126, 234, 0.6);
+            border-color: rgba(102, 126, 234, 0.8);
+        }
+
+        .card-header-tech {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+            border: none;
+            padding: 2.5rem;
+            border-radius: var(--border-radius) var(--border-radius) 0 0;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 10px 40px rgba(102, 126, 234, 0.4);
+        }
+
+        .card-header-tech::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(45deg, transparent 30%, rgba(255, 255, 255, 0.3) 50%, transparent 70%);
+            animation: shimmer 4s infinite;
+        }
+
+        .card-header-tech::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
             height: 4px;
-            background: var(--primary);
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.6), transparent);
+            animation: shimmer-bar 3s infinite;
         }
 
-        .report-card:hover {
-            transform: translateY(-8px);
-            box-shadow: var(--hover-shadow);
+        @keyframes shimmer {
+            0% { transform: translate(-50%, -50%) rotate(0deg); }
+            100% { transform: translate(-50%, -50%) rotate(360deg); }
         }
 
-        .report-header {
+        @keyframes shimmer-bar {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+
+        .card-header-tech h5 {
+            margin: 0;
             display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            margin-bottom: 1.5rem;
-        }
-
-        .report-title {
-            font-size: 1.4rem;
-            font-weight: 700;
-            color: var(--text);
-            margin-bottom: 0.5rem;
-        }
-
-        .report-description {
-            font-size: 0.9rem;
-            color: var(--text-light);
-            line-height: 1.5;
-        }
-
-        .report-icon {
-            font-size: 2.8rem;
-            color: var(--primary);
-            opacity: 0.8;
-            transition: var(--transition);
-        }
-
-        .report-card:hover .report-icon {
-            transform: scale(1.1);
-        }
-
-        .report-stats {
-            display: flex;
-            justify-content: space-between;
-            margin-top: 1.5rem;
-            padding-top: 1.5rem;
-            border-top: 1px solid var(--border);
-        }
-
-        .stat-item {
-            text-align: center;
-            flex: 1;
-        }
-
-        .stat-value {
-            font-size: 2rem;
-            font-weight: 700;
-            color: var(--primary);
-            margin-bottom: 0.3rem;
-            transition: var(--transition);
-        }
-
-        .report-card:hover .stat-value {
-            transform: scale(1.05);
-        }
-
-        .stat-label {
-            font-size: 0.8rem;
-            color: var(--text-light);
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        /* CARD DE VOLUME FINANCEIRO ESPECÍFICO */
-        .finance-card .report-stats {
-            flex-direction: column;
+            align-items: center;
             gap: 1rem;
-        }
-
-        .finance-card .stat-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            text-align: left;
-            padding: 0.8rem;
-            background: rgba(0, 39, 118, 0.03);
-            border-radius: 10px;
-            border-left: 4px solid var(--success);
-        }
-
-        .finance-card .stat-item:nth-child(2) {
-            border-left-color: var(--primary);
-        }
-
-        .finance-card .stat-item:nth-child(3) {
-            border-left-color: var(--warning);
-        }
-
-        .finance-card .stat-value {
-            font-size: 1.4rem;
             font-weight: 700;
-            color: var(--text);
-            margin-bottom: 0;
-        }
-
-        .finance-card .stat-label {
-            font-size: 0.85rem;
-            color: var(--text-light);
-            font-weight: 600;
-        }
-
-        .finance-card .value-container {
-            display: flex;
-            flex-direction: column;
-            align-items: flex-end;
-        }
-
-        .finance-card .value-trend {
-            font-size: 0.75rem;
-            font-weight: 600;
-            padding: 0.2rem 0.5rem;
-            border-radius: 12px;
-            margin-top: 0.2rem;
-        }
-
-        .value-trend.positive {
-            background: rgba(40, 167, 69, 0.1);
-            color: var(--success);
-        }
-
-        .value-trend.negative {
-            background: rgba(198, 12, 48, 0.1);
-            color: var(--danger);
-        }
-
-        .value-trend.neutral {
-            background: rgba(108, 117, 125, 0.1);
-            color: #6c757d;
-        }
-
-        /* Gráficos - DESIGN MODERNIZADO */
-        .charts-container {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(520px, 1fr));
-            gap: 2rem;
-            margin-bottom: 3rem;
-        }
-
-        .chart-card {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
-            border-radius: var(--border-radius);
-            padding: 2rem;
-            box-shadow: var(--card-shadow);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            transition: var(--transition);
-        }
-
-        .chart-card:hover {
-            transform: translateY(-5px);
-            box-shadow: var(--hover-shadow);
-        }
-
-        .chart-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 1.5rem;
-        }
-
-        .chart-title {
             font-size: 1.3rem;
-            font-weight: 700;
-            color: var(--text);
-            display: flex;
-            align-items: center;
-            gap: 0.8rem;
-        }
-
-        .chart-actions {
-            display: flex;
-            gap: 0.5rem;
-        }
-
-        .chart-btn {
-            padding: 0.6rem 1rem;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 0.8rem;
-            font-weight: 600;
-            transition: var(--transition);
-            background: var(--light);
-            color: var(--text);
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .chart-btn:hover {
-            background: var(--primary);
-            color: white;
-            transform: translateY(-2px);
-        }
-
-        .chart-container {
-            position: relative;
-            height: 320px;
-            width: 100%;
-        }
-
-        /* Tabela de Dados - DESIGN MODERNIZADO */
-        .data-table-container {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
-            border-radius: var(--border-radius);
-            padding: 2rem;
-            box-shadow: var(--card-shadow);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            margin-bottom: 3rem;
-            overflow: hidden;
-            transition: var(--transition);
-        }
-
-        .data-table-container:hover {
-            box-shadow: var(--hover-shadow);
-        }
-
-        .table-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 1.5rem;
-        }
-
-        .table-title {
-            font-size: 1.4rem;
-            font-weight: 700;
-            color: var(--text);
-            display: flex;
-            align-items: center;
-            gap: 0.8rem;
-        }
-
-        .data-table {
-            width: 100%;
-            border-collapse: collapse;
-            border-radius: 10px;
-            overflow: hidden;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-        }
-
-        .data-table th {
-            background: var(--gradient-primary);
-            color: white;
-            padding: 1.2rem 1rem;
-            text-align: left;
-            font-weight: 600;
-            font-size: 0.9rem;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        .data-table td {
-            padding: 1.2rem 1rem;
-            border-bottom: 1px solid var(--border);
-            font-size: 0.9rem;
-            transition: var(--transition);
-        }
-
-        .data-table tr:nth-child(even) {
-            background: rgba(248, 249, 250, 0.8);
-        }
-
-        .data-table tr:hover {
-            background: rgba(0, 39, 118, 0.05);
-            transform: translateX(5px);
-        }
-
-        .status-badge {
-            padding: 0.5rem 1rem;
-            border-radius: 20px;
-            font-size: 0.75rem;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            display: inline-block;
-        }
-
-        .status-pendente { 
-            background: rgba(198, 12, 48, 0.1); 
-            color: var(--danger); 
-            border: 1px solid var(--danger); 
-        }
-        .status-andamento { 
-            background: rgba(253, 126, 20, 0.1); 
-            color: var(--warning); 
-            border: 1px solid var(--warning); 
-        }
-        .status-concluida { 
-            background: rgba(40, 167, 69, 0.1); 
-            color: var(--success); 
-            border: 1px solid var(--success); 
-        }
-        .status-cancelada { 
-            background: rgba(108, 117, 125, 0.1); 
-            color: #6c757d; 
-            border: 1px solid #6c757d; 
-        }
-
-        /* Footer */
-        .main-footer {
-            text-align: center;
-            padding: 3rem 2rem;
-            margin-top: 4rem;
-            background: var(--gradient-dark);
-            color: white;
-            border-top-left-radius: 30px;
-            border-top-right-radius: 30px;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .main-footer::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 320"><path fill="%23ffffff" fill-opacity="0.05" d="M0,96L48,112C96,128,192,160,288,186.7C384,213,480,235,576,213.3C672,192,768,128,864,128C960,128,1056,192,1152,197.3C1248,203,1344,149,1392,122.7L1440,96L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z"></path></svg>');
-            background-size: cover;
-        }
-
-        .footer-content {
-            max-width: 600px;
-            margin: 0 auto;
             position: relative;
             z-index: 1;
         }
 
-        .footer-logo {
-            font-size: 2rem;
-            font-weight: 800;
-            margin-bottom: 1rem;
+        .stat-card {
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.15), rgba(118, 75, 162, 0.15));
+            backdrop-filter: blur(40px);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: var(--border-radius);
+            padding: 3rem 2rem;
+            text-align: center;
+            transition: var(--transition);
+            position: relative;
+            overflow: hidden;
+            box-shadow: inset 0 0 60px rgba(102, 126, 234, 0.2), 0 20px 60px rgba(0, 0, 0, 0.5);
+        }
+
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(102, 126, 234, 0.4) 0%, transparent 70%);
+            transition: all 0.8s;
+        }
+
+        .stat-card:hover::before { 
+            top: -30%;
+            left: -30%;
+            opacity: 0.8;
+        }
+
+        .stat-card::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: all 1s;
+        }
+
+        .stat-card:hover::after { left: 100%; }
+
+        .stat-card:hover { 
+            transform: translateY(-20px) scale(1.05); 
+            box-shadow: inset 0 0 80px rgba(102, 126, 234, 0.4), 0 30px 80px rgba(102, 126, 234, 0.6);
+            border-color: rgba(102, 126, 234, 0.8);
+        }
+
+        .stat-icon {
+            font-size: 4rem;
+            margin-bottom: 1.5rem;
+            display: inline-block;
+            animation: pulse 2s infinite;
+            filter: drop-shadow(0 0 20px currentColor);
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1) rotate(0deg); filter: drop-shadow(0 0 20px currentColor); }
+            50% { transform: scale(1.15) rotate(5deg); filter: drop-shadow(0 0 30px currentColor); }
+        }
+
+        .stat-number {
+            font-size: 5rem;
+            font-weight: 900;
+            background: linear-gradient(135deg, #667eea, #f093fb, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin: 1.5rem 0;
+            text-shadow: 0 0 60px rgba(102, 126, 234, 1);
+            animation: countUp 1.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+            letter-spacing: 2px;
+            position: relative;
+        }
+
+        .stat-number::after {
+            content: attr(id);
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: linear-gradient(135deg, #667eea, #f093fb);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            filter: blur(10px);
+            z-index: -1;
+        }
+
+        @keyframes countUp {
+            from { 
+                opacity: 0; 
+                transform: translateY(30px) scale(0.8); 
+            }
+            to { 
+                opacity: 1; 
+                transform: translateY(0) scale(1); 
+            }
+        }
+
+        .stat-label {
+            color: var(--text-secondary);
+            font-size: 1.2rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .stat-label::after {
+            content: '';
+            position: absolute;
+            bottom: -8px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 40px;
+            height: 3px;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            border-radius: 10px;
+        }
+
+        .chart-container {
+            height: 350px;
+            margin: 1.5rem 0;
+            position: relative;
+        }
+
+        .table-tech {
+            color: var(--text-primary);
+        }
+
+        .table-tech thead th {
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.2), rgba(118, 75, 162, 0.2));
+            border: none;
+            padding: 1.5rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            font-size: 0.9rem;
+            letter-spacing: 1px;
+        }
+
+        .table-tech tbody tr {
+            background: rgba(255, 255, 255, 0.05);
+            border-bottom: 1px solid var(--glass-border);
+            transition: var(--transition);
+        }
+
+        .table-tech tbody tr {
+            position: relative;
+        }
+
+        .table-tech tbody tr::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 4px;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .table-tech tbody tr:hover {
+            background: rgba(102, 126, 234, 0.25);
+            transform: scale(1.02) translateX(5px);
+            box-shadow: 0 15px 40px rgba(102, 126, 234, 0.4);
+        }
+
+        .table-tech tbody tr:hover::before {
+            opacity: 1;
+        }
+
+        .table-tech td {
+            padding: 1.5rem;
+            vertical-align: middle;
+        }
+
+        .badge-tech {
+            padding: 0.6rem 1.2rem;
+            border-radius: 25px;
+            font-weight: 700;
+            font-size: 0.85rem;
+            letter-spacing: 0.5px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        .btn-tech {
+            border-radius: 50px;
+            padding: 1rem 2.5rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            border: none;
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+            transition: var(--transition);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-tech::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            transition: all 0.6s;
+        }
+
+        .btn-tech:hover::before {
+            width: 300px;
+            height: 300px;
+        }
+
+        .btn-tech:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(102, 126, 234, 0.6);
+        }
+
+        .filtros-card {
+            background: var(--glass);
+            backdrop-filter: blur(30px);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--border-radius);
+            padding: 2.5rem;
+            margin-bottom: 3rem;
+            box-shadow: var(--box-shadow);
+        }
+
+        .form-label {
+            color: var(--text-secondary);
+            font-weight: 700;
+            margin-bottom: 0.8rem;
+            font-size: 1rem;
+            letter-spacing: 0.5px;
+        }
+
+        .form-select, .form-control {
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid var(--glass-border);
+            color: var(--text-primary);
+            border-radius: 15px;
+            padding: 1rem 1.5rem;
+            transition: var(--transition);
+            font-weight: 500;
+        }
+
+        .form-select:focus, .form-control:focus {
+            background: rgba(255, 255, 255, 0.15);
+            border-color: var(--primary);
+            box-shadow: 0 0 30px rgba(102, 126, 234, 0.5);
+            outline: none;
+            transform: translateY(-2px);
+        }
+
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(15, 15, 35, 0.95);
+            backdrop-filter: blur(20px);
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 0.8rem;
+            z-index: 9999;
+            flex-direction: column;
         }
 
-        /* Notificações */
-        .notification {
-            position: fixed;
-            top: 2rem;
-            right: 2rem;
-            padding: 1.2rem 1.8rem;
-            border-radius: 12px;
-            color: white;
-            font-weight: 600;
-            z-index: 1000;
-            opacity: 0;
-            transform: translateX(100%);
-            transition: var(--transition);
-            max-width: 400px;
-            backdrop-filter: blur(10px);
-            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
-        }
-
-        .notification.show {
-            opacity: 1;
-            transform: translateX(0);
-        }
-
-        .notification.success { 
-            background: linear-gradient(135deg, rgba(40, 167, 69, 0.9) 0%, rgba(33, 136, 56, 0.9) 100%);
-        }
-        .notification.error { 
-            background: linear-gradient(135deg, rgba(198, 12, 48, 0.9) 0%, rgba(166, 10, 40, 0.9) 100%);
-        }
-        .notification.info { 
-            background: linear-gradient(135deg, rgba(0, 39, 118, 0.9) 0%, rgba(0, 29, 87, 0.9) 100%);
-        }
-
-        /* Loading */
-        .loading {
-            display: inline-block;
-            width: 20px;
-            height: 20px;
-            border: 3px solid rgba(255,255,255,.3);
+        .spinner {
+            width: 60px;
+            height: 60px;
+            border: 5px solid var(--glass-border);
+            border-top: 5px solid var(--primary);
             border-radius: 50%;
-            border-top-color: #fff;
-            animation: spin 1s ease-in-out infinite;
+            animation: spin 1s linear infinite;
         }
 
         @keyframes spin {
-            to { transform: rotate(360deg); }
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
 
-        /* Responsividade */
-        @media (max-width: 768px) {
-            .header-content {
-                flex-direction: column;
-                text-align: center;
-                gap: 1rem;
-            }
-
-            .filters-row {
-                flex-direction: column;
-            }
-
-            .filter-group {
-                min-width: auto;
-            }
-
-            .date-filters {
-                flex-direction: column;
-            }
-
-            .date-filter-group {
-                min-width: auto;
-            }
-
-            .reports-grid {
-                grid-template-columns: 1fr;
-            }
-
-            .charts-container {
-                grid-template-columns: 1fr;
-            }
-
-            .chart-container {
-                height: 280px;
-            }
-
-            .action-buttons {
-                flex-direction: column;
-            }
-
-            .table-header {
-                flex-direction: column;
-                gap: 1rem;
-                align-items: flex-start;
-            }
-
-            .data-table {
-                font-size: 0.8rem;
-            }
-
-            .data-table th,
-            .data-table td {
-                padding: 0.8rem 0.5rem;
-            }
-
-            .finance-card .stat-item {
-                flex-direction: column;
-                text-align: center;
-                gap: 0.5rem;
-            }
-
-            .finance-card .value-container {
-                align-items: center;
-            }
-        }
-
-        /* Animações adicionais */
-        @keyframes fadeInUp {
-            from {
-                opacity: 0;
-                transform: translateY(30px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        .report-card,
-        .chart-card,
-        .data-table-container {
-            animation: fadeInUp 0.6s ease-out;
-        }
-
-        /* Análise de Tempo por Etapa */
-        .time-analysis {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 1.5rem;
-            margin-bottom: 2rem;
-        }
-
-        .time-card {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
-            border-radius: 12px;
-            padding: 1.5rem;
-            box-shadow: var(--card-shadow);
-            border-left: 4px solid var(--primary);
-        }
-
-        .time-header {
-            display: flex;
-            justify-content: between;
-            align-items: center;
-            margin-bottom: 1rem;
-        }
-
-        .time-title {
-            font-size: 1.1rem;
+        .loading-text {
+            margin-top: 2rem;
+            font-size: 1.2rem;
             font-weight: 600;
-            color: var(--text);
+            animation: pulse 2s infinite;
         }
 
-        .time-value {
-            font-size: 1.3rem;
-            font-weight: 700;
-            color: var(--primary);
+        @media (max-width: 768px) {
+            .stat-number { font-size: 3rem; }
+            .stat-icon { font-size: 3rem; }
+            .chart-container { height: 280px; }
         }
 
-        .time-progress {
+        /* Efeito de entrada para cards */
+        .fade-in {
+            animation: fadeIn 0.8s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { 
+                opacity: 0; 
+                transform: translateY(30px) scale(0.95); 
+            }
+            to { 
+                opacity: 1; 
+                transform: translateY(0) scale(1); 
+            }
+        }
+
+        /* Scrollbar personalizada */
+        ::-webkit-scrollbar {
+            width: 10px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            border-radius: 10px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: linear-gradient(135deg, var(--accent), var(--primary));
+        }
+
+        /* Insight Items */
+        .insight-item {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 1rem;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            transition: var(--transition);
+            cursor: pointer;
+        }
+
+        .insight-item:hover {
+            background: rgba(102, 126, 234, 0.2);
+            transform: translateX(5px);
+        }
+
+        .insight-item i {
+            font-size: 1.5rem;
+        }
+
+        /* Performance List */
+        .performance-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            margin-bottom: 0.5rem;
+            transition: var(--transition);
+        }
+
+        .performance-item:hover {
+            background: rgba(102, 126, 234, 0.2);
+            transform: scale(1.02);
+        }
+
+        .performance-bar {
             height: 8px;
-            background: var(--border);
-            border-radius: 4px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
             overflow: hidden;
             margin-top: 0.5rem;
         }
 
-        .time-progress-bar {
+        .performance-bar-fill {
             height: 100%;
-            background: var(--primary);
-            border-radius: 4px;
-            transition: width 0.8s ease;
+            background: linear-gradient(90deg, var(--primary), var(--accent));
+            transition: width 1s ease-out;
+            animation: shimmer-bar 2s infinite;
+        }
+
+        /* Minigraficos */
+        #chartMetas {
+            max-height: 200px;
         }
     </style>
 </head>
-<body class="light-mode">
-    <!-- Botão Dark Mode -->
-    <button id="darkModeToggle" class="dark-mode-toggle">
-        <i class="fas fa-moon"></i>
-    </button>
+<body>
+    <div id="particles-js"></div>
+    <div class="light-effect"></div>
+    <div class="light-effect"></div>
 
-    <!-- Header -->
-    <header class="main-header">
-        <div class="header-content">
-            <div>
-                <h1 class="header-title">
-                    <i class="fas fa-chart-bar"></i> Relatórios
-                </h1>
-                <p class="header-subtitle">Análises detalhadas e métricas do sistema de coletas</p>
-            </div>
-            <div class="header-actions">
-                <a href="coletas.html" class="btn-modern">
-                    <i class="fas fa-truck-loading"></i> Voltar às Coletas
-                </a>
-                <a href="portal.html" class="btn-modern">
-                    <i class="fas fa-home"></i> Portal
+    <nav class="navbar">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="portal.html">
+                <i class="fas fa-chart-line"></i> Relatórios Inteligentes
+            </a>
+            <div class="d-flex align-items-center gap-3">
+                <span class="text-white" id="currentUser"><i class="fas fa-user"></i> Usuário</span>
+                <a href="portal.html" class="btn btn-sm btn-outline-light" style="border-radius: 25px;">
+                    <i class="fas fa-arrow-left"></i> Voltar
                 </a>
             </div>
         </div>
-    </header>
+    </nav>
 
-    <!-- Conteúdo Principal -->
-    <div class="main-container">
-        <!-- Controles e Filtros -->
-        <div class="controls-container">
-            <!-- Filtros de Data -->
-            <div class="date-filters">
-                <div class="date-filter-group">
-                    <label for="dataInicio"><i class="fas fa-calendar-alt"></i> Data Início</label>
-                    <input type="date" id="dataInicio" onchange="applyFilters()">
-                </div>
-                <div class="date-filter-group">
-                    <label for="dataFim"><i class="fas fa-calendar-alt"></i> Data Fim</label>
-                    <input type="date" id="dataFim" onchange="applyFilters()">
-                </div>
-                <div class="date-filter-group">
-                    <label><i class="fas fa-bolt"></i> Período Rápido</label>
-                    <div class="quick-date-buttons">
-                        <button class="quick-date-btn" onclick="setQuickDate('hoje')">Hoje</button>
-                        <button class="quick-date-btn" onclick="setQuickDate('semana')">Esta Semana</button>
-                        <button class="quick-date-btn" onclick="setQuickDate('mes')">Este Mês</button>
-                        <button class="quick-date-btn" onclick="setQuickDate('trimestre')">Este Trimestre</button>
-                        <button class="quick-date-btn" onclick="clearDateFilters()">Limpar</button>
-                    </div>
+    <div class="container">
+        <div class="row mb-4">
+            <div class="col-md-3 mb-3">
+                <div class="stat-card">
+                    <i class="fas fa-box stat-icon" style="color: var(--primary);"></i>
+                    <div class="stat-number" id="totalColetas">0</div>
+                    <div class="stat-label">Total de Coletas</div>
                 </div>
             </div>
-
-            <div class="filters-row">
-                <div class="filter-group">
-                    <label for="filialFilter"><i class="fas fa-building"></i> Filial</label>
-                    <select id="filialFilter" onchange="applyFilters()">
-                        <option value="">Todas as Filiais</option>
-                        <option value="SP">São Paulo</option>
-                        <option value="RJ">Rio de Janeiro</option>
-                        <option value="MG">Minas Gerais</option>
-                        <option value="ES">Espírito Santo</option>
-                        <option value="PR">Paraná</option>
-                        <option value="RS">Rio Grande do Sul</option>
-                        <option value="SC">Santa Catarina</option>
-                        <option value="BA">Bahia</option>
-                    </select>
-                </div>
-                <div class="filter-group">
-                    <label for="etapaFilter"><i class="fas fa-layer-group"></i> Etapa</label>
-                    <select id="etapaFilter" onchange="applyFilters()">
-                        <option value="">Todas as Etapas</option>
-                        <option value="comercial">Comercial</option>
-                        <option value="price">Price</option>
-                        <option value="cs">CS</option>
-                        <option value="contratacao">Contratação</option>
-                        <option value="gr">GR</option>
-                        <option value="documentacao">Documentação</option>
-                        <option value="controladoria">Controladoria</option>
-                        <option value="contas-pagar">Contas a Pagar</option>
-                        <option value="contas-receber">Contas a Receber</option>
-                    </select>
-                </div>
-                <div class="filter-group">
-                    <label for="statusFilter"><i class="fas fa-filter"></i> Status</label>
-                    <select id="statusFilter" onchange="applyFilters()">
-                        <option value="">Todos os Status</option>
-                        <option value="pendente">Pendente</option>
-                        <option value="andamento">Em Andamento</option>
-                        <option value="concluida">Concluída</option>
-                        <option value="cancelada">Cancelada</option>
-                    </select>
-                </div>
-                <div class="filter-group">
-                    <label for="tipoRelatorio"><i class="fas fa-chart-line"></i> Tipo de Relatório</label>
-                    <select id="tipoRelatorio" onchange="applyFilters()">
-                        <option value="geral">Geral</option>
-                        <option value="operacional">Operacional</option>
-                        <option value="financeiro">Financeiro</option>
-                        <option value="performance">Performance</option>
-                    </select>
+            <div class="col-md-3 mb-3">
+                <div class="stat-card">
+                    <i class="fas fa-clock stat-icon" style="color: var(--warning);"></i>
+                    <div class="stat-number" id="emAndamento">0</div>
+                    <div class="stat-label">Em Andamento</div>
                 </div>
             </div>
-            
-            <div class="action-buttons">
-                <button class="action-btn warning" onclick="clearFilters()">
-                    <i class="fas fa-broom"></i> Limpar Filtros
-                </button>
-                <button class="action-btn primary" onclick="refreshData()">
-                    <i class="fas fa-sync-alt"></i> Atualizar Dados
-                </button>
-                <button class="action-btn success" onclick="generateReport()">
-                    <i class="fas fa-file-pdf"></i> Gerar PDF
-                </button>
-            </div>
-        </div>
-
-        <!-- Análise de Tempo por Etapa -->
-        <div class="data-table-container">
-            <div class="table-header">
-                <h3 class="table-title">
-                    <i class="fas fa-clock"></i>
-                    Análise de Tempo por Etapa
-                </h3>
-            </div>
-            <div class="time-analysis" id="timeAnalysis">
-                <!-- Análise de tempo será carregada aqui -->
-            </div>
-        </div>
-
-        <!-- Cards de Resumo -->
-        <div class="reports-grid">
-            <div class="report-card">
-                <div class="report-header">
-                    <div>
-                        <h3 class="report-title">Total de Coletas</h3>
-                        <p class="report-description">Número total de coletas no período</p>
-                    </div>
-                    <i class="fas fa-truck-loading report-icon"></i>
-                </div>
-                <div class="report-stats">
-                    <div class="stat-item">
-                        <div class="stat-value" id="totalColetas">0</div>
-                        <div class="stat-label">Total</div>
-                    </div>
-                    <div class="stat-item">
-                        <div class="stat-value" id="coletasConcluidas">0</div>
-                        <div class="stat-label">Concluídas</div>
-                    </div>
-                    <div class="stat-item">
-                        <div class="stat-value" id="taxaSucesso">0%</div>
-                        <div class="stat-label">Taxa de Sucesso</div>
-                    </div>
+            <div class="col-md-3 mb-3">
+                <div class="stat-card">
+                    <i class="fas fa-check-circle stat-icon" style="color: var(--success);"></i>
+                    <div class="stat-number" id="concluidas">0</div>
+                    <div class="stat-label">Concluídas</div>
                 </div>
             </div>
-
-            <div class="report-card finance-card">
-                <div class="report-header">
-                    <div>
-                        <h3 class="report-title">Volume Financeiro</h3>
-                        <p class="report-description">Análise financeira das operações</p>
-                    </div>
-                    <i class="fas fa-chart-line report-icon"></i>
-                </div>
-                <div class="report-stats">
-                    <div class="stat-item">
-                        <div class="stat-label">Valor Total</div>
-                        <div class="value-container">
-                            <div class="stat-value" id="valorTotal">R$ 0</div>
-                            <span class="value-trend positive" id="trendTotal">+12%</span>
-                        </div>
-                    </div>
-                    <div class="stat-item">
-                        <div class="stat-label">Valor Médio por Coleta</div>
-                        <div class="value-container">
-                            <div class="stat-value" id="valorMedio">R$ 0</div>
-                            <span class="value-trend neutral" id="trendMedio">±0%</span>
-                        </div>
-                    </div>
-                    <div class="stat-item">
-                        <div class="stat-label">Crescimento Mensal</div>
-                        <div class="value-container">
-                            <div class="stat-value" id="crescimento">0%</div>
-                            <span class="value-trend positive" id="trendCrescimento">↗</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="report-card">
-                <div class="report-header">
-                    <div>
-                        <h3 class="report-title">Performance por Etapa</h3>
-                        <p class="report-description">Distribuição por etapa atual</p>
-                    </div>
-                    <i class="fas fa-tachometer-alt report-icon"></i>
-                </div>
-                <div class="report-stats">
-                    <div class="stat-item">
-                        <div class="stat-value" id="etapaComercial">0</div>
-                        <div class="stat-label">Comercial</div>
-                    </div>
-                    <div class="stat-item">
-                        <div class="stat-value" id="etapaCS">0</div>
-                        <div class="stat-label">CS</div>
-                    </div>
-                    <div class="stat-item">
-                        <div class="stat-value" id="etapaGR">0</div>
-                        <div class="stat-label">GR</div>
-                    </div>
+            <div class="col-md-3 mb-3">
+                <div class="stat-card">
+                    <i class="fas fa-times-circle stat-icon" style="color: var(--danger);"></i>
+                    <div class="stat-number" id="canceladas">0</div>
+                    <div class="stat-label">Canceladas</div>
                 </div>
             </div>
         </div>
 
-        <!-- Gráficos -->
-        <div class="charts-container">
-            <div class="chart-card">
-                <div class="chart-header">
-                    <h3 class="chart-title">
-                        <i class="fas fa-chart-pie"></i>
-                        Coletas por Status
-                    </h3>
-                    <div class="chart-actions">
-                        <button class="chart-btn" onclick="downloadChart('statusChart')">
-                            <i class="fas fa-download"></i> Download
-                        </button>
-                    </div>
+        <div class="filtros-card">
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <label class="form-label"><i class="fas fa-calendar"></i> Período</label>
+                    <select id="filtroPeriodo" class="form-select">
+                        <option value="hoje">Hoje</option>
+                        <option value="semana" selected>Esta Semana</option>
+                        <option value="mes">Este Mês</option>
+                        <option value="ano">Este Ano</option>
+                        <option value="todos">Todos</option>
+                    </select>
                 </div>
-                <div class="chart-container">
-                    <canvas id="statusChart"></canvas>
+                <div class="col-md-4 mb-3">
+                    <label class="form-label"><i class="fas fa-user"></i> Usuário</label>
+                    <select id="filtroUsuario" class="form-select">
+                        <option value="">Todos os usuários</option>
+                    </select>
                 </div>
-            </div>
-
-            <div class="chart-card">
-                <div class="chart-header">
-                    <h3 class="chart-title">
-                        <i class="fas fa-chart-bar"></i>
-                        Volume por Etapa
-                    </h3>
-                    <div class="chart-actions">
-                        <button class="chart-btn" onclick="downloadChart('etapaChart')">
-                            <i class="fas fa-download"></i> Download
-                        </button>
-                    </div>
-                </div>
-                <div class="chart-container">
-                    <canvas id="etapaChart"></canvas>
-                </div>
-            </div>
-
-            <div class="chart-card">
-                <div class="chart-header">
-                    <h3 class="chart-title">
-                        <i class="fas fa-chart-line"></i>
-                        Evolução Mensal
-                    </h3>
-                    <div class="chart-actions">
-                        <button class="chart-btn" onclick="downloadChart('evolucaoChart')">
-                            <i class="fas fa-download"></i> Download
-                        </button>
-                    </div>
-                </div>
-                <div class="chart-container">
-                    <canvas id="evolucaoChart"></canvas>
-                </div>
-            </div>
-
-            <div class="chart-card">
-                <div class="chart-header">
-                    <h3 class="chart-title">
-                        <i class="fas fa-map-marked-alt"></i>
-                        Distribuição por Filial
-                    </h3>
-                    <div class="chart-actions">
-                        <button class="chart-btn" onclick="downloadChart('filialChart')">
-                            <i class="fas fa-download"></i> Download
-                        </button>
-                    </div>
-                </div>
-                <div class="chart-container">
-                    <canvas id="filialChart"></canvas>
-                </div>
-            </div>
-        </div>
-
-        <!-- Tabela de Dados Detalhados -->
-        <div class="data-table-container">
-            <div class="table-header">
-                <h3 class="table-title">
-                    <i class="fas fa-table"></i>
-                    Detalhamento de Coletas
-                </h3>
-                <div class="action-buttons">
-                    <button class="action-btn primary" onclick="exportToCSV()">
-                        <i class="fas fa-file-csv"></i> Exportar CSV
+                <div class="col-md-4 mb-3 d-flex align-items-end">
+                    <button class="btn btn-tech w-100" onclick="aplicarFiltros()">
+                        <i class="fas fa-filter"></i> Aplicar Filtros
                     </button>
                 </div>
             </div>
-            <div style="overflow-x: auto;">
-                <table class="data-table" id="detailedTable">
+        </div>
+
+        <div class="row mb-4">
+            <div class="col-md-6 mb-4">
+                <div class="card-tech">
+                    <div class="card-header-tech">
+                        <h5><i class="fas fa-chart-pie"></i> Distribuição por Status</h5>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="chartStatus"></canvas>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6 mb-4">
+                <div class="card-tech">
+                    <div class="card-header-tech">
+                        <h5><i class="fas fa-chart-bar"></i> Coletas por Mês</h5>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="chartMensal"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mb-4">
+            <div class="col-md-6 mb-4">
+                <div class="card-tech">
+                    <div class="card-header-tech">
+                        <h5><i class="fas fa-users"></i> Performance por Usuário</h5>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="chartUsuarios"></canvas>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6 mb-4">
+                <div class="card-tech">
+                    <div class="card-header-tech">
+                        <h5><i class="fas fa-priority-high"></i> Por Prioridade</h5>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="chartPrioridade"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card-tech">
+            <div class="card-header-tech">
+                <h5><i class="fas fa-table"></i> Relatório Detalhado</h5>
+            </div>
+            <div class="table-responsive p-3">
+                <table class="table table-tech">
                     <thead>
                         <tr>
                             <th>ID</th>
                             <th>Cliente</th>
-                            <th>Data</th>
-                            <th>Origem</th>
-                            <th>Destino</th>
+                            <th>Título</th>
                             <th>Status</th>
                             <th>Etapa</th>
-                            <th>Valor (R$)</th>
-                            <th>KM</th>
-                            <th>Filial</th>
-                            <th>Tempo na Etapa</th>
+                            <th>Data</th>
                         </tr>
                     </thead>
-                    <tbody id="tableBody">
-                        <!-- Dados serão carregados via JavaScript -->
+                    <tbody id="tabelaRelatorio">
+                        <tr>
+                            <td colspan="6" class="text-center text-muted py-4">
+                                Carregando dados...
+                            </td>
+                        </tr>
                     </tbody>
                 </table>
             </div>
         </div>
+        <!-- Métricas Adicionais -->
+        <div class="row mb-4">
+            <div class="col-md-3 mb-3">
+                <div class="stat-card">
+                    <i class="fas fa-clock stat-icon" style="color: var(--info);"></i>
+                    <div class="stat-number" id="tempoMedio">0</div>
+                    <div class="stat-label">Tempo Médio</div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div class="stat-card">
+                    <i class="fas fa-percentage stat-icon" style="color: var(--success);"></i>
+                    <div class="stat-number" id="taxaSucesso">0%</div>
+                    <div class="stat-label">Taxa de Sucesso</div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div class="stat-card">
+                    <i class="fas fa-calendar-check stat-icon" style="color: var(--warning);"></i>
+                    <div class="stat-number" id="noPrazo">0</div>
+                    <div class="stat-label">No Prazo</div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div class="stat-card">
+                    <i class="fas fa-exclamation-triangle stat-icon" style="color: var(--danger);"></i>
+                    <div class="stat-number" id="atrasadas">0</div>
+                    <div class="stat-label">Atrasadas</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Gráficos Avançados -->
+        <div class="row mb-4">
+            <div class="col-md-6 mb-4">
+                <div class="card-tech">
+                    <div class="card-header-tech">
+                        <h5><i class="fas fa-route"></i> Desempenho por Etapa</h5>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="chartEtapas"></canvas>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6 mb-4">
+                <div class="card-tech">
+                    <div class="card-header-tech">
+                        <h5><i class="fas fa-map-marked-alt"></i> Distribuição Geográfica</h5>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="chartGeografico"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mb-4">
+            <div class="col-md-6 mb-4">
+                <div class="card-tech">
+                    <div class="card-header-tech">
+                        <h5><i class="fas fa-chart-line"></i> Tendência Semanal</h5>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="chartTendencia"></canvas>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6 mb-4">
+                <div class="card-tech">
+                    <div class="card-header-tech">
+                        <h5><i class="fas fa-balance-scale"></i> Eficiência por Responsável</h5>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="chartEficiencia"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Cards de Insights -->
+        <div class="row mb-4">
+            <div class="col-md-4 mb-3">
+                <div class="card-tech" style="min-height: 250px;">
+                    <div class="card-header-tech">
+                        <h6><i class="fas fa-lightbulb"></i> Insights Automáticos</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="insight-item">
+                            <i class="fas fa-trending-up" style="color: var(--success);"></i>
+                            <span id="insight1">Analisando dados...</span>
+                        </div>
+                        <hr class="my-2" style="border-color: var(--glass-border);">
+                        <div class="insight-item">
+                            <i class="fas fa-chart-pie" style="color: var(--info);"></i>
+                            <span id="insight2">Processando informações...</span>
+                        </div>
+                        <hr class="my-2" style="border-color: var(--glass-border);">
+                        <div class="insight-item">
+                            <i class="fas fa-exclamation-circle" style="color: var(--warning);"></i>
+                            <span id="insight3">Gerando recomendações...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 mb-3">
+                <div class="card-tech" style="min-height: 250px;">
+                    <div class="card-header-tech">
+                        <h6><i class="fas fa-star"></i> Top Performers</h6>
+                    </div>
+                    <div class="card-body" id="topPerformers">
+                        <div class="text-center text-muted py-4">
+                            <i class="fas fa-spinner fa-spin fa-2x"></i>
+                            <p class="mt-2">Carregando...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 mb-3">
+                <div class="card-tech" style="min-height: 250px;">
+                    <div class="card-header-tech">
+                        <h6><i class="fas fa-bullseye"></i> Metas e Objetivos</h6>
+                    </div>
+                    <div class="card-body" id="metasObjetivos">
+                        <canvas id="chartMetas"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
-    <!-- Footer -->
-    <footer class="main-footer">
-        <div class="footer-content">
-            <div class="footer-logo">
-                <i class="fas fa-truck-moving"></i> MULTI MODAL
-            </div>
-            <p>Sistema de Gestão de Operações Logísticas</p>
-            <p>© 2025 - Todos os direitos reservados</p>
+    <div id="loadingOverlay" class="loading-overlay" style="display: none;">
+        <div class="text-center">
+            <div class="spinner"></div>
+            <p class="loading-text">Carregando relatórios...</p>
         </div>
-    </footer>
-
-    <!-- Notificação -->
-    <div id="notification" class="notification"></div>
+    </div>
 
     <script>
-        // Dados para relatórios
-        let reportData = [];
-        let filteredData = [];
+        let supabase;
+        let currentUser = null;
+        let relatorioData = [];
         let charts = {};
 
-        // Etapas do processo
-        const ETAPAS = [
-            { id: 'comercial', nome: 'Comercial', ordem: 1 },
-            { id: 'price', nome: 'Price', ordem: 2 },
-            { id: 'cs', nome: 'CS', ordem: 3 },
-            { id: 'contratacao', nome: 'Contratação', ordem: 4 },
-            { id: 'gr', nome: 'GR', ordem: 5 },
-            { id: 'documentacao', nome: 'Documentação', ordem: 6 },
-            { id: 'controladoria', nome: 'Controladoria', ordem: 7 },
-            { id: 'contas-pagar', nome: 'Contas a Pagar', ordem: 8 },
-            { id: 'contas-receber', nome: 'Contas a Receber', ordem: 9 }
-        ];
+        // Métricas adicionais
+        async function calcularMetricasAvancadas() {
+            if (!relatorioData || relatorioData.length === 0) return;
 
-        // Inicialização
-        document.addEventListener('DOMContentLoaded', function() {
-            console.log('📊 Sistema de Relatórios inicializado');
-            initializeDarkMode();
-            initializeDateFilters();
-            loadReportData();
-            applyFilters();
-        });
+            // Tempo médio
+            const tempoMedio = calcularTempoMedio();
+            atualizarElemento('tempoMedio', tempoMedio);
 
-        // Dark Mode
-        function initializeDarkMode() {
-            const darkModeToggle = document.getElementById('darkModeToggle');
-            const savedTheme = localStorage.getItem('theme') || 'light';
-            
-            if (savedTheme === 'dark') {
-                document.body.classList.add('dark-mode');
-                document.body.classList.remove('light-mode');
-                darkModeToggle.innerHTML = '<i class="fas fa-sun"></i>';
-            }
+            // Taxa de sucesso
+            const sucessos = relatorioData.filter(c => c.status === 'concluida').length;
+            const taxaSucesso = relatorioData.length > 0 ? ((sucessos / relatorioData.length) * 100).toFixed(1) : '0';
+            atualizarElemento('taxaSucesso', `${taxaSucesso}%`);
 
-            darkModeToggle.addEventListener('click', function() {
-                document.body.classList.toggle('dark-mode');
-                document.body.classList.toggle('light-mode');
-                
-                const icon = this.querySelector('i');
-                if (document.body.classList.contains('dark-mode')) {
-                    icon.className = 'fas fa-sun';
-                    localStorage.setItem('theme', 'dark');
-                } else {
-                    icon.className = 'fas fa-moon';
-                    localStorage.setItem('theme', 'light');
-                }
-                
-                // Recriar gráficos com o tema correto
-                setTimeout(() => {
-                    initializeCharts();
-                }, 100);
-            });
+            // No prazo vs Atrasadas
+            const { noPrazo, atrasadas } = calcularPrazo();
+            atualizarElemento('noPrazo', noPrazo);
+            atualizarElemento('atrasadas', atrasadas);
+
+            // Gerar insights
+            gerarInsights();
+            atualizarTopPerformers();
+            atualizarGraficoEtapas();
+            atualizarGraficoGeografico();
+            atualizarGraficoTendencia();
+            atualizarGraficoEficiencia();
+            atualizarGraficoMetas();
         }
 
-        // Inicializar filtros de data
-        function initializeDateFilters() {
+        function calcularTempoMedio() {
+            const concluidas = relatorioData.filter(c => c.status === 'concluida');
+            if (concluidas.length === 0) return '0 dias';
+
+            let totalDias = 0;
+            concluidas.forEach(coleta => {
+                const inicio = new Date(coleta.data_criacao || coleta.created_at);
+                const fim = coleta.data_conclusao ? new Date(coleta.data_conclusao) : new Date();
+                const diffTime = Math.abs(fim - inicio);
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                totalDias += diffDays;
+            });
+
+            const media = Math.round(totalDias / concluidas.length);
+            return `${media} dias`;
+        }
+
+        function calcularPrazo() {
             const hoje = new Date();
-            const inicioMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
-            
-            document.getElementById('dataInicio').value = formatarDataParaInput(inicioMes);
-            document.getElementById('dataFim').value = formatarDataParaInput(hoje);
-        }
+            let noPrazo = 0, atrasadas = 0;
 
-        // Carregar dados do LocalStorage
-        function loadReportData() {
-            try {
-                const coletasSalvas = localStorage.getItem('coletasData');
-                if (coletasSalvas) {
-                    reportData = JSON.parse(coletasSalvas);
-                    console.log('📊 Dados carregados do LocalStorage:', reportData.length, 'coletas');
-                    
-                    // Enriquecer dados com informações de tempo
-                    reportData = reportData.map(coleta => ({
-                        ...coleta,
-                        tempoEtapa: calcularTempoEtapa(coleta),
-                        filial: extrairFilial(coleta.origem)
-                    }));
-                    
-                    showNotification('Dados carregados com sucesso!', 'success');
-                } else {
-                    console.log('📝 Nenhum dado encontrado no LocalStorage');
-                    showNotification('Nenhum dado de coleta encontrado. Volte à página de coletas para adicionar dados.', 'info');
-                    reportData = [];
+            relatorioData.forEach(coleta => {
+                if (coleta.data_prevista_fim) {
+                    const prevista = new Date(coleta.data_prevista_fim);
+                    if (hoje <= prevista) noPrazo++;
+                    else atrasadas++;
                 }
-            } catch (error) {
-                console.error('❌ Erro ao carregar dados:', error);
-                showNotification('Erro ao carregar dados do sistema', 'error');
-                reportData = [];
-            }
-        }
-
-        // Calcular tempo na etapa atual
-        function calcularTempoEtapa(coleta) {
-            if (!coleta.dataRecebimento) return 'N/A';
-            
-            const dataRecebimento = new Date(coleta.dataRecebimento);
-            const agora = new Date();
-            const diffMs = agora - dataRecebimento;
-            const diffDias = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-            
-            if (diffDias === 0) {
-                const diffHoras = Math.floor(diffMs / (1000 * 60 * 60));
-                if (diffHoras === 0) {
-                    const diffMinutos = Math.floor(diffMs / (1000 * 60));
-                    return `${diffMinutos} min`;
-                }
-                return `${diffHoras}h`;
-            }
-            return `${diffDias} dia${diffDias > 1 ? 's' : ''}`;
-        }
-
-        // Extrair filial da origem
-        function extrairFilial(origem) {
-            if (!origem) return 'N/A';
-            const uf = origem.split('-').pop()?.trim();
-            return uf || 'N/A';
-        }
-
-        // Atualizar dados
-        function refreshData() {
-            loadReportData();
-            applyFilters();
-            showNotification('Dados atualizados com sucesso!', 'success');
-        }
-
-        // Aplicar filtros
-        function applyFilters() {
-            const statusFilter = document.getElementById('statusFilter').value;
-            const etapaFilter = document.getElementById('etapaFilter').value;
-            const filialFilter = document.getElementById('filialFilter').value;
-            const dataInicio = document.getElementById('dataInicio').value;
-            const dataFim = document.getElementById('dataFim').value;
-
-            filteredData = reportData.filter(coleta => {
-                // Filtro por status
-                if (statusFilter && coleta.status !== statusFilter) return false;
-                
-                // Filtro por etapa
-                if (etapaFilter && coleta.etapaAtual !== etapaFilter) return false;
-                
-                // Filtro por filial
-                if (filialFilter && coleta.filial !== filialFilter) return false;
-                
-                // Filtro por data
-                if (dataInicio && coleta.dataRecebimento < dataInicio) return false;
-                if (dataFim && coleta.dataRecebimento > dataFim) return false;
-                
-                return true;
             });
 
-            updateDashboard();
-            updateTimeAnalysis();
-            updateDetailedTable();
-            initializeCharts();
+            return { noPrazo, atrasadas };
         }
 
-        // Atualizar análise de tempo
-        function updateTimeAnalysis() {
-            const timeAnalysis = document.getElementById('timeAnalysis');
-            const data = filteredData.length > 0 ? filteredData : reportData;
-            
-            if (data.length === 0) {
-                timeAnalysis.innerHTML = `
-                    <div style="grid-column: 1 / -1; text-align: center; padding: 2rem; color: var(--text-light);">
-                        <i class="fas fa-clock" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.5;"></i>
-                        <p>Nenhum dado disponível para análise de tempo</p>
+        function gerarInsights() {
+            const total = relatorioData.length;
+            const concluidas = relatorioData.filter(c => c.status === 'concluida').length;
+            const emAndamento = relatorioData.filter(c => c.status === 'em_andamento').length;
+
+            // Insight 1
+            const taxa = total > 0 ? ((concluidas / total) * 100).toFixed(1) : 0;
+            document.getElementById('insight1').textContent = `Taxa de conclusão: ${taxa}%`;
+
+            // Insight 2
+            document.getElementById('insight2').textContent = `${emAndamento} coletas em andamento`;
+
+            // Insight 3
+            const prioritarias = relatorioData.filter(c => c.prioridade === 'alta').length;
+            document.getElementById('insight3').textContent = `${prioritarias} tarefas prioritárias pendentes`;
+        }
+
+        async function atualizarTopPerformers() {
+            const usuariosMap = {};
+            relatorioData.forEach(c => {
+                const user = c.created_by || 'Sistema';
+                if (!usuariosMap[user]) {
+                    usuariosMap[user] = { nome: user, total: 0, concluidas: 0 };
+                }
+                usuariosMap[user].total++;
+                if (c.status === 'concluida') usuariosMap[user].concluidas++;
+            });
+
+            const usuarios = Object.values(usuariosMap).sort((a, b) => b.concluidas - a.concluidas).slice(0, 5);
+            const html = usuarios.map(u => {
+                const eficiencia = u.total > 0 ? ((u.concluidas / u.total) * 100).toFixed(0) : 0;
+                return `
+                    <div class="performance-item">
+                        <div>
+                            <strong>${u.nome}</strong>
+                            <div class="performance-bar">
+                                <div class="performance-bar-fill" style="width: ${eficiencia}%"></div>
+                            </div>
+                        </div>
+                        <span>${eficiencia}%</span>
                     </div>
                 `;
-                return;
-            }
+            }).join('');
 
-            // Calcular métricas de tempo por etapa
-            const tempoPorEtapa = {};
-            ETAPAS.forEach(etapa => {
-                const coletasEtapa = data.filter(c => c.etapaAtual === etapa.id);
-                if (coletasEtapa.length > 0) {
-                    // Calcular tempo médio (simulado para demonstração)
-                    const tempoMedio = Math.random() * 5 + 1; // 1-6 dias
-                    tempoPorEtapa[etapa.id] = {
-                        nome: etapa.nome,
-                        quantidade: coletasEtapa.length,
-                        tempoMedio: tempoMedio.toFixed(1),
-                        percentual: (coletasEtapa.length / data.length * 100).toFixed(1)
-                    };
-                }
-            });
-
-            let html = '';
-            Object.values(tempoPorEtapa).forEach(etapa => {
-                const progressWidth = Math.min(etapa.percentual, 100);
-                html += `
-                    <div class="time-card">
-                        <div class="time-header">
-                            <div class="time-title">${etapa.nome}</div>
-                            <div class="time-value">${etapa.tempoMedio}d</div>
-                        </div>
-                        <div style="font-size: 0.9rem; color: var(--text-light); margin-bottom: 0.5rem;">
-                            ${etapa.quantidade} coletas (${etapa.percentual}%)
-                        </div>
-                        <div class="time-progress">
-                            <div class="time-progress-bar" style="width: ${progressWidth}%"></div>
-                        </div>
-                    </div>
-                `;
-            });
-
-            timeAnalysis.innerHTML = html;
+            document.getElementById('topPerformers').innerHTML = html || '<p class="text-muted text-center">Sem dados</p>';
         }
 
-        // Inicializar gráficos
-        function initializeCharts() {
-            // Dados para gráficos baseados nos dados filtrados
-            const statusCounts = contarPorStatus(filteredData);
-            const etapaCounts = contarPorEtapa(filteredData);
-            const filialCounts = contarPorFilial(filteredData);
-            const evolucaoData = calcularEvolucaoMensal(filteredData);
+        function atualizarGraficoEtapas() {
+            const ctx = document.getElementById('chartEtapas');
+            if (!ctx) return;
 
-            // Gráfico de Status
-            if (charts.statusChart) {
-                charts.statusChart.destroy();
-            }
-            const statusCtx = document.getElementById('statusChart').getContext('2d');
-            charts.statusChart = new Chart(statusCtx, {
-                type: 'doughnut',
-                data: {
-                    labels: ['Concluídas', 'Em Andamento', 'Pendentes', 'Canceladas'],
-                    datasets: [{
-                        data: [
-                            statusCounts.concluida || 0,
-                            statusCounts.andamento || 0,
-                            statusCounts.pendente || 0,
-                            statusCounts.cancelada || 0
-                        ],
-                        backgroundColor: [
-                            '#28a745',
-                            '#fd7e14',
-                            '#C60C30',
-                            '#6c757d'
-                        ],
-                        borderWidth: 2,
-                        borderColor: document.body.classList.contains('dark-mode') ? '#343a40' : '#ffffff'
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            position: 'bottom',
-                            labels: {
-                                color: getComputedStyle(document.body).getPropertyValue('--text'),
-                                font: {
-                                    size: 12
-                                }
-                            }
-                        }
-                    }
-                }
+            const etapas = {};
+            relatorioData.forEach(c => {
+                const etapa = c.etapa_atual || 'Desconhecida';
+                etapas[etapa] = (etapas[etapa] || 0) + 1;
             });
 
-            // Gráfico de Etapas
-            if (charts.etapaChart) {
-                charts.etapaChart.destroy();
-            }
-            const etapaCtx = document.getElementById('etapaChart').getContext('2d');
-            charts.etapaChart = new Chart(etapaCtx, {
+            if (charts.etapas) charts.etapas.destroy();
+            charts.etapas = new Chart(ctx, {
                 type: 'bar',
                 data: {
-                    labels: ETAPAS.map(e => e.nome),
+                    labels: Object.keys(etapas),
                     datasets: [{
-                        label: 'Quantidade',
-                        data: ETAPAS.map(etapa => etapaCounts[etapa.id] || 0),
-                        backgroundColor: '#002776',
-                        borderColor: '#0044AA',
-                        borderWidth: 1
+                        label: 'Coletas por Etapa',
+                        data: Object.values(etapas),
+                        backgroundColor: 'rgba(102, 126, 234, 0.3)',
+                        borderColor: 'rgba(102, 126, 234, 1)',
+                        borderWidth: 2,
+                        borderRadius: 8
                     }]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            ticks: {
-                                color: getComputedStyle(document.body).getPropertyValue('--text')
-                            },
-                            grid: {
-                                color: getComputedStyle(document.body).getPropertyValue('--border')
-                            }
-                        },
-                        x: {
-                            ticks: {
-                                color: getComputedStyle(document.body).getPropertyValue('--text'),
-                                maxRotation: 45
-                            },
-                            grid: {
-                                color: getComputedStyle(document.body).getPropertyValue('--border')
-                            }
-                        }
-                    },
                     plugins: {
-                        legend: {
-                            labels: {
-                                color: getComputedStyle(document.body).getPropertyValue('--text')
-                            }
-                        }
+                        legend: { display: false },
+                        tooltip: { enabled: true }
+                    },
+                    scales: {
+                        y: { beginAtZero: true, ticks: { color: 'rgba(255, 255, 255, 0.8)' }, grid: { color: 'rgba(255, 255, 255, 0.1)' } },
+                        x: { ticks: { color: 'rgba(255, 255, 255, 0.8)' }, grid: { display: false } }
                     }
                 }
             });
+        }
 
-            // Gráfico de Evolução
-            if (charts.evolucaoChart) {
-                charts.evolucaoChart.destroy();
+        function atualizarGraficoGeografico() {
+            const ctx = document.getElementById('chartGeografico');
+            if (!ctx) return;
+
+            const regioes = {};
+            relatorioData.forEach(c => {
+                const origem = c.origem || 'Desconhecido';
+                const estado = origem.split('/')[1]?.trim() || 'Outros';
+                regioes[estado] = (regioes[estado] || 0) + 1;
+            });
+
+            if (charts.geografico) charts.geografico.destroy();
+            charts.geografico = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: Object.keys(regioes),
+                    datasets: [{
+                        data: Object.values(regioes),
+                        backgroundColor: [
+                            'rgba(102, 126, 234, 0.8)',
+                            'rgba(118, 75, 162, 0.8)',
+                            'rgba(240, 147, 251, 0.8)',
+                            'rgba(17, 153, 142, 0.8)',
+                            'rgba(255, 193, 7, 0.8)'
+                        ]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: true, position: 'bottom', labels: { color: 'rgba(255, 255, 255, 0.8)' } } }
+                }
+            });
+        }
+
+        function atualizarGraficoTendencia() {
+            const ctx = document.getElementById('chartTendencia');
+            if (!ctx) return;
+
+            const semanas = {};
+            for (let i = 6; i >= 0; i--) {
+                const data = new Date();
+                data.setDate(data.getDate() - (i * 7));
+                const semana = `${data.getDate()}/${data.getMonth() + 1}`;
+                semanas[semana] = 0;
             }
-            const evolucaoCtx = document.getElementById('evolucaoChart').getContext('2d');
-            charts.evolucaoChart = new Chart(evolucaoCtx, {
+
+            relatorioData.forEach(c => {
+                const data = new Date(c.data_criacao || c.created_at);
+                const sem = `${data.getDate()}/${data.getMonth() + 1}`;
+                if (semanas.hasOwnProperty(sem)) semanas[sem]++;
+            });
+
+            if (charts.tendencia) charts.tendencia.destroy();
+            charts.tendencia = new Chart(ctx, {
                 type: 'line',
                 data: {
-                    labels: ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'],
+                    labels: Object.keys(semanas),
                     datasets: [{
                         label: 'Coletas',
-                        data: evolucaoData,
-                        borderColor: '#002776',
-                        backgroundColor: 'rgba(0, 39, 118, 0.1)',
+                        data: Object.values(semanas),
+                        borderColor: 'rgba(102, 126, 234, 1)',
+                        backgroundColor: 'rgba(102, 126, 234, 0.1)',
                         tension: 0.4,
-                        fill: true
+                        fill: true,
+                        borderWidth: 3,
+                        pointRadius: 5,
+                        pointBackgroundColor: 'rgba(102, 126, 234, 1)'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: { beginAtZero: true, ticks: { color: 'rgba(255, 255, 255, 0.8)' }, grid: { color: 'rgba(255, 255, 255, 0.1)' } },
+                        x: { ticks: { color: 'rgba(255, 255, 255, 0.8)' }, grid: { display: false } }
+                    }
+                }
+            });
+        }
+
+        function atualizarGraficoEficiencia() {
+            const ctx = document.getElementById('chartEficiencia');
+            if (!ctx) return;
+
+            const usuarios = {};
+            relatorioData.forEach(c => {
+                const user = c.created_by || 'Sistema';
+                if (!usuarios[user]) usuarios[user] = { nome: user, total: 0, concluidas: 0 };
+                usuarios[user].total++;
+                if (c.status === 'concluida') usuarios[user].concluidas++;
+            });
+
+            const top5 = Object.values(usuarios)
+                .map(u => ({ nome: u.nome || 'Desconhecido', eficiencia: u.total > 0 ? (u.concluidas / u.total) * 100 : 0 }))
+                .sort((a, b) => b.eficiencia - a.eficiencia)
+                .slice(0, 5);
+
+            if (top5.length === 0) return;
+
+            if (charts.eficiencia) charts.eficiencia.destroy();
+            charts.eficiencia = new Chart(ctx, {
+                type: 'radar',
+                data: {
+                    labels: top5.map(u => (u.nome || 'Desconhecido').substring(0, 10)),
+                    datasets: [{
+                        label: 'Eficiência',
+                        data: top5.map(u => parseFloat(u.eficiencia.toFixed(0))),
+                        backgroundColor: 'rgba(102, 126, 234, 0.2)',
+                        borderColor: 'rgba(102, 126, 234, 1)',
+                        borderWidth: 2
                     }]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
                     scales: {
+                        r: {
+                            beginAtZero: true,
+                            max: 100,
+                            ticks: { color: 'rgba(255, 255, 255, 0.8)' },
+                            grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                        }
+                    },
+                    plugins: { legend: { display: false } }
+                }
+            });
+        }
+
+        function atualizarGraficoMetas() {
+            const ctx = document.getElementById('chartMetas');
+            if (!ctx) return;
+
+            const concluidas = relatorioData.filter(c => c.status === 'concluida').length;
+            const emAndamento = relatorioData.filter(c => c.status === 'em_andamento').length;
+            const pendentes = relatorioData.filter(c => c.status === 'pendente').length;
+
+            if (charts.metas) charts.metas.destroy();
+            charts.metas = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Concluídas', 'Em Andamento', 'Pendentes'],
+                    datasets: [{
+                        data: [concluidas, emAndamento, pendentes],
+                        backgroundColor: [
+                            'rgba(17, 153, 142, 0.8)',
+                            'rgba(255, 193, 7, 0.8)',
+                            'rgba(220, 53, 69, 0.8)'
+                        ]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: true, position: 'bottom', labels: { color: 'rgba(255, 255, 255, 0.8)' } } }
+                }
+            });
+        }
+
+        function atualizarElemento(id, valor) {
+            const el = document.getElementById(id);
+            if (el) {
+                const current = parseInt(el.textContent) || 0;
+                const target = parseInt(valor) || 0;
+                animarNumero(el, current, target);
+            }
+        }
+
+        function animarNumero(el, start, end, duration = 1000) {
+            let startTimestamp = null;
+            const step = timestamp => {
+                if (!startTimestamp) startTimestamp = timestamp;
+                const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+                el.textContent = Math.floor(progress * (end - start) + start);
+                if (progress < 1) window.requestAnimationFrame(step);
+            };
+            window.requestAnimationFrame(step);
+        }
+
+        document.addEventListener('DOMContentLoaded', async function() {
+            console.log('🚀 Iniciando relatorios.html...');
+            
+            const temPermissao = await verificarEAplicarPermissao('relatorios');
+            if (!temPermissao) return;
+            
+            // Removido particlesJS para evitar erros
+            console.log('✅ Visual moderno com glassmorphism ativo');
+            
+            await inicializarSupabase();
+            await verificarAutenticacao();
+            await carregarUsuarios();
+            await gerarRelatorio();
+        });
+
+        async function inicializarSupabase() {
+            try {
+                const response = await fetch('/api/supabase-config');
+                const config = await response.json();
+                const supabaseClient = window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey);
+                supabase = supabaseClient;
+                if (!window.supabaseClient) window.supabaseClient = supabase;
+                console.log('✅ Supabase inicializado');
+            } catch (error) {
+                console.error('❌ Erro:', error);
+            }
+        }
+
+        async function verificarAutenticacao() {
+            try {
+                const loggedInUserData = localStorage.getItem('loggedInUser');
+                if (loggedInUserData) {
+                    const userData = JSON.parse(loggedInUserData);
+                    currentUser = userData.email || userData.nome;
+                    document.getElementById('currentUser').textContent = currentUser;
+                } else {
+                    window.location.href = 'login.html';
+                }
+            } catch (error) {
+                window.location.href = 'login.html';
+            }
+        }
+
+        async function carregarUsuarios() {
+            try {
+                const { data } = await supabase.from('user_profiles').select('id, nome, email').eq('active', true);
+                const select = document.getElementById('filtroUsuario');
+                select.innerHTML = '<option value="">Todos os usuários</option>';
+                data.forEach(u => {
+                    const opt = document.createElement('option');
+                    opt.value = u.id;
+                    opt.textContent = u.nome || u.email;
+                    select.appendChild(opt);
+                });
+            } catch (error) {
+                console.error('❌ Erro ao carregar usuários:', error);
+            }
+        }
+
+        async function gerarRelatorio() {
+            mostrarLoading(true);
+            try {
+                const filtroPeriodo = document.getElementById('filtroPeriodo').value;
+                const filtroUsuario = document.getElementById('filtroUsuario').value;
+                const hoje = new Date();
+                let filtroDataInicio, filtroDataFim;
+                
+                switch(filtroPeriodo) {
+                    case 'hoje': filtroDataInicio = filtroDataFim = hoje.toISOString().split('T')[0]; break;
+                    case 'semana': filtroDataInicio = new Date(hoje.getTime() - 7*24*60*60*1000).toISOString().split('T')[0]; filtroDataFim = hoje.toISOString().split('T')[0]; break;
+                    case 'mes': filtroDataInicio = new Date(hoje.getFullYear(), hoje.getMonth(), 1).toISOString().split('T')[0]; filtroDataFim = hoje.toISOString().split('T')[0]; break;
+                    default: filtroDataInicio = '2000-01-01'; filtroDataFim = '2099-12-31';
+                }
+                
+                let query = supabase.from('coletas').select('*').gte('created_at', filtroDataInicio).lte('created_at', filtroDataFim + 'T23:59:59');
+                if (filtroUsuario) query = query.eq('created_by', filtroUsuario);
+                const { data } = await query.order('created_at', { ascending: false });
+                
+                relatorioData = data || [];
+                atualizarEstatisticas();
+                atualizarGraficos();
+                atualizarTabela();
+                await calcularMetricasAvancadas();
+                mostrarLoading(false);
+            } catch (error) {
+                console.error('❌ Erro:', error);
+                alert('Erro ao gerar relatório: ' + error.message);
+                mostrarLoading(false);
+            }
+        }
+
+        function aplicarFiltros() { gerarRelatorio(); }
+        function mostrarLoading(show) { document.getElementById('loadingOverlay').style.display = show ? 'flex' : 'none'; }
+
+        function atualizarEstatisticas() {
+            document.getElementById('totalColetas').textContent = relatorioData.length;
+            document.getElementById('emAndamento').textContent = relatorioData.filter(c => c.status === 'em_andamento').length;
+            document.getElementById('concluidas').textContent = relatorioData.filter(c => c.status === 'concluida').length;
+            document.getElementById('canceladas').textContent = relatorioData.filter(c => c.status === 'cancelada').length;
+        }
+
+        function atualizarGraficos() {
+            atualizarGraficoStatus();
+            atualizarGraficoMensal();
+            atualizarGraficoUsuarios();
+            atualizarGraficoPrioridade();
+        }
+
+        function atualizarGraficoStatus() {
+            const canvas = document.getElementById('chartStatus');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            if (charts.status) charts.status.destroy();
+            charts.status = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Em Andamento', 'Concluída', 'Cancelada'],
+                    datasets: [{
+                        data: [
+                            relatorioData.filter(d => d.status === 'em_andamento').length,
+                            relatorioData.filter(d => d.status === 'concluida').length,
+                            relatorioData.filter(d => d.status === 'cancelada').length
+                        ],
+                        backgroundColor: ['#667eea', '#11998e', '#dc3545'],
+                        borderWidth: 4,
+                        borderColor: '#0f0f23'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom', labels: { color: '#fff', padding: 20, font: { size: 12, weight: 'bold' } } }
+                    }
+                }
+            });
+        }
+
+        function atualizarGraficoMensal() {
+            const canvas = document.getElementById('chartMensal');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            if (charts.mensal) charts.mensal.destroy();
+            const meses = {};
+            relatorioData.forEach(c => {
+                const m = new Date(c.created_at).toLocaleDateString('pt-BR', { month: 'short' });
+                meses[m] = (meses[m] || 0) + 1;
+            });
+            charts.mensal = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: Object.keys(meses),
+                    datasets: [{
+                        label: 'Coletas',
+                        data: Object.values(meses),
+                        backgroundColor: '#667eea',
+                        borderRadius: 10
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: { beginAtZero: true, ticks: { color: '#fff' } },
+                        x: { ticks: { color: '#fff' } }
+                    },
+                    plugins: { legend: { display: false } }
+                }
+            });
+        }
+
+        async function atualizarGraficoUsuarios() {
+            const canvas = document.getElementById('chartUsuarios');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            if (charts.usuarios) charts.usuarios.destroy();
+            
+            // Buscar nomes dos usuários
+            const { data: userProfiles } = await supabase.from('user_profiles').select('id, nome, email');
+            const userMap = {};
+            if (userProfiles) {
+                userProfiles.forEach(u => userMap[u.id] = u.nome || u.email || 'Desconhecido');
+            }
+            
+            const usuarios = {};
+            relatorioData.forEach(c => {
+                const userId = c.created_by;
+                const nome = userMap[userId] || 'Sistema';
+                usuarios[nome] = (usuarios[nome] || 0) + 1;
+            });
+            
+            // Top 5 usuários com mais coletas
+            const top5 = Object.entries(usuarios)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 5);
+            
+            charts.usuarios = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: top5.map(u => u[0]),
+                    datasets: [{
+                        label: 'Total de Coletas',
+                        data: top5.map(u => u[1]),
+                        backgroundColor: [
+                            'rgba(102, 126, 234, 0.9)',
+                            'rgba(118, 75, 162, 0.9)',
+                            'rgba(240, 147, 251, 0.9)',
+                            'rgba(17, 153, 142, 0.9)',
+                            'rgba(255, 193, 7, 0.9)'
+                        ],
+                        borderColor: [
+                            'rgba(102, 126, 234, 1)',
+                            'rgba(118, 75, 162, 1)',
+                            'rgba(240, 147, 251, 1)',
+                            'rgba(17, 153, 142, 1)',
+                            'rgba(255, 193, 7, 1)'
+                        ],
+                        borderWidth: 3,
+                        borderRadius: 12
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { 
+                            display: false 
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(15, 15, 35, 0.95)',
+                            titleColor: '#fff',
+                            bodyColor: '#fff',
+                            borderColor: 'rgba(102, 126, 234, 1)',
+                            borderWidth: 2,
+                            padding: 15,
+                            titleFont: { size: 16, weight: 'bold' },
+                            bodyFont: { size: 14 },
+                            callbacks: {
+                                label: (context) => ` ${context.dataset.label}: ${context.parsed.y} coletas`
+                            }
+                        },
+                        datalabels: {
+                            anchor: 'end',
+                            align: 'top',
+                            color: '#fff',
+                            font: { size: 14, weight: 'bold' },
+                            formatter: (value) => value
+                        }
+                    },
+                    scales: {
                         y: {
                             beginAtZero: true,
                             ticks: {
-                                color: getComputedStyle(document.body).getPropertyValue('--text')
+                                color: 'rgba(255, 255, 255, 0.9)',
+                                font: { size: 12, weight: 'bold' },
+                                stepSize: 1
                             },
                             grid: {
-                                color: getComputedStyle(document.body).getPropertyValue('--border')
+                                color: 'rgba(255, 255, 255, 0.1)',
+                                lineWidth: 1
+                            },
+                            title: {
+                                display: true,
+                                text: 'Quantidade de Coletas',
+                                color: 'rgba(255, 255, 255, 0.9)',
+                                font: { size: 14, weight: 'bold' }
                             }
                         },
                         x: {
                             ticks: {
-                                color: getComputedStyle(document.body).getPropertyValue('--text')
+                                color: 'rgba(255, 255, 255, 0.9)',
+                                font: { size: 12, weight: 'bold' }
                             },
-                            grid: {
-                                color: getComputedStyle(document.body).getPropertyValue('--border')
-                            }
-                        }
-                    },
-                    plugins: {
-                        legend: {
-                            labels: {
-                                color: getComputedStyle(document.body).getPropertyValue('--text')
+                            grid: { display: false },
+                            title: {
+                                display: true,
+                                text: 'Usuários',
+                                color: 'rgba(255, 255, 255, 0.9)',
+                                font: { size: 14, weight: 'bold' }
                             }
                         }
                     }
                 }
             });
+        }
 
-            // Gráfico de Filiais
-            if (charts.filialChart) {
-                charts.filialChart.destroy();
-            }
-            const filialCtx = document.getElementById('filialChart').getContext('2d');
-            const filialLabels = Object.keys(filialCounts);
-            const filialData = Object.values(filialCounts);
+        function atualizarGraficoPrioridade() {
+            const canvas = document.getElementById('chartPrioridade');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            if (charts.prioridade) charts.prioridade.destroy();
             
-            charts.filialChart = new Chart(filialCtx, {
-                type: 'pie',
+            const alta = relatorioData.filter(c => c.prioridade === 'alta').length;
+            const media = relatorioData.filter(c => c.prioridade === 'media').length;
+            const baixa = relatorioData.filter(c => c.prioridade === 'baixa').length;
+            
+            charts.prioridade = new Chart(ctx, {
+                type: 'doughnut',
                 data: {
-                    labels: filialLabels,
+                    labels: ['Alta Prioridade', 'Média Prioridade', 'Baixa Prioridade'],
                     datasets: [{
-                        data: filialData,
+                        data: [alta, media, baixa],
                         backgroundColor: [
-                            '#002776',
-                            '#0044AA',
-                            '#4A7BFF',
-                            '#28a745',
-                            '#fd7e14',
-                            '#C60C30',
-                            '#6f42c1'
+                            'rgba(220, 53, 69, 0.9)',
+                            'rgba(255, 193, 7, 0.9)',
+                            'rgba(17, 153, 142, 0.9)'
                         ],
-                        borderWidth: 2,
-                        borderColor: document.body.classList.contains('dark-mode') ? '#343a40' : '#ffffff'
+                        borderColor: [
+                            'rgba(220, 53, 69, 1)',
+                            'rgba(255, 193, 7, 1)',
+                            'rgba(17, 153, 142, 1)'
+                        ],
+                        borderWidth: 4,
+                        hoverOffset: 15
                     }]
                 },
                 options: {
@@ -1643,10 +1536,37 @@
                         legend: {
                             position: 'bottom',
                             labels: {
-                                color: getComputedStyle(document.body).getPropertyValue('--text'),
-                                font: {
-                                    size: 11
+                                color: '#fff',
+                                padding: 20,
+                                font: { size: 14, weight: 'bold' }
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(15, 15, 35, 0.95)',
+                            titleColor: '#fff',
+                            bodyColor: '#fff',
+                            borderColor: 'rgba(102, 126, 234, 1)',
+                            borderWidth: 2,
+                            padding: 15,
+                            titleFont: { size: 16, weight: 'bold' },
+                            bodyFont: { size: 14 },
+                            callbacks: {
+                                label: (context) => {
+                                    const label = context.label || '';
+                                    const value = context.parsed || 0;
+                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                    const percentage = ((value / total) * 100).toFixed(1);
+                                    return `${label}: ${value} coletas (${percentage}%)`;
                                 }
+                            }
+                        },
+                        datalabels: {
+                            color: '#fff',
+                            font: { size: 16, weight: 'bold' },
+                            formatter: (value, context) => {
+                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                const percentage = ((value / total) * 100).toFixed(0);
+                                return value > 0 ? `${value}\n(${percentage}%)` : '';
                             }
                         }
                     }
@@ -1654,256 +1574,31 @@
             });
         }
 
-        // Atualizar dashboard
-        function updateDashboard() {
-            const data = filteredData.length > 0 ? filteredData : reportData;
-            
-            // Estatísticas básicas
-            const totalColetas = data.length;
-            const coletasConcluidas = data.filter(c => c.status === 'concluida').length;
-            const taxaSucesso = totalColetas > 0 ? ((coletasConcluidas / totalColetas) * 100).toFixed(1) : 0;
-            
-            const valorTotal = data.reduce((sum, coleta) => sum + (coleta.valor || 0), 0);
-            const valorMedio = totalColetas > 0 ? (valorTotal / totalColetas).toFixed(2) : 0;
-
-            // Contagem por etapa
-            const etapaCounts = contarPorEtapa(data);
-
-            document.getElementById('totalColetas').textContent = totalColetas;
-            document.getElementById('coletasConcluidas').textContent = coletasConcluidas;
-            document.getElementById('taxaSucesso').textContent = `${taxaSucesso}%`;
-            document.getElementById('valorTotal').textContent = `R$ ${valorTotal.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
-            document.getElementById('valorMedio').textContent = `R$ ${valorMedio}`;
-            
-            document.getElementById('etapaComercial').textContent = etapaCounts.comercial || 0;
-            document.getElementById('etapaCS').textContent = etapaCounts.cs || 0;
-            document.getElementById('etapaGR').textContent = etapaCounts.gr || 0;
-        }
-
-        // Atualizar tabela detalhada
-        function updateDetailedTable() {
-            const tableBody = document.getElementById('tableBody');
-            const data = filteredData.length > 0 ? filteredData : reportData;
-            
-            tableBody.innerHTML = '';
-
-            if (data.length === 0) {
-                tableBody.innerHTML = `
-                    <tr>
-                        <td colspan="11" style="text-align: center; padding: 2rem; color: var(--text-light);">
-                            <i class="fas fa-inbox" style="font-size: 2rem; margin-bottom: 1rem; opacity: 0.5;"></i>
-                            <p>Nenhuma coleta encontrada</p>
-                            <p style="font-size: 0.8rem; margin-top: 0.5rem;">Tente ajustar os filtros ou adicionar coletas no sistema</p>
-                        </td>
-                    </tr>
-                `;
+        function atualizarTabela() {
+            const tbody = document.querySelector('#tabelaRelatorio');
+            if (!tbody) return;
+            tbody.innerHTML = '';
+            if (relatorioData.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">Nenhuma coleta encontrada</td></tr>';
                 return;
             }
-
-            data.forEach(coleta => {
+            relatorioData.slice(0, 25).forEach(coleta => {
                 const row = document.createElement('tr');
-                
                 row.innerHTML = `
-                    <td><strong>${coleta.id}</strong></td>
-                    <td>${coleta.cliente}</td>
-                    <td>${formatarData(coleta.dataRecebimento)}</td>
-                    <td>${coleta.origem}</td>
-                    <td>${coleta.destino}</td>
-                    <td><span class="status-badge status-${coleta.status}">${getStatusText(coleta.status)}</span></td>
-                    <td>${getEtapaText(coleta.etapaAtual)}</td>
-                    <td><strong>R$ ${coleta.valor?.toFixed(2) || '0,00'}</strong></td>
-                    <td>${coleta.km || '-'}</td>
-                    <td>${coleta.filial}</td>
-                    <td>${coleta.tempoEtapa || 'N/A'}</td>
+                    <td>${coleta.id.substring(0, 8)}...</td>
+                    <td>${coleta.cliente || '-'}</td>
+                    <td>${coleta.titulo || '-'}</td>
+                    <td><span class="badge badge-tech bg-${getStatusColor(coleta.status)}">${coleta.status}</span></td>
+                    <td>${coleta.etapa_atual || '-'}</td>
+                    <td>${new Date(coleta.created_at).toLocaleDateString('pt-BR')}</td>
                 `;
-                tableBody.appendChild(row);
+                tbody.appendChild(row);
             });
         }
 
-        // Funções de contagem para gráficos
-        function contarPorStatus(data) {
-            return data.reduce((acc, coleta) => {
-                acc[coleta.status] = (acc[coleta.status] || 0) + 1;
-                return acc;
-            }, {});
-        }
-
-        function contarPorEtapa(data) {
-            return data.reduce((acc, coleta) => {
-                acc[coleta.etapaAtual] = (acc[coleta.etapaAtual] || 0) + 1;
-                return acc;
-            }, {});
-        }
-
-        function contarPorFilial(data) {
-            return data.reduce((acc, coleta) => {
-                if (coleta.filial && coleta.filial !== 'N/A') {
-                    acc[coleta.filial] = (acc[coleta.filial] || 0) + 1;
-                }
-                return acc;
-            }, {});
-        }
-
-        function calcularEvolucaoMensal(data) {
-            // Simula dados mensais - em produção, você calcularia baseado nas datas reais
-            return [2, 3, 5, 4, 6, 8, 7, 9, 10, 12, 11, data.length];
-        }
-
-        // Limpar filtros
-        function clearFilters() {
-            document.getElementById('filialFilter').value = '';
-            document.getElementById('etapaFilter').value = '';
-            document.getElementById('statusFilter').value = '';
-            document.getElementById('tipoRelatorio').value = 'geral';
-            clearDateFilters();
-            applyFilters();
-            showNotification('Filtros limpos!', 'info');
-        }
-
-        // Definir período rápido
-        function setQuickDate(periodo) {
-            const hoje = new Date();
-            let dataInicio, dataFim;
-
-            switch(periodo) {
-                case 'hoje':
-                    dataInicio = hoje;
-                    dataFim = hoje;
-                    break;
-                case 'semana':
-                    dataInicio = new Date(hoje.getTime() - 6 * 24 * 60 * 60 * 1000);
-                    dataFim = hoje;
-                    break;
-                case 'mes':
-                    dataInicio = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
-                    dataFim = hoje;
-                    break;
-                case 'trimestre':
-                    const trimestreAtual = Math.floor(hoje.getMonth() / 3);
-                    dataInicio = new Date(hoje.getFullYear(), trimestreAtual * 3, 1);
-                    dataFim = hoje;
-                    break;
-            }
-
-            document.getElementById('dataInicio').value = formatarDataParaInput(dataInicio);
-            document.getElementById('dataFim').value = formatarDataParaInput(dataFim);
-            
-            document.querySelectorAll('.quick-date-btn').forEach(btn => btn.classList.remove('active'));
-            event.target.classList.add('active');
-            
-            applyFilters();
-        }
-
-        // Limpar filtros de data
-        function clearDateFilters() {
-            document.getElementById('dataInicio').value = '';
-            document.getElementById('dataFim').value = '';
-            document.querySelectorAll('.quick-date-btn').forEach(btn => btn.classList.remove('active'));
-        }
-
-        // Gerar relatório PDF
-        function generateReport() {
-            showNotification('Gerando relatório PDF...', 'info');
-            
-            // Simular geração de PDF
-            setTimeout(() => {
-                showNotification('Relatório PDF gerado com sucesso!', 'success');
-                
-                // Em uma implementação real, aqui você usaria jsPDF
-                // const { jsPDF } = window.jspdf;
-                // const doc = new jsPDF();
-                // doc.text('Relatório de Coletas', 20, 20);
-                // doc.save('relatorio-coletas.pdf');
-            }, 2000);
-        }
-
-        // Exportar para CSV
-        function exportToCSV() {
-            const data = filteredData.length > 0 ? filteredData : reportData;
-            
-            if (data.length === 0) {
-                showNotification('Nenhum dado para exportar', 'warning');
-                return;
-            }
-
-            const headers = ['ID', 'Cliente', 'Data', 'Origem', 'Destino', 'Status', 'Etapa', 'Valor (R$)', 'KM', 'Filial', 'Tempo na Etapa'];
-            const csvContent = [
-                headers.join(','),
-                ...data.map(coleta => {
-                    return [
-                        coleta.id,
-                        `"${coleta.cliente}"`,
-                        coleta.dataRecebimento,
-                        `"${coleta.origem}"`,
-                        `"${coleta.destino}"`,
-                        coleta.status,
-                        coleta.etapaAtual,
-                        coleta.valor?.toFixed(2) || '0.00',
-                        coleta.km || '',
-                        coleta.filial,
-                        coleta.tempoEtapa || 'N/A'
-                    ].join(',');
-                })
-            ].join('\n');
-
-            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `relatorio-coletas-${new Date().toISOString().split('T')[0]}.csv`;
-            a.click();
-            URL.revokeObjectURL(url);
-            
-            showNotification('Dados exportados para CSV!', 'success');
-        }
-
-        // Download de gráfico
-        function downloadChart(chartId) {
-            const chart = charts[chartId];
-            if (chart) {
-                const url = chart.toBase64Image();
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `${chartId}-${new Date().toISOString().split('T')[0]}.png`;
-                a.click();
-                showNotification('Gráfico baixado com sucesso!', 'success');
-            }
-        }
-
-        // Funções utilitárias
-        function getStatusText(status) {
-            const statusMap = {
-                'pendente': 'Pendente',
-                'andamento': 'Em Andamento',
-                'concluida': 'Concluída',
-                'cancelada': 'Cancelada'
-            };
-            return statusMap[status] || status;
-        }
-
-        function getEtapaText(etapa) {
-            const etapaObj = ETAPAS.find(e => e.id === etapa);
-            return etapaObj ? etapaObj.nome : etapa;
-        }
-
-        function formatarData(dataString) {
-            if (!dataString) return 'N/A';
-            const data = new Date(dataString);
-            return data.toLocaleDateString('pt-BR');
-        }
-
-        function formatarDataParaInput(data) {
-            return data.toISOString().split('T')[0];
-        }
-
-        function showNotification(message, type = 'info') {
-            const notification = document.getElementById('notification');
-            notification.textContent = message;
-            notification.className = `notification ${type} show`;
-            
-            setTimeout(() => {
-                notification.classList.remove('show');
-            }, 4000);
+        function getStatusColor(status) {
+            const colors = { 'em_andamento': 'warning', 'concluida': 'success', 'cancelada': 'danger' };
+            return colors[status] || 'secondary';
         }
     </script>
 </body>

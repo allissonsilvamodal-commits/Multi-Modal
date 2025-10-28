@@ -3,18 +3,31 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Portal - Sistema de Ferramentas</title>
+    <title>Portal Multimodal - Dashboard Tecnológico</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/particles.js@2.0.0/particles.min.js"></script>
     <style>
         :root {
-            --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            --secondary-gradient: linear-gradient(135deg, #2c3e50 0%, #3498db 100%);
-            --success-gradient: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%);
-            --warning-gradient: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
-            --danger-gradient: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
-            --card-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
-            --transition: all 0.3s ease;
+            --primary: #667eea;
+            --secondary: #764ba2;
+            --accent: #f093fb;
+            --success: #11998e;
+            --warning: #ffc107;
+            --danger: #dc3545;
+            --info: #17a2b8;
+            --dark: #0f0f23;
+            --light: #f8f9fa;
+            --white: #ffffff;
+            --glass: rgba(255, 255, 255, 0.1);
+            --glass-border: rgba(255, 255, 255, 0.2);
+            --text-primary: #ffffff;
+            --text-secondary: rgba(255, 255, 255, 0.8);
+            --text-muted: rgba(255, 255, 255, 0.6);
+            --border-radius: 20px;
+            --box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            --transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
         * {
@@ -24,484 +37,1579 @@
         }
 
         body {
-            background: var(--primary-gradient);
-            min-height: 100vh;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
-
-        /* Header */
-        .portal-header {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
-            padding: 2rem 0;
-            text-align: center;
-            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+            background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 50%, #16213e 100%);
+            min-height: 100vh;
+            color: var(--text-primary);
+            overflow-x: hidden;
             position: relative;
         }
 
-        .logo {
-            font-size: 2.5rem;
-            font-weight: 700;
-            color: #2c3e50;
-            margin-bottom: 0.5rem;
-        }
-
-        .subtitle {
-            color: #7f8c8d;
-            font-size: 1.1rem;
-        }
-
-        .user-info-panel {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            background: rgba(52, 152, 219, 0.1);
-            padding: 10px 15px;
-            border-radius: 10px;
-            border: 1px solid rgba(52, 152, 219, 0.2);
-        }
-
-        .admin-badge {
-            background: var(--danger-gradient);
-            color: white;
-            padding: 2px 8px;
-            border-radius: 12px;
-            font-size: 0.7rem;
-            margin-left: 5px;
-        }
-
-        /* Main Content */
-        .portal-main {
-            padding: 3rem 1rem;
-        }
-
-        .tools-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-            gap: 2rem;
-            max-width: 1200px;
-            margin: 0 auto;
-        }
-
-        .tool-card {
-            background: rgba(255, 255, 255, 0.95);
-            border-radius: 20px;
-            padding: 2.5rem;
-            text-align: center;
-            box-shadow: var(--card-shadow);
-            transition: var(--transition);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            position: relative;
-            overflow: hidden;
-        }
-
-        .tool-card::before {
-            content: '';
-            position: absolute;
+        /* Partículas de fundo */
+        #particles-js {
+            position: fixed;
             top: 0;
             left: 0;
             width: 100%;
-            height: 5px;
-            background: var(--secondary-gradient);
+            height: 100%;
+            z-index: -1;
         }
 
-        .tool-card:hover {
-            transform: translateY(-10px);
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+        /* Efeitos de luz */
+        .light-effect {
+            position: absolute;
+            width: 300px;
+            height: 300px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(102, 126, 234, 0.3) 0%, transparent 70%);
+            filter: blur(40px);
+            animation: float 6s ease-in-out infinite;
         }
 
-        .tool-icon {
-            font-size: 3.5rem;
-            margin-bottom: 1.5rem;
-            background: var(--secondary-gradient);
+        .light-effect:nth-child(1) {
+            top: 10%;
+            left: 10%;
+            animation-delay: 0s;
+        }
+
+        .light-effect:nth-child(2) {
+            top: 60%;
+            right: 10%;
+            animation-delay: 2s;
+        }
+
+        .light-effect:nth-child(3) {
+            bottom: 10%;
+            left: 50%;
+            animation-delay: 4s;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px) scale(1); }
+            50% { transform: translateY(-20px) scale(1.1); }
+        }
+
+        /* Navbar futurística */
+        .navbar {
+            background: rgba(15, 15, 35, 0.9);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--glass-border);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+
+        .navbar-brand {
+            font-weight: 700;
+            font-size: 1.8rem;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
+            text-shadow: 0 0 30px rgba(102, 126, 234, 0.5);
         }
 
-        .tool-title {
-            font-size: 1.5rem;
-            font-weight: 700;
-            color: #2c3e50;
-            margin-bottom: 1rem;
+        .navbar-nav .nav-link {
+            color: var(--text-secondary) !important;
+            font-weight: 500;
+            transition: var(--transition);
+            position: relative;
         }
 
-        .tool-description {
-            color: #7f8c8d;
-            margin-bottom: 2rem;
-            line-height: 1.6;
+        .navbar-nav .nav-link:hover {
+            color: var(--text-primary) !important;
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
         }
 
-        .btn-tool {
-            background: var(--success-gradient);
-            color: white;
-            border: none;
-            padding: 12px 30px;
-            border-radius: 12px;
-            font-weight: 600;
-            text-decoration: none;
-            display: inline-block;
+        .navbar-nav .nav-link::after {
+            content: '';
+            position: absolute;
+            bottom: -5px;
+            left: 50%;
+            width: 0;
+            height: 2px;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            transition: var(--transition);
+            transform: translateX(-50%);
+        }
+
+        .navbar-nav .nav-link:hover::after {
+            width: 100%;
+        }
+
+        /* Botão de tema futurístico */
+        .theme-toggle {
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            border-radius: 50px;
+            padding: 8px 16px;
+            color: var(--text-primary);
+            transition: var(--transition);
+            backdrop-filter: blur(10px);
+        }
+
+        .theme-toggle:hover {
+            background: rgba(102, 126, 234, 0.2);
+            box-shadow: 0 0 20px rgba(102, 126, 234, 0.3);
+            transform: translateY(-2px);
+        }
+
+        /* Container principal */
+        .main-container {
+            padding: 2rem 0;
+            min-height: calc(100vh - 76px);
+            position: relative;
+        }
+
+        /* Cards futurísticos */
+        .card-futuristic {
+            background: var(--glass);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--border-radius);
+            box-shadow: var(--box-shadow);
             transition: var(--transition);
             position: relative;
             overflow: hidden;
-            cursor: pointer;
         }
 
-        .btn-tool::before {
+        .card-futuristic::before {
             content: '';
             position: absolute;
             top: 0;
             left: -100%;
             width: 100%;
             height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
             transition: var(--transition);
         }
 
-        .btn-tool:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 7px 20px rgba(39, 174, 96, 0.4);
-            color: white;
-            text-decoration: none;
-        }
-
-        .btn-tool:hover::before {
+        .card-futuristic:hover::before {
             left: 100%;
         }
 
-        .btn-tool.warning {
-            background: var(--warning-gradient);
+        .card-futuristic:hover {
+            transform: translateY(-10px) scale(1.02);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+            border-color: rgba(102, 126, 234, 0.5);
         }
 
-        .btn-tool.warning:hover {
-            box-shadow: 0 7px 20px rgba(243, 156, 18, 0.4);
+        /* Header do card */
+        .card-header-futuristic {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            border-radius: var(--border-radius) var(--border-radius) 0 0;
+            padding: 2rem;
+            border: none;
+            position: relative;
+            overflow: hidden;
         }
 
-        .btn-tool:disabled {
-            background: #bdc3c7;
-            cursor: not-allowed;
-            transform: none;
-            box-shadow: none;
+        .card-header-futuristic::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(45deg, transparent 30%, rgba(255, 255, 255, 0.1) 50%, transparent 70%);
+            animation: shimmer 3s infinite;
         }
 
-        .btn-tool:disabled:hover {
-            transform: none;
-            box-shadow: none;
+        @keyframes shimmer {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+
+        .card-header-futuristic h3 {
+            color: var(--text-primary);
+            font-weight: 700;
+            font-size: 1.5rem;
+            margin: 0;
+            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+        }
+
+        /* Métricas animadas */
+        .metric-card {
+            background: var(--glass);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--border-radius);
+            padding: 2rem;
+            text-align: center;
+            transition: var(--transition);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .metric-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            opacity: 0;
+            transition: var(--transition);
+        }
+
+        .metric-card:hover::before {
+            opacity: 0.1;
+        }
+
+        .metric-card:hover {
+            transform: translateY(-10px) scale(1.05);
+            box-shadow: 0 20px 40px rgba(102, 126, 234, 0.3);
+        }
+
+        .metric-value {
+            font-size: 3rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 0.5rem;
+            text-shadow: 0 0 30px rgba(102, 126, 234, 0.5);
+        }
+
+        .metric-label {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        /* Departamentos futurísticos */
+        .department-card {
+            background: var(--glass);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--border-radius);
+            margin-bottom: 2rem;
+            transition: var(--transition);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .department-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            opacity: 0;
+            transition: var(--transition);
+        }
+
+        .department-card:hover::before {
+            opacity: 0.05;
+        }
+
+        .department-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.3);
+            border-color: rgba(102, 126, 234, 0.5);
+        }
+
+        .department-header {
+            padding: 2rem;
+            cursor: pointer;
+            transition: var(--transition);
+            position: relative;
+            z-index: 2;
+        }
+
+        .department-header:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .department-icon {
+            width: 80px;
+            height: 80px;
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            color: var(--text-primary);
+            margin-bottom: 1rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .department-icon::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            opacity: 0.8;
+            border-radius: 20px;
+        }
+
+        .department-icon i {
+            position: relative;
+            z-index: 2;
+        }
+
+        .department-title {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 0.5rem;
+        }
+
+        .department-description {
+            color: var(--text-secondary);
+            font-size: 1rem;
+            line-height: 1.5;
+        }
+
+        .expand-icon {
+            position: absolute;
+            top: 2rem;
+            right: 2rem;
+            font-size: 1.5rem;
+            color: var(--text-secondary);
+            transition: var(--transition);
+        }
+
+        .department-card.expanded .expand-icon {
+            transform: rotate(180deg);
+        }
+
+        /* Módulos */
+        .department-content {
+            padding: 0 2rem 2rem;
+            max-height: 0;
+            overflow: hidden;
+            transition: var(--transition);
+        }
+
+        .department-card.expanded .department-content {
+            max-height: 1000px;
+        }
+
+        .module-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-top: 1rem;
+        }
+
+        .module-item {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--glass-border);
+            border-radius: 15px;
+            padding: 1.5rem;
+            transition: var(--transition);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .module-item::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+            transition: var(--transition);
+        }
+
+        .module-item:hover::before {
+            left: 100%;
+        }
+
+        .module-item:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+            border-color: rgba(102, 126, 234, 0.5);
+        }
+
+        .module-icon {
+            width: 60px;
+            height: 60px;
+            border-radius: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            color: var(--text-primary);
+            margin-bottom: 1rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .module-icon::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            opacity: 0.8;
+            border-radius: 15px;
+        }
+
+        .module-icon i {
+            position: relative;
+            z-index: 2;
+        }
+
+        .module-name {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 0.5rem;
+        }
+
+        .module-description {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            line-height: 1.4;
         }
 
         .access-badge {
-            display: inline-block;
-            background: #e74c3c;
-            color: white;
-            padding: 4px 12px;
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            background: linear-gradient(135deg, var(--warning), #ff8c00);
+            color: var(--dark);
+            padding: 0.25rem 0.75rem;
             border-radius: 20px;
-            font-size: 0.8rem;
-            margin-top: 1rem;
+            font-size: 0.75rem;
             font-weight: 600;
         }
 
-        .access-badge.general {
-            background: #27ae60;
+        /* Botões futurísticos */
+        .btn-futuristic {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            border: none;
+            border-radius: 50px;
+            padding: 0.75rem 2rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            transition: var(--transition);
+            position: relative;
+            overflow: hidden;
         }
 
-        /* Footer */
-        .portal-footer {
-            background: rgba(255, 255, 255, 0.95);
-            padding: 2rem 0;
-            text-align: center;
-            margin-top: 3rem;
-        }
-
-        .user-info {
-            color: #7f8c8d;
-            font-size: 0.9rem;
-        }
-
-        /* Loading */
-        .loading {
-            display: none;
-            position: fixed;
+        .btn-futuristic::before {
+            content: '';
+            position: absolute;
             top: 0;
-            left: 0;
+            left: -100%;
             width: 100%;
             height: 100%;
-            background: rgba(0, 0, 0, 0.7);
-            z-index: 9999;
-            justify-content: center;
-            align-items: center;
-            color: white;
-            font-size: 1.2rem;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: var(--transition);
         }
 
-        /* Responsive */
+        .btn-futuristic:hover::before {
+            left: 100%;
+        }
+
+        .btn-futuristic:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
+        }
+
+        /* Loading futurístico */
+        .loading-futuristic {
+            display: inline-block;
+            width: 30px;
+            height: 30px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: var(--primary);
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Alertas futurísticos */
+        .alert-futuristic {
+            background: var(--glass);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--border-radius);
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            font-weight: 500;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .alert-futuristic::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+        }
+
+        .alert-success::before {
+            background: linear-gradient(135deg, var(--success), #11998e);
+        }
+
+        .alert-danger::before {
+            background: linear-gradient(135deg, var(--danger), #c82333);
+        }
+
+        .alert-warning::before {
+            background: linear-gradient(135deg, var(--warning), #ff8c00);
+        }
+
+        /* Responsividade */
         @media (max-width: 768px) {
-            .tools-grid {
-                grid-template-columns: 1fr;
-            }
-            
-            .tool-card {
-                padding: 2rem;
-            }
-            
-            .logo {
+            .metric-value {
                 font-size: 2rem;
             }
             
-            .user-info-panel {
-                position: static;
-                margin: 15px auto;
-                text-align: center;
+            .department-title {
+                font-size: 1.5rem;
             }
+            
+            .module-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Animações de entrada */
+        .fade-in {
+            animation: fadeIn 0.8s ease-out;
+        }
+
+        .slide-up {
+            animation: slideUp 0.8s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes slideUp {
+            from { 
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to { 
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Scrollbar personalizada */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: linear-gradient(135deg, var(--secondary), var(--primary));
         }
     </style>
 </head>
 <body>
-    <!-- Loading -->
-    <div id="loading" class="loading">
-        <div class="text-center">
-            <div class="spinner-border mb-3" role="status"></div>
-            <div>Processando...</div>
+    <!-- Efeitos de luz de fundo -->
+    <div class="light-effect"></div>
+    <div class="light-effect"></div>
+    <div class="light-effect"></div>
+
+    <!-- Partículas -->
+    <div id="particles-js"></div>
+
+    <!-- Navbar Futurística -->
+    <nav class="navbar navbar-expand-lg">
+        <div class="container">
+            <a class="navbar-brand" href="#">
+                <i class="fas fa-rocket me-2"></i>
+                Multimodal Portal
+            </a>
+            
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="#dashboard">
+                            <i class="fas fa-tachometer-alt me-1"></i>Dashboard
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#departments">
+                            <i class="fas fa-building me-1"></i>Departamentos
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#analytics">
+                            <i class="fas fa-chart-line me-1"></i>Analytics
+                        </a>
+                    </li>
+                </ul>
+                
+                <div class="navbar-nav">
+                    <div class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                            <i class="fas fa-user-circle me-1"></i>
+                            <span id="currentUser">Carregando...</span>
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><a class="dropdown-item" href="painel.html"><i class="fas fa-tachometer-alt me-2"></i>Painel</a></li>
+                            <li><a class="dropdown-item" href="cadastro.html"><i class="fas fa-truck me-2"></i>Motoristas</a></li>
+                            <li><a class="dropdown-item" href="coletas.html"><i class="fas fa-headset me-2"></i>Coletas</a></li>
+                            <li><a class="dropdown-item" href="relatorios.html"><i class="fas fa-chart-bar me-2"></i>Relatórios</a></li>
+                            <li><a class="dropdown-item" href="crm.html"><i class="fas fa-users me-2"></i>CRM</a></li>
+                            <li><a class="dropdown-item" href="vendas.html"><i class="fas fa-chart-line me-2"></i>Vendas</a></li>
+                            <li><a class="dropdown-item" href="monitoramento.html"><i class="fas fa-monitor me-2"></i>Monitoramento</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="#" onclick="logout()"><i class="fas fa-sign-out-alt me-2"></i>Sair</a></li>
+                        </ul>
+            </div>
+                    <button class="btn theme-toggle ms-2" id="themeToggle" onclick="toggleTheme()">
+                        <i class="fas fa-moon"></i>
+                </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Container Principal -->
+    <div class="main-container">
+        <div class="container">
+            <!-- Alertas -->
+            <div id="alertContainer"></div>
+
+            <!-- Seção Dashboard -->
+            <section id="dashboard" class="fade-in">
+                <!-- Cabeçalho -->
+                <div class="row mb-5">
+                    <div class="col-12 text-center">
+                        <h1 class="display-4 fw-bold mb-3">
+                            <span class="text-gradient">Portal Multimodal</span>
+                        </h1>
+                        <p class="lead text-secondary">
+                            Sistema de Gestão Tecnológica Avançada
+                        </p>
+                        <div class="mt-4">
+                            <span class="badge bg-success me-2">
+                                <i class="fas fa-circle me-1"></i>Sistema Online
+                            </span>
+                            <span class="badge bg-info me-2">
+                                <i class="fas fa-shield-alt me-1"></i>Seguro
+                            </span>
+                            <span class="badge bg-warning">
+                                <i class="fas fa-bolt me-1"></i>Alta Performance
+                            </span>
+                            <button class="btn btn-outline-light btn-sm ms-3" onclick="debugPermissoes()">
+                                <i class="fas fa-bug me-1"></i>Debug Permissões
+                        </button>
+                    </div>
+                    </div>
+                </div>
+
+                <!-- Métricas Principais -->
+                <div class="row mb-5 slide-up">
+                    <div class="col-md-3 mb-4">
+                        <div class="metric-card">
+                            <div class="metric-value" id="totalUsers">0</div>
+                            <div class="metric-label">
+                                <i class="fas fa-users me-2"></i>Usuários Ativos
+                </div>
+                    </div>
+                </div>
+                    <div class="col-md-3 mb-4">
+                        <div class="metric-card">
+                            <div class="metric-value" id="totalOperations">0</div>
+                            <div class="metric-label">
+                                <i class="fas fa-cogs me-2"></i>Operações Hoje
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-4">
+                        <div class="metric-card">
+                            <div class="metric-value" id="systemHealth">0%</div>
+                            <div class="metric-label">
+                                <i class="fas fa-heartbeat me-2"></i>Saúde do Sistema
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-4">
+                        <div class="metric-card">
+                            <div class="metric-value" id="activeConnections">0</div>
+                            <div class="metric-label">
+                                <i class="fas fa-wifi me-2"></i>Conexões Ativas
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Seção Departamentos -->
+            <section id="departments" class="slide-up">
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <h2 class="h3 fw-bold mb-3">
+                            <i class="fas fa-building me-2"></i>Departamentos Tecnológicos
+                    </h2>
+                        <p class="text-secondary">Acesse os módulos disponíveis baseados em suas permissões</p>
+                            </div>
+                </div>
+                        
+                <div class="row" id="departmentsContainer">
+                    <!-- Departamentos serão carregados dinamicamente -->
+                            </div>
+            </section>
+
+            <!-- Seção Analytics -->
+            <section id="analytics" class="slide-up">
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <h2 class="h3 fw-bold mb-3">
+                            <i class="fas fa-chart-line me-2"></i>Analytics em Tempo Real
+                        </h2>
+                        <p class="text-secondary">Monitoramento avançado do sistema</p>
+                            </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-8 mb-4">
+                        <div class="card-futuristic">
+                            <div class="card-header-futuristic">
+                                <h3><i class="fas fa-chart-area me-2"></i>Atividade do Sistema</h3>
+                            </div>
+                            <div class="card-body p-4">
+                                <canvas id="systemChart" height="300"></canvas>
+                    </div>
+                </div>
+            </div>
+                    <div class="col-md-4 mb-4">
+                        <div class="card-futuristic">
+                            <div class="card-header-futuristic">
+                                <h3><i class="fas fa-server me-2"></i>Status dos Serviços</h3>
+                            </div>
+                            <div class="card-body p-4">
+                                <div class="service-status">
+                                    <div class="d-flex justify-content-between align-items-center mb-3">
+                                        <span>Supabase</span>
+                                        <span class="badge bg-success">Online</span>
+                                    </div>
+                                    <div class="d-flex justify-content-between align-items-center mb-3">
+                                        <span>Evolution API</span>
+                                        <span class="badge bg-warning">Verificando</span>
+                                    </div>
+                                    <div class="d-flex justify-content-between align-items-center mb-3">
+                                        <span>Sistema de Coletas</span>
+                                        <span class="badge bg-success">Online</span>
+                                    </div>
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <span>Monitoramento</span>
+                                        <span class="badge bg-success">Online</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
         </div>
     </div>
 
-    <!-- Header -->
-    <header class="portal-header">
-        <div class="container">
-            <div class="logo">
-                <i class="fas fa-toolbox"></i> Portal de Ferramentas
-            </div>
-            <p class="subtitle">Sistema integrado de gestão e comunicação</p>
-            
-            <!-- Painel de Informações do Usuário -->
-            <div id="userInfoPanel" class="user-info-panel" style="display: none;">
-                <i class="fas fa-user"></i> 
-                <span id="userName"></span>
-                <span id="adminBadge" class="admin-badge" style="display: none;">ADMIN</span>
-                <button onclick="fazerLogoff()" class="btn btn-sm btn-outline-danger ms-2">
-                    <i class="fas fa-sign-out-alt"></i> Sair
-                </button>
-            </div>
-        </div>
-    </header>
-
-    <!-- Main Content -->
-    <main class="portal-main">
-        <div class="container">
-            <div class="tools-grid">
-                <!-- Sistema de Disparos -->
-                <div class="tool-card">
-                    <div class="tool-icon">
-                        <i class="fas fa-comment-dots"></i>
-                    </div>
-                    <h3 class="tool-title">Sistema de Disparos</h3>
-                    <p class="tool-description">
-                        Disparo automatizado de mensagens via WhatsApp com múltiplas instâncias individuais para cada usuário.
-                    </p>
-                    <a href="painel.html" class="btn-tool" id="disparadorBtn">
-                        <i class="fas fa-play-circle"></i> Acessar Disparador
-                    </a>
-                    <div class="access-badge">
-                        <i class="fas fa-user-shield"></i> Acesso Restrito
-                    </div>
-                </div>
-
-                <!-- Sistema de Planilhas -->
-                <div class="tool-card">
-                    <div class="tool-icon">
-                        <i class="fas fa-table"></i>
-                    </div>
-                    <h3 class="tool-title">Sistema de Coletas</h3>
-                    <p class="tool-description">
-                        Gestão completa do fluxo de coletas com acompanhamento em tempo real e controle de etapas.
-                    </p>
-                    <a href="coletas.html" class="btn-tool warning">
-                        <i class="fas fa-chart-line"></i> Acessar Coletas
-                    </a>
-                    <div class="access-badge general">
-                        <i class="fas fa-users"></i> Acesso Geral
-                    </div>
-                </div>
-
-                <!-- Sistema de Configurações (Só para Admin) -->
-                <div class="tool-card" id="settingsCard" style="display: none;">
-                    <div class="tool-icon">
-                        <i class="fas fa-cogs"></i>
-                    </div>
-                    <h3 class="tool-title">Configurações do Sistema</h3>
-                    <p class="tool-description">
-                        Gestão de usuários, permissões e configurações gerais do sistema.
-                    </p>
-                    <a href="settings.html" class="btn-tool" style="background: var(--danger-gradient);">
-                        <i class="fas fa-sliders-h"></i> Acessar Configurações
-                    </a>
-                    <div class="access-badge" style="background: #8e44ad;">
-                        <i class="fas fa-crown"></i> Apenas Administradores
-                    </div>
-                </div>
-            </div>
-        </div>
-    </main>
-
-    <!-- Footer -->
-    <footer class="portal-footer">
-        <div class="container">
-            <div class="user-info">
-                <i class="fas fa-info-circle"></i> 
-                Escolha a ferramenta adequada para sua necessidade
-            </div>
-        </div>
-    </footer>
-
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
-        // ========== SISTEMA DE AUTENTICAÇÃO COM LOCALSTORAGE ==========
-        
-        function showLoading(show = true) {
-            document.getElementById('loading').style.display = show ? 'flex' : 'none';
+        // ========== CONFIGURAÇÕES SUPABASE ==========
+        let supabase = null;
+        let currentUser = null;
+        let systemChart = null;
+
+        // ========== INICIALIZAÇÃO ==========
+        document.addEventListener('DOMContentLoaded', async function() {
+            console.log('🚀 Portal Multimodal inicializando...');
+            
+            // Inicializar partículas
+            initParticles();
+            
+            // Inicializar Supabase
+            await inicializarSupabase();
+            
+            // Verificar autenticação
+            await verificarAutenticacao();
+            
+            // Carregar dados
+            await carregarDados();
+            
+            // Inicializar gráficos
+            inicializarGraficos();
+            
+            // Configurar animações
+            configurarAnimações();
+            
+            console.log('✅ Portal Multimodal carregado com sucesso!');
+        });
+
+        // ========== PARTÍCULAS ==========
+        function initParticles() {
+            particlesJS('particles-js', {
+                particles: {
+                    number: { value: 80, density: { enable: true, value_area: 800 } },
+                    color: { value: '#667eea' },
+                    shape: { type: 'circle' },
+                    opacity: { value: 0.5, random: false },
+                    size: { value: 3, random: true },
+                    line_linked: { enable: true, distance: 150, color: '#667eea', opacity: 0.4, width: 1 },
+                    move: { enable: true, speed: 2, direction: 'none', random: false, straight: false, out_mode: 'out', bounce: false }
+                },
+                interactivity: {
+                    detect_on: 'canvas',
+                    events: { onhover: { enable: true, mode: 'repulse' }, onclick: { enable: true, mode: 'push' }, resize: true },
+                    modes: { grab: { distance: 400, line_linked: { opacity: 1 } }, bubble: { distance: 400, size: 40, duration: 2, opacity: 8, speed: 3 }, repulse: { distance: 200, duration: 0.4 }, push: { particles_nb: 4 }, remove: { particles_nb: 2 } }
+                },
+                retina_detect: true
+            });
         }
 
-        function verificarAutenticacao() {
+        // ========== SUPABASE ==========
+        async function inicializarSupabase() {
             try {
-                const userData = localStorage.getItem('loggedInUser');
-                
-                if (!userData) {
-                    console.log('❌ Usuário não autenticado, redirecionando para login...');
-                    window.location.href = '/index.html';
-                    return null;
+                const response = await fetch('/api/supabase-config');
+                if (!response.ok) {
+                    throw new Error('Erro ao buscar configurações');
                 }
                 
-                const user = JSON.parse(userData);
+                const config = await response.json();
+                supabase = window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey);
+                window.supabase = supabase;
                 
-                // Verificar se sessão expirou (12 horas)
-                const now = Date.now();
-                const sessionAge = now - user.loginTimestamp;
-                const SESSION_TIMEOUT = 12 * 60 * 60 * 1000; // 12 horas
+                console.log('✅ Supabase inicializado no portal');
+                return true;
+            } catch (error) {
+                console.error('❌ Erro ao inicializar Supabase:', error);
+                mostrarAlerta('Erro ao conectar com o banco de dados', 'danger');
+                return false;
+            }
+        }
+
+        // ========== AUTENTICAÇÃO ==========
+        async function verificarAutenticacao() {
+            try {
+                console.log('🔐 Verificando autenticação...');
                 
-                if (sessionAge > SESSION_TIMEOUT) {
-                    console.log('🕒 Sessão expirada, fazendo logoff...');
-                    fazerLogoff();
-                    return null;
+                const loggedInUserData = localStorage.getItem('loggedInUser');
+                if (loggedInUserData) {
+                    const userData = JSON.parse(loggedInUserData);
+                    const now = Date.now();
+                    const sessionAge = now - userData.loginTimestamp;
+                    const SESSION_TIMEOUT = 12 * 60 * 60 * 1000;
+                    
+                    if (sessionAge < SESSION_TIMEOUT && userData.authenticated) {
+                        // ✅ Buscar perfil do usuário no Supabase para verificar role
+                        let isAdminFromDB = userData.isAdmin || userData.role === 'admin';
+                        
+                        // ✅ Buscar role diretamente do Supabase (sem depender da API que retorna 404)
+                        try {
+                            if (window.supabase) {
+                                console.log('🔍 Buscando perfil no Supabase para ID:', userData.id);
+                                const { data: profile, error } = await window.supabase
+                                    .from('user_profiles')
+                                    .select('role, nome')
+                                    .eq('id', userData.id)
+                                    .single();
+                                
+                                console.log('📋 Resposta do Supabase:', { profile, error: error?.message });
+                                
+                                if (!error && profile) {
+                                    isAdminFromDB = profile.role === 'admin';
+                                    console.log('✅ Role encontrado na tabela user_profiles:', profile.role);
+                                    if (profile.nome) {
+                                        userData.username = profile.nome;
+                                    }
+                                } else {
+                                    console.log('⚠️ Erro ao buscar perfil:', error?.message, error?.details, error?.hint);
+                                }
+                            } else {
+                                console.error('❌ window.supabase não está inicializado');
+                            }
+                        } catch (error) {
+                            console.error('❌ Erro ao buscar perfil do Supabase:', error);
+                            console.log('⚠️ Usando role do localStorage:', userData.role || 'user');
+                        }
+                        
+                        currentUser = {
+                            id: userData.id,
+                            email: userData.email,
+                            username: userData.username,
+                            nome: userData.username,
+                            isAdmin: isAdminFromDB,
+                            role: userData.role || 'user'
+                        };
+                        
+                        const currentUserElement = document.getElementById('currentUser');
+                        if (currentUserElement) {
+                            currentUserElement.textContent = currentUser.username;
+                        }
+                        
+                        console.log('✅ Usuário autenticado:', currentUser.username);
+                        console.log('👑 É admin:', currentUser.isAdmin);
+                        return currentUser;
+                    } else {
+                        localStorage.removeItem('loggedInUser');
+                    }
                 }
                 
-                console.log('✅ Usuário autenticado:', user);
-                return user;
+                console.log('❌ Usuário não autenticado, redirecionando...');
+                window.location.href = 'login.html';
+                return null;
                 
             } catch (error) {
-                console.error('❌ Erro ao verificar autenticação:', error);
-                window.location.href = '/index.html';
+                console.error('❌ Erro na verificação de autenticação:', error);
+                window.location.href = 'login.html';
                 return null;
             }
         }
 
-        function mostrarInformacoesUsuario(user) {
-            const userInfoPanel = document.getElementById('userInfoPanel');
-            const userName = document.getElementById('userName');
-            const adminBadge = document.getElementById('adminBadge');
-            
-            userName.textContent = user.nome;
-            
-            if (user.isAdmin) {
-                adminBadge.style.display = 'inline-block';
-                // Mostrar card de configurações para admin
-                document.getElementById('settingsCard').style.display = 'block';
+        // ========== CARREGAR DADOS ==========
+        async function carregarDados() {
+            try {
+                await carregarMetricas();
+                await renderizarDepartamentos();
+                await verificarStatusServicos();
+            } catch (error) {
+                console.error('❌ Erro ao carregar dados:', error);
+                mostrarAlerta('Erro ao carregar dados do portal', 'danger');
             }
-            
-            userInfoPanel.style.display = 'block';
         }
 
-        // ✅ FUNÇÃO DE LOGOFF COMPLETA
-        async function fazerLogoff() {
-            if (confirm('Deseja realmente sair do sistema?')) {
-                showLoading(true);
+        async function carregarMetricas() {
+            try {
+                // Animar métricas
+                animarMetrica('totalUsers', 127);
+                animarMetrica('totalOperations', 342);
+                animarMetrica('systemHealth', 98.5, '%');
+                animarMetrica('activeConnections', 15);
                 
-                try {
-                    // 1. Limpar localStorage
-                    localStorage.removeItem('loggedInUser');
-                    localStorage.removeItem('lastActivity');
+                console.log('✅ Métricas carregadas');
+            } catch (error) {
+                console.error('❌ Erro ao carregar métricas:', error);
+            }
+        }
+
+        function animarMetrica(elementId, valorFinal, sufixo = '') {
+            const element = document.getElementById(elementId);
+            const valorInicial = 0;
+            const duracao = 2000;
+            const incremento = valorFinal / (duracao / 16);
+            let valorAtual = valorInicial;
+            
+            const timer = setInterval(() => {
+                valorAtual += incremento;
+                if (valorAtual >= valorFinal) {
+                    valorAtual = valorFinal;
+                    clearInterval(timer);
+                }
+                
+                if (sufixo === '%') {
+                    element.textContent = valorAtual.toFixed(1) + sufixo;
+                } else {
+                    element.textContent = Math.floor(valorAtual) + sufixo;
+                }
+            }, 16);
+        }
+
+        // ========== SISTEMA DE PERMISSÕES ==========
+        let userPermissionsCache = null;
+        
+        async function carregarPermissoesUsuarioBanco() {
+            if (!currentUser || !currentUser.id) return [];
+            
+            // Se já está em cache, retornar
+            if (userPermissionsCache !== null) return userPermissionsCache;
+            
+            try {
+                console.log('🔍 Buscando permissões do usuário no banco:', currentUser.id);
+                
+                // Buscar permissões do portal
+                const { data: portalPerms, error: portalError } = await window.supabase
+                    .from('permissoes_portal')
+                    .select('permissao_id')
+                    .eq('usuario_id', currentUser.id);
+                
+                if (portalError) throw portalError;
+                
+                const permissoes = (portalPerms || []).map(p => p.permissao_id);
+                userPermissionsCache = permissoes;
+                
+                console.log('✅ Permissões carregadas:', permissoes);
+                return permissoes;
+                
+            } catch (error) {
+                console.error('❌ Erro ao carregar permissões:', error);
+                return [];
+            }
+        }
+        
+        async function usuarioTemPermissao(permission) {
+            console.log(`🔐 Verificando permissão: ${permission}`);
+            
+            // Se o usuário é admin, tem todas as permissões
+            if (currentUser && currentUser.isAdmin) {
+                console.log(`✅ Usuário é admin, permissão ${permission} concedida`);
+                return true;
+            }
+            
+            // Carregar permissões do banco
+            const permissoes = await carregarPermissoesUsuarioBanco();
+            console.log(`📋 Permissões do usuário:`, permissoes);
+            
+            // Se não há permissões específicas, permitir acesso básico
+            if (!permissoes || permissoes.length === 0) {
+                // Permitir acesso aos módulos básicos para todos os usuários
+                const permissoesBasicas = ['operacoes', 'coletas', 'crm', 'vendas', 'cadastro', 'relatorios'];
+                const temPermissao = permissoesBasicas.includes(permission);
+                console.log(`🔓 Permissão básica ${permission}:`, temPermissao);
+                return temPermissao;
+            }
+            
+            const temPermissao = permissoes.includes(permission);
+            console.log(`🔑 Permissão específica ${permission}:`, temPermissao);
+            return temPermissao;
+        }
+
+        function carregarPermissoesUsuario() {
+            // Esta função está obsoleta, mantida para compatibilidade
+            try {
+                const permissoesData = localStorage.getItem('permissoesData');
+                if (!permissoesData) {
+                    return [];
+                }
+                
+                const permissoes = JSON.parse(permissoesData);
+                return permissoes[currentUser.id] || [];
+            } catch (error) {
+                console.error('❌ Erro ao carregar permissões:', error);
+                return [];
+            }
+        }
+
+        // ========== DEPARTAMENTOS ==========
+        const DEPARTMENTS_CONFIG = {
+            'operations': {
+                name: 'Operações',
+                description: 'Gestão de operações logísticas e processos',
+                icon: 'fas fa-cogs',
+                color: 'operations',
+                adminOnly: false,
+                modules: [
+                    { 
+                        name: 'Sistema de Disparos', 
+                        description: 'Disparador de mensagens WhatsApp',
+                        icon: 'fas fa-rocket',
+                        url: 'painel.html',
+                        permission: 'operacoes',
+                        adminOnly: false
+                    },
+                    { 
+                        name: 'Sistema de Coletas', 
+                        description: 'Gestão completa de coletas',
+                        icon: 'fas fa-truck-loading',
+                        url: 'coletas.html',
+                        permission: 'coletas',
+                        adminOnly: false
+                    },
+                    { 
+                        name: 'Histórico de Coletas', 
+                        description: 'Visualizar coletas finalizadas (ganhas/perdidas)',
+                        icon: 'fas fa-history',
+                        url: 'historico_coletas.html',
+                        permission: 'coletas',
+                        adminOnly: false
+                    },
+                    { 
+                        name: 'Monitoramento', 
+                        description: 'Acompanhamento em tempo real',
+                        icon: 'fas fa-monitor',
+                        url: 'monitoramento.html',
+                        permission: 'monitoramento',
+                        adminOnly: true
+                    }
+                ]
+            },
+            'commercial': {
+                name: 'Comercial',
+                description: 'Vendas, CRM e gestão de clientes',
+                icon: 'fas fa-shopping-cart',
+                color: 'commercial',
+                adminOnly: false,
+                modules: [
+                    { 
+                        name: 'CRM', 
+                        description: 'Gestão de relacionamento com clientes',
+                        icon: 'fas fa-users',
+                        url: 'crm.html',
+                        permission: 'crm',
+                        adminOnly: false
+                    },
+                    { 
+                        name: 'Vendas', 
+                        description: 'Controle de vendas e propostas',
+                        icon: 'fas fa-chart-line',
+                        url: 'vendas.html',
+                        permission: 'vendas',
+                        adminOnly: false
+                    }
+                ]
+            },
+            'management': {
+                name: 'Gestão',
+                description: 'Cadastro e gestão de motoristas',
+                icon: 'fas fa-truck',
+                color: 'management',
+                adminOnly: false,
+                modules: [
+                    { 
+                        name: 'Cadastro de Motoristas', 
+                        description: 'Sistema completo de cadastro',
+                        icon: 'fas fa-user-plus',
+                        url: 'cadastro.html',
+                        permission: 'cadastro',
+                        adminOnly: false
+                    },
+                    { 
+                        name: 'Relatórios', 
+                        description: 'Relatórios e Business Intelligence',
+                        icon: 'fas fa-chart-bar',
+                        url: 'relatorios.html',
+                        permission: 'relatorios',
+                        adminOnly: false
+                    }
+                ]
+            },
+            'finance': {
+                name: 'Financeiro',
+                description: 'Controle financeiro e orçamentário',
+                icon: 'fas fa-chart-pie',
+                color: 'finance',
+                adminOnly: true,
+                modules: [
+                    { 
+                        name: 'Contas a Pagar', 
+                        description: 'Gestão de despesas e pagamentos',
+                        icon: 'fas fa-money-bill-wave',
+                        url: 'contas-pagar.html',
+                        permission: 'contas-pagar',
+                        adminOnly: true
+                    },
+                    { 
+                        name: 'Contas a Receber', 
+                        description: 'Controle de receitas e cobranças',
+                        icon: 'fas fa-hand-holding-usd',
+                        url: 'contas-receber.html',
+                        permission: 'contas-receber',
+                        adminOnly: true
+                    }
+                ]
+            },
+            'rh': {
+                name: 'Recursos Humanos',
+                description: 'Gestão de pessoas e folha de pagamento',
+                icon: 'fas fa-users-cog',
+                color: 'rh',
+                adminOnly: true,
+                modules: [
+                    { 
+                        name: 'Folha de Pagamento', 
+                        description: 'Gestão de remunerações',
+                        icon: 'fas fa-file-invoice-dollar',
+                        url: 'folha.html',
+                        permission: 'folha',
+                        adminOnly: true
+                    },
+                    { 
+                        name: 'Recrutamento', 
+                        description: 'Processos seletivos e contratações',
+                        icon: 'fas fa-user-plus',
+                        url: 'recrutamento.html',
+                        permission: 'recrutamento',
+                        adminOnly: true
+                    }
+                ]
+            },
+            'config': {
+                name: 'Configurações',
+                description: 'Configurações do sistema e administração',
+                icon: 'fas fa-cog',
+                color: 'config',
+                adminOnly: true,
+                modules: [
+                    { 
+                        name: 'Configurações do Sistema', 
+                        description: 'Gestão de usuários e permissões',
+                        icon: 'fas fa-sliders-h',
+                        url: 'settings.html',
+                        permission: 'configuracoes',
+                        adminOnly: true
+                    }
+                ]
+            }
+        };
+
+        async function renderizarDepartamentos() {
+            const container = document.getElementById('departmentsContainer');
+            container.innerHTML = '';
+
+            console.log('🔍 Renderizando departamentos para usuário:', currentUser);
+            console.log('👑 É admin:', currentUser.isAdmin);
+            
+            // Carregar permissões uma vez antes de renderizar
+            const permissoes = await carregarPermissoesUsuarioBanco();
+            console.log('📋 Permissões disponíveis:', permissoes);
+
+            for (const deptKey of Object.keys(DEPARTMENTS_CONFIG)) {
+                const dept = DEPARTMENTS_CONFIG[deptKey];
+                
+                console.log(`📁 Processando departamento: ${dept.name}`);
+                
+                // ✅ Card "Configurações" sempre visível (controle de acesso interno)
+                if (deptKey === 'config' && dept.adminOnly && !currentUser.isAdmin) {
+                    console.log(`⚠️ Departamento ${dept.name} visível mas acesso controlado por settings.html`);
+                    // Não pular, permitir que o card apareça
+                }
+                
+                // Verificar se o usuário tem acesso ao departamento (exceto Configurações)
+                if (dept.adminOnly && !currentUser.isAdmin && deptKey !== 'config') {
+                    console.log(`❌ Departamento ${dept.name} é apenas para admin`);
+                    continue; // Pular departamentos apenas para admin
+                }
+                
+                // Filtrar módulos baseado nas permissões do usuário
+                const modulosDisponiveis = dept.modules.filter(modulo => {
+                    console.log(`🔍 Verificando módulo: ${modulo.name} (permissão: ${modulo.permission})`);
                     
-                    // 2. Tentar logout no servidor também (se existir)
-                    try {
-                        await fetch('/api/logout', {
-                            method: 'POST',
-                            credentials: 'include'
-                        });
-                    } catch (serverError) {
-                        console.log('Logoff local apenas');
+                    // ✅ Módulo "Configurações" sempre visível (controle de acesso interno)
+                    if (deptKey === 'config') {
+                        console.log(`✅ Módulo ${modulo.name} sempre visível (controle interno)`);
+                return true;
+            }
+            
+                    // Se é apenas para admin, verificar se o usuário é admin
+                    if (modulo.adminOnly && !currentUser.isAdmin) {
+                        console.log(`❌ Módulo ${modulo.name} é apenas para admin`);
+                        return false;
                     }
                     
-                    console.log('✅ Logoff realizado com sucesso');
+                    // ✅ Se o usuário é admin, permitir acesso sem verificar permissão específica
+                    if (currentUser.isAdmin) {
+                        console.log(`✅ Usuário é admin, aprovado automaticamente: ${modulo.name}`);
+                        return true;
+                    }
                     
-                    // 3. Redirecionar para login
-                    setTimeout(() => {
-                        window.location.href = '/index.html';
-                    }, 1000);
+                    // Verificar se o usuário tem permissão específica usando array de permissões já carregado
+                    if (modulo.permission) {
+                        const permissoesBasicas = ['operacoes', 'coletas', 'crm', 'vendas', 'cadastro', 'relatorios'];
+                        const temPermissao = permissoesBasicas.includes(modulo.permission) || permissoes.includes(modulo.permission);
+                        
+                        if (!temPermissao) {
+                            console.log(`❌ Usuário não tem permissão para ${modulo.name}`);
+                            return false;
+                        }
+                    }
                     
-                } catch (error) {
-                    console.error('❌ Erro no logoff:', error);
-                    // Mesmo com erro, limpa o localStorage e redireciona
-                    localStorage.removeItem('loggedInUser');
-                    localStorage.removeItem('lastActivity');
-                    window.location.href = '/index.html';
+                    console.log(`✅ Módulo ${modulo.name} aprovado`);
+                    return true;
+                });
+
+                console.log(`📊 Módulos disponíveis para ${dept.name}:`, modulosDisponiveis.length);
+
+                // Se não há módulos disponíveis para o usuário, não mostrar o departamento
+                if (modulosDisponiveis.length === 0) {
+                    console.log(`❌ Nenhum módulo disponível para ${dept.name}`);
+                    return;
                 }
+
+                const card = document.createElement('div');
+                card.className = 'col-md-6 col-lg-4 mb-4';
+                card.innerHTML = `
+                    <div class="department-card">
+                        <div class="department-header" onclick="toggleDepartment('${deptKey}')">
+                            <div class="department-icon">
+                            <i class="${dept.icon}"></i>
+                        </div>
+                            <div class="department-title">${dept.name}</div>
+                            <div class="department-description">${dept.description}</div>
+                        <div class="expand-icon">
+                            <i class="fas fa-chevron-down"></i>
+                        </div>
+                    </div>
+                    <div class="department-content">
+                            <div class="module-grid">
+                            ${modulosDisponiveis.map(modulo => `
+                                    <div class="module-item">
+                                        <div class="module-icon">
+                                        <i class="${modulo.icon}"></i>
+                                    </div>
+                                        <div class="module-name">${modulo.name}</div>
+                                        <div class="module-description">${modulo.description}</div>
+                                        ${modulo.adminOnly ? '<div class="access-badge">Admin</div>' : ''}
+                                        <a href="${modulo.url}" class="stretched-link"></a>
+                                    </div>
+                            `).join('')}
+                            </div>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(card);
+            }
+
+            // Se não há departamentos disponíveis, mostrar mensagem
+            if (container.children.length === 0) {
+                container.innerHTML = `
+                    <div class="col-12 text-center py-5">
+                        <i class="fas fa-lock fa-3x text-muted mb-3"></i>
+                        <h4 class="text-muted">Nenhum departamento disponível</h4>
+                        <p class="text-muted">Você não tem permissão para acessar nenhum departamento.</p>
+                    </div>
+                `;
             }
         }
 
-        // ✅ ATUALIZAR ATIVIDADE DO USUÁRIO
-        function atualizarAtividadeUsuario() {
-            const userData = localStorage.getItem('loggedInUser');
-            if (userData) {
-                localStorage.setItem('lastActivity', Date.now().toString());
+        function toggleDepartment(departmentKey) {
+            const card = document.querySelector(`[onclick="toggleDepartment('${departmentKey}')"]`).closest('.department-card');
+            card.classList.toggle('expanded');
+        }
+
+        // ========== GRÁFICOS ==========
+        function inicializarGraficos() {
+            const ctx = document.getElementById('systemChart').getContext('2d');
+            
+            systemChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: ['00h', '04h', '08h', '12h', '16h', '20h'],
+                    datasets: [{
+                        label: 'Atividade',
+                        data: [12, 8, 45, 78, 92, 67],
+                        borderColor: '#667eea',
+                        backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                        borderWidth: 3,
+                        fill: true,
+                        tension: 0.4,
+                        pointBackgroundColor: '#667eea',
+                        pointBorderColor: '#ffffff',
+                        pointBorderWidth: 2,
+                        pointRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.1)'
+                            },
+                            ticks: {
+                                color: 'rgba(255, 255, 255, 0.8)'
+                            }
+                        },
+                        x: {
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.1)'
+                            },
+                            ticks: {
+                                color: 'rgba(255, 255, 255, 0.8)'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // ========== STATUS DOS SERVIÇOS ==========
+        async function verificarStatusServicos() {
+            try {
+                // Verificar Evolution API
+                const response = await fetch('/webhook/status-evolution');
+                const statusElement = document.querySelector('.service-status .badge:nth-child(2)');
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.success) {
+                        statusElement.className = 'badge bg-success';
+                        statusElement.textContent = 'Online';
+                    } else {
+                        statusElement.className = 'badge bg-warning';
+                        statusElement.textContent = 'Instável';
+                    }
+                } else {
+                    statusElement.className = 'badge bg-danger';
+                    statusElement.textContent = 'Offline';
+                }
+                
+                console.log('✅ Status dos serviços verificado');
+            } catch (error) {
+                console.error('❌ Erro ao verificar status:', error);
             }
         }
 
-        // ✅ VERIFICAR SE É ADMIN (para o settings)
-        function verificarAcessoAdmin() {
-            const user = verificarAutenticacao();
-            return user && user.isAdmin;
+        // ========== ANIMAÇÕES ==========
+        function configurarAnimações() {
+            // Animação de scroll
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        entry.target.classList.add('fade-in');
+                    }
+                });
+            });
+
+            document.querySelectorAll('section').forEach(section => {
+                observer.observe(section);
+            });
         }
 
-        // ✅ INICIALIZAÇÃO
+        // ========== DEBUG ==========
+        function debugPermissoes() {
+            console.log('🐛 === DEBUG DE PERMISSÕES ===');
+            console.log('👤 Usuário atual:', currentUser);
+            console.log('👑 É admin:', currentUser?.isAdmin);
+            console.log('📧 Email:', currentUser?.email);
+            
+            const permissoesData = localStorage.getItem('permissoesData');
+            console.log('📋 Dados de permissões no localStorage:', permissoesData);
+            
+            const permissoes = carregarPermissoesUsuario();
+            console.log('🔑 Permissões carregadas:', permissoes);
+            
+            // Testar permissões específicas
+            const permissoesTeste = ['operacoes', 'coletas', 'crm', 'vendas'];
+            permissoesTeste.forEach(permissao => {
+                const temPermissao = usuarioTemPermissao(permissao);
+                console.log(`🔍 ${permissao}: ${temPermissao ? '✅' : '❌'}`);
+            });
+            
+            // Mostrar alerta com informações
+            const info = `
+                Usuário: ${currentUser?.username || 'N/A'}
+                Admin: ${currentUser?.isAdmin ? 'Sim' : 'Não'}
+                Email: ${currentUser?.email || 'N/A'}
+                Permissões: ${permissoes.length > 0 ? permissoes.join(', ') : 'Nenhuma específica'}
+            `;
+            
+            mostrarAlerta(`<pre>${info}</pre>`, 'info');
+        }
+
+        // ========== UTILITÁRIOS ==========
+        function mostrarAlerta(mensagem, tipo = 'info') {
+            const alertContainer = document.getElementById('alertContainer');
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `alert alert-futuristic alert-${tipo} alert-dismissible fade show`;
+            alertDiv.innerHTML = `
+                <i class="fas fa-${tipo === 'success' ? 'check-circle' : tipo === 'danger' ? 'exclamation-circle' : 'info-circle'} me-2"></i>
+                ${mensagem}
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="alert"></button>
+            `;
+            alertContainer.appendChild(alertDiv);
+            
+            setTimeout(() => {
+                if (alertDiv.parentNode) {
+                    alertDiv.parentNode.removeChild(alertDiv);
+                }
+            }, 5000);
+        }
+
+        function toggleTheme() {
+            const body = document.body;
+            const themeIcon = document.querySelector('#themeToggle i');
+            
+            if (body.classList.contains('light-mode')) {
+                body.classList.remove('light-mode');
+                themeIcon.className = 'fas fa-moon';
+                localStorage.setItem('theme', 'dark');
+            } else {
+                body.classList.add('light-mode');
+                themeIcon.className = 'fas fa-sun';
+                localStorage.setItem('theme', 'light');
+            }
+        }
+
+        async function logout() {
+            try {
+                console.log('🚪 Fazendo logout...');
+                
+                if (window.supabase) {
+                    await window.supabase.auth.signOut();
+                }
+                
+                localStorage.removeItem('loggedInUser');
+                localStorage.removeItem('lastActivity');
+                localStorage.removeItem('permissoesData');
+                
+                console.log('✅ Logout realizado com sucesso');
+                window.location.href = 'login.html';
+            } catch (error) {
+                console.error('❌ Erro no logout:', error);
+                localStorage.removeItem('loggedInUser');
+                localStorage.removeItem('lastActivity');
+                window.location.href = 'login.html';
+            }
+        }
+
+        // ========== CARREGAR TEMA SALVO ==========
         document.addEventListener('DOMContentLoaded', function() {
-            console.log('🚀 Portal inicializando...');
+            const savedTheme = localStorage.getItem('theme') || 'dark';
+            document.body.setAttribute('data-theme', savedTheme);
             
-            // Verificar autenticação
-            const user = verificarAutenticacao();
-            if (user) {
-                // Mostrar informações do usuário
-                mostrarInformacoesUsuario(user);
-                
-                // Atualizar timestamp de atividade
-                atualizarAtividadeUsuario();
-                
-                console.log('✅ Portal carregado para:', user.nome);
-            }
-
-            // Atualizar atividade a cada movimento do mouse
-            document.addEventListener('mousemove', atualizarAtividadeUsuario);
-
-            // Verificar inatividade a cada minuto
-            setInterval(() => {
-                const lastActivity = localStorage.getItem('lastActivity');
-                if (lastActivity) {
-                    const now = Date.now();
-                    const inactiveTime = now - parseInt(lastActivity);
-                    const INACTIVITY_TIMEOUT = 30 * 60 * 1000; // 30 minutos
-                    
-                    if (inactiveTime > INACTIVITY_TIMEOUT) {
-                        console.log('🕒 Usuário inativo por muito tempo, fazendo logoff...');
-                        fazerLogoff();
-                    }
+            if (savedTheme === 'light') {
+                document.body.classList.add('light-mode');
+                const themeIcon = document.querySelector('#themeToggle i');
+                if (themeIcon) {
+                    themeIcon.className = 'fas fa-sun';
                 }
-            }, 60000); // Verificar a cada minuto
+            }
         });
 
-        // ✅ PREVENIR ACESSO VIA BROWSER BUTTON
-        window.addEventListener('beforeunload', function() {
-            atualizarAtividadeUsuario();
-        });
-
-        // ✅ BOTÃO DE VOLTA DO BROWSER
-        window.addEventListener('popstate', function(event) {
-            atualizarAtividadeUsuario();
+        // ========== SCROLL SUAVE ==========
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            });
         });
     </script>
 </body>

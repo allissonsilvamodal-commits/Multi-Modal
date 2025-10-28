@@ -6,6 +6,9 @@
   <title>Cadastro de Motoristas - Sistema de Disparo</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- ADICIONAR CDN DO SUPABASE -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/permissions.js"></script>
   <style>
     :root {
       --primary: #667eea;
@@ -65,8 +68,8 @@
     }
     
     .modern-card:hover {
-      transform: translateY(-5px);
-      box-shadow: 0 15px 35px rgba(0,0,0,0.12);
+      transform: translateY(-8px);
+      box-shadow: 0 20px 40px rgba(0,0,0,0.12);
     }
     
     .modern-card .card-header {
@@ -78,47 +81,157 @@
       font-size: 1.1rem;
     }
     
-    /* Navegação Moderna */
-    .modern-tabs {
-      background: white;
-      border-radius: 16px;
-      padding: 1rem;
+    /* Status Cards */
+    .status-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 1.5rem;
       margin-bottom: 2rem;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.08);
-      border: 1px solid rgba(0,0,0,0.03);
     }
     
-    .nav-modern {
-      display: flex;
-      gap: 0.5rem;
-      flex-wrap: wrap;
-    }
-    
-    .nav-modern .nav-link {
-      background: var(--light);
-      border: 2px solid #e2e8f0;
-      border-radius: 12px;
-      padding: 1rem 1.5rem;
-      color: #64748b;
-      font-weight: 600;
+    .status-card {
+      background: white;
+      padding: 2rem;
+      border-radius: 20px;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.08);
+      text-align: center;
       transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-      text-decoration: none;
+      border: 1px solid rgba(0,0,0,0.03);
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .status-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
+      background: linear-gradient(90deg, var(--primary), var(--success));
+    }
+    
+    .status-card:hover {
+      transform: translateY(-8px);
+      box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+    }
+    
+    .status-icon {
+      width: 70px;
+      height: 70px;
+      border-radius: 20px;
       display: flex;
       align-items: center;
-      gap: 0.75rem;
+      justify-content: center;
+      margin: 0 auto 1.5rem;
+      font-size: 2rem;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.1);
     }
     
-    .nav-modern .nav-link:hover {
+    .status-icon.primary {
+      background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+      color: var(--primary);
+    }
+    
+    .status-icon.success {
+      background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+      color: var(--success);
+    }
+    
+    .status-icon.warning {
+      background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+      color: var(--warning);
+    }
+    
+    .status-icon.danger {
+      background: linear-gradient(135deg, #fef2f2 0%, #fecaca 100%);
+      color: var(--danger);
+    }
+    
+    .status-number {
+      font-size: 2.5rem;
+      font-weight: 800;
+      margin-bottom: 0.5rem;
+      background: linear-gradient(135deg, var(--primary), var(--success));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    
+    .status-label {
+      color: #64748b;
+      font-size: 1rem;
+      font-weight: 600;
+    }
+    
+    /* Classes de Veículo */
+    .vehicle-classes {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+    
+    .vehicle-class {
+      background: var(--light);
+      border: 2px solid #e2e8f0;
+      border-radius: 16px;
+      padding: 1.5rem;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .vehicle-class::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+      transition: left 0.5s;
+    }
+    
+    .vehicle-class:hover::before {
+      left: 100%;
+    }
+    
+    .vehicle-class:hover {
+      transform: translateY(-5px);
       border-color: var(--primary);
-      background: rgba(102, 126, 234, 0.05);
-      transform: translateY(-2px);
+      box-shadow: 0 10px 25px rgba(102, 126, 234, 0.15);
     }
     
-    .nav-modern .nav-link.active {
+    .vehicle-class.active {
       background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
       color: white;
       border-color: var(--primary);
-      box-shadow: 0 6px 20px rgba(102, 126, 234, 0.3);
+      transform: scale(1.05);
+    }
+    
+    .vehicle-class.active .class-icon {
+      color: white;
+    }
+    
+    .class-icon {
+      font-size: 2.5rem;
+      margin-bottom: 1rem;
+      color: var(--primary);
+      transition: all 0.3s ease;
+    }
+    
+    .class-name {
+      font-weight: 700;
+      font-size: 1.1rem;
+      margin-bottom: 0.5rem;
+    }
+    
+    .class-description {
+      font-size: 0.85rem;
+      opacity: 0.8;
     }
     
     /* Formulário Moderno */
@@ -168,76 +281,6 @@
       color: var(--dark);
       margin-bottom: 0.75rem;
       font-size: 0.95rem;
-    }
-    
-    /* Classes de Veículo no Cadastro */
-    .vehicle-classes-cadastro {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 1rem;
-      margin-bottom: 2rem;
-    }
-    
-    .vehicle-class-cadastro {
-      background: var(--light);
-      border: 2px solid #e2e8f0;
-      border-radius: 16px;
-      padding: 1.5rem;
-      text-align: center;
-      cursor: pointer;
-      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-      position: relative;
-      overflow: hidden;
-    }
-    
-    .vehicle-class-cadastro::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: -100%;
-      width: 100%;
-      height: 100%;
-      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
-      transition: left 0.5s;
-    }
-    
-    .vehicle-class-cadastro:hover::before {
-      left: 100%;
-    }
-    
-    .vehicle-class-cadastro:hover {
-      transform: translateY(-5px);
-      border-color: var(--primary);
-      box-shadow: 0 10px 25px rgba(102, 126, 234, 0.15);
-    }
-    
-    .vehicle-class-cadastro.active {
-      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
-      color: white;
-      border-color: var(--primary);
-      transform: scale(1.02);
-    }
-    
-    .vehicle-class-cadastro.active .class-icon {
-      color: white;
-    }
-    
-    .class-icon {
-      font-size: 2.5rem;
-      margin-bottom: 1rem;
-      color: var(--primary);
-      transition: all 0.3s ease;
-    }
-    
-    .class-name {
-      font-weight: 700;
-      font-size: 1.1rem;
-      margin-bottom: 0.5rem;
-    }
-    
-    .class-description {
-      font-size: 0.85rem;
-      opacity: 0.8;
     }
     
     /* Botões Modernos */
@@ -424,89 +467,6 @@
       transform: translateY(-2px);
     }
     
-    /* Status Cards */
-    .status-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-      gap: 1.5rem;
-      margin-bottom: 2rem;
-    }
-    
-    .status-card {
-      background: white;
-      padding: 2rem;
-      border-radius: 20px;
-      box-shadow: 0 8px 30px rgba(0,0,0,0.08);
-      text-align: center;
-      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-      border: 1px solid rgba(0,0,0,0.03);
-      position: relative;
-      overflow: hidden;
-    }
-    
-    .status-card::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      height: 4px;
-      background: linear-gradient(90deg, var(--primary), var(--success));
-    }
-    
-    .status-card:hover {
-      transform: translateY(-8px);
-      box-shadow: 0 20px 40px rgba(0,0,0,0.15);
-    }
-    
-    .status-icon {
-      width: 70px;
-      height: 70px;
-      border-radius: 20px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      margin: 0 auto 1.5rem;
-      font-size: 2rem;
-      box-shadow: 0 8px 20px rgba(0,0,0,0.1);
-    }
-    
-    .status-icon.primary {
-      background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
-      color: var(--primary);
-    }
-    
-    .status-icon.success {
-      background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
-      color: var(--success);
-    }
-    
-    .status-icon.warning {
-      background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
-      color: var(--warning);
-    }
-    
-    .status-icon.danger {
-      background: linear-gradient(135deg, #fef2f2 0%, #fecaca 100%);
-      color: var(--danger);
-    }
-    
-    .status-number {
-      font-size: 2.5rem;
-      font-weight: 800;
-      margin-bottom: 0.5rem;
-      background: linear-gradient(135deg, var(--primary), var(--success));
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-    }
-    
-    .status-label {
-      color: #64748b;
-      font-size: 1rem;
-      font-weight: 600;
-    }
-    
     /* Upload Moderno */
     .upload-area {
       border: 2px dashed #cbd5e1;
@@ -550,22 +510,85 @@
       animation: pulse 2s infinite;
     }
     
+    /* Alertas Flutuantes */
+    .alert-floating {
+      position: fixed !important;
+      top: 100px;
+      right: 20px;
+      z-index: 9999;
+      min-width: 300px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+      border-radius: 12px;
+      border: none;
+    }
+    
+    /* Sistema de Tabs Customizado */
+    .tab-content {
+      position: relative;
+    }
+    
+    .tab-pane {
+      display: none;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+    
+    .tab-pane.active {
+      display: block;
+      opacity: 1;
+    }
+    
+    /* Navegação Moderna */
+    .modern-tabs {
+      background: white;
+      border-radius: 16px;
+      padding: 1rem;
+      margin-bottom: 2rem;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+      border: 1px solid rgba(0,0,0,0.03);
+    }
+    
+    .nav-modern {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+    
+    .nav-modern .nav-link {
+      background: var(--light);
+      border: 2px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 1rem 1.5rem;
+      color: #64748b;
+      font-weight: 600;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      cursor: pointer;
+    }
+    
+    .nav-modern .nav-link:hover {
+      border-color: var(--primary);
+      background: rgba(102, 126, 234, 0.05);
+      transform: translateY(-2px);
+    }
+    
+    .nav-modern .nav-link.active {
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+      color: white;
+      border-color: var(--primary);
+      box-shadow: 0 6px 20px rgba(102, 126, 234, 0.3);
+    }
+    
     /* Responsivo */
     @media (max-width: 768px) {
       .app-header {
         padding: 1rem 0;
       }
       
-      .nav-modern {
-        flex-direction: column;
-      }
-      
-      .nav-modern .nav-link {
-        justify-content: center;
-        text-align: center;
-      }
-      
-      .vehicle-classes-cadastro {
+      .vehicle-classes {
         grid-template-columns: 1fr;
       }
       
@@ -580,6 +603,21 @@
       
       .btn-action {
         width: 100%;
+      }
+      
+      .alert-floating {
+        left: 20px;
+        right: 20px;
+        min-width: auto;
+      }
+      
+      .nav-modern {
+        flex-direction: column;
+      }
+      
+      .nav-modern .nav-link {
+        justify-content: center;
+        text-align: center;
       }
     }
   </style>
@@ -608,8 +646,8 @@
         </div>
         <div class="col-auto">
           <div class="d-flex gap-2">
-            <a href="painel.html" class="btn btn-outline-light btn-sm">
-              <i class="fas fa-rocket me-1"></i> Ir para Painel
+            <a href="portal.html" class="btn btn-outline-light btn-sm" id="btnVoltarPortal">
+              <i class="fas fa-home me-1"></i> Voltar ao Portal
             </a>
             <button id="btnLogout" class="btn btn-outline-light btn-sm">
               <i class="fas fa-sign-out-alt me-1"></i> Sair
@@ -623,28 +661,6 @@
   <!-- Conteúdo Principal -->
   <main class="container py-4">
     
-    <!-- Navegação Moderna -->
-    <div class="modern-tabs">
-      <nav class="nav-modern">
-        <a class="nav-link active" href="#cadastro" data-bs-toggle="tab">
-          <i class="fas fa-user-plus"></i>
-          Cadastro Individual
-        </a>
-        <a class="nav-link" href="#importacao" data-bs-toggle="tab">
-          <i class="fas fa-file-import"></i>
-          Importação em Lote
-        </a>
-        <a class="nav-link" href="#gestao" data-bs-toggle="tab">
-          <i class="fas fa-users"></i>
-          Gestão de Contatos
-        </a>
-        <a class="nav-link" href="#backup" data-bs-toggle="tab">
-          <i class="fas fa-shield-alt"></i>
-          Backup & Reset
-        </a>
-      </nav>
-    </div>
-
     <!-- Status Rápido -->
     <div class="status-grid">
       <div class="status-card">
@@ -677,11 +693,33 @@
       </div>
     </div>
 
+    <!-- Navegação Moderna -->
+    <div class="modern-tabs">
+      <nav class="nav-modern">
+        <a class="nav-link active" data-tab="cadastro">
+          <i class="fas fa-user-plus"></i>
+          Cadastro Individual
+        </a>
+        <a class="nav-link" data-tab="importacao">
+          <i class="fas fa-file-import"></i>
+          Importação em Lote
+        </a>
+        <a class="nav-link" data-tab="gestao">
+          <i class="fas fa-users"></i>
+          Gestão de Contatos
+        </a>
+        <a class="nav-link" data-tab="backup">
+          <i class="fas fa-shield-alt"></i>
+          Backup & Reset
+        </a>
+      </nav>
+    </div>
+
     <!-- Conteúdo das Abas -->
     <div class="tab-content">
       
       <!-- Aba: Cadastro Individual -->
-      <div class="tab-pane fade show active" id="cadastro">
+      <div class="tab-pane active" id="cadastro">
         <div class="modern-card">
           <div class="card-header">
             <i class="fas fa-user-plus me-2"></i>Cadastrar Novo Motorista
@@ -777,22 +815,22 @@
                 </div>
                 
                 <!-- Classes de Veículo -->
-                <div class="vehicle-classes-cadastro" id="vehicleClassesCadastro">
-                  <div class="vehicle-class-cadastro" data-class="leve" onclick="selecionarClasseCadastro('leve')">
+                <div class="vehicle-classes" id="vehicleClassesCadastro">
+                  <div class="vehicle-class" data-class="leve">
                     <div class="class-icon">
                       <i class="fas fa-truck-pickup"></i>
                     </div>
                     <div class="class-name">Leves</div>
                     <div class="class-description">Fiorino, 3/4, Toco, VLC</div>
                   </div>
-                  <div class="vehicle-class-cadastro" data-class="medio" onclick="selecionarClasseCadastro('medio')">
+                  <div class="vehicle-class" data-class="medio">
                     <div class="class-icon">
                       <i class="fas fa-truck"></i>
                     </div>
                     <div class="class-name">Médios</div>
                     <div class="class-description">Bitruck, Truck</div>
                   </div>
-                  <div class="vehicle-class-cadastro" data-class="pesado" onclick="selecionarClasseCadastro('pesado')">
+                  <div class="vehicle-class" data-class="pesado">
                     <div class="class-icon">
                       <i class="fas fa-truck-moving"></i>
                     </div>
@@ -860,7 +898,7 @@
 
               <!-- Ações do Formulário -->
               <div class="d-flex gap-3 justify-content-end mt-4">
-                <button type="button" class="btn btn-modern btn-modern-warning" onclick="limparFormulario()">
+                <button type="button" class="btn btn-modern btn-modern-warning" id="btnLimpar">
                   <i class="fas fa-broom me-2"></i>Limpar
                 </button>
                 <button type="submit" class="btn btn-modern btn-modern-success">
@@ -873,7 +911,7 @@
       </div>
 
       <!-- Aba: Importação em Lote -->
-      <div class="tab-pane fade" id="importacao">
+      <div class="tab-pane" id="importacao">
         <div class="row">
           <div class="col-md-6">
             <div class="modern-card h-100">
@@ -881,14 +919,14 @@
                 <i class="fas fa-file-import me-2"></i>Importar do CSV
               </div>
               <div class="card-body">
-                <div class="upload-area" id="uploadArea" onclick="document.getElementById('csvFile').click()">
+                <div class="upload-area" id="uploadArea">
                   <div class="upload-icon">
                     <i class="fas fa-cloud-upload-alt"></i>
                   </div>
                   <h5 class="fw-bold mb-2">Arraste ou clique para upload</h5>
                   <p class="text-muted mb-3">Suporte para arquivos CSV</p>
                   <input type="file" id="csvFile" class="d-none" accept=".csv">
-                  <button class="btn btn-modern btn-modern-primary">
+                  <button class="btn btn-modern btn-modern-primary" id="btnSelecionarArquivo">
                     <i class="fas fa-folder-open me-2"></i>Selecionar Arquivo
                   </button>
                 </div>
@@ -909,12 +947,12 @@
                   </div>
                 </div>
                 
-                <button onclick="importarCSV()" class="btn btn-modern btn-modern-success w-100 mt-4">
+                <button class="btn btn-modern btn-modern-success w-100 mt-4" id="btnImportarCSV">
                   <i class="fas fa-upload me-2"></i>Importar CSV
                 </button>
                 
                 <div class="mt-3 text-center">
-                  <a href="#" onclick="baixarTemplateCSV()" class="btn btn-link text-decoration-none">
+                  <a href="#" class="btn btn-link text-decoration-none" id="btnTemplateCSV">
                     <i class="fas fa-download me-1"></i>Baixar Template CSV
                   </a>
                 </div>
@@ -934,13 +972,13 @@
                   <label class="form-label-modern">Arquivo Atual</label>
                   <div class="input-group">
                     <input type="text" class="form-control form-control-modern" value="contatos.csv" readonly>
-                    <button class="btn btn-modern btn-modern-info" type="button" onclick="verificarArquivoCSV()">
+                    <button class="btn btn-modern btn-modern-info" type="button" id="btnVerificarCSV">
                       <i class="fas fa-search"></i>
                     </button>
                   </div>
                 </div>
                 
-                <button onclick="importarCSVAutomatico()" class="btn btn-modern btn-modern-info w-100 mb-3">
+                <button class="btn btn-modern btn-modern-info w-100 mb-3" id="btnImportarAuto">
                   <i class="fas fa-sync me-2"></i>Importar do Arquivo Padrão
                 </button>
                 
@@ -982,26 +1020,26 @@
       </div>
 
       <!-- Aba: Gestão de Contatos -->
-      <div class="tab-pane fade" id="gestao">
+      <div class="tab-pane" id="gestao">
         <div class="modern-card">
           <div class="card-header d-flex justify-content-between align-items-center">
             <span><i class="fas fa-users me-2"></i>Gestão de Motoristas Cadastrados</span>
             <div class="d-flex gap-2">
-              <button class="btn btn-modern btn-modern-success btn-sm" onclick="exportarContatos()">
+              <button class="btn btn-modern btn-modern-success btn-sm" id="btnExportar">
                 <i class="fas fa-download me-1"></i>Exportar
               </button>
-              <button class="btn btn-modern btn-modern-primary btn-sm" onclick="carregarContatos()">
+              <button class="btn btn-modern btn-modern-primary btn-sm" id="btnAtualizar">
                 <i class="fas fa-sync me-1"></i>Atualizar
               </button>
             </div>
           </div>
           <div class="card-body">
             
-            <!-- Filtros Rápidos -->
+            <!-- Filtros Rápidos Modernos -->
             <div class="row g-3 mb-4">
               <div class="col-md-3">
-                <label class="form-label-modern">Filtrar por Classe</label>
-                <select id="filtroClasse" class="form-select form-select-modern" onchange="aplicarFiltros()">
+                <label class="form-label-modern">Classe do Veículo</label>
+                <select id="filtroClasse" class="form-select form-select-modern">
                   <option value="">Todas as classes</option>
                   <option value="leve">Leve</option>
                   <option value="medio">Médio</option>
@@ -1009,76 +1047,79 @@
                 </select>
               </div>
               <div class="col-md-3">
-                <label class="form-label-modern">Filtrar por Carroceria</label>
-                <select id="filtroCarroceria" class="form-select form-select-modern" onchange="aplicarFiltros()">
-                  <option value="">Todas as carrocerias</option>
-                  <option value="bau">Baú</option>
-                  <option value="sider">Sider</option>
-                  <option value="graneleiro">Graneleiro</option>
-                  <option value="cacamba">Caçamba</option>
-                  <option value="prancha">Prancha</option>
-                  <option value="plataforma">Plataforma</option>
-                  <option value="bitrem">Bitrem</option>
-                  <option value="carreta">Carreta</option>
-                  <option value="rodotrem">Rodotrem</option>
-                </select>
-              </div>
-              <div class="col-md-3">
-                <label class="form-label-modern">Filtrar por Estado</label>
-                <select id="filtroEstado" class="form-select form-select-modern" onchange="aplicarFiltros()">
+                <label class="form-label-modern">Estado</label>
+                <select id="filtroEstado" class="form-select form-select-modern">
                   <option value="">Todos os estados</option>
                   <!-- Estados serão carregados via JavaScript -->
                 </select>
               </div>
               <div class="col-md-3">
-                <label class="form-label-modern">Filtrar por Status</label>
-                <select id="filtroStatus" class="form-select form-select-modern" onchange="aplicarFiltros()">
+                <label class="form-label-modern">Status</label>
+                <select id="filtroStatus" class="form-select form-select-modern">
                   <option value="">Todos os status</option>
                   <option value="ativo">Ativo</option>
                   <option value="inativo">Inativo</option>
                   <option value="bloqueado">Bloqueado</option>
                 </select>
               </div>
+              <div class="col-md-3">
+                <label class="form-label-modern">Buscar</label>
+                <div class="input-group">
+                  <input type="text" id="filtroBusca" class="form-control form-control-modern" placeholder="Nome, telefone...">
+                  <button class="btn btn-modern btn-modern-primary" type="button" id="btnBuscar">
+                    <i class="fas fa-search"></i>
+                  </button>
+                </div>
+              </div>
             </div>
 
-            <!-- Tabela de Contatos -->
+            <!-- Cards de Estatísticas Rápidas -->
+            <div class="row g-3 mb-4" id="cardsEstatisticas">
+              <!-- Será preenchido via JavaScript -->
+            </div>
+
+            <!-- Tabela de Contatos Moderna -->
             <div class="table-responsive">
-              <table class="table table-modern">
+              <table class="table table-modern table-hover">
                 <thead>
                   <tr>
-                    <th>Nome</th>
-                    <th>Contatos</th>
-                    <th>Veículo</th>
-                    <th>Carroceria</th>
-                    <th>Estado</th>
-                    <th>Status</th>
-                    <th>Ações</th>
+                    <th width="200">Motorista</th>
+                    <th width="120">Contato</th>
+                    <th width="100">Veículo</th>
+                    <th width="120">Localização</th>
+                    <th width="80">Status</th>
+                    <th width="100" class="text-center">Ações</th>
                   </tr>
                 </thead>
                 <tbody id="tabelaContatos">
                   <tr>
-                    <td colspan="7" class="text-center text-muted py-5">
+                    <td colspan="6" class="text-center text-muted py-5">
                       <i class="fas fa-users fa-3x mb-3 d-block"></i>
                       <h5 class="fw-bold">Nenhum motorista cadastrado</h5>
-                      <p class="text-muted">Comece cadastrando um novo motorista na aba "Cadastro Individual"</p>
+                      <p class="text-muted">Comece cadastrando um novo motorista</p>
                     </td>
                   </tr>
                 </tbody>
               </table>
             </div>
 
-            <!-- Paginação -->
-            <nav aria-label="Navegação de páginas" class="mt-4">
-              <ul class="pagination justify-content-center" id="paginacao">
-                <!-- Paginação será gerada via JavaScript -->
-              </ul>
-            </nav>
+            <!-- Paginação e Info -->
+            <div class="d-flex justify-content-between align-items-center mt-4">
+              <div class="text-muted small" id="infoPaginacao">
+                Mostrando 0 de 0 registros
+              </div>
+              <nav aria-label="Navegação de páginas">
+                <ul class="pagination pagination-sm" id="paginacao">
+                  <!-- Paginação será gerada via JavaScript -->
+                </ul>
+              </nav>
+            </div>
           </div>
         </div>
       </div>
 
       <!-- Aba: Backup & Reset -->
-      <div class="tab-pane fade" id="backup">
+      <div class="tab-pane" id="backup">
         <div class="row">
           <div class="col-md-6">
             <div class="modern-card h-100">
@@ -1096,7 +1137,7 @@
                   </select>
                 </div>
                 
-                <button onclick="fazerBackup()" class="btn btn-modern btn-modern-success w-100 mb-3">
+                <button class="btn btn-modern btn-modern-success w-100 mb-3" id="btnBackup">
                   <i class="fas fa-database me-2"></i>Gerar Backup Completo
                 </button>
                 
@@ -1119,11 +1160,11 @@
                 <p class="card-text">Ações administrativas para gestão da base de dados.</p>
                 
                 <div class="d-grid gap-2">
-                  <button onclick="limparInativos()" class="btn btn-modern btn-modern-warning">
+                  <button class="btn btn-modern btn-modern-warning" id="btnLimparInativos">
                     <i class="fas fa-user-slash me-2"></i>Limpar Contatos Inativos
                   </button>
                   
-                  <button onclick="resetarBase()" class="btn btn-modern btn-modern-danger">
+                  <button class="btn btn-modern btn-modern-danger" id="btnResetar">
                     <i class="fas fa-trash me-2"></i>Resetar Base Completa
                   </button>
                 </div>
@@ -1163,7 +1204,7 @@ let contatosFiltrados = [];
 let currentPage = 1;
 const pageSize = 20;
 
-// Mapeamentos inteligentes (igual ao painel)
+// Mapeamentos inteligentes
 const tiposVeiculo = {
   leve: ['3/4', 'Fiorino', 'Toco', 'VLC'],
   medio: ['Bitruck', 'Truck'],
@@ -1202,86 +1243,131 @@ const estados = [
   'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO'
 ];
 
-// ========== INICIALIZAÇÃO ==========
-document.addEventListener('DOMContentLoaded', function() {
-  carregarInformacoesUsuario();
-  inicializarFormulario();
-  carregarContatos();
-  carregarFiltros();
-});
+// ========== SUPABASE CONFIGURATION ==========
+let SUPABASE_URL = '';
+let SUPABASE_ANON_KEY = '';
+let supabase = null;
+
+// ========== INICIALIZAÇÃO SEGURA DO SUPABASE ==========
+async function inicializarSupabase() {
+    try {
+        const response = await fetch('/api/supabase-config');
+        if (!response.ok) throw new Error('Erro ao obter configurações do Supabase');
+        
+        const config = await response.json();
+        SUPABASE_URL = config.supabaseUrl;
+        SUPABASE_ANON_KEY = config.supabaseAnonKey;
+        
+        supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        
+        console.log('✅ Supabase inicializado com sucesso');
+        return true;
+    } catch (error) {
+        console.error('❌ Erro ao inicializar Supabase:', error);
+        return false;
+    }
+}
+
+// ========== SISTEMA DE TABS CUSTOMIZADO ==========
+class TabSystem {
+  constructor() {
+    this.tabs = document.querySelectorAll('.nav-modern .nav-link');
+    this.panes = document.querySelectorAll('.tab-pane');
+    this.init();
+  }
+
+  init() {
+    this.tabs.forEach(tab => {
+      tab.addEventListener('click', (e) => {
+        e.preventDefault();
+        this.showTab(tab.dataset.tab);
+      });
+    });
+  }
+
+  showTab(tabId) {
+    this.tabs.forEach(tab => tab.classList.remove('active'));
+    this.panes.forEach(pane => pane.classList.remove('active'));
+
+    const activeTab = document.querySelector(`.nav-link[data-tab="${tabId}"]`);
+    if (activeTab) activeTab.classList.add('active');
+
+    const activePane = document.getElementById(tabId);
+    if (activePane) activePane.classList.add('active');
+  }
+}
+
+// ========== INICIALIZAÇÃO SEGURA ==========
+async function inicializarAplicacao() {
+  try {
+    // 🔐 Verificar permissão de acesso
+    const temPermissao = await verificarEAplicarPermissao('cadastro');
+    if (!temPermissao) {
+      console.log('❌ Sem permissão para acessar cadastro');
+      return; // A função verificarEAplicarPermissao já redireciona
+    }
+    
+    const supabaseInicializado = await inicializarSupabase();
+    if (!supabaseInicializado) {
+      console.error('❌ Falha ao inicializar Supabase');
+      return;
+    }
+    
+    await carregarInformacoesUsuario();
+    new TabSystem();
+    inicializarFormulario();
+    adicionarCSSPersonalizado();
+    inicializarEventListeners();
+    await carregarContatos();
+    carregarFiltros();
+    await carregarEstatisticasSistema();
+    
+    console.log('✅ Sistema de Cadastro de Motoristas inicializado com sucesso!');
+  } catch (error) {
+    console.error('❌ Erro na inicialização:', error);
+    mostrarErro('Erro ao inicializar o sistema: ' + error.message);
+  }
+}
 
 // ========== FUNÇÕES DE USUÁRIO ==========
 async function carregarInformacoesUsuario() {
   try {
-    const response = await fetch(`${SERVER_URL}/api/auth/status`, {
-      credentials: 'include'
-    });
+    const userData = localStorage.getItem('loggedInUser');
     
-    if (response.ok) {
-      const data = await response.json();
-      if (data.autenticado && data.usuario) {
-        document.getElementById('currentUser').textContent = data.usuario;
-        
-        if (data.usuario.toLowerCase() !== 'admin') {
-          alert('Acesso negado. Apenas administradores podem acessar esta página.');
-          window.location.href = 'painel.html';
-        }
-      } else {
-        window.location.href = '/';
+    if (userData) {
+      const user = JSON.parse(userData);
+      document.getElementById('currentUser').textContent = user.nome || 'Administrador';
+      
+      if (!user.isAdmin) {
+        alert('Acesso negado. Apenas administradores podem acessar esta página.');
+        window.location.href = 'portal.html';
       }
     } else {
-      window.location.href = '/';
+      window.location.href = 'login.html';
     }
   } catch (error) {
     console.error('Erro de autenticação:', error);
-    window.location.href = '/';
-  }
-}
-
-async function fazerLogout() {
-  if (confirm('Deseja realmente sair do sistema?')) {
-    try {
-      await fetch(`${SERVER_URL}/api/logout`, {
-        method: 'POST',
-        credentials: 'include'
-      });
-    } catch (error) {
-      console.error('Erro no logout:', error);
-    } finally {
-      window.location.href = '/';
-    }
+    window.location.href = 'login.html';
   }
 }
 
 // ========== SISTEMA DE CADASTRO INTELIGENTE ==========
 function inicializarFormulario() {
-  // Event listener para o formulário
-  document.getElementById('formCadastro').addEventListener('submit', function(e) {
-    e.preventDefault();
-    cadastrarMotorista();
+  const classes = document.querySelectorAll('.vehicle-class');
+  classes.forEach(classe => {
+    classe.addEventListener('click', function() {
+      selecionarClasseCadastro(this.dataset.class);
+    });
   });
-  
-  // Event listener para logout
-  document.getElementById('btnLogout').addEventListener('click', fazerLogout);
-  
-  // Inicializar drag and drop
-  inicializarDragAndDrop();
 }
 
 function selecionarClasseCadastro(classe) {
-  // Remover classe ativa de todos
-  document.querySelectorAll('.vehicle-class-cadastro').forEach(el => {
-    el.classList.remove('active');
-  });
+  document.querySelectorAll('.vehicle-class').forEach(el => el.classList.remove('active'));
+  document.querySelector(`.vehicle-class[data-class="${classe}"]`).classList.add('active');
   
-  // Adicionar classe ativa ao selecionado
-  document.querySelector(`.vehicle-class-cadastro[data-class="${classe}"]`).classList.add('active');
-  
-  // Atualizar campos dinâmicos
   atualizarTiposVeiculo(classe);
   atualizarTiposCarroceria(classe);
   
-  // Habilitar selects
   document.getElementById('tipo_veiculo').disabled = false;
   document.getElementById('tipo_carroceria').disabled = false;
 }
@@ -1316,70 +1402,126 @@ function atualizarTiposCarroceria(classe) {
   }
 }
 
-// ========== CADASTRO DE MOTORISTAS ==========
+function inicializarEventListeners() {
+  const formCadastro = document.getElementById('formCadastro');
+  if (formCadastro) {
+    formCadastro.addEventListener('submit', async function(e) {
+      e.preventDefault();
+      if (this.dataset.editing) {
+        await atualizarMotorista();
+      } else {
+        await cadastrarMotorista();
+      }
+    });
+  }
+
+  const btnLogout = document.getElementById('btnLogout');
+  if (btnLogout) btnLogout.addEventListener('click', fazerLogout);
+
+  const btnLimpar = document.getElementById('btnLimpar');
+  if (btnLimpar) {
+    btnLimpar.addEventListener('click', function() {
+      limparFormulario();
+      delete document.getElementById('formCadastro').dataset.editing;
+    });
+  }
+
+  // Adicionar listeners para filtros
+  const filtros = ['filtroClasse', 'filtroEstado', 'filtroStatus', 'filtroBusca'];
+  filtros.forEach(filtroId => {
+    const elemento = document.getElementById(filtroId);
+      if (elemento) {
+        elemento.addEventListener('change', aplicarFiltros);
+      elemento.addEventListener('input', aplicarFiltros);
+      }
+    });
+
+  // Botão buscar
+    const btnBuscar = document.getElementById('btnBuscar');
+    if (btnBuscar) {
+      btnBuscar.addEventListener('click', aplicarFiltros);
+  }
+}
+
+// ========== CADASTRO DE MOTORISTAS (SUPABASE) ==========
 async function cadastrarMotorista() {
-  const classeSelecionada = document.querySelector('.vehicle-class-cadastro.active');
+  const classeSelecionada = document.querySelector('.vehicle-class.active');
   
   if (!classeSelecionada) {
     mostrarErro('Selecione a classe do veículo');
     return;
   }
   
-  const formData = new FormData(document.getElementById('formCadastro'));
-  const dados = Object.fromEntries(formData);
-  
-  // Adicionar classe do veículo aos dados
-  dados.classe_veiculo = classeSelecionada.dataset.class;
-  
+  const dados = {
+    nome: document.getElementById('nome').value.trim(),
+    cnh: document.getElementById('cnh').value.trim() || null,
+    categoria_cnh: document.getElementById('categoria_cnh').value || null,
+    telefone1: document.getElementById('telefone1').value.trim(),
+    telefone2: document.getElementById('telefone2').value.trim() || null,
+    estado: document.getElementById('estado').value || null,
+    tipo_veiculo: document.getElementById('tipo_veiculo').value,
+    tipo_carroceria: document.getElementById('tipo_carroceria').value,
+    placa_cavalo: document.getElementById('placa_cavalo').value.trim() || null,
+    placa_carreta1: document.getElementById('placa_carreta1').value.trim() || null,
+    placa_carreta2: document.getElementById('placa_carreta2').value.trim() || null,
+    status: document.getElementById('status').value || 'ativo'
+  };
+
+  if (!dados.nome || !dados.telefone1 || !dados.tipo_veiculo || !dados.tipo_carroceria) {
+    mostrarErro('Preencha todos os campos obrigatórios (*)');
+    return;
+  }
+
+  const motoristaData = {
+    ...dados,
+    classe_veiculo: classeSelecionada.dataset.class,
+    data_cadastro: new Date().toISOString(),
+    data_atualizacao: new Date().toISOString(),
+    usuario_id: await getCurrentUserId()
+  };
+
   try {
-    const response = await fetch(`${SERVER_URL}/webhook/motoristas`, {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify(dados)
-    });
+    const { data, error } = await supabase.from('motoristas').insert([motoristaData]).select();
+
+    if (error) throw error;
+
+    mostrarSucesso('✅ Motorista cadastrado com sucesso! ID: ' + data[0].id);
+    limparFormulario();
+    await carregarContatos();
     
-    const result = await response.json();
-    
-    if (response.ok) {
-      mostrarSucesso('✅ Motorista cadastrado com sucesso!');
-      limparFormulario();
-      carregarContatos(); // Atualizar a lista
-    } else {
-      mostrarErro(`❌ Erro ao cadastrar: ${result.error}`);
-    }
   } catch (error) {
-    console.error('Erro:', error);
-    mostrarErro('❌ Erro de conexão com o servidor');
+    console.error('❌ Erro completo:', error);
+    mostrarErro('❌ Erro ao cadastrar motorista: ' + error.message);
   }
 }
 
 function limparFormulario() {
   document.getElementById('formCadastro').reset();
-  
-  // Limpar seleção de classe
-  document.querySelectorAll('.vehicle-class-cadastro').forEach(el => {
-    el.classList.remove('active');
-  });
-  
-  // Resetar selects dinâmicos
+  document.querySelectorAll('.vehicle-class').forEach(el => el.classList.remove('active'));
   document.getElementById('tipo_veiculo').innerHTML = '<option value="">Selecione a classe do veículo primeiro</option>';
   document.getElementById('tipo_veiculo').disabled = true;
   document.getElementById('tipo_carroceria').innerHTML = '<option value="">Selecione a classe do veículo primeiro</option>';
   document.getElementById('tipo_carroceria').disabled = true;
 }
 
-// ========== GESTÃO DE CONTATOS ==========
 async function carregarContatos() {
   try {
-    const response = await fetch(`${SERVER_URL}/webhook/motoristas`);
-    const contatos = await response.json();
+      const { data: motoristas, error } = await supabase
+        .from('motoristas')
+        .select('*')
+      .order('data_cadastro', { ascending: false });
+
+      if (error) throw error;
+
+    todosContatos = motoristas || [];
+    contatosFiltrados = [...todosContatos];
     
-    todosContatos = contatos;
     atualizarEstatisticas();
     aplicarFiltros();
+    
   } catch (error) {
     console.error('Erro ao carregar contatos:', error);
-    mostrarErro('Erro ao carregar contatos');
+    mostrarErro('Erro ao carregar contatos: ' + error.message);
   }
 }
 
@@ -1389,45 +1531,44 @@ function atualizarEstatisticas() {
   const inativos = todosContatos.filter(c => c.status === 'inativo').length;
   const bloqueados = todosContatos.filter(c => c.status === 'bloqueado').length;
   
-  document.getElementById('totalContatos').textContent = total;
-  document.getElementById('contatosAtivos').textContent = ativos;
-  document.getElementById('contatosInativos').textContent = inativos;
-  document.getElementById('contatosBloqueados').textContent = bloqueados;
+  document.getElementById('totalContatos').textContent = total.toLocaleString('pt-BR');
+  document.getElementById('contatosAtivos').textContent = ativos.toLocaleString('pt-BR');
+  document.getElementById('contatosInativos').textContent = inativos.toLocaleString('pt-BR');
+  document.getElementById('contatosBloqueados').textContent = bloqueados.toLocaleString('pt-BR');
 }
 
 function carregarFiltros() {
-  // Carregar estados no filtro
   const selectEstado = document.getElementById('filtroEstado');
-  estados.forEach(estado => {
-    const option = document.createElement('option');
-    option.value = estado;
-    option.textContent = estado;
-    selectEstado.appendChild(option);
-  });
   
-  // Carregar carrocerias no filtro
-  const selectCarroceria = document.getElementById('filtroCarroceria');
-  Object.keys(tiposCarroceriaMap).forEach(key => {
-    const option = document.createElement('option');
-    option.value = key;
-    option.textContent = tiposCarroceriaMap[key];
-    selectCarroceria.appendChild(option);
-  });
+  if (selectEstado) {
+    selectEstado.innerHTML = '<option value="">Todos os estados</option>';
+    estados.forEach(estado => {
+      const option = document.createElement('option');
+      option.value = estado;
+      option.textContent = estado;
+      selectEstado.appendChild(option);
+    });
+  }
 }
 
 function aplicarFiltros() {
-  const filtroClasse = document.getElementById('filtroClasse').value;
-  const filtroCarroceria = document.getElementById('filtroCarroceria').value;
-  const filtroEstado = document.getElementById('filtroEstado').value;
-  const filtroStatus = document.getElementById('filtroStatus').value;
+  const filtroClasse = document.getElementById('filtroClasse')?.value || '';
+  const filtroEstado = document.getElementById('filtroEstado')?.value || '';
+  const filtroStatus = document.getElementById('filtroStatus')?.value || '';
+  const filtroBusca = document.getElementById('filtroBusca')?.value.toLowerCase() || '';
   
   contatosFiltrados = todosContatos.filter(contato => {
+    const matchBusca = !filtroBusca || 
+      contato.nome.toLowerCase().includes(filtroBusca) ||
+      contato.telefone1.includes(filtroBusca);
+    
     return (!filtroClasse || contato.classe_veiculo === filtroClasse) &&
-           (!filtroCarroceria || contato.tipo_carroceria === filtroCarroceria) &&
            (!filtroEstado || contato.estado === filtroEstado) &&
-           (!filtroStatus || contato.status === filtroStatus);
+           (!filtroStatus || contato.status === filtroStatus) &&
+           matchBusca;
   });
   
+  currentPage = 1;
   atualizarTabelaContatos();
   atualizarPaginacao();
 }
@@ -1438,13 +1579,15 @@ function atualizarTabelaContatos() {
   const endIndex = startIndex + pageSize;
   const contatosPagina = contatosFiltrados.slice(startIndex, endIndex);
   
+  document.getElementById('infoPaginacao').textContent = 
+    `Mostrando ${Math.min(contatosPagina.length, pageSize)} de ${contatosFiltrados.length} registros`;
+  
   if (contatosPagina.length === 0) {
     tbody.innerHTML = `
       <tr>
-        <td colspan="7" class="text-center text-muted py-5">
+        <td colspan="6" class="text-center text-muted py-5">
           <i class="fas fa-search fa-3x mb-3 d-block"></i>
           <h5 class="fw-bold">Nenhum motorista encontrado</h5>
-          <p class="text-muted">Tente ajustar os filtros ou cadastrar novos motoristas</p>
         </td>
       </tr>
     `;
@@ -1455,38 +1598,18 @@ function atualizarTabelaContatos() {
   contatosPagina.forEach(contato => {
     html += `
       <tr>
+        <td>${contato.nome}</td>
+        <td>${contato.telefone1}</td>
+        <td>${contato.classe_veiculo}</td>
+        <td>${contato.estado || '-'}</td>
+        <td><span class="badge bg-${contato.status === 'ativo' ? 'success' : 'secondary'}">${contato.status}</span></td>
         <td>
-          <div class="fw-bold">${contato.nome}</div>
-          ${contato.cnh ? `<small class="text-muted">CNH: ${contato.cnh}</small>` : ''}
-        </td>
-        <td>
-          <div class="d-flex flex-column gap-1">
-            <span><i class="fas fa-phone text-primary me-1"></i>${contato.telefone1}</span>
-            ${contato.telefone2 ? `<span><i class="fas fa-phone-alt text-secondary me-1"></i>${contato.telefone2}</span>` : ''}
-          </div>
-        </td>
-        <td>
-          <span class="badge-modern badge-vehicle">${contato.classe_veiculo}</span>
-          <div class="small text-muted mt-1">${contato.tipo_veiculo}</div>
-        </td>
-        <td>
-          <span class="badge-modern badge-bodywork">${tiposCarroceriaMap[contato.tipo_carroceria] || contato.tipo_carroceria}</span>
-        </td>
-        <td>
-          ${contato.estado ? `<span class="badge-modern badge-state">${contato.estado}</span>` : '-'}
-        </td>
-        <td>
-          <span class="badge-status badge-${contato.status}">${contato.status}</span>
-        </td>
-        <td>
-          <div class="action-buttons">
-            <button class="btn-action btn-edit" onclick="editarMotorista('${contato.telefone1}')" title="Editar">
+            <button class="btn btn-sm btn-outline-primary" onclick="editarMotorista('${contato.id}')" title="Editar">
               <i class="fas fa-edit"></i>
             </button>
-            <button class="btn-action btn-delete" onclick="excluirMotorista('${contato.telefone1}')" title="Excluir">
+            <button class="btn btn-sm btn-outline-danger" onclick="excluirMotorista('${contato.id}')" title="Excluir">
               <i class="fas fa-trash"></i>
             </button>
-          </div>
         </td>
       </tr>
     `;
@@ -1506,32 +1629,21 @@ function atualizarPaginacao() {
   
   let html = '';
   
-  // Botão anterior
-  html += `
-    <li class="page-item ${currentPage === 1 ? 'disabled' : ''}">
-      <a class="page-link" href="#" onclick="mudarPagina(${currentPage - 1})">‹</a>
-    </li>
-  `;
+  html += `<li class="page-item ${currentPage === 1 ? 'disabled' : ''}">
+      <a class="page-link" href="#" onclick="mudarPagina(${currentPage - 1}); return false;">‹</a>
+  </li>`;
   
-  // Páginas
   for (let i = 1; i <= totalPages; i++) {
     if (i === 1 || i === totalPages || (i >= currentPage - 2 && i <= currentPage + 2)) {
-      html += `
-        <li class="page-item ${i === currentPage ? 'active' : ''}">
-          <a class="page-link" href="#" onclick="mudarPagina(${i})">${i}</a>
-        </li>
-      `;
-    } else if (i === currentPage - 3 || i === currentPage + 3) {
-      html += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+      html += `<li class="page-item ${i === currentPage ? 'active' : ''}">
+          <a class="page-link" href="#" onclick="mudarPagina(${i}); return false;">${i}</a>
+      </li>`;
     }
   }
   
-  // Botão próximo
-  html += `
-    <li class="page-item ${currentPage === totalPages ? 'disabled' : ''}">
-      <a class="page-link" href="#" onclick="mudarPagina(${currentPage + 1})">›</a>
-    </li>
-  `;
+  html += `<li class="page-item ${currentPage === totalPages ? 'disabled' : ''}">
+      <a class="page-link" href="#" onclick="mudarPagina(${currentPage + 1}); return false;">›</a>
+  </li>`;
   
   paginacao.innerHTML = html;
 }
@@ -1541,386 +1653,116 @@ function mudarPagina(pagina) {
   atualizarTabelaContatos();
 }
 
-// ========== FUNÇÕES DE EDIÇÃO/EXCLUSÃO ==========
-function editarMotorista(telefone) {
-  // Buscar dados do motorista
-  const motorista = todosContatos.find(m => m.telefone1 === telefone);
-  if (!motorista) return;
-  
-  // Preencher formulário com dados existentes
-  document.getElementById('nome').value = motorista.nome || '';
-  document.getElementById('cnh').value = motorista.cnh || '';
-  document.getElementById('categoria_cnh').value = motorista.categoria_cnh || '';
-  document.getElementById('telefone1').value = motorista.telefone1 || '';
-  document.getElementById('telefone2').value = motorista.telefone2 || '';
-  document.getElementById('estado').value = motorista.estado || '';
-  document.getElementById('placa_cavalo').value = motorista.placa_cavalo || '';
-  document.getElementById('placa_carreta1').value = motorista.placa_carreta1 || '';
-  document.getElementById('placa_carreta2').value = motorista.placa_carreta2 || '';
-  document.getElementById('status').value = motorista.status || 'ativo';
-  
-  // Selecionar classe do veículo
-  selecionarClasseCadastro(motorista.classe_veiculo);
-  
-  // Preencher tipos (com delay para garantir que os selects foram atualizados)
-  setTimeout(() => {
-    document.getElementById('tipo_veiculo').value = motorista.tipo_veiculo?.toLowerCase().replace(/ /g, '_') || '';
-    document.getElementById('tipo_carroceria').value = motorista.tipo_carroceria?.toLowerCase().replace(/ /g, '_') || '';
-  }, 100);
-  
-  // Rolar para o topo do formulário
-  document.getElementById('cadastro').scrollIntoView({ behavior: 'smooth' });
-  
-  // Alterar texto do botão para indicar edição
-  const btnSubmit = document.querySelector('#formCadastro button[type="submit"]');
-  btnSubmit.innerHTML = '<i class="fas fa-edit me-2"></i>Atualizar Motorista';
-  btnSubmit.classList.remove('btn-modern-success');
-  btnSubmit.classList.add('btn-modern-primary');
-  
-  // Adicionar atributo para identificar que é uma edição
-  document.getElementById('formCadastro').dataset.editing = telefone;
+async function editarMotorista(id) {
+    try {
+        const { data: motorista, error } = await supabase
+            .from('motoristas')
+            .select('*')
+            .eq('id', id)
+            .single();
+
+        if (error) throw error;
+        if (!motorista) {
+            mostrarErro('Motorista não encontrado');
+            return;
+        }
+
+        document.getElementById('nome').value = motorista.nome || '';
+        document.getElementById('cnh').value = motorista.cnh || '';
+        document.getElementById('categoria_cnh').value = motorista.categoria_cnh || '';
+        document.getElementById('telefone1').value = motorista.telefone1 || '';
+        document.getElementById('telefone2').value = motorista.telefone2 || '';
+        document.getElementById('estado').value = motorista.estado || '';
+        document.getElementById('placa_cavalo').value = motorista.placa_cavalo || '';
+        document.getElementById('placa_carreta1').value = motorista.placa_carreta1 || '';
+        document.getElementById('placa_carreta2').value = motorista.placa_carreta2 || '';
+        document.getElementById('status').value = motorista.status || 'ativo';
+
+        selecionarClasseCadastro(motorista.classe_veiculo);
+
+        setTimeout(() => {
+            document.getElementById('tipo_veiculo').value = motorista.tipo_veiculo || '';
+            document.getElementById('tipo_carroceria').value = motorista.tipo_carroceria || '';
+    }, 300);
+
+        document.getElementById('formCadastro').dataset.editing = id;
+        
+    } catch (error) {
+    console.error('❌ Erro ao carregar motorista:', error);
+    mostrarErro('Erro ao carregar dados: ' + error.message);
+    }
 }
 
-async function excluirMotorista(telefone) {
-  if (!confirm('Tem certeza que deseja excluir este motorista?')) {
+async function atualizarMotorista() {
+  const id = document.getElementById('formCadastro').dataset.editing;
+  if (!id) return;
+
+  const classeSelecionada = document.querySelector('.vehicle-class.active');
+  if (!classeSelecionada) {
+    mostrarErro('Selecione a classe do veículo');
     return;
   }
-  
+
+  const formData = new FormData(document.getElementById('formCadastro'));
+  const dados = Object.fromEntries(formData);
+
+  const updateData = {
+    nome: dados.nome,
+    cnh: dados.cnh || null,
+    categoria_cnh: dados.categoria_cnh || null,
+    telefone1: dados.telefone1,
+    telefone2: dados.telefone2 || null,
+    estado: dados.estado || null,
+    classe_veiculo: classeSelecionada.dataset.class,
+    tipo_veiculo: dados.tipo_veiculo,
+    tipo_carroceria: dados.tipo_carroceria,
+    placa_cavalo: dados.placa_cavalo || null,
+    placa_carreta1: dados.placa_carreta1 || null,
+    placa_carreta2: dados.placa_carreta2 || null,
+    status: dados.status || 'ativo',
+    data_atualizacao: new Date().toISOString()
+  };
+
   try {
-    const response = await fetch(`${SERVER_URL}/webhook/motoristas/${telefone}`, {
-      method: 'DELETE'
-    });
-    
-    if (response.ok) {
-      mostrarSucesso('✅ Motorista excluído com sucesso!');
-      carregarContatos(); // Atualizar a lista
-    } else {
-      const result = await response.json();
-      mostrarErro(`❌ Erro ao excluir: ${result.error}`);
-    }
-  } catch (error) {
-    console.error('Erro:', error);
-    mostrarErro('❌ Erro de conexão com o servidor');
-  }
-}
+    const { error } = await supabase.from('motoristas').update(updateData).eq('id', id);
+    if (error) throw error;
 
-// ========== IMPORTACAO CSV ==========
-function inicializarDragAndDrop() {
-  const uploadArea = document.getElementById('uploadArea');
-  const fileInput = document.getElementById('csvFile');
-  
-  uploadArea.addEventListener('dragover', function(e) {
-    e.preventDefault();
-    uploadArea.classList.add('dragover');
-  });
-  
-  uploadArea.addEventListener('dragleave', function() {
-    uploadArea.classList.remove('dragover');
-  });
-  
-  uploadArea.addEventListener('drop', function(e) {
-    e.preventDefault();
-    uploadArea.classList.remove('dragover');
-    
-    const files = e.dataTransfer.files;
-    if (files.length > 0) {
-      fileInput.files = files;
-      processarArquivoCSV(files[0]);
-    }
-  });
-  
-  fileInput.addEventListener('change', function(e) {
-    if (e.target.files.length > 0) {
-      processarArquivoCSV(e.target.files[0]);
-    }
-  });
-}
-
-function processarArquivoCSV(file) {
-  const fileName = file.name;
-  const fileSize = (file.size / 1024 / 1024).toFixed(2); // MB
-  
-  if (!fileName.toLowerCase().endsWith('.csv')) {
-    mostrarErro('❌ Por favor, selecione um arquivo CSV válido.');
-    return;
-  }
-  
-  // Atualizar interface
-  const uploadArea = document.getElementById('uploadArea');
-  uploadArea.innerHTML = `
-    <div class="upload-icon text-success">
-      <i class="fas fa-check-circle"></i>
-    </div>
-    <h5 class="fw-bold mb-1">Arquivo selecionado</h5>
-    <p class="text-muted mb-1">${fileName}</p>
-    <small class="text-success">${fileSize} MB - Pronto para importar</small>
-  `;
-}
-
-async function importarCSV() {
-  const fileInput = document.getElementById('csvFile');
-  
-  if (!fileInput.files.length) {
-    mostrarErro('❌ Selecione um arquivo CSV para importar.');
-    return;
-  }
-  
-  const file = fileInput.files[0];
-  const sobrescrever = document.getElementById('sobrescrever').checked;
-  const manterInativos = document.getElementById('manter_inativos').checked;
-  
-  try {
-    const formData = new FormData();
-    formData.append('csv', file);
-    formData.append('sobrescrever', sobrescrever);
-    formData.append('manterInativos', manterInativos);
-    
-    mostrarLoading('⏳ Importando dados...');
-    
-    const response = await fetch(`${SERVER_URL}/webhook/importar-csv`, {
-      method: 'POST',
-      body: formData
-    });
-    
-    const result = await response.json();
-    
-    if (response.ok) {
-      mostrarSucesso(`✅ Importação concluída!<br>
-        • ${result.inseridos} novos registros<br>
-        • ${result.atualizados} registros atualizados<br>
-        • ${result.erros} erros`);
-      
-      // Resetar upload area
-      document.getElementById('uploadArea').innerHTML = `
-        <div class="upload-icon">
-          <i class="fas fa-cloud-upload-alt"></i>
-        </div>
-        <h5 class="fw-bold mb-2">Arraste ou clique para upload</h5>
-        <p class="text-muted mb-3">Suporte para arquivos CSV</p>
-        <input type="file" id="csvFile" class="d-none" accept=".csv">
-        <button class="btn btn-modern btn-modern-primary">
-          <i class="fas fa-folder-open me-2"></i>Selecionar Arquivo
-        </button>
-      `;
-      
-      // Re-inicializar drag and drop
-      inicializarDragAndDrop();
-      
-      // Atualizar lista de contatos
-      carregarContatos();
-      
-      // Atualizar histórico
-      adicionarAoHistorico({
-        data: new Date().toLocaleString('pt-BR'),
-        arquivo: file.name,
-        registros: result.total,
-        inseridos: result.inseridos,
-        atualizados: result.atualizados,
-        status: 'Sucesso'
-      });
-      
-    } else {
-      mostrarErro(`❌ Erro na importação: ${result.error}`);
-    }
+    mostrarSucesso('✅ Motorista atualizado com sucesso!');
+    limparFormulario();
+    delete document.getElementById('formCadastro').dataset.editing;
+    await carregarContatos();
     
   } catch (error) {
-    console.error('Erro:', error);
-    mostrarErro('❌ Erro de conexão com o servidor');
+    console.error('Erro ao atualizar:', error);
+    mostrarErro('❌ Erro: ' + error.message);
   }
 }
 
-async function importarCSVAutomatico() {
+async function excluirMotorista(id) {
+  if (!confirm('Tem certeza que deseja excluir este motorista?')) return;
+
   try {
-    mostrarLoading('🔍 Verificando arquivo padrão...');
-    
-    const response = await fetch(`${SERVER_URL}/webhook/importar-csv-automatico`, {
-      method: 'POST'
-    });
-    
-    const result = await response.json();
-    
-    if (response.ok) {
-      mostrarSucesso(`✅ Importação automática concluída!<br>
-        • ${result.inseridos} novos registros<br>
-        • ${result.atualizados} registros atualizados<br>
-        • ${result.erros} erros`);
-      
-      carregarContatos();
-      
-      adicionarAoHistorico({
-        data: new Date().toLocaleString('pt-BR'),
-        arquivo: 'contatos.csv (automático)',
-        registros: result.total,
-        inseridos: result.inseridos,
-        atualizados: result.atualizados,
-        status: 'Sucesso'
-      });
-      
-    } else {
-      mostrarErro(`❌ Erro na importação automática: ${result.error}`);
-    }
+    const { error } = await supabase.from('motoristas').delete().eq('id', id);
+    if (error) throw error;
+
+    mostrarSucesso('✅ Motorista excluído com sucesso!');
+    await carregarContatos();
     
   } catch (error) {
-    console.error('Erro:', error);
-    mostrarErro('❌ Erro de conexão com o servidor');
+    console.error('Erro ao excluir:', error);
+    mostrarErro('❌ Erro: ' + error.message);
   }
 }
 
-function verificarArquivoCSV() {
-  mostrarInfo('🔍 Verificando disponibilidade do arquivo contatos.csv...');
-  
-  // Simulação - em implementação real, faria uma requisição para o servidor
-  setTimeout(() => {
-    mostrarInfo('📁 Arquivo contatos.csv encontrado no servidor. Pronto para importação.');
-  }, 1000);
+async function getCurrentUserId() {
+  const userData = localStorage.getItem('loggedInUser');
+  if (userData) {
+    const user = JSON.parse(userData);
+    return user.id || 'default_user';
+  }
+  return 'default_user';
 }
 
-function baixarTemplateCSV() {
-  // Criar template CSV - REMOVIDA CATEGORIA_DISPARO
-  const headers = ['nome', 'telefone1', 'telefone2', 'estado', 'cnh', 'categoria_cnh', 'classe_veiculo', 'tipo_veiculo', 'tipo_carroceria', 'placa_cavalo', 'placa_carreta1', 'placa_carreta2', 'status'];
-  const exemplo = ['João Silva', '5511999999999', '5511888888888', 'SP', '12345678900', 'B', 'leve', 'toco', 'bau', 'ABC1D23', '', '', 'ativo'];
-  
-  let csvContent = headers.join(',') + '\n';
-  csvContent += exemplo.join(',') + '\n';
-  
-  // Criar blob e download
-  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-  const link = document.createElement('a');
-  const url = URL.createObjectURL(blob);
-  
-  link.setAttribute('href', url);
-  link.setAttribute('download', 'template_motoristas.csv');
-  link.style.visibility = 'hidden';
-  
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  
-  mostrarSucesso('📥 Template CSV baixado com sucesso!');
-}
-
-function adicionarAoHistorico(importacao) {
-  const tbody = document.getElementById('historicoImportacao');
-  
-  // Remover mensagem de vazio se existir
-  if (tbody.querySelector('td[colspan]')) {
-    tbody.innerHTML = '';
-  }
-  
-  const tr = document.createElement('tr');
-  tr.innerHTML = `
-    <td>${importacao.data}</td>
-    <td>${importacao.arquivo}</td>
-    <td>${importacao.registros}</td>
-    <td>${importacao.inseridos}</td>
-    <td>${importacao.atualizados}</td>
-    <td><span class="badge bg-success">${importacao.status}</span></td>
-  `;
-  
-  tbody.insertBefore(tr, tbody.firstChild);
-}
-
-// ========== EXPORTAÇÃO ==========
-async function exportarContatos() {
-  try {
-    mostrarLoading('📤 Preparando exportação...');
-    
-    const formato = document.getElementById('formatoBackup').value;
-    const response = await fetch(`${SERVER_URL}/webhook/exportar-contatos?formato=${formato}`);
-    
-    if (response.ok) {
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-      
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `motoristas_${new Date().toISOString().split('T')[0]}.${formato}`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      
-      mostrarSucesso(`✅ Exportação ${formato.toUpperCase()} concluída!`);
-      
-      // Atualizar último backup
-      document.getElementById('ultimoBackup').textContent = new Date().toLocaleString('pt-BR');
-      
-    } else {
-      const result = await response.json();
-      mostrarErro(`❌ Erro na exportação: ${result.error}`);
-    }
-    
-  } catch (error) {
-    console.error('Erro:', error);
-    mostrarErro('❌ Erro de conexão com o servidor');
-  }
-}
-
-// ========== BACKUP E RESET ==========
-async function fazerBackup() {
-  await exportarContatos(); // Reutiliza a função de exportação
-}
-
-async function limparInativos() {
-  if (!confirm('⚠️ TEM CUIDADO!\n\nIsso irá remover permanentemente TODOS os motoristas com status "inativo".\n\nDeseja continuar?')) {
-    return;
-  }
-  
-  try {
-    mostrarLoading('🧹 Limpando contatos inativos...');
-    
-    const response = await fetch(`${SERVER_URL}/webhook/limpar-inativos`, {
-      method: 'DELETE'
-    });
-    
-    const result = await response.json();
-    
-    if (response.ok) {
-      mostrarSucesso(`✅ Limpeza concluída!<br>• ${result.removidos} contatos inativos removidos`);
-      carregarContatos();
-    } else {
-      mostrarErro(`❌ Erro na limpeza: ${result.error}`);
-    }
-    
-  } catch (error) {
-    console.error('Erro:', error);
-    mostrarErro('❌ Erro de conexão com o servidor');
-  }
-}
-
-async function resetarBase() {
-  if (!confirm('🚨 PERIGO!\n\nIsso irá apagar TODOS os motoristas cadastrados.\n\nEsta ação NÃO PODE ser desfeita!\n\nDigite "RESETAR" para confirmar:')) {
-    return;
-  }
-  
-  const confirmacao = prompt('Digite "RESETAR" para confirmar:');
-  if (confirmacao !== 'RESETAR') {
-    mostrarInfo('❌ Reset cancelado.');
-    return;
-  }
-  
-  try {
-    mostrarLoading('🗑️ Resetando base de dados...');
-    
-    const response = await fetch(`${SERVER_URL}/webhook/resetar-base`, {
-      method: 'DELETE'
-    });
-    
-    const result = await response.json();
-    
-    if (response.ok) {
-      mostrarSucesso(`✅ Base resetada com sucesso!<br>• ${result.removidos} registros apagados`);
-      carregarContatos();
-    } else {
-      mostrarErro(`❌ Erro no reset: ${result.error}`);
-    }
-    
-  } catch (error) {
-    console.error('Erro:', error);
-    mostrarErro('❌ Erro de conexão com o servidor');
-  }
-}
-
-// ========== UTILITÁRIOS ==========
 function mostrarSucesso(mensagem) {
   mostrarMensagem(mensagem, 'success');
 }
@@ -1929,96 +1771,119 @@ function mostrarErro(mensagem) {
   mostrarMensagem(mensagem, 'danger');
 }
 
-function mostrarInfo(mensagem) {
-  mostrarMensagem(mensagem, 'info');
-}
-
-function mostrarLoading(mensagem) {
-  mostrarMensagem(`<div class="spinner-border spinner-border-sm me-2"></div>${mensagem}`, 'info');
-}
-
 function mostrarMensagem(mensagem, tipo) {
-  // Remover mensagens anteriores
   const mensagensAnteriores = document.querySelectorAll('.alert-floating');
   mensagensAnteriores.forEach(msg => msg.remove());
   
-  // Criar nova mensagem
   const alert = document.createElement('div');
   alert.className = `alert alert-${tipo} alert-floating alert-dismissible fade show`;
-  alert.innerHTML = `
-    ${mensagem}
-    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-  `;
-  
-  // Estilos para mensagem flutuante
-  Object.assign(alert.style, {
-    position: 'fixed',
-    top: '100px',
-    right: '20px',
-    zIndex: '9999',
-    minWidth: '300px',
-    boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
-    borderRadius: '12px'
-  });
+  alert.innerHTML = `${mensagem}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>`;
   
   document.body.appendChild(alert);
   
-  // Auto-remover após 5 segundos para sucesso/info
   if (tipo !== 'danger') {
     setTimeout(() => {
-      if (alert.parentNode) {
-        alert.remove();
-      }
+      if (alert.parentNode) alert.remove();
     }, 5000);
   }
 }
 
-// Carregar estatísticas do sistema
-function carregarEstatisticasSistema() {
-  const statsContainer = document.getElementById('estatisticasSistema');
-  
-  const stats = [
-    { icon: 'fa-database', label: 'Total de Registros', value: todosContatos.length },
-    { icon: 'fa-hdd', label: 'Espaço Utilizado', value: '~' + Math.round(todosContatos.length * 0.5) + ' KB' },
-    { icon: 'fa-calendar', label: 'Última Atualização', value: new Date().toLocaleDateString('pt-BR') },
-    { icon: 'fa-code-branch', label: 'Versão do Sistema', value: '1.0.0' }
-  ];
-  
-  let html = '';
-  stats.forEach(stat => {
-    html += `
-      <div class="col-md-3">
-        <div class="status-card">
-          <div class="status-icon primary">
-            <i class="fas ${stat.icon}"></i>
-          </div>
-          <div class="status-number">${stat.value}</div>
-          <div class="status-label">${stat.label}</div>
-        </div>
-      </div>
-    `;
-  });
-  
-  statsContainer.innerHTML = html;
+async function fazerLogout() {
+  if (confirm('Deseja realmente sair do sistema?')) {
+    try {
+      localStorage.removeItem('loggedInUser');
+    } catch (error) {
+      console.error('Erro no logout:', error);
+    } finally {
+      window.location.href = 'login.html';
+    }
+  }
 }
 
-// Atualizar estatísticas quando os contatos são carregados
-const originalCarregarContatos = carregarContatos;
-carregarContatos = async function() {
-  await originalCarregarContatos();
-  carregarEstatisticasSistema();
-};
+function adicionarCSSPersonalizado() {
+  if (document.getElementById('css-personalizado')) return;
+  
+  const style = document.createElement('style');
+  style.id = 'css-personalizado';
+  style.textContent = `
+    .stat-card-small {
+      background: white;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      transition: all 0.3s ease;
+    }
+    .stat-card-small:hover {
+      border-color: #667eea;
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.1);
+    }
+    .stat-icon {
+      width: 50px;
+      height: 50px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.25rem;
+    }
+    .stat-number {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: #1f2937;
+      line-height: 1;
+    }
+    .stat-label {
+      font-size: 0.875rem;
+      color: #64748b;
+      margin-top: 0.25rem;
+    }
+  `;
+  document.head.appendChild(style);
+}
 
-// ========== INICIALIZAÇÃO COMPLETA ==========
-document.addEventListener('DOMContentLoaded', function() {
-  carregarInformacoesUsuario();
-  inicializarFormulario();
-  carregarContatos();
-  carregarFiltros();
-  carregarEstatisticasSistema();
-});
+async function carregarEstatisticasSistema() {
+  const statsContainer = document.getElementById('estatisticasSistema');
+  if (!statsContainer) return;
+  
+  try {
+    const { data: motoristas, error } = await supabase.from('motoristas').select('*');
+    if (error) throw error;
+    
+    const stats = [
+      { icon: 'fa-database', label: 'Total de Registros', value: motoristas ? motoristas.length : 0 },
+      { icon: 'fa-hdd', label: 'Espaço Utilizado', value: '~' + Math.round((motoristas ? motoristas.length : 0) * 0.5) + ' KB' },
+      { icon: 'fa-calendar', label: 'Última Atualização', value: new Date().toLocaleDateString('pt-BR') },
+      { icon: 'fa-code-branch', label: 'Versão do Sistema', value: '1.0.0' }
+    ];
+    
+    let html = '';
+    stats.forEach(stat => {
+      html += `
+        <div class="col-md-3">
+          <div class="status-card">
+            <div class="status-icon primary">
+              <i class="fas ${stat.icon}"></i>
+            </div>
+            <div class="status-number">${stat.value}</div>
+            <div class="status-label">${stat.label}</div>
+          </div>
+        </div>
+      `;
+    });
+    
+    statsContainer.innerHTML = html;
+    
+  } catch (error) {
+    console.error('Erro ao carregar estatísticas:', error);
+    statsContainer.innerHTML = '<div class="col-12 text-center text-muted">Erro ao carregar estatísticas</div>';
+  }
+}
 
-console.log('✅ Sistema de Cadastro de Motoristas carregado com sucesso!');
+// ========== INICIALIZAÇÃO FINAL ==========
+document.addEventListener('DOMContentLoaded', inicializarAplicacao);
 </script>
 </body>
 </html>

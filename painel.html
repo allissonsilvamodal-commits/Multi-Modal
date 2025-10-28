@@ -1,1516 +1,2149 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Disparador de Mensagens</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel de Disparo - Sistema Multimodal</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/permissions.js"></script>
   <style>
     :root {
-      --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      --success-gradient: linear-gradient(135deg, #4ecdc4 0%, #44a08d 100%);
-      --warning-gradient: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-      --danger-gradient: linear-gradient(135deg, #ff5858 0%, #f09819 100%);
-      --admin-gradient: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
-    }
-    
-    body { 
-      padding: 20px; 
-      background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-      min-height: 100vh;
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    }
-    
-    .header-section { 
-      background: var(--primary-gradient);
-      color: white;
-      padding: 25px;
-      border-radius: 15px;
-      margin-bottom: 25px;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.15);
-      position: relative;
-      overflow: hidden;
-    }
-    
-    .header-section::before {
-      content: '';
-      position: absolute;
-      top: -50%;
-      right: -50%;
-      width: 100%;
-      height: 100%;
-      background: rgba(255,255,255,0.1);
-      transform: rotate(30deg);
-    }
-    
-    .category-card { 
-      cursor: pointer; 
-      transition: all 0.3s ease; 
-      border: 2px solid #e9ecef;
-      border-radius: 12px;
+            --primary: #4361ee;
+            --secondary: #3f37c9;
+            --success: #4cc9f0;
+            --warning: #f8961e;
+            --danger: #f72585;
+            --info: #4895ef;
+            --light: #f8f9fa;
+            --dark: #212529;
+            --sidebar-width: 250px;
+            --header-height: 70px;
+            --card-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            --transition: all 0.3s ease;
+        }
+
+        [data-theme="dark"] {
+            --light: #1a1d28;
+            --dark: #f8f9fa;
+            --card-bg: #252836;
+            --text-color: #e4e6eb;
+            --border-color: #3a3f50;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f5f7fb;
+            color: var(--dark);
+            transition: var(--transition);
+            overflow-x: hidden;
+        }
+
+        body[data-theme="dark"] {
+            background-color: #121826;
+            color: var(--text-color);
+        }
+
+        /* Layout Principal */
+        .app-container {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: var(--sidebar-width);
+            background: linear-gradient(180deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            position: fixed;
+            height: 100vh;
+            overflow-y: auto;
+            transition: var(--transition);
+            z-index: 1000;
+        }
+
+        .sidebar-header {
+            padding: 1.5rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            text-align: center;
+        }
+
+        .sidebar-logo {
+            font-size: 1.5rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .sidebar-menu {
+            padding: 1rem 0;
+        }
+
+        .menu-item {
+            padding: 0.8rem 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: rgba(255, 255, 255, 0.8);
+            text-decoration: none;
+            transition: var(--transition);
+            border-left: 3px solid transparent;
+        }
+
+        .menu-item:hover, .menu-item.active {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            border-left-color: white;
+        }
+
+        /* Main Content */
+        .main-content {
+            flex: 1;
+            margin-left: var(--sidebar-width);
+            padding: 2rem;
+            transition: var(--transition);
+        }
+
+        /* Header */
+        .header {
+            background: white;
+            padding: 1rem 2rem;
+            border-radius: 15px;
+            box-shadow: var(--card-shadow);
+            margin-bottom: 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header-title {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: var(--primary);
+            margin: 0;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        /* Cards */
+    .modern-card {
       background: white;
-    }
-    
-    .category-card:hover { 
-      transform: translateY(-5px) scale(1.02); 
-      box-shadow: 0 8px 25px rgba(0,0,0,0.15);
-      border-color: #667eea;
-    }
-    
-    .category-card.active { 
-      border: 2px solid #0d6efd; 
-      background: var(--primary-gradient); 
-      color: #fff; 
-      box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
-    }
-    
-    .contact-form { 
-      background-color: #fff; 
-      padding: 25px; 
-      border-radius: 15px; 
-      margin-bottom: 20px; 
-      box-shadow: 0 5px 15px rgba(0,0,0,0.08);
-      border-left: 4px solid #667eea;
-    }
-    
-    .contact-list { 
-      max-height: 500px; 
-      overflow-y: auto; 
-      margin-top: 15px; 
-      border: 1px solid #e9ecef; 
-      border-radius: 10px; 
-      padding: 15px;
-      background: #f8f9fa;
-    }
-    
-    .contact-item { 
-      border-bottom: 1px solid #e9ecef; 
-      padding: 12px 0; 
-      transition: background-color 0.2s;
-      border-radius: 8px;
-      padding-left: 10px;
-      padding-right: 10px;
-    }
-    
-    .contact-item:hover {
-      background-color: #e9ecef;
-    }
-    
-    .contact-item:last-child { border-bottom: none; }
-    
-    .btn-stop { 
-      background: var(--danger-gradient);
-      border: none;
-      color: white;
-      transition: all 0.3s;
-    }
-    
-    .btn-stop:hover { 
-      transform: translateY(-2px);
-      box-shadow: 0 5px 15px rgba(220, 53, 69, 0.4);
-    }
-    
-    .btn-admin {
-      background: var(--admin-gradient);
-      border: none;
-      color: white;
-      transition: all 0.3s;
-    }
-    
-    .btn-admin:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 5px 15px rgba(238, 90, 36, 0.4);
-    }
-    
-    .status-card { 
-      margin-bottom: 20px; 
-      border-radius: 15px;
+            border-radius: 15px;
+            box-shadow: var(--card-shadow);
+            margin-bottom: 2rem;
       overflow: hidden;
-      box-shadow: 0 5px 15px rgba(0,0,0,0.08);
-      border: none;
+            transition: var(--transition);
     }
     
-    .status-card .card-header {
-      border-radius: 0;
-      font-weight: 600;
+    .modern-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
     }
     
-    .alert { 
-      border: none; 
-      border-radius: 12px; 
-      box-shadow: 0 3px 10px rgba(0,0,0,0.08);
-    }
-    
-    .btn-logout {
-      background: rgba(255,255,255,0.2);
-      border: 2px solid rgba(255,255,255,0.3);
+        .card-header {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
       color: white;
-      transition: all 0.3s;
-      border-radius: 10px;
-      font-weight: 500;
+            padding: 1.5rem;
+            font-weight: 600;
+      font-size: 1.1rem;
     }
     
-    .btn-logout:hover {
-      background: rgba(255,255,255,0.3);
-      border-color: rgba(255,255,255,0.5);
-      transform: translateY(-2px);
-      box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        .card-body {
+            padding: 2rem;
+        }
+
+        /* Stats Cards */
+        .stats-grid {
+      display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 1.5rem;
+      margin-bottom: 2rem;
     }
     
-    .user-info {
-      background: rgba(255,255,255,0.15);
-      padding: 12px 18px;
-      border-radius: 12px;
-      margin-top: 10px;
-      backdrop-filter: blur(10px);
-      border: 1px solid rgba(255,255,255,0.2);
-    }
-    
-    .progress {
-      border-radius: 10px;
-      overflow: hidden;
-      box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
-    }
-    
-    .btn-success {
-      background: var(--success-gradient);
-      border: none;
-      transition: all 0.3s;
-    }
-    
-    .btn-success:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 5px 15px rgba(78, 205, 196, 0.4);
-    }
-    
-    .btn-warning {
-      background: var(--warning-gradient);
-      border: none;
-      transition: all 0.3s;
-    }
-    
-    .btn-warning:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 5px 15px rgba(240, 147, 251, 0.4);
-    }
-    
-    .btn-primary {
-      background: var(--primary-gradient);
-      border: none;
-      transition: all 0.3s;
-    }
-    
-    .btn-primary:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
-    }
-    
-    .btn-danger {
-      background: var(--danger-gradient);
-      border: none;
-      transition: all 0.3s;
-    }
-    
-    .btn-danger:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 5px 15px rgba(255, 88, 88, 0.4);
-    }
-    
-    .form-control, .form-select {
-      border-radius: 10px;
-      padding: 10px 15px;
-      border: 2px solid #e9ecef;
-      transition: all 0.3s;
-    }
-    
-    .form-control:focus, .form-select:focus {
-      border-color: #667eea;
-      box-shadow: 0 0 0 0.25rem rgba(102, 126, 234, 0.25);
-    }
-    
-    .card {
-      border-radius: 12px;
-      overflow: hidden;
-      transition: transform 0.3s;
-    }
-    
-    .card:hover {
-      transform: translateY(-2px);
-    }
-    
-    /* Custom scrollbar */
-    .contact-list::-webkit-scrollbar {
-      width: 6px;
-    }
-    
-    .contact-list::-webkit-scrollbar-track {
-      background: #f1f1f1;
-      border-radius: 10px;
-    }
-    
-    .contact-list::-webkit-scrollbar-thumb {
-      background: #c1c1c1;
-      border-radius: 10px;
-    }
-    
-    .contact-list::-webkit-scrollbar-thumb:hover {
-      background: #a8a8a8;
-    }
-    
-    /* Loading animation */
-    @keyframes pulse {
-      0% { opacity: 1; }
-      50% { opacity: 0.5; }
-      100% { opacity: 1; }
-    }
-    
-    .loading {
-      animation: pulse 1.5s ease-in-out infinite;
-    }
-    
-    /* Badge improvements */
-    .badge {
-      border-radius: 8px;
-      font-weight: 500;
-    }
-    
-    /* Pagination Styles */
-    .pagination-container {
+        .stat-card {
       background: white;
-      padding: 15px;
-      border-radius: 10px;
-      margin-top: 15px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      padding: 2rem;
+            border-radius: 15px;
+            box-shadow: var(--card-shadow);
+      text-align: center;
+            transition: var(--transition);
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+        }
+
+        .stat-icon {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+            margin: 0 auto 1rem;
+            font-size: 1.5rem;
+            color: white;
+        }
+
+        .stat-icon.primary { background: var(--primary); }
+        .stat-icon.success { background: var(--success); }
+        .stat-icon.warning { background: var(--warning); }
+        .stat-icon.info { background: var(--info); }
+
+        .stat-number {
+      font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--dark);
+      margin-bottom: 0.5rem;
+        }
+
+        .stat-label {
+            color: #6c757d;
+            font-weight: 500;
+        }
+
+        /* Vehicle Classes */
+    .vehicle-classes {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+      margin-bottom: 2rem;
     }
     
-    .page-size-selector {
-      max-width: 120px;
+    .vehicle-class {
+            background: white;
+            border: 2px solid #e9ecef;
+            border-radius: 15px;
+      padding: 1.5rem;
+      text-align: center;
+      cursor: pointer;
+            transition: var(--transition);
     }
     
-    .page-info {
-      font-weight: 500;
-      color: #495057;
+    .vehicle-class:hover {
+      border-color: var(--primary);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(67, 97, 238, 0.15);
     }
     
-    .contact-checkbox {
-      margin-right: 10px;
-      transform: scale(1.2);
-    }
-    
-    .selection-info {
-      background: var(--primary-gradient);
+    .vehicle-class.active {
+      border-color: var(--primary);
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
       color: white;
-      padding: 10px 15px;
-      border-radius: 8px;
-      margin-bottom: 15px;
     }
     
-    .select-all-section {
-      background: #e9ecef;
-      padding: 10px 15px;
-      border-radius: 8px;
-      margin-bottom: 10px;
-      border-left: 4px solid #667eea;
+        .vehicle-class-icon {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .vehicle-class-title {
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+        }
+
+        .vehicle-class-count {
+      font-size: 0.9rem;
+      opacity: 0.8;
     }
     
-    /* Admin badge */
-    .admin-badge {
-      background: var(--admin-gradient);
+        /* Filters */
+        .filters-container {
+      background: white;
+            border-radius: 15px;
+            padding: 1.5rem;
+            box-shadow: var(--card-shadow);
+      margin-bottom: 2rem;
+        }
+
+        .filter-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .form-control-modern {
+            border: 2px solid #e9ecef;
+            border-radius: 10px;
+            padding: 0.75rem 1rem;
+            transition: var(--transition);
+        }
+
+        .form-control-modern:focus {
+      border-color: var(--primary);
+            box-shadow: 0 0 0 0.2rem rgba(67, 97, 238, 0.25);
+        }
+
+        /* Motoristas List */
+        .motoristas-container {
+            background: white;
+            border-radius: 15px;
+            box-shadow: var(--card-shadow);
+      overflow: hidden;
+        }
+
+        .motoristas-header {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
       color: white;
-      padding: 4px 10px;
-      border-radius: 20px;
-      font-size: 0.75rem;
-      font-weight: 600;
+            padding: 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .motoristas-list {
+            max-height: 600px;
+            overflow-y: auto;
+        }
+
+        .motorista-item {
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid #e9ecef;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: var(--transition);
+            cursor: pointer;
+        }
+
+        .motorista-item:hover {
+            background: #f8f9fa;
+        }
+
+        .motorista-item.selected {
+            background: rgba(67, 97, 238, 0.1);
+            border-left: 4px solid var(--primary);
+        }
+
+        .motorista-info h6 {
+            margin: 0;
+            font-weight: 600;
+            color: var(--dark);
+        }
+
+        .motorista-details {
+      font-size: 0.9rem;
+            color: #6c757d;
+            margin-top: 0.25rem;
+        }
+
+        .motorista-checkbox {
+            width: 20px;
+            height: 20px;
+            border: 2px solid #dee2e6;
+            border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+            transition: var(--transition);
+        }
+
+        .motorista-checkbox.checked {
+            background: var(--primary);
+            border-color: var(--primary);
+            color: white;
+        }
+
+        /* Pagination */
+        .pagination-container {
+      background: white;
+            padding: 1.5rem;
+            border-top: 1px solid #e9ecef;
+        }
+
+        .pagination-modern {
+      display: flex;
+      justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .page-btn {
+            padding: 0.5rem 1rem;
+            border: 1px solid #dee2e6;
+            background: white;
+      color: var(--dark);
+            text-decoration: none;
+      border-radius: 8px;
+            transition: var(--transition);
     }
     
-    /* Responsive improvements */
-    @media (max-width: 768px) {
-      body {
-        padding: 10px;
-      }
-      
-      .header-section {
-        padding: 20px 15px;
-      }
-      
-      .contact-form {
-        padding: 15px;
-      }
-      
-      .category-card {
-        margin-bottom: 10px;
-      }
-      
-      .pagination-container .d-flex {
-        flex-direction: column;
-        gap: 10px;
-      }
-      
-      .page-size-selector {
-        max-width: 100%;
-      }
+        .page-btn:hover {
+      background: var(--primary);
+            color: white;
+      border-color: var(--primary);
+    }
+    
+        .page-btn.active {
+            background: var(--primary);
+      color: white;
+            border-color: var(--primary);
+        }
+
+        .page-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* Buttons */
+        .btn-modern {
+            border-radius: 10px;
+            padding: 0.75rem 1.5rem;
+            font-weight: 600;
+            transition: var(--transition);
+            border: none;
+        }
+
+        .btn-voltar-portal {
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--primary);
+            border: 2px solid var(--primary);
+            border-radius: 10px;
+            padding: 0.75rem 1.5rem;
+            font-weight: 600;
+            transition: var(--transition);
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+        }
+
+        .btn-voltar-portal:hover {
+            background: var(--primary);
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(67, 97, 238, 0.3);
+            text-decoration: none;
+        }
+
+        /* Dark mode para botão voltar */
+        body[data-theme="dark"] .btn-voltar-portal {
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--primary);
+            border-color: var(--primary);
+        }
+
+        body[data-theme="dark"] .btn-voltar-portal:hover {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-toggle-theme {
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--primary);
+            border: 2px solid var(--primary);
+            border-radius: 8px;
+            padding: 0.5rem 0.75rem;
+            font-weight: 600;
+            transition: var(--transition);
+            backdrop-filter: blur(10px);
+        }
+
+        .btn-toggle-theme:hover {
+            background: var(--primary);
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(67, 97, 238, 0.3);
+        }
+
+        /* Dark mode para botão toggle */
+        body[data-theme="dark"] .btn-toggle-theme {
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--primary);
+            border-color: var(--primary);
+        }
+
+        body[data-theme="dark"] .btn-toggle-theme:hover {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-modern-primary {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+        }
+
+        .btn-modern-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(67, 97, 238, 0.3);
+        }
+
+        .btn-modern-success {
+            background: linear-gradient(135deg, var(--success), #06b6d4);
+            color: white;
+        }
+
+        .btn-modern-success:hover {
+      transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(76, 201, 240, 0.3);
+        }
+
+        .btn-modern-warning {
+            background: linear-gradient(135deg, var(--warning), #f97316);
+            color: white;
+        }
+
+        .btn-modern-warning:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(248, 150, 30, 0.3);
+        }
+
+        /* Loading */
+        .loading-spinner {
+      display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Alerts */
+        .alert-modern {
+            border: none;
+            border-radius: 10px;
+      padding: 1rem 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .alert-modern-success {
+            background: linear-gradient(135deg, rgba(76, 201, 240, 0.1), rgba(6, 182, 212, 0.1));
+            color: #065f46;
+            border-left: 4px solid var(--success);
+        }
+
+        .alert-modern-warning {
+            background: linear-gradient(135deg, rgba(248, 150, 30, 0.1), rgba(249, 115, 22, 0.1));
+            color: #92400e;
+            border-left: 4px solid var(--warning);
+        }
+
+        .alert-modern-danger {
+            background: linear-gradient(135deg, rgba(247, 37, 133, 0.1), rgba(236, 72, 153, 0.1));
+            color: #991b1b;
+            border-left: 4px solid var(--danger);
+        }
+
+        .alert-modern-info {
+            background: linear-gradient(135deg, rgba(72, 149, 239, 0.1), rgba(59, 130, 246, 0.1));
+            color: #1e40af;
+            border-left: 4px solid var(--info);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(-100%);
+            }
+            
+            .main-content {
+                margin-left: 0;
+            }
+            
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .vehicle-classes {
+                grid-template-columns: 1fr;
+            }
+            
+            .filter-row {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Dark Mode */
+        body[data-theme="dark"] .modern-card,
+        body[data-theme="dark"] .stat-card,
+        body[data-theme="dark"] .filters-container,
+        body[data-theme="dark"] .motoristas-container,
+        body[data-theme="dark"] .pagination-container,
+        body[data-theme="dark"] .vehicle-class {
+            background: var(--card-bg);
+            color: var(--text-color);
+        }
+
+        body[data-theme="dark"] .vehicle-class {
+            border-color: var(--border-color);
+        }
+
+        body[data-theme="dark"] .vehicle-class:hover {
+            border-color: var(--primary);
+            background: rgba(67, 97, 238, 0.1);
+        }
+
+        body[data-theme="dark"] .vehicle-class.active {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+        }
+
+        body[data-theme="dark"] .motorista-item {
+            border-bottom-color: var(--border-color);
+        }
+
+        body[data-theme="dark"] .motorista-item:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        body[data-theme="dark"] .form-control-modern {
+            background: var(--card-bg);
+            border-color: var(--border-color);
+            color: var(--text-color);
+        }
+
+        body[data-theme="dark"] .form-control-modern:focus {
+            background: var(--card-bg);
+            border-color: var(--primary);
+            color: var(--text-color);
     }
   </style>
 </head>
 <body>
+<div class="app-container">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-logo">
+                    <i class="fas fa-rocket"></i>
+                    <span>Painel Disparo</span>
+            </div>
+              </div>
+            <div class="sidebar-menu">
+                <a href="portal.html" class="menu-item">
+                    <i class="fas fa-home"></i>
+                    <span>Portal</span>
+                </a>
+                <a href="#" class="menu-item active">
+                    <i class="fas fa-tachometer-alt"></i>
+                    <span>Dashboard</span>
+                </a>
+                <a href="cadastro.html" class="menu-item">
+                    <i class="fas fa-truck"></i>
+                    <span>Motoristas</span>
+                </a>
+                <a href="#" class="menu-item">
+                    <i class="fas fa-paper-plane"></i>
+                    <span>Disparos</span>
+                </a>
+                <a href="relatorios.html" class="menu-item">
+                    <i class="fas fa-chart-line"></i>
+                    <span>Relatórios</span>
+                </a>
+                <a href="settings.html" class="menu-item">
+                    <i class="fas fa-cog"></i>
+                    <span>Configurações</span>
+                </a>
+            </div>
+          </div>
 
-<div class="container">
-  <!-- Header com Logout -->
-  <div class="header-section">
-    <div class="row align-items-center">
-      <div class="col">
-        <h1 class="mb-2"><i class="fas fa-rocket me-2"></i>Disparador de Mensagens WhatsApp</h1>
-        <div class="user-info">
-          <i class="fas fa-user me-1"></i> <span id="currentUser">Carregando...</span>
-          <span id="adminBadge" class="admin-badge ms-2" style="display: none;">ADMIN</span> | 
-          <i class="fas fa-plug me-1"></i> <span id="userInstance">Carregando instância...</span>
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Header -->
+            <div class="header">
+                <div class="d-flex align-items-center">
+                    <a href="portal.html" class="btn btn-voltar-portal me-3">
+                        <i class="fas fa-arrow-left me-2"></i>
+                        Voltar ao Portal
+                    </a>
+                    <h1 class="header-title">
+                        <i class="fas fa-rocket me-2"></i>
+                        Painel de Disparo de Mensagens
+                    </h1>
+                </div>
+                <div class="header-actions">
+                    <div class="user-badge">
+                        <i class="fas fa-user me-2"></i>
+                        <span id="userName">Usuário</span>
+                    </div>
+                    <button class="btn btn-toggle-theme btn-sm" onclick="toggleTheme()">
+                        <i class="fas fa-moon"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Stats Cards -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-icon primary">
+                        <i class="fas fa-users"></i>
+                    </div>
+                    <div class="stat-number" id="totalMotoristas">0</div>
+                    <div class="stat-label">Total de Motoristas</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon success">
+                        <i class="fas fa-check-circle"></i>
+                    </div>
+                    <div class="stat-number" id="motoristasAtivos">0</div>
+                    <div class="stat-label">Motoristas Ativos</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon warning">
+                        <i class="fas fa-hand-pointer"></i>
+                    </div>
+                    <div class="stat-number" id="motoristasSelecionados">0</div>
+                    <div class="stat-label">Selecionados</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon info">
+                        <i class="fas fa-truck"></i>
+                    </div>
+                    <div class="stat-number" id="categoriaAtiva">-</div>
+                    <div class="stat-label">Categoria Ativa</div>
+                </div>
+            </div>
+
+            <!-- Vehicle Classes -->
+        <div class="modern-card">
+          <div class="card-header">
+                    <i class="fas fa-truck me-2"></i>
+                    Selecionar Categoria de Veículo
+          </div>
+          <div class="card-body">
+                    <div class="vehicle-classes">
+                        <div class="vehicle-class" data-class="leve" onclick="selecionarClasse('leve')">
+                            <div class="vehicle-class-icon">
+                                <i class="fas fa-car"></i>
+            </div>
+                            <div class="vehicle-class-title">Leve</div>
+                            <div class="vehicle-class-count" id="count-leve">0 motoristas</div>
+          </div>
+                        <div class="vehicle-class" data-class="medio" onclick="selecionarClasse('medio')">
+                            <div class="vehicle-class-icon">
+                                <i class="fas fa-truck"></i>
         </div>
-      </div>
-      <div class="col-auto">
-        <button id="btnLogout" class="btn btn-logout">
-          <i class="fas fa-sign-out-alt me-1"></i> Sair do Sistema
-        </button>
-      </div>
-    </div>
-  </div>
+                            <div class="vehicle-class-title">Médio</div>
+                            <div class="vehicle-class-count" id="count-medio">0 motoristas</div>
+              </div>
+                        <div class="vehicle-class" data-class="pesado" onclick="selecionarClasse('pesado')">
+                            <div class="vehicle-class-icon">
+                                <i class="fas fa-truck-moving"></i>
+            </div>
+                            <div class="vehicle-class-title">Pesado</div>
+                            <div class="vehicle-class-count" id="count-pesado">0 motoristas</div>
+          </div>
+                    </div>
+                </div>
+            </div>
 
-  <!-- Alerta de Segurança -->
-  <div class="alert alert-info text-center">
-    <strong><i class="fas fa-shield-alt me-2"></i>Modo Seguro Ativo</strong> - Delay aleatório de <strong>30 segundos a 60 segundos</strong> entre mensagens para evitar bloqueios
-  </div>
+            <!-- Filters -->
+            <div class="filters-container">
+                <div class="row">
+                    <div class="col-md-2">
+                        <label class="form-label">Classe de Veículo</label>
+                        <select id="filtroClasse" class="form-control form-control-modern">
+                            <option value="">Todas as classes</option>
+                            <option value="leve">Leve</option>
+                            <option value="medio">Médio</option>
+                            <option value="pesado">Pesado</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Tipo de Veículo</label>
+                        <select id="filtroTipoVeiculo" class="form-control form-control-modern">
+                            <option value="">Todos os tipos</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Carroceria</label>
+                        <select id="filtroCarroceria" class="form-control form-control-modern">
+                            <option value="">Todas as carrocerias</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Estado</label>
+                        <select id="filtroEstado" class="form-control form-control-modern">
+                            <option value="">Todos os estados</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Status</label>
+                        <select id="filtroStatus" class="form-control form-control-modern">
+                            <option value="">Todos os status</option>
+                            <option value="ativo">Ativo</option>
+                            <option value="inativo">Inativo</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Buscar</label>
+                        <input type="text" id="filtroBusca" class="form-control form-control-modern" placeholder="Nome ou telefone...">
+                    </div>
+                </div>
+                <div class="row mt-3">
+                    <div class="col-12">
+                        <button class="btn btn-modern btn-modern-primary me-2" id="btnBuscar">
+                            <i class="fas fa-search me-2"></i>
+                            Buscar
+                        </button>
+                        <button class="btn btn-modern btn-modern-success me-2" id="btnSelecionarTodos">
+                            <i class="fas fa-check-double me-2"></i>
+                            Selecionar Todos
+                        </button>
+                        <button class="btn btn-modern btn-modern-warning" id="btnLimparSelecao">
+                            <i class="fas fa-times me-2"></i>
+                            Limpar Seleção
+                  </button>
+                </div>
+              </div>
+            </div>
 
-  <!-- Status do Sistema -->
-  <div class="card status-card">
-    <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
-      <h5 class="mb-0"><i class="fas fa-cogs me-2"></i>Status do Sistema</h5>
-      <button onclick="verificarStatus()" class="btn btn-sm btn-outline-light"><i class="fas fa-sync-alt me-1"></i>Atualizar</button>
-    </div>
-    <div class="card-body">
-      <div id="evolutionStatus" class="evolution-status">
-        <div class="text-muted"><i class="fas fa-spinner fa-spin me-2"></i>Verificando conexão com o Evolution API...</div>
-      </div>
-    </div>
-  </div>
+            <!-- Motoristas List -->
+            <div class="motoristas-container">
+                <div class="motoristas-header">
+                    <div>
+                        <i class="fas fa-list me-2"></i>
+                        Lista de Motoristas
+                </div>
+                    <div class="d-flex align-items-center gap-3">
+                        <span class="badge bg-light text-dark" id="motoristasSelecionadosBadge">0 selecionados</span>
+                        <div class="d-flex align-items-center">
+                            <span class="me-2">Mostrar:</span>
+                            <select id="itensPorPagina" class="form-select form-select-sm" style="width: auto;">
+                                <option value="50">50</option>
+                                <option value="100" selected>100</option>
+                                <option value="200">200</option>
+                                <option value="500">500</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="motoristas-list" id="motoristasList">
+                    <div class="text-center py-5">
+                        <i class="fas fa-truck fs-1 text-muted mb-3"></i>
+                        <p class="text-muted">Selecione uma categoria para carregar os motoristas</p>
+              </div>
+            </div>
 
-  <!-- Importar Contatos -->
-  <div class="card status-card">
-    <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
-      <h5 class="mb-0"><i class="fas fa-download me-2"></i>Importar Contatos</h5>
-      <button id="btnResetContatos" class="btn btn-admin btn-sm" style="display: none;">
-        <i class="fas fa-trash-alt me-1"></i> Resetar Contatos
-      </button>
-    </div>
-    <div class="card-body">
-      <div class="row">
-        <div class="col-md-6">
-          <div class="card h-100">
-            <div class="card-body text-center">
-              <h6><i class="fas fa-sync me-2"></i>Do Arquivo CSV</h6>
-              <p class="card-text">Importa automaticamente do arquivo <code>contatos.csv</code></p>
-              <button onclick="atualizarDoCSV()" class="btn btn-success w-100"><i class="fas fa-file-csv me-2"></i>Importar CSV</button>
+                <!-- Pagination -->
+                <div class="pagination-container">
+                    <div class="row align-items-center">
+                        <div class="col-md-6">
+                            <small class="text-muted" id="infoPagina">
+                                Página 1 de 1 - Total: 0 motoristas
+                            </small>
+              </div>
+                        <div class="col-md-6">
+                            <nav aria-label="Paginação">
+                                <ul class="pagination-modern justify-content-end mb-0" id="paginacao">
+                                    <!-- Paginação será gerada via JavaScript -->
+                </ul>
+              </nav>
+                        </div>
             </div>
           </div>
         </div>
-        <div class="col-md-6">
-          <div class="card h-100">
-            <div class="card-body text-center">
-              <h6><i class="fas fa-upload me-2"></i>Upload de Arquivo</h6>
-              <p class="card-text">Faça upload de um arquivo CSV</p>
-              <input type="file" id="csvFile" class="form-control mb-2" accept=".csv">
-              <button onclick="importarCSVUpload()" class="btn btn-info w-100"><i class="fas fa-cloud-upload-alt me-2"></i>Fazer Upload</button>
+
+            <!-- Message and Send -->
+            <div class="modern-card">
+          <div class="card-header">
+                    <i class="fas fa-paper-plane me-2"></i>
+                    Mensagem e Disparo
+          </div>
+          <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-8">
+                            <div class="mb-4">
+                                <label class="form-label">Mensagem Personalizada</label>
+                                <div class="alert alert-modern alert-modern-info">
+                                    <strong>Variáveis disponíveis:</strong> {{name}}, {{telefone}}, {{estado}}, {{classe_veiculo}}, {{tipo_veiculo}}
+              </div>
+              <textarea 
+                id="messageText" 
+                class="form-control form-control-modern" 
+                rows="5" 
+                placeholder="Digite sua mensagem aqui... Use as variáveis acima para personalizar."
+                                >Olá {{name}}, temos uma viagem disponível para você na categoria {{classe_veiculo}}.</textarea>
+                            </div>
+                            
+                            <!-- Test Field -->
+                            <div class="mb-4">
+                                <label class="form-label">Teste de Envio</label>
+                                <div class="row g-2">
+                                    <div class="col-md-8">
+                                        <input 
+                                            type="text" 
+                                            id="telefoneTeste" 
+                                            class="form-control form-control-modern" 
+                                            placeholder="Digite o número para teste (ex: 5511999999999)"
+                                        >
+                </div>
+                  <div class="col-md-4">
+                                        <button class="btn btn-modern btn-modern-primary w-100" id="btnTestarEnvio">
+                                            <i class="fas fa-paper-plane me-2"></i>
+                                            Enviar Teste
+                    </button>
+                  </div>
+                </div>
+                                <small class="text-muted">Digite um número de telefone para testar o envio real</small>
+              </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-4">
+                                <label class="form-label">Ações</label>
+                                <div class="d-grid gap-2">
+                                    <button class="btn btn-modern btn-modern-primary" id="btnTestarMensagem">
+                                        <i class="fas fa-vial me-2"></i>
+                                        Testar Mensagem
+                  </button>
+                                    <button class="btn btn-modern btn-modern-success" id="btnIniciarDisparo">
+                                        <i class="fas fa-rocket me-2"></i>
+                                        Iniciar Disparo
+                  </button>
+              </div>
+            </div>
+
+                            <div class="mb-4">
+                                <label class="form-label">Progresso</label>
+                                <div class="progress mb-2" style="height: 8px;">
+                                    <div class="progress-bar" id="progressBar" style="width: 0%"></div>
+              </div>
+                                <div class="text-center">
+                                    <small class="text-muted" id="progressText">0 de 0 enviados</small>
+              </div>
+              </div>
             </div>
           </div>
         </div>
       </div>
-      <div id="csvStatus" class="mt-3"></div>
-    </div>
-  </div>
 
-  <!-- Gerenciar Contatos -->
-  <div class="contact-form">
-    <h3><i class="fas fa-users me-2"></i>Gerenciar Contatos</h3>
-    <div class="row g-3 mb-3">
-      <div class="col-md-4">
-        <input type="text" id="newName" class="form-control" placeholder="Nome completo">
-      </div>
-      <div class="col-md-3">
-        <input type="text" id="newNumber" class="form-control" placeholder="Número (DDD + número)">
-      </div>
-      <div class="col-md-3">
-        <select id="newCategory" class="form-select">
-          <option value="sider">🚛 Sider</option>
-          <option value="grade_alta">📦 Grade Alta</option>
-          <option value="grade_baixa">📦 Grade Baixa</option>
-          <option value="bitrem">🚚 Bitrem</option>
-          <option value="rodotrem">🚛 Rodotrem</option>
-          <option value="prancha">🛻 Prancha</option>
-          <option value="bau">📦 Baú</option>
-          <option value="SIDER _ GRADE BAIXA">🛻 SIDER _ GRADE BAIXA</option>
-          <option value="GRADE BAIXA _GRANELEIRO">🛻 GRADE BAIXA _GRANELEIRO</option>
-          <option value="TRUCK _ GRANELEIRA">🚚 TRUCK _ GRANELEIRA</option>
-          <option value="GRANELEIRO">🚚 GRANELEIRO</option>
-          <option value="PORTA CONTAINER 20 / 40">📦 PORTA CONTAINER 20 / 40</option>
-          <option value="GRANELEIRO_BASCULANTE">🛻 GRANELEIRO_BASCULANTE</option>
-          <option value="BASCULANTE">🛻 BASCULANTE</option>
-          <option value="GRANELEIRO_GRADE BAIXA_SIDER">🚚 GRANELEIRO_GRADE BAIXA_SIDER</option>
-          <option value="BAÚ ROLETADO">🚚 BAÚ ROLETADO</option>
-        </select>
-      </div>
-      <div class="col-md-2">
-        <button id="addContact" class="btn btn-success w-100"><i class="fas fa-plus me-1"></i>Adicionar</button>
-      </div>
-    </div>
-    
-    <!-- Informações de Seleção -->
-    <div id="selectionInfo" class="selection-info" style="display: none;">
-      <i class="fas fa-check-circle me-2"></i>
-      <span id="selectedCount">0</span> contatos selecionados para envio
-    </div>
-    
-    <!-- Seção Selecionar Todos -->
-    <div id="selectAllSection" class="select-all-section" style="display: none;">
-      <div class="form-check">
-        <input class="form-check-input contact-checkbox" type="checkbox" id="selectAllCheckbox">
-        <label class="form-check-label fw-bold" for="selectAllCheckbox">
-          Selecionar todos os contatos desta página
-        </label>
-      </div>
-    </div>
-    
-    <div class="contact-list" id="contactsList">
-      <div class="text-center text-muted py-4">
-        <div><i class="fas fa-list-alt fa-2x mb-3"></i></div>
-        <div>📋 Selecione uma categoria para ver os contatos</div>
-        <small>Os contatos aparecerão aqui após selecionar uma categoria</small>
-      </div>
-    </div>
-    
-    <!-- Paginação -->
-    <div id="paginationContainer" class="pagination-container" style="display: none;">
-      <div class="d-flex justify-content-between align-items-center flex-wrap">
-        <div class="d-flex align-items-center gap-3">
-          <span class="page-info" id="pageInfo">Página 1 de 1</span>
-          <select id="pageSize" class="form-select page-size-selector">
-            <option value="50">50 por página</option>
-            <option value="100" selected>100 por página</option>
-            <option value="200">200 por página</option>
-            <option value="500">500 por página</option>
-          </select>
+            <!-- Evolution API Status -->
+        <div class="modern-card">
+          <div class="card-header d-flex justify-content-between align-items-center">
+                    <div>
+                        <i class="fas fa-shield-alt me-2"></i>
+                        Status Evolution API
+            </div>
+                    <button class="btn btn-modern btn-modern-primary btn-sm" id="btnVerificarEvolution">
+                        <i class="fas fa-sync me-2"></i>
+                        Verificar Status
+                  </button>
+              </div>
+              <div class="card-body">
+                    <div id="evolutionLog" style="max-height: 200px; overflow-y: auto; background: #f8fafc; border-radius: 12px; padding: 1rem;">
+                        <div class="text-center text-muted">
+                            <i class="fas fa-shield-alt fa-2x mb-3 d-block"></i>
+                            Clique em "Verificar Status" para testar a Evolution API
+                  </div>
+                </div>
+                  </div>
+                </div>
+                
+            <!-- Disparo Log -->
+            <div class="modern-card">
+              <div class="card-header">
+                    <i class="fas fa-list-alt me-2"></i>
+                    Log de Disparo
+              </div>
+              <div class="card-body">
+                    <div id="disparoLog" style="max-height: 300px; overflow-y: auto; background: #f8fafc; border-radius: 12px; padding: 1rem;">
+                        <div class="text-center text-muted">
+                            <i class="fas fa-clipboard-list fa-2x mb-3 d-block"></i>
+                            Nenhum disparo realizado ainda
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
         
-        <nav>
-          <ul class="pagination mb-0" id="pagination">
-            <!-- Paginação será gerada aqui -->
-          </ul>
-        </nav>
-      </div>
-    </div>
-  </div>
-
-  <!-- Teste Rápido -->
-  <div class="card status-card">
-    <div class="card-header bg-warning text-dark">
-      <h5 class="mb-0"><i class="fas fa-vial me-2"></i>Teste Rápido</h5>
-    </div>
-    <div class="card-body">
-      <div class="row g-3 align-items-end">
-        <div class="col-md-4">
-          <label class="form-label fw-bold">Número para teste</label>
-          <input type="text" id="testNumber" class="form-control" placeholder="5511999999999" value="5511999999999">
-        </div>
-        <div class="col-md-5">
-          <label class="form-label fw-bold">Mensagem de teste</label>
-          <input type="text" id="testMessage" class="form-control" value="✅ Teste do sistema de disparo">
-        </div>
-        <div class="col-md-3">
-          <button onclick="testarEnvio()" class="btn btn-warning w-100 fw-bold"><i class="fas fa-paper-plane me-1"></i>Enviar Teste</button>
-        </div>
-      </div>
-      <div id="testResult" class="mt-3"></div>
-    </div>
-  </div>
-
-  <!-- Categorias -->
-  <div class="card status-card">
-    <div class="card-header bg-primary text-white">
-      <h5 class="mb-0"><i class="fas fa-folder me-2"></i>Categorias de Contatos</h5>
-    </div>
-    <div class="card-body">
-      <div class="row g-3" id="categories">
-        <div class="col-6 col-md-4 col-lg-3">
-          <div class="card category-card text-center p-3" data-cat="sider">
-            <div class="fw-bold">🚛 Sider</div>
-          </div>
-        </div>
-        <div class="col-6 col-md-4 col-lg-3">
-          <div class="card category-card text-center p-3" data-cat="grade_alta">
-            <div class="fw-bold">📦 Grade Alta</div>
-          </div>
-        </div>
-        <div class="col-6 col-md-4 col-lg-3">
-          <div class="card category-card text-center p-3" data-cat="grade_baixa">
-            <div class="fw-bold">📦 Grade Baixa</div>
-          </div>
-        </div>
-        <div class="col-6 col-md-4 col-lg-3">
-          <div class="card category-card text-center p-3" data-cat="bitrem">
-            <div class="fw-bold">🚚 Bitrem</div>
-          </div>
-        </div>
-        <div class="col-6 col-md-4 col-lg-3">
-          <div class="card category-card text-center p-3" data-cat="rodotrem">
-            <div class="fw-bold">🚛 Rodotrem</div>
-          </div>
-        </div>
-        <div class="col-6 col-md-4 col-lg-3">
-          <div class="card category-card text-center p-3" data-cat="prancha">
-            <div class="fw-bold">🛻 Prancha</div>
-          </div>
-        </div>
-        <div class="col-6 col-md-4 col-lg-3">
-          <div class="card category-card text-center p-3" data-cat="bau">
-            <div class="fw-bold">📦 Baú</div>
-          </div>
-        </div>
-        <div class="col-6 col-md-4 col-lg-3">
-          <div class="card category-card text-center p-3" data-cat="SIDER _ GRADE BAIXA">
-            <div class="fw-bold">🛻 SIDER _ GRADE BAIXA</div>
-          </div>
-        </div>
-        <div class="col-6 col-md-4 col-lg-3">
-          <div class="card category-card text-center p-3" data-cat="GRADE BAIXA _GRANELEIRO">
-            <div class="fw-bold">🛻 GRADE BAIXA _GRANELEIRO</div>
-           </div>
-        </div>
-        <div class="col-6 col-md-4 col-lg-3">
-          <div class="card category-card text-center p-3" data-cat="TRUCK _ GRANELEIRA">
-            <div class="fw-bold">🚚 TRUCK _ GRANELEIRA</div>     
-          </div>
-        </div>
-        <div class="col-6 col-md-4 col-lg-3">
-          <div class="card category-card text-center p-3" data-cat="GRANELEIRO">
-            <div class="fw-bold">🚚 GRANELEIRO</div>     
-          </div>
-        </div>  
-        <div class="col-6 col-md-4 col-lg-3">
-          <div class="card category-card text-center p-3" data-cat="PORTA CONTAINER 20 / 40">
-            <div class="fw-bold">📦 PORTA CONTAINER 20 / 40</div>     
-            </div>
-        </div> 
-        <div class="col-6 col-md-4 col-lg-3">
-          <div class="card category-card text-center p-3" data-cat="GRANELEIRO_BASCULANTE">
-            <div class="fw-bold">🛻 GRANELEIRO_BASCULANTE</div>     
-            </div>
-        </div> 
-        <div class="col-6 col-md-4 col-lg-3">
-          <div class="card category-card text-center p-3" data-cat="BASCULANTE">
-            <div class="fw-bold">🛻 BASCULANTE</div>     
-            </div>
-        </div> 
-        <div class="col-6 col-md-4 col-lg-3">
-          <div class="card category-card text-center p-3" data-cat="GRANELEIRO_GRADE BAIXA_SIDER">
-            <div class="fw-bold">🚚 GRANELEIRO_GRADE BAIXA_SIDER</div>     
-            </div>
-        </div> 
-        <div class="col-6 col-md-4 col-lg-3">
-          <div class="card category-card text-center p-3" data-cat="BAÚ ROLETADO">
-            <div class="fw-bold">🚚 BAÚ ROLETADO</div>     
-            </div>
-        </div>                     
-        </div>    
-      </div>
-    </div>
-  </div>
-
-  <!-- Informações dos Contatos -->
-  <div class="alert alert-info text-center" id="contactsInfo">
-    <i class="fas fa-hand-point-up me-2"></i>Selecione uma categoria acima para carregar os contatos
-  </div>
-
-  <!-- Mensagem e Envio -->
-  <div class="card status-card">
-    <div class="card-header bg-danger text-white">
-      <h5 class="mb-0"><i class="fas fa-rocket me-2"></i>Disparo em Massa</h5>
-    </div>
-    <div class="card-body">
-      <div class="mb-3">
-        <label for="msg" class="form-label fw-bold"><i class="fas fa-comment me-1"></i>Mensagem Personalizada:</label>
-        <textarea id="msg" class="form-control" rows="4" placeholder="Digite sua mensagem aqui...">Olá {{name}}, temos uma viagem disponível para você na categoria {{category}}.</textarea>
-        <small class="text-muted">
-          <i class="fas fa-tools me-1"></i>Variáveis disponíveis: <code>{{name}}</code>, <code>{{number}}</code>, <code>{{category}}</code>
-        </small>
-      </div>
-
-      <!-- Botões de Envio e Parada -->
-      <div class="row g-2 mb-3">
-        <div class="col-md-9">
-          <button id="sendBtn" class="btn btn-danger w-100 fw-bold py-2"><i class="fas fa-play me-2"></i>INICIAR DISPARO EM MASSA</button>
-        </div>
-        <div class="col-md-3">
-          <button id="stopBtn" class="btn btn-stop w-100 fw-bold py-2" style="display: none;"><i class="fas fa-stop me-2"></i>PARAR ENVIO</button>
-        </div>
-      </div>
-
-      <!-- Barra de Progresso -->
-      <div class="progress mb-2" style="height: 25px;">
-        <div id="progBar" class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%">
-          <span class="fw-bold" id="progressText">0%</span>
-        </div>
-      </div>
-      
-      <!-- Status Detalhado -->
-      <div id="status" class="text-center fw-semibold alert alert-light">
-        <i class="fas fa-check-circle text-success me-2"></i>Pronto para iniciar o disparo
-      </div>
-    </div>
-  </div>
-</div>
-
+    <!-- Scripts -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-
 <script>
-// ========== CONFIGURAÇÕES GLOBAIS ==========
-const SERVER_URL = window.location.origin;
-let envioAtivo = false;
-let selectedCat = null;
-let allContacts = []; // Todos os contatos da categoria
-let currentPage = 1;
-let pageSize = 100;
-let selectedContacts = new Set(); // Armazena números selecionados
-let currentUser = '';
-let isAdmin = false;
-
-// ========== INICIALIZAÇÃO ==========
-document.addEventListener('DOMContentLoaded', function() {
-  verificarStatus();
-  carregarEventos();
-  carregarInformacoesUsuario();
-});
-
-// ========== FUNÇÕES DE USUÁRIO E LOGOUT ==========
-async function carregarInformacoesUsuario() {
-  try {
-    console.log('🔐 Verificando autenticação...');
-    
-    const response = await fetch(`${SERVER_URL}/api/auth/status`, {
-      credentials: 'include'
-    });
-    
-    console.log('📡 Status HTTP:', response.status);
-    
-    if (response.ok) {
-      const data = await response.json();
-      console.log('📊 Dados do usuário:', data);
-      
-      if (data.autenticado && data.usuario) {
-        currentUser = data.usuario;
-        console.log('✅ USUÁRIO AUTENTICADO:', currentUser);
-        document.getElementById('currentUser').textContent = currentUser;
+        // ========== CONFIGURAÇÃO DO SUPABASE ==========
+        let supabaseUrl, supabaseKey, supabase;
         
-        // ✅ VERIFICAR SE É ADMIN
-        isAdmin = currentUser.toLowerCase() === 'admin';
-        
-        if (isAdmin) {
-          console.log('🎯 USUÁRIO É ADMIN - Mostrando controles administrativos');
-          document.getElementById('adminBadge').style.display = 'inline-block';
-          document.getElementById('btnResetContatos').style.display = 'block';
-        }
-        
-        // ✅ MAPEAMENTO COMPLETO DE INSTÂNCIAS
-        const userInstances = {
-          'admin': 'TESTE',
-          'JBO': 'JBO',
-          'CABO': 'CABO',
-          'BA': 'BA',
-          'PB': 'PB',
-          'SP': 'SP', 
-          'AL': 'AL',
-          'AMBEV': 'AMBEV',
-          'USINA': 'USINA',
-          'DISP3': 'DISP3'
-        };
-        
-        // Usar a instância da configuração ou fallback para o mapeamento
-        const userInstance = data.config?.instanceName || userInstances[data.usuario] || 'Não configurada';
-        document.getElementById('userInstance').textContent = userInstance;
-        
-        console.log('🏷️ Instância do usuário:', userInstance);
-        
-      } else {
-        console.log('❌ USUÁRIO NÃO AUTENTICADO - Redirecionando...');
-        window.location.href = '/';
-      }
-    } else {
-      console.log('❌ ERRO HTTP - Redirecionando...');
-      window.location.href = '/';
-    }
-  } catch (error) {
-    console.error('❌ ERRO DE CONEXÃO:', error);
-    window.location.href = '/';
-  }
-}
-
-// ✅ FUNÇÃO DE LOGOUT
-async function fazerLogout() {
-  if (confirm('Deseja realmente sair do sistema?')) {
+async function inicializarSupabase() {
     try {
-      console.log('🚪 Fazendo logout...');
-      
-      const response = await fetch(`${SERVER_URL}/api/logout`, {
-        method: 'POST',
-        credentials: 'include'
-      });
-      
-      if (response.ok) {
-        console.log('✅ Logout bem-sucedido');
-      }
+        const response = await fetch('/api/supabase-config');
+        
+                if (response.ok) {
+        const config = await response.json();
+                    
+                    if (config.supabaseUrl && config.supabaseAnonKey) {
+                        supabaseUrl = config.supabaseUrl;
+                        supabaseKey = config.supabaseAnonKey;
+                        supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+                        console.log('✅ Supabase configurado com sucesso');
+        return true;
+                    } else {
+                        console.log('⚠️ Configurações Supabase incompletas, usando modo offline');
+                        return false;
+                    }
+                } else {
+                    console.log('⚠️ Endpoint Supabase não disponível, usando modo offline');
+                    return false;
+                }
     } catch (error) {
-      console.error('❌ Erro no logout:', error);
-    } finally {
-      // Redireciona para login independente do resultado
-      window.location.href = '/';
+                console.log('⚠️ Erro ao configurar Supabase, usando modo offline:', error.message);
+        return false;
     }
-  }
 }
 
-// ========== FUNÇÕES ADMINISTRATIVAS ==========
-async function resetarContatos() {
-  if (!isAdmin) {
-    alert('❌ Apenas administradores podem executar esta ação');
-    return;
-  }
-  
-  if (!confirm(`🚨 RESET DE CONTATOS - ADMINISTRATIVO
-
-Esta ação irá:
-🗑️  APAGAR TODOS os contatos do sistema
-📊 Limpar completamente o banco de dados
-🔄 Requerer nova importação do CSV
-
-ATENÇÃO: Esta ação NÃO PODE ser desfeita!
-
-Deseja continuar?`)) {
-    return;
-  }
-
-  try {
-    console.log('🔄 Iniciando reset de contatos...');
-    
-    const statusDiv = document.getElementById('csvStatus');
-    statusDiv.innerHTML = `
-      <div class="alert alert-warning">
-        <strong><i class="fas fa-trash-alt fa-spin me-2"></i>Resetando contatos...</strong>
-        <div class="progress mt-2">
-          <div class="progress-bar progress-bar-striped progress-bar-animated bg-warning" style="width: 100%"></div>
-        </div>
-      </div>
-    `;
-    
-    // Buscar todos os contatos primeiro para deletar
-    const categorias = ['sider', 'grade_alta', 'grade_baixa', 'bitrem', 'rodotrem', 'prancha', 'bau', 'SIDER _ GRADE BAIXA', 'GRADE BAIXA _GRANELEIRO', 'TRUCK _ GRANELEIRA', 'GRANELEIRO', 'PORTA CONTAINER 20 / 40', 'GRANELEIRO_BASCULANTE', 'BASCULANTE', 'GRANELEIRO_GRADE BAIXA_SIDER', 'BAÚ ROLETADO'];
-    
-    let todosContatos = [];
-    let totalDeletados = 0;
-    
-    for (const cat of categorias) {
-      const response = await fetch(`/webhook/contatos?categoria=${cat}`);
-      if (response.ok) {
-        const contatos = await response.json();
-        if (contatos && contatos.length > 0) {
-          todosContatos = todosContatos.concat(contatos);
-        }
-      }
-    }
-    
-    console.log(`📊 Total de contatos para deletar: ${todosContatos.length}`);
-    
-    // Deletar todos os contatos
-    for (const contato of todosContatos) {
-      const deleteResponse = await fetch('/webhook/contatos', {
-        method: 'DELETE',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ number: contato.number })
-      });
-      
-      if (deleteResponse.ok) {
-        totalDeletados++;
-      }
-    }
-    
-    statusDiv.innerHTML = `
-      <div class="alert alert-success">
-        <strong><i class="fas fa-check-circle me-2"></i>Reset Concluído!</strong><br>
-        <i class="fas fa-trash-alt me-1"></i>Contatos removidos: ${totalDeletados}<br>
-        <i class="fas fa-database me-1"></i>Banco de dados limpo com sucesso
-      </div>
-    `;
-    
-    // Limpar lista de contatos na interface
-    allContacts = [];
-    selectedContacts.clear();
-    document.getElementById('contactsList').innerHTML = `
-      <div class="text-center text-muted py-4">
-        <div><i class="fas fa-database fa-2x mb-3"></i></div>
-        <div>🗑️ Banco de dados resetado</div>
-        <small>Faça uma nova importação do CSV</small>
-      </div>
-    `;
-    
-    document.getElementById('contactsInfo').innerHTML = `
-      <div class="alert alert-warning">
-        <i class="fas fa-database me-2"></i>Banco de dados resetado - Importe o CSV novamente
-      </div>
-    `;
-    
-    // Ocultar elementos de paginação
-    document.getElementById('paginationContainer').style.display = 'none';
-    document.getElementById('selectAllSection').style.display = 'none';
-    document.getElementById('selectionInfo').style.display = 'none';
-    
-    console.log(`✅ Reset concluído: ${totalDeletados} contatos removidos`);
-    
-  } catch (error) {
-    console.error('❌ Erro no reset:', error);
-    document.getElementById('csvStatus').innerHTML = `
-      <div class="alert alert-danger">
-        <i class="fas fa-times-circle me-2"></i>Erro no reset: ${error.message}
-      </div>
-    `;
-  }
-}
-
-// ========== STATUS DO SISTEMA ==========
-async function verificarStatus() {
-  const statusDiv = document.getElementById('evolutionStatus');
-  statusDiv.innerHTML = '<div class="text-info"><i class="fas fa-spinner fa-spin me-2"></i>Verificando conexão com Evolution API...</div>';
-  
-  try {
-    const res = await fetch(`${SERVER_URL}/webhook/status-evolution`);
-    const data = await res.json();
-    
-    if (data.connected) {
-      statusDiv.innerHTML = `
-        <div class="alert alert-success">
-          <strong><i class="fas fa-check-circle me-2"></i>${data.message}</strong>
-          <div class="row mt-2">
-            <div class="col-6">
-              <small><i class="fas fa-code me-1"></i>Versão: <strong>${data.version || 'N/A'}</strong></small>
-            </div>
-            <div class="col-6">
-              <small><i class="fas fa-server me-1"></i>Instância: <strong>${data.instance || 'N/A'}</strong></small>
-            </div>
-          </div>
-        </div>
-      `;
-    } else {
-      statusDiv.innerHTML = `
-        <div class="alert alert-danger">
-          <strong><i class="fas fa-exclamation-triangle me-2"></i>${data.error || 'Erro de conexão'}</strong>
-          <div class="small">${data.message || ''}</div>
-        </div>
-      `;
-    }
-  } catch (err) {
-    statusDiv.innerHTML = `
-      <div class="alert alert-danger">
-        <strong><i class="fas fa-unlink me-2"></i>Servidor não responde</strong>
-        <div class="small">Verifique se o servidor está rodando na porta 5680</div>
-      </div>
-    `;
-  }
-}
-
-// ========== IMPORTAR CONTATOS ==========
-async function atualizarDoCSV() {
-  const statusDiv = document.getElementById('csvStatus');
-  statusDiv.innerHTML = `
-    <div class="alert alert-info">
-      <strong><i class="fas fa-sync fa-spin me-2"></i>Importando do contatos.csv...</strong>
-      <div class="progress mt-2">
-        <div class="progress-bar progress-bar-striped progress-bar-animated" style="width: 100%"></div>
-      </div>
-    </div>
-  `;
-  
-  try {
-    const response = await fetch(`${SERVER_URL}/webhook/importar-csv`);
-    const result = await response.json();
-    
-    if (result.success) {
-      statusDiv.innerHTML = `
-        <div class="alert alert-success">
-          <strong><i class="fas fa-check-circle me-2"></i>CSV Importado com Sucesso!</strong><br>
-          <i class="fas fa-chart-bar me-1"></i>Total processado: ${result.total} contatos<br>
-          <i class="fas fa-plus-circle me-1"></i>Novos inseridos: ${result.inseridos}<br>
-          <i class="fas fa-exclamation-triangle me-1"></i>Duplicados ignorados: ${result.erros}
-        </div>
-      `;
-      
-      // Recarregar categoria atual
-      if (selectedCat) {
-        setTimeout(() => carregarContatos(selectedCat), 1000);
-      }
-      
-    } else {
-      statusDiv.innerHTML = `<div class="alert alert-danger"><i class="fas fa-times-circle me-2"></i>${result.error}</div>`;
-    }
-    
-  } catch (err) {
-    statusDiv.innerHTML = '<div class="alert alert-danger"><i class="fas fa-unlink me-2"></i>Erro de conexão com o servidor</div>';
-  }
-}
-
-async function importarCSVUpload() {
-  const fileInput = document.getElementById('csvFile');
-  const file = fileInput.files[0];
-  const statusDiv = document.getElementById('csvStatus');
-  
-  if (!file) {
-    statusDiv.innerHTML = '<div class="alert alert-warning"><i class="fas fa-exclamation-triangle me-2"></i>Selecione um arquivo CSV</div>';
-    return;
-  }
-  
-  statusDiv.innerHTML = '<div class="alert alert-info"><i class="fas fa-spinner fa-spin me-2"></i>Processando arquivo...</div>';
-  
-  try {
-    const text = await file.text();
-    const contatos = [];
-    const lines = text.split('\n');
-    
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i].trim();
-      if (!line) continue;
-      
-      const parts = line.split(',');
-      if (parts.length >= 2) {
-        const name = parts[0].trim();
-        const number = parts[1].trim();
-        const category = parts[2] ? parts[2].trim() : 'sider';
+        // ========== VARIÁVEIS GLOBAIS ==========
+        let allMotoristas = [];
+        let selectedMotoristas = new Set();
+        let currentClass = null;
+        let isDisparoAtivo = false;
+        let totalEnviados = 0;
+        let totalFalhas = 0;
         
-        if (name && number) {
-          contatos.push({ name, number, category });
+        // Variáveis de paginação otimizada para 20k+ motoristas
+let currentPage = 1;
+        let itemsPerPage = 100;
+        let totalPages = 1;
+        let motoristasFiltrados = [];
+        let totalMotoristasCount = 0;
+
+        // Estados brasileiros
+const estados = [
+  'AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 
+  'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 
+  'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO'
+];
+
+        // Mapeamentos de tipos de veículo e carroceria (do cadastro.html)
+        const tiposVeiculo = {
+            leve: ['3/4', 'Fiorino', 'Toco', 'VLC'],
+            medio: ['Bitruck', 'Truck'],
+            pesado: ['Bitrem', 'Carreta', 'Carreta LS', 'Rodotrem', 'Vanderleia']
+        };
+
+        const tiposCarroceriaMap = {
+            bau: 'Baú',
+            bau_frigorifico: 'Baú Frigorífico',
+            bau_refrigerado: 'Baú Refrigerado',
+            sider: 'Sider',
+            cacamba: 'Caçamba',
+            graneleiro: 'Graneleiro',
+            plataforma: 'Plataforma',
+            prancha: 'Prancha',
+            bitrem: 'Bitrem',
+            carreta: 'Carreta',
+            carreta_ls: 'Carreta LS',
+            rodotrem: 'Rodotrem',
+            vanderleia: 'Vanderleia',
+            apenas_cavalo: 'Apenas Cavalo',
+            cegonheiro: 'Cegonheiro',
+            gaiola: 'Gaiola',
+            tanque: 'Tanque'
+        };
+
+        // ========== INICIALIZAÇÃO ==========
+        document.addEventListener('DOMContentLoaded', async () => {
+            console.log('🚀 Inicializando Painel de Disparo Moderno...');
+            
+            // 🔐 Verificar permissão de acesso
+            const temPermissao = await verificarEAplicarPermissao('painel');
+            if (!temPermissao) {
+                console.log('❌ Sem permissão para acessar o painel');
+                return; // A função verificarEAplicarPermissao já redireciona
+            }
+            
+            // Tentar inicializar Supabase (não crítico)
+            const supabaseOk = await inicializarSupabase();
+            if (supabaseOk) {
+                console.log('✅ Supabase conectado');
+            } else {
+                console.log('⚠️ Modo offline - usando dados mockados');
+            }
+            
+            await verificarAutenticacao();
+            await carregarEstatisticas();
+            await carregarFiltros();
+            configurarEventos();
+            
+            console.log('✅ Painel inicializado com sucesso!');
+        });
+
+        // ========== AUTENTICAÇÃO ==========
+        async function verificarAutenticacao() {
+            console.log('🔐 Iniciando verificação de autenticação no painel...');
+            
+            try {
+                // Primeiro, verificar se há dados de usuário no localStorage
+                const usuarioLocal = localStorage.getItem('loggedInUser');
+                const lastActivity = localStorage.getItem('lastActivity');
+                
+                console.log('📦 Dados do localStorage:', usuarioLocal ? 'Encontrados' : 'Não encontrados');
+                console.log('📦 Conteúdo do localStorage:', usuarioLocal);
+                
+                if (usuarioLocal) {
+                    let userData;
+                    try {
+                        userData = JSON.parse(usuarioLocal);
+                    } catch (parseError) {
+                        console.log('⚠️ Erro ao fazer parse do localStorage, usando como string');
+                        userData = { username: usuarioLocal, email: usuarioLocal };
+                    }
+                    
+                    const timeDiff = lastActivity ? Date.now() - parseInt(lastActivity) : 0;
+                    const hoursDiff = timeDiff / (1000 * 60 * 60);
+                    
+                    console.log('👤 Dados do usuário:', userData);
+                    console.log('⏰ Idade da sessão:', hoursDiff.toFixed(1), 'horas');
+                    
+                    // Sessão válida por 12 horas (ou sem limite se não há lastActivity)
+                    if (!lastActivity || hoursDiff < 12) {
+                        currentUser = userData.username || userData.email || userData;
+                        document.getElementById('userName').textContent = currentUser;
+                        console.log('✅ Usuário autenticado via localStorage:', currentUser);
+                        return;
+                    } else {
+                        console.log('⏰ Sessão expirada, removendo dados');
+                        localStorage.removeItem('loggedInUser');
+                        localStorage.removeItem('lastActivity');
+                    }
+                }
+                
+                // Tentar verificar via Supabase se disponível
+                if (window.supabase) {
+                    console.log('🔍 Verificando via Supabase...');
+                    try {
+                        const { data: { session }, error } = await window.supabase.auth.getSession();
+                        if (session && session.user) {
+                            currentUser = session.user.email;
+                    document.getElementById('userName').textContent = currentUser;
+                            console.log('✅ Usuário autenticado via Supabase:', currentUser);
+                            return;
+                } else {
+                            console.log('⚠️ Nenhuma sessão ativa no Supabase');
+                        }
+                    } catch (supabaseError) {
+                        console.log('⚠️ Erro ao verificar Supabase:', supabaseError);
+                    }
+                } else {
+                    console.log('⚠️ Supabase não disponível');
+                }
+                
+                console.log('❌ Usuário não autenticado, redirecionando...');
+                window.location.href = 'login.html';
+                
+            } catch (error) {
+                console.error('❌ Erro na autenticação:', error);
+                
+                // Fallback: tentar usar dados locais se disponíveis
+                const usuarioLocal = localStorage.getItem('loggedInUser');
+                if (usuarioLocal) {
+                    try {
+                        const userData = JSON.parse(usuarioLocal);
+                        currentUser = userData.username || userData.email || userData;
+                    } catch {
+                    currentUser = usuarioLocal;
+                    }
+                    document.getElementById('userName').textContent = currentUser;
+                    console.log('⚠️ Usando dados locais devido a erro de rede');
+                } else {
+                    console.log('❌ Redirecionando para login...');
+                    window.location.href = 'login.html';
+                }
+            }
         }
-      }
-    }
-    
-    if (contatos.length === 0) {
-      statusDiv.innerHTML = '<div class="alert alert-warning"><i class="fas fa-exclamation-triangle me-2"></i>Nenhum contato válido encontrado</div>';
-      return;
-    }
-    
-    // Enviar para o servidor
-    const response = await fetch(`${SERVER_URL}/webhook/contatos/lote`, {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ contatos })
-    });
-    
-    const result = await response.json();
-    
-    if (response.ok) {
-      statusDiv.innerHTML = `
-        <div class="alert alert-success">
-          <strong><i class="fas fa-check-circle me-2"></i>Upload Concluído!</strong><br>
-          <i class="fas fa-chart-bar me-1"></i>Total: ${result.total} contatos<br>
-          <i class="fas fa-plus-circle me-1"></i>Inseridos: ${result.inseridos} novos<br>
-          <i class="fas fa-exclamation-triangle me-1"></i>Duplicados: ${result.erros} ignorados
-        </div>
-      `;
-      
-      fileInput.value = '';
-      
-      // Recarregar contatos
-      if (selectedCat) {
-        setTimeout(() => carregarContatos(selectedCat), 1000);
-      }
-      
+
+        // ========== CARREGAR ESTATÍSTICAS (OTIMIZADO PARA 20K+) ==========
+        async function carregarEstatisticas() {
+            try {
+                // Tentar carregar do Supabase com contagem otimizada
+                if (supabase) {
+                    // Contar total de motoristas
+                    const { count: totalCount, error: totalError } = await supabase
+                        .from('motoristas')
+                        .select('*', { count: 'exact', head: true });
+
+                    if (totalError) throw totalError;
+                    
+                    // Contar motoristas ativos
+                    const { count: ativosCount, error: ativosError } = await supabase
+                        .from('motoristas')
+                        .select('*', { count: 'exact', head: true })
+                        .eq('status', 'ativo');
+
+                    if (ativosError) throw ativosError;
+
+                    // Contar por classe de veículo
+                    const { count: leveCount, error: leveError } = await supabase
+                        .from('motoristas')
+                        .select('*', { count: 'exact', head: true })
+                        .eq('classe_veiculo', 'leve')
+                        .eq('status', 'ativo');
+
+                    const { count: medioCount, error: medioError } = await supabase
+                        .from('motoristas')
+                        .select('*', { count: 'exact', head: true })
+                        .eq('classe_veiculo', 'medio')
+                        .eq('status', 'ativo');
+
+                    const { count: pesadoCount, error: pesadoError } = await supabase
+                        .from('motoristas')
+                        .select('*', { count: 'exact', head: true })
+                        .eq('classe_veiculo', 'pesado')
+                        .eq('status', 'ativo');
+
+                    if (leveError || medioError || pesadoError) {
+                        console.warn('⚠️ Erro ao contar por classe, usando valores padrão');
+                    }
+                    
+                    totalMotoristasCount = totalCount || 0;
+                    const totalAtivos = ativosCount || 0;
+                    const leve = leveCount || 0;
+                    const medio = medioCount || 0;
+                    const pesado = pesadoCount || 0;
+                    
+                    console.log(`📊 Total de motoristas no Supabase: ${totalMotoristasCount.toLocaleString('pt-BR')}`);
+                    console.log(`📊 Motoristas ativos: ${totalAtivos.toLocaleString('pt-BR')}`);
+                    console.log(`📊 Por classe - Leve: ${leve}, Médio: ${medio}, Pesado: ${pesado}`);
+                    
+                    // Atualizar interface com dados reais
+                    document.getElementById('totalMotoristas').textContent = totalMotoristasCount.toLocaleString('pt-BR');
+                    document.getElementById('motoristasAtivos').textContent = totalAtivos.toLocaleString('pt-BR');
+                    document.getElementById('motoristasSelecionados').textContent = '0';
+                    document.getElementById('categoriaAtiva').textContent = '-';
+                    
+                    // Atualizar contadores de categoria
+                    document.getElementById('count-leve').textContent = `${leve.toLocaleString('pt-BR')} motoristas`;
+                    document.getElementById('count-medio').textContent = `${medio.toLocaleString('pt-BR')} motoristas`;
+                    document.getElementById('count-pesado').textContent = `${pesado.toLocaleString('pt-BR')} motoristas`;
+                    
+                } else {
+                    // Dados mockados para teste (simulando 20k+ motoristas)
+                    totalMotoristasCount = 20150; // Simulando 20k+ motoristas
+                    const totalAtivos = 18500; // Simulando 18.5k ativos
+                    const leve = 6500; // Simulando distribuição
+                    const medio = 6000;
+                    const pesado = 6000;
+                    
+                    console.log('📊 Usando dados mockados para teste');
+                    
+                    // Atualizar interface
+                    document.getElementById('totalMotoristas').textContent = totalMotoristasCount.toLocaleString('pt-BR');
+                    document.getElementById('motoristasAtivos').textContent = totalAtivos.toLocaleString('pt-BR');
+                    document.getElementById('motoristasSelecionados').textContent = '0';
+                    document.getElementById('categoriaAtiva').textContent = '-';
+                    
+                    // Atualizar contadores de categoria
+                    document.getElementById('count-leve').textContent = `${leve.toLocaleString('pt-BR')} motoristas`;
+                    document.getElementById('count-medio').textContent = `${medio.toLocaleString('pt-BR')} motoristas`;
+                    document.getElementById('count-pesado').textContent = `${pesado.toLocaleString('pt-BR')} motoristas`;
+                }
+                
+            } catch (error) {
+                console.error('❌ Erro ao carregar estatísticas:', error);
+                
+                // Fallback para dados mockados
+                totalMotoristasCount = 1000;
+                const totalAtivos = 950;
+                const leve = 350;
+                const medio = 300;
+                const pesado = 300;
+                
+                document.getElementById('totalMotoristas').textContent = totalMotoristasCount.toLocaleString('pt-BR');
+                document.getElementById('motoristasAtivos').textContent = totalAtivos.toLocaleString('pt-BR');
+                document.getElementById('motoristasSelecionados').textContent = '0';
+                document.getElementById('categoriaAtiva').textContent = '-';
+                
+                // Atualizar contadores de categoria
+                document.getElementById('count-leve').textContent = `${leve.toLocaleString('pt-BR')} motoristas`;
+                document.getElementById('count-medio').textContent = `${medio.toLocaleString('pt-BR')} motoristas`;
+                document.getElementById('count-pesado').textContent = `${pesado.toLocaleString('pt-BR')} motoristas`;
+                
+                mostrarAviso('Usando dados de exemplo - Supabase não disponível');
+            }
+        }
+
+        // ========== CARREGAR FILTROS ==========
+        async function carregarFiltros() {
+            console.log('🔧 Carregando filtros...');
+            
+            // Carregar estados
+            const filtroEstado = document.getElementById('filtroEstado');
+            if (filtroEstado) {
+                estados.forEach(estado => {
+                    const option = document.createElement('option');
+                    option.value = estado;
+                    option.textContent = estado;
+                    filtroEstado.appendChild(option);
+                });
+                
+                console.log('✅ Filtro de estados carregado');
+            }
+
+            // Carregar tipos de veículo
+            const filtroTipoVeiculo = document.getElementById('filtroTipoVeiculo');
+            if (filtroTipoVeiculo) {
+                // Adicionar todos os tipos de veículo
+                const todosTipos = [...new Set(Object.values(tiposVeiculo).flat())];
+                todosTipos.forEach(tipo => {
+                    const option = document.createElement('option');
+                    option.value = tipo;
+                    option.textContent = tipo;
+                    filtroTipoVeiculo.appendChild(option);
+                });
+                
+                console.log('✅ Filtro de tipos de veículo carregado');
+            }
+
+            // Carregar carrocerias
+            const filtroCarroceria = document.getElementById('filtroCarroceria');
+            if (filtroCarroceria) {
+                Object.keys(tiposCarroceriaMap).forEach(key => {
+                    const option = document.createElement('option');
+                    option.value = key;
+                    option.textContent = tiposCarroceriaMap[key];
+                    filtroCarroceria.appendChild(option);
+                });
+                
+                console.log('✅ Filtro de carrocerias carregado');
+            }
+        }
+
+        // ========== CONFIGURAR EVENTOS ==========
+        function configurarEventos() {
+            // Seleção de classes de veículo
+            document.querySelectorAll('.vehicle-class').forEach(element => {
+                element.addEventListener('click', () => {
+                    const classe = element.dataset.class;
+                    selecionarClasse(classe);
+                });
+            });
+
+            // Botões de ação
+            document.getElementById('btnSelecionarTodos').addEventListener('click', selecionarTodos);
+            document.getElementById('btnLimparSelecao').addEventListener('click', limparSelecao);
+            document.getElementById('btnTestarMensagem').addEventListener('click', testarMensagem);
+            document.getElementById('btnTestarEnvio').addEventListener('click', testarEnvioReal);
+            document.getElementById('btnIniciarDisparo').addEventListener('click', iniciarDisparo);
+            document.getElementById('btnBuscar').addEventListener('click', aplicarFiltros);
+            document.getElementById('btnVerificarEvolution').addEventListener('click', verificarEvolutionAPI);
+
+            // Filtros
+            document.getElementById('filtroClasse').addEventListener('change', aplicarFiltros);
+            document.getElementById('filtroTipoVeiculo').addEventListener('change', aplicarFiltros);
+            document.getElementById('filtroCarroceria').addEventListener('change', aplicarFiltros);
+            document.getElementById('filtroEstado').addEventListener('change', aplicarFiltros);
+            document.getElementById('filtroStatus').addEventListener('change', aplicarFiltros);
+            document.getElementById('filtroBusca').addEventListener('input', aplicarFiltros);
+
+            // Paginação
+            document.getElementById('itensPorPagina').addEventListener('change', (e) => {
+                itemsPerPage = parseInt(e.target.value);
+                currentPage = 1;
+                atualizarListaMotoristas(motoristasFiltrados);
+            });
+
+            console.log('✅ Eventos configurados');
+        }
+
+        // ========== SELEÇÃO DE CLASSE ==========
+        async function selecionarClasse(classe) {
+            currentClass = classe;
+            selectedMotoristas.clear();
+
+            // Atualizar interface
+            document.querySelectorAll('.vehicle-class').forEach(el => el.classList.remove('active'));
+            document.querySelector(`[data-class="${classe}"]`).classList.add('active');
+            
+            document.getElementById('categoriaAtiva').textContent = classe.charAt(0).toUpperCase() + classe.slice(1);
+            
+            // Carregar motoristas da classe (otimizado para 20k+)
+            await carregarMotoristas(classe);
+        }
+
+        // ========== CARREGAR MOTORISTAS (OTIMIZADO PARA 20K+) ==========
+        async function carregarMotoristas(classe) {
+            const motoristasList = document.getElementById('motoristasList');
+            motoristasList.innerHTML = '<div class="text-center py-3"><div class="loading-spinner me-2"></div>Carregando motoristas...</div>';
+
+            try {
+                let todosMotoristas = [];
+                
+                // Tentar carregar do Supabase com paginação otimizada
+                if (supabase) {
+                    console.log(`🔍 Carregando TODOS os motoristas da classe ${classe}...`);
+                    
+                    // Carregar TODOS os motoristas da classe (sem limite)
+                    let from = 0;
+                    const limit = 1000; // Carregar em lotes de 1000
+                    let hasMore = true;
+                    
+                    while (hasMore) {
+                        const { data: motoristas, error } = await supabase
+                            .from('motoristas')
+                            .select('id, nome, telefone1, telefone2, estado, classe_veiculo, tipo_veiculo, tipo_carroceria, status')
+                            .eq('classe_veiculo', classe)
+                            .eq('status', 'ativo')
+                            .order('nome')
+                            .range(from, from + limit - 1);
+
+                        if (error) throw error;
+                        
+                        if (motoristas && motoristas.length > 0) {
+                            todosMotoristas = todosMotoristas.concat(motoristas);
+                            from += limit;
+                            
+                            // Atualizar progresso
+                            motoristasList.innerHTML = `<div class="text-center py-3"><div class="loading-spinner me-2"></div>Carregando motoristas... ${todosMotoristas.length.toLocaleString('pt-BR')} encontrados</div>`;
+                            
+                            // Se retornou menos que o limite, não há mais dados
+                            if (motoristas.length < limit) {
+                                hasMore = false;
+                            }
+                        } else {
+                            hasMore = false;
+                        }
+                    }
+                    
+                    console.log(`📞 ${todosMotoristas.length.toLocaleString('pt-BR')} motoristas carregados para classe ${classe}`);
+                } else {
+                    // Usar dados mockados filtrados por classe
+                    todosMotoristas = allMotoristas.filter(m => m.classe_veiculo === classe && m.status === 'ativo');
+                }
+                
+                // Armazenar todos os motoristas filtrados
+                motoristasFiltrados = todosMotoristas;
+                currentPage = 1;
+                
+                // Atualizar estatísticas
+                document.getElementById('motoristasSelecionados').textContent = '0';
+                document.getElementById('motoristasSelecionadosBadge').textContent = '0 selecionados';
+                
+                atualizarListaMotoristas(motoristasFiltrados);
+                
+            } catch (error) {
+                console.error('❌ Erro ao carregar motoristas:', error);
+                
+                // Fallback para dados mockados
+                motoristasFiltrados = allMotoristas.filter(m => m.classe_veiculo === classe && m.status === 'ativo');
+                currentPage = 1;
+                document.getElementById('motoristasSelecionados').textContent = '0';
+                document.getElementById('motoristasSelecionadosBadge').textContent = '0 selecionados';
+                atualizarListaMotoristas(motoristasFiltrados);
+                
+                mostrarAviso('Usando dados de exemplo - Supabase não disponível');
+            }
+        }
+
+        // ========== ATUALIZAR LISTA DE MOTORISTAS (OTIMIZADA) ==========
+        function atualizarListaMotoristas(motoristas) {
+            const motoristasList = document.getElementById('motoristasList');
+            
+            if (motoristas.length === 0) {
+                motoristasList.innerHTML = '<div class="text-center py-5"><i class="fas fa-truck fs-1 text-muted mb-3"></i><p class="text-muted">Nenhum motorista encontrado para esta categoria</p></div>';
+                atualizarPaginacao(0);
+                return;
+            }
+
+            // Calcular paginação
+            totalPages = Math.ceil(motoristas.length / itemsPerPage);
+            const startIndex = (currentPage - 1) * itemsPerPage;
+            const endIndex = startIndex + itemsPerPage;
+            const motoristasPagina = motoristas.slice(startIndex, endIndex);
+
+            motoristasList.innerHTML = motoristasPagina.map(motorista => `
+                <div class="motorista-item ${selectedMotoristas.has(motorista.id) ? 'selected' : ''}" data-id="${motorista.id}">
+                    <div class="motorista-info">
+                        <h6>${motorista.nome || 'Nome não informado'}</h6>
+                        <div class="motorista-details">
+                            <i class="fas fa-phone me-1"></i>${motorista.telefone1 || 'Telefone não informado'}
+                            ${motorista.telefone2 ? `<br><i class="fas fa-mobile-alt me-1"></i>${motorista.telefone2}` : ''}
+                            ${motorista.estado ? `<br><i class="fas fa-map-marker-alt me-1"></i>${motorista.estado}` : ''}
+                            ${motorista.tipo_veiculo ? `<br><i class="fas fa-truck me-1"></i>${motorista.tipo_veiculo}` : ''}
+                            ${motorista.tipo_carroceria ? `<br><i class="fas fa-box me-1"></i>${tiposCarroceriaMap[motorista.tipo_carroceria] || motorista.tipo_carroceria}` : ''}
+                        </div>
+                    </div>
+                    <div class="motorista-checkbox ${selectedMotoristas.has(motorista.id) ? 'checked' : ''}">
+                        ${selectedMotoristas.has(motorista.id) ? '<i class="fas fa-check"></i>' : ''}
+                    </div>
+                </div>
+            `).join('');
+
+            // Adicionar eventos de clique
+            motoristasList.querySelectorAll('.motorista-item').forEach(item => {
+                item.addEventListener('click', () => {
+                    const id = item.dataset.id;
+                    toggleSelecaoMotorista(id);
+                });
+            });
+
+            // Atualizar paginação
+            atualizarPaginacao(motoristas.length);
+        }
+
+        // ========== TOGGLE SELEÇÃO DE MOTORISTA ==========
+        function toggleSelecaoMotorista(id) {
+            if (selectedMotoristas.has(id)) {
+                selectedMotoristas.delete(id);
+            } else {
+                selectedMotoristas.add(id);
+            }
+            
+            // Atualizar interface
+            const item = document.querySelector(`[data-id="${id}"]`);
+            if (item) {
+                item.classList.toggle('selected');
+                const checkbox = item.querySelector('.motorista-checkbox');
+                checkbox.classList.toggle('checked');
+                checkbox.innerHTML = selectedMotoristas.has(id) ? '<i class="fas fa-check"></i>' : '';
+            }
+            
+            // Atualizar contadores
+            document.getElementById('motoristasSelecionados').textContent = selectedMotoristas.size.toLocaleString('pt-BR');
+            document.getElementById('motoristasSelecionadosBadge').textContent = `${selectedMotoristas.size} selecionados`;
+        }
+
+        // ========== SELECIONAR TODOS ==========
+        function selecionarTodos() {
+            const startIndex = (currentPage - 1) * itemsPerPage;
+            const endIndex = startIndex + itemsPerPage;
+            const motoristasPagina = motoristasFiltrados.slice(startIndex, endIndex);
+            
+            motoristasPagina.forEach(motorista => {
+                selectedMotoristas.add(motorista.id);
+            });
+            
+            atualizarListaMotoristas(motoristasFiltrados);
+        }
+
+        // ========== LIMPAR SELEÇÃO ==========
+        function limparSelecao() {
+            selectedMotoristas.clear();
+            atualizarListaMotoristas(motoristasFiltrados);
+            
+            document.getElementById('motoristasSelecionados').textContent = '0';
+            document.getElementById('motoristasSelecionadosBadge').textContent = '0 selecionados';
+        }
+
+        // ========== APLICAR FILTROS (INTELIGENTE) ==========
+        async function aplicarFiltros() {
+            if (!currentClass) {
+                mostrarAviso('Selecione uma categoria primeiro');
+                return;
+            }
+
+            const filtroClasse = document.getElementById('filtroClasse').value;
+            const filtroTipoVeiculo = document.getElementById('filtroTipoVeiculo').value;
+            const filtroCarroceria = document.getElementById('filtroCarroceria').value;
+            const filtroEstado = document.getElementById('filtroEstado').value;
+            const filtroStatus = document.getElementById('filtroStatus').value;
+            const filtroBusca = document.getElementById('filtroBusca').value.toLowerCase();
+
+            console.log('🔍 Aplicando filtros inteligentes...', {
+                classe: filtroClasse,
+                tipoVeiculo: filtroTipoVeiculo,
+                carroceria: filtroCarroceria,
+                estado: filtroEstado,
+                status: filtroStatus,
+                busca: filtroBusca
+            });
+
+            const motoristasList = document.getElementById('motoristasList');
+            motoristasList.innerHTML = '<div class="text-center py-3"><div class="loading-spinner me-2"></div>Aplicando filtros...</div>';
+
+            try {
+                let todosMotoristas = [];
+                
+                if (supabase) {
+                    // Construir query do Supabase com filtros
+                    let query = supabase
+                        .from('motoristas')
+                        .select('id, nome, telefone1, telefone2, estado, classe_veiculo, tipo_veiculo, tipo_carroceria, status')
+                        .eq('classe_veiculo', currentClass)
+                        .eq('status', 'ativo');
+
+                    // Aplicar filtros adicionais
+                    if (filtroTipoVeiculo) {
+                        query = query.eq('tipo_veiculo', filtroTipoVeiculo);
+                    }
+                    
+                    if (filtroCarroceria) {
+                        query = query.eq('tipo_carroceria', filtroCarroceria);
+                    }
+                    
+                    if (filtroEstado) {
+                        query = query.eq('estado', filtroEstado);
+                    }
+                    
+                    if (filtroStatus) {
+                        query = query.eq('status', filtroStatus);
+                    }
+
+                    // Para busca por nome/telefone, usar ilike
+                    if (filtroBusca) {
+                        query = query.or(`nome.ilike.%${filtroBusca}%,telefone1.ilike.%${filtroBusca}%,telefone2.ilike.%${filtroBusca}%`);
+                    }
+
+                    query = query.order('nome');
+
+                    // Carregar TODOS os resultados filtrados
+                    let from = 0;
+                    const limit = 1000;
+                    let hasMore = true;
+                    
+                    while (hasMore) {
+                        const { data: motoristas, error } = await query.range(from, from + limit - 1);
+
+                        if (error) throw error;
+                        
+                        if (motoristas && motoristas.length > 0) {
+                            todosMotoristas = todosMotoristas.concat(motoristas);
+                            from += limit;
+                            
+                            // Atualizar progresso
+                            motoristasList.innerHTML = `<div class="text-center py-3"><div class="loading-spinner me-2"></div>Aplicando filtros... ${todosMotoristas.length.toLocaleString('pt-BR')} encontrados</div>`;
+                            
+                            if (motoristas.length < limit) {
+                                hasMore = false;
+                            }
+                        } else {
+                            hasMore = false;
+                        }
+                    }
+                    
+                    console.log(`🔍 ${todosMotoristas.length.toLocaleString('pt-BR')} motoristas encontrados com filtros aplicados`);
+                } else {
+                    // Usar dados mockados com filtros locais
+                    todosMotoristas = allMotoristas.filter(motorista => {
+                        // Filtro de classe (já aplicado por currentClass)
+                        if (motorista.classe_veiculo !== currentClass) return false;
+                        
+                        // Filtro de tipo de veículo
+                        if (filtroTipoVeiculo && motorista.tipo_veiculo !== filtroTipoVeiculo) return false;
+                        
+                        // Filtro de carroceria
+                        if (filtroCarroceria && motorista.tipo_carroceria !== filtroCarroceria) return false;
+                        
+                        // Filtro de estado
+                        if (filtroEstado && motorista.estado !== filtroEstado) return false;
+                        
+                        // Filtro de status
+                        if (filtroStatus && motorista.status !== filtroStatus) return false;
+                        
+                        // Filtro de busca
+                        if (filtroBusca) {
+                            const nome = (motorista.nome || '').toLowerCase();
+                            const telefone1 = (motorista.telefone1 || '').toLowerCase();
+                            const telefone2 = (motorista.telefone2 || '').toLowerCase();
+                            
+                            if (!nome.includes(filtroBusca) && !telefone1.includes(filtroBusca) && !telefone2.includes(filtroBusca)) {
+                                return false;
+                            }
+                        }
+                        
+                        return true;
+                    });
+                }
+                
+                // Armazenar resultados filtrados
+                motoristasFiltrados = todosMotoristas;
+                currentPage = 1;
+                
+                // Atualizar estatísticas
+                document.getElementById('motoristasSelecionados').textContent = '0';
+                document.getElementById('motoristasSelecionadosBadge').textContent = '0 selecionados';
+                
+                atualizarListaMotoristas(motoristasFiltrados);
+                
+            } catch (error) {
+                console.error('❌ Erro ao aplicar filtros:', error);
+                
+                // Fallback para filtros locais
+                motoristasFiltrados = allMotoristas.filter(m => m.classe_veiculo === currentClass && m.status === 'ativo');
+                currentPage = 1;
+                atualizarListaMotoristas(motoristasFiltrados);
+                
+                mostrarAviso('Erro ao aplicar filtros, usando dados locais');
+            }
+        }
+
+        // ========== PAGINAÇÃO OTIMIZADA E INTELIGENTE ==========
+        function atualizarPaginacao(totalItens) {
+            const paginacao = document.getElementById('paginacao');
+            const infoPagina = document.getElementById('infoPagina');
+            
+            // Limpar paginação anterior
+            paginacao.innerHTML = '';
+            
+            if (totalItens === 0) {
+                infoPagina.textContent = 'Página 1 de 1 - Total: 0 motoristas';
+                return;
+            }
+
+            // Calcular informações da página
+            const inicio = (currentPage - 1) * itemsPerPage + 1;
+            const fim = Math.min(currentPage * itemsPerPage, totalItens);
+            const porcentagem = ((fim / totalItens) * 100).toFixed(1);
+            
+            // Informações detalhadas da página
+            infoPagina.innerHTML = `
+                <strong>Página ${currentPage} de ${totalPages}</strong> - 
+                Mostrando <strong>${inicio.toLocaleString('pt-BR')}-${fim.toLocaleString('pt-BR')}</strong> de 
+                <strong>${totalItens.toLocaleString('pt-BR')}</strong> motoristas 
+                <span class="text-muted">(${porcentagem}%)</span>
+            `;
+
+            // Botão Anterior
+            const btnAnterior = document.createElement('li');
+            btnAnterior.innerHTML = `<a class="page-btn ${currentPage === 1 ? 'disabled' : ''}" href="#" onclick="mudarPagina(${currentPage - 1})" ${currentPage === 1 ? 'onclick="return false;"' : ''}><i class="fas fa-chevron-left me-1"></i>Anterior</a>`;
+            paginacao.appendChild(btnAnterior);
+
+            // Páginas numeradas (otimizado para muitas páginas)
+            const inicioPagina = Math.max(1, currentPage - 2);
+            const fimPagina = Math.min(totalPages, currentPage + 2);
+
+            // Primeira página
+            if (inicioPagina > 1) {
+                const li = document.createElement('li');
+                li.innerHTML = `<a class="page-btn" href="#" onclick="mudarPagina(1)">1</a>`;
+                paginacao.appendChild(li);
+                
+                if (inicioPagina > 2) {
+                    const li = document.createElement('li');
+                    li.innerHTML = `<span class="page-btn disabled"><i class="fas fa-ellipsis-h"></i></span>`;
+                    paginacao.appendChild(li);
+                }
+            }
+
+            // Páginas do meio
+            for (let i = inicioPagina; i <= fimPagina; i++) {
+                const li = document.createElement('li');
+                li.innerHTML = `<a class="page-btn ${i === currentPage ? 'active' : ''}" href="#" onclick="mudarPagina(${i})">${i}</a>`;
+                paginacao.appendChild(li);
+            }
+
+            // Última página
+            if (fimPagina < totalPages) {
+                if (fimPagina < totalPages - 1) {
+                    const li = document.createElement('li');
+                    li.innerHTML = `<span class="page-btn disabled"><i class="fas fa-ellipsis-h"></i></span>`;
+                    paginacao.appendChild(li);
+                }
+                
+                const li = document.createElement('li');
+                li.innerHTML = `<a class="page-btn" href="#" onclick="mudarPagina(${totalPages})">${totalPages}</a>`;
+                paginacao.appendChild(li);
+            }
+
+            // Botão Próximo
+            const btnProximo = document.createElement('li');
+            btnProximo.innerHTML = `<a class="page-btn ${currentPage === totalPages ? 'disabled' : ''}" href="#" onclick="mudarPagina(${currentPage + 1})" ${currentPage === totalPages ? 'onclick="return false;"' : ''}>Próximo<i class="fas fa-chevron-right ms-1"></i></a>`;
+            paginacao.appendChild(btnProximo);
+
+            // Adicionar informações extras se houver muitos resultados
+            if (totalItens > 10000) {
+                const infoExtra = document.createElement('div');
+                infoExtra.className = 'mt-2 text-center';
+                infoExtra.innerHTML = `
+                    <small class="text-muted">
+                        <i class="fas fa-info-circle me-1"></i>
+                        Sistema otimizado para ${totalItens.toLocaleString('pt-BR')} motoristas
+                    </small>
+                `;
+                paginacao.parentNode.appendChild(infoExtra);
+            }
+        }
+
+        function mudarPagina(pagina) {
+            if (pagina < 1 || pagina > totalPages) return;
+            
+            currentPage = pagina;
+            atualizarListaMotoristas(motoristasFiltrados);
+        }
+
+        // ========== TESTAR MENSAGEM ==========
+        function testarMensagem() {
+            const mensagem = document.getElementById('messageText').value;
+            
+            if (!mensagem.trim()) {
+                mostrarAviso('Digite uma mensagem para testar');
+    return;
+  }
+  
+            // Usar dados de exemplo
+            const exemplo = {
+                name: 'João Silva',
+                telefone: '11999999999',
+                estado: 'SP',
+                classe_veiculo: currentClass || 'leve',
+                tipo_veiculo: 'Toco'
+            };
+
+            const mensagemTeste = mensagem
+                .replace(/\{\{name\}\}/g, exemplo.name)
+                .replace(/\{\{telefone\}\}/g, exemplo.telefone)
+                .replace(/\{\{estado\}\}/g, exemplo.estado)
+                .replace(/\{\{classe_veiculo\}\}/g, exemplo.classe_veiculo)
+                .replace(/\{\{tipo_veiculo\}\}/g, exemplo.tipo_veiculo);
+
+            mostrarSucesso(`Mensagem de teste:<br><br>"${mensagemTeste}"`);
+        }
+
+        // ========== TESTAR ENVIO REAL ==========
+        async function testarEnvioReal() {
+            const telefone = document.getElementById('telefoneTeste').value.trim();
+            const mensagem = document.getElementById('messageText').value.trim();
+            
+            if (!telefone) {
+                mostrarAviso('Digite um número de telefone para teste');
+    return;
+  }
+  
+            if (!mensagem) {
+                mostrarAviso('Digite uma mensagem para enviar');
+    return;
+  }
+  
+            // Personalizar mensagem
+            const mensagemPersonalizada = mensagem
+                .replace(/\{\{name\}\}/g, 'Motorista Teste')
+                .replace(/\{\{telefone\}\}/g, telefone)
+                .replace(/\{\{estado\}\}/g, 'SP')
+                .replace(/\{\{classe_veiculo\}\}/g, currentClass || 'leve')
+                .replace(/\{\{tipo_veiculo\}\}/g, 'Toco');
+
+            try {
+                adicionarLog(`🔄 Enviando teste para ${telefone}...`, 'info');
+                
+                // Buscar credenciais da Evolution API do usuário logado
+                const userData = localStorage.getItem('loggedInUser');
+                let userEmail = null;
+                let userId = null;
+                
+                if (userData) {
+                    const user = JSON.parse(userData);
+                    userEmail = user.email;
+                    userId = user.id; // ✅ Usar ID do localStorage
+                    console.log('👤 Usuário identificado para teste:', userEmail);
+                    console.log('🆔 User ID:', userId);
+                } else {
+                    mostrarErro('Usuário não autenticado. Faça login novamente.');
+                    return;
+                }
+                
+                // Enviar via Evolution API usando credenciais do usuário
+                const response = await fetch('/webhook/send-supabase', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        number: telefone,
+                        message: mensagemPersonalizada,
+                        usuario: userEmail,
+                        userId: userId  // ✅ Enviar user_id diretamente
+                    })
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.success) {
+                        adicionarLog(`✅ Teste enviado com sucesso para ${telefone}`, 'success');
+                        adicionarLog(`🏷️ Instância usada: ${data.instancia || 'N/A'}`, 'info');
+                        mostrarSucesso(`Mensagem de teste enviada para ${telefone}`);
+            } else {
+                        adicionarLog(`❌ Erro no teste: ${data.error || data.message}`, 'danger');
+                        if (data.solution) {
+                            adicionarLog(`💡 Solução: ${data.solution}`, 'warning');
+                        }
+                        mostrarErro(`Erro ao enviar teste: ${data.error || data.message}`);
+          }
+        } else {
+                    const error = await response.text();
+                    adicionarLog(`❌ Erro HTTP ${response.status}: ${error}`, 'danger');
+                    mostrarErro(`Erro ao enviar teste: HTTP ${response.status}`);
+                }
+      } catch (error) {
+                adicionarLog(`❌ Erro no teste: ${error.message}`, 'danger');
+                mostrarErro(`Erro ao enviar teste: ${error.message}`);
+            }
+        }
+
+        // ========== VERIFICAR EVOLUTION API ==========
+        async function verificarEvolutionAPI() {
+            const evolutionLog = document.getElementById('evolutionLog');
+            evolutionLog.innerHTML = '<div class="text-center py-3"><div class="loading-spinner me-2"></div>Verificando Evolution API...</div>';
+
+            try {
+                // Buscar email do usuário logado
+                const userData = localStorage.getItem('loggedInUser');
+                let userEmail = null;
+                
+                if (userData) {
+                    const user = JSON.parse(userData);
+                    userEmail = user.email;
+                    console.log('👤 Verificando Evolution API para usuário:', userEmail);
+                }
+                
+                // Verificar status da Evolution API (endpoint alternativo)
+                const url = userEmail 
+                    ? `/webhook/status-evolution?usuario=${encodeURIComponent(userEmail)}`
+                    : '/webhook/status-evolution';
+                
+                const response = await fetch(url);
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        adicionarLogEvolution(`✅ Evolution API conectada`, 'success');
+                        adicionarLogEvolution(`📊 Status: ${data.status}`, 'info');
+                        adicionarLogEvolution(`🔗 URL: ${data.url}`, 'info');
+                        adicionarLogEvolution(`📱 Instância: ${data.instance}`, 'info');
+                        adicionarLogEvolution(`💬 ${data.message}`, 'success');
+                    } else {
+                        adicionarLogEvolution(`❌ Evolution API com problemas`, 'warning');
+                        adicionarLogEvolution(`📊 Status: ${data.status}`, 'warning');
+                        adicionarLogEvolution(`🔗 URL: ${data.url}`, 'info');
+                        adicionarLogEvolution(`📱 Instância: ${data.instance}`, 'info');
+                        adicionarLogEvolution(`❌ Erro: ${data.error}`, 'danger');
+                        adicionarLogEvolution(`💬 ${data.message}`, 'warning');
+                    }
     } else {
-      statusDiv.innerHTML = `<div class="alert alert-danger"><i class="fas fa-times-circle me-2"></i>Erro: ${result.error}</div>`;
-    }
-    
-  } catch (err) {
-    statusDiv.innerHTML = '<div class="alert alert-danger"><i class="fas fa-times-circle me-2"></i>Erro ao processar arquivo</div>';
-  }
-}
+                    const error = await response.text();
+                    adicionarLogEvolution(`❌ Erro HTTP ${response.status}`, 'danger');
+                    adicionarLogEvolution(`💬 ${error}`, 'danger');
+                }
+  } catch (error) {
+                adicionarLogEvolution(`❌ Erro de conexão: ${error.message}`, 'danger');
+                adicionarLogEvolution(`💬 Verifique se o servidor está rodando`, 'warning');
+            }
+        }
 
-// ========== TESTE RÁPIDO ==========
-async function testarEnvio() {
-  const testNumber = document.getElementById('testNumber').value.trim();
-  const testMessage = document.getElementById('testMessage').value.trim();
-  const resultDiv = document.getElementById('testResult');
-  
-  if (!testNumber) {
-    resultDiv.innerHTML = '<div class="alert alert-warning"><i class="fas fa-exclamation-triangle me-2"></i>Digite um número para teste</div>';
-    return;
-  }
-  
-  resultDiv.innerHTML = '<div class="alert alert-info"><i class="fas fa-paper-plane me-2"></i>Enviando mensagem de teste...</div>';
-  
-  try {
-    const response = await fetch(`${SERVER_URL}/webhook/send`, {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({
-        number: testNumber,
-        message: testMessage,
-        category: 'teste',
-        meta: { name: 'Teste' }
-      })
-    });
-    
-    const result = await response.json();
-    
-    if (result.success) {
-      resultDiv.innerHTML = '<div class="alert alert-success"><i class="fas fa-check-circle me-2"></i>Mensagem enviada com sucesso!</div>';
-    } else {
-      resultDiv.innerHTML = `<div class="alert alert-danger"><i class="fas fa-times-circle me-2"></i>${result.error}</div>`;
-    }
-  } catch (err) {
-    resultDiv.innerHTML = '<div class="alert alert-danger"><i class="fas fa-unlink me-2"></i>Erro de conexão com o servidor</div>';
-  }
-}
+        function adicionarLogEvolution(mensagem, tipo = 'info') {
+            const log = document.getElementById('evolutionLog');
+            const timestamp = new Date().toLocaleTimeString();
+            
+            const logItem = document.createElement('div');
+            logItem.className = `alert alert-modern alert-modern-${tipo} mb-2`;
+            logItem.innerHTML = `<small>${timestamp}</small> - ${mensagem}`;
+            
+            log.appendChild(logItem);
+            log.scrollTop = log.scrollHeight;
+        }
 
-// ========== CARREGAR EVENTOS ==========
-function carregarEventos() {
-  // Categorias
-  document.querySelectorAll('.category-card').forEach(card => {
-    card.addEventListener('click', () => {
-      const categoria = card.dataset.cat;
-      carregarContatos(categoria);
-    });
-  });
+        // ========== INICIAR DISPARO ==========
+        async function iniciarDisparo() {
+            if (!currentClass) {
+                mostrarAviso('Selecione uma categoria primeiro');
+                return;
+            }
 
-  // Adicionar contato
-  document.getElementById('addContact').addEventListener('click', adicionarContato);
+            if (selectedMotoristas.size === 0) {
+                mostrarAviso('Selecione pelo menos um motorista');
+                return;
+            }
 
-  // Botão de parar
-  document.getElementById('stopBtn').addEventListener('click', pararEnvio);
-
-  // ✅ Botão de logout
-  document.getElementById('btnLogout').addEventListener('click', fazerLogout);
-
-  // ✅ Botão de reset (admin)
-  document.getElementById('btnResetContatos').addEventListener('click', resetarContatos);
-
-  // Paginação - Tamanho da página
-  document.getElementById('pageSize').addEventListener('change', function() {
-    pageSize = parseInt(this.value);
-    currentPage = 1;
-    if (selectedCat) {
-      atualizarListaContatos();
-    }
-  });
-
-  // Selecionar todos
-  document.getElementById('selectAllCheckbox').addEventListener('change', function() {
-    const currentContacts = getCurrentPageContacts();
-    const checkboxes = document.querySelectorAll('.contact-checkbox:not(#selectAllCheckbox)');
-    
-    checkboxes.forEach(checkbox => {
-      checkbox.checked = this.checked;
-      const contactNumber = checkbox.dataset.contactNumber;
-      
-      if (this.checked) {
-        selectedContacts.add(contactNumber);
-      } else {
-        selectedContacts.delete(contactNumber);
-      }
-    });
-    
-    atualizarContadorSelecionados();
-  });
-
-  // Botão de envio
-  document.getElementById('sendBtn').addEventListener('click', iniciarDisparo);
-}
-
-// ========== FUNÇÕES PRINCIPAIS ==========
-async function carregarContatos(categoria) {
-  // Resetar seleções
-  selectedContacts.clear();
-  currentPage = 1;
-  
-  // Ativar categoria
-  document.querySelectorAll('.category-card').forEach(c => c.classList.remove('active'));
-  document.querySelector(`[data-cat="${categoria}"]`).classList.add('active');
-  
-  selectedCat = categoria;
-  const contactsInfo = document.getElementById('contactsInfo');
-  const contactsList = document.getElementById('contactsList');
-  
-  contactsInfo.innerHTML = `<div class="alert alert-info"><i class="fas fa-spinner fa-spin me-2"></i>Carregando contatos para ${categoria}...</div>`;
-  contactsList.innerHTML = '<div class="text-center py-3"><i class="fas fa-spinner fa-spin me-2"></i>Carregando...</div>';
-
-  try {
-    const url = `${SERVER_URL}/webhook/contatos?categoria=${categoria}`;
-    const res = await fetch(url);
-    
-    if (!res.ok) throw new Error('Erro ao carregar contatos');
-    
-    allContacts = await res.json();
-    contactsInfo.innerHTML = `
-      <div class="alert alert-success">
-        <strong><i class="fas fa-check-circle me-2"></i>${allContacts.length} contatos encontrados</strong>
-        <div class="small"><i class="fas fa-tag me-1"></i>Categoria: ${categoria}</div>
-      </div>
-    `;
-    
-    atualizarListaContatos();
-  } catch (err) {
-    console.error('❌ Erro ao carregar contatos:', err);
-    contactsInfo.innerHTML = '<div class="alert alert-danger"><i class="fas fa-times-circle me-2"></i>Erro ao carregar contatos</div>';
-    contactsList.innerHTML = '<div class="text-center text-danger py-3"><i class="fas fa-times-circle me-2"></i>Erro ao carregar contatos</div>';
-  }
-}
-
-function getCurrentPageContacts() {
-  const startIndex = (currentPage - 1) * pageSize;
-  const endIndex = Math.min(startIndex + pageSize, allContacts.length);
-  return allContacts.slice(startIndex, endIndex);
-}
-
-function atualizarListaContatos() {
-  const contactsList = document.getElementById('contactsList');
-  const paginationContainer = document.getElementById('paginationContainer');
-  const selectAllSection = document.getElementById('selectAllSection');
-  const selectionInfo = document.getElementById('selectionInfo');
-
-  if (allContacts.length === 0) {
-    contactsList.innerHTML = '<div class="text-center text-muted py-4"><i class="fas fa-inbox fa-2x mb-3"></i><div>📭 Nenhum contato encontrado</div></div>';
-    paginationContainer.style.display = 'none';
-    selectAllSection.style.display = 'none';
-    selectionInfo.style.display = 'none';
+            const mensagem = document.getElementById('messageText').value.trim();
+            if (!mensagem) {
+                mostrarAviso('Digite uma mensagem para enviar');
     return;
   }
 
-  // Calcular paginação
-  const totalPages = Math.ceil(allContacts.length / pageSize);
-  const currentContacts = getCurrentPageContacts();
+            isDisparoAtivo = true;
+            totalEnviados = 0;
+            totalFalhas = 0;
 
-  // Mostrar/ocultar elementos de seleção
-  selectAllSection.style.display = 'block';
-  selectionInfo.style.display = 'block';
-  paginationContainer.style.display = 'block';
+            // Atualizar interface
+            document.getElementById('btnIniciarDisparo').disabled = true;
+            document.getElementById('btnIniciarDisparo').innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Enviando...';
 
-  // Atualizar informações da página
-  const startIndex = (currentPage - 1) * pageSize;
-  const endIndex = Math.min(startIndex + pageSize, allContacts.length);
-  document.getElementById('pageInfo').textContent = `Página ${currentPage} de ${totalPages} - ${startIndex + 1} a ${endIndex} de ${allContacts.length} contatos`;
+            adicionarLog(`🚀 Iniciando disparo para ${selectedMotoristas.size} motoristas...`, 'info');
 
-  // Gerar lista de contatos
-  let html = '';
-  currentContacts.forEach((contact) => {
-    const isSelected = selectedContacts.has(contact.number);
-    
-    html += `
-      <div class="contact-item">
-        <div class="d-flex justify-content-between align-items-center">
-          <div class="d-flex align-items-center">
-            <input class="form-check-input contact-checkbox" type="checkbox" 
-                   data-contact-number="${contact.number}" 
-                   ${isSelected ? 'checked' : ''}
-                   onchange="toggleContactSelection('${contact.number}', this.checked)">
-            <div class="ms-3">
-              <strong><i class="fas fa-user me-1"></i>${contact.name}</strong><br>
-              <small class="text-muted"><i class="fas fa-phone me-1"></i>${contact.number}</small>
-            </div>
-          </div>
-          <span class="badge bg-secondary"><i class="fas fa-tag me-1"></i>${contact.category}</span>
-        </div>
-      </div>
-    `;
-  });
-  contactsList.innerHTML = html;
+            // Processar envios
+            for (const motoristaId of selectedMotoristas) {
+                const motorista = motoristasFiltrados.find(m => m.id === motoristaId);
+                if (!motorista) continue;
 
-  // Atualizar paginação
-  atualizarPaginacao(totalPages);
-  
-  // Atualizar contador de selecionados
-  atualizarContadorSelecionados();
-  
-  // Resetar selecionar todos
-  document.getElementById('selectAllCheckbox').checked = false;
-}
+                const mensagemPersonalizada = mensagem
+                    .replace(/\{\{name\}\}/g, motorista.nome || 'Motorista')
+                    .replace(/\{\{telefone\}\}/g, motorista.telefone1 || '')
+                    .replace(/\{\{estado\}\}/g, motorista.estado || '')
+                    .replace(/\{\{classe_veiculo\}\}/g, motorista.classe_veiculo || '')
+                    .replace(/\{\{tipo_veiculo\}\}/g, motorista.tipo_veiculo || '');
 
-function atualizarPaginacao(totalPages) {
-  const pagination = document.getElementById('pagination');
-  let html = '';
+                try {
+                    // Buscar credenciais da Evolution API do usuário logado
+                    const userData = localStorage.getItem('loggedInUser');
+                    let userEmail = null;
+                    let userId = null;
+                    
+                    if (userData) {
+                        const user = JSON.parse(userData);
+                        userEmail = user.email;
+                        userId = user.id; // ✅ Usar ID do localStorage
+                        console.log('👤 Usuário identificado:', userEmail);
+                        console.log('🆔 User ID:', userId);
+                    } else {
+                        console.error('❌ Dados do usuário não encontrados no localStorage');
+                        adicionarLog(`⚠️ Usuário não autenticado. Pulei: ${motorista.nome}`, 'warning');
+                        totalFalhas++;
+                        continue; // Pula para próximo motorista
+                    }
+                    
+                    const response = await fetch('/webhook/send-supabase', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            number: motorista.telefone1,
+                            message: mensagemPersonalizada,
+                            usuario: userEmail,
+                            userId: userId  // ✅ Enviar user_id diretamente
+                        })
+                    });
 
-  // Botão anterior
-  html += `
-    <li class="page-item ${currentPage === 1 ? 'disabled' : ''}">
-      <a class="page-link" href="#" onclick="mudarPagina(${currentPage - 1})">‹</a>
-    </li>
-  `;
+                    if (response.ok) {
+                        const data = await response.json();
+                        if (data.success) {
+                            totalEnviados++;
+                            adicionarLog(`✅ Enviado para ${motorista.nome} (${motorista.telefone1})`, 'success');
+                            if (data.instancia) {
+                                adicionarLog(`🏷️ Usando instância: ${data.instancia}`, 'info');
+                            }
+                        } else {
+                            totalFalhas++;
+                            const errorMsg = data.error || data.message || 'Erro desconhecido';
+                            adicionarLog(`❌ Falha para ${motorista.nome}: ${errorMsg}`, 'danger');
+                            
+                            // Se é erro de credenciais, mostrar alerta especial
+                            if (errorMsg.includes('Credenciais da Evolution API não configuradas')) {
+                                adicionarLog(`⚠️ CONFIGURE SUAS CREDENCIAIS em Settings > Evolution API`, 'warning');
+                            }
+                            
+                            if (data.solution) {
+                                adicionarLog(`💡 ${data.solution}`, 'warning');
+                            }
+                            
+                            if (data.details) {
+                                adicionarLog(`📋 Detalhes: ${data.details}`, 'info');
+                            }
+                        }
+                    } else {
+                        totalFalhas++;
+                        const errorData = await response.json().catch(() => ({}));
+                        adicionarLog(`❌ Falha para ${motorista.nome}: HTTP ${response.status}`, 'danger');
+                        if (errorData.error) {
+                            adicionarLog(`   Detalhes: ${errorData.error}`, 'danger');
+                        }
+                        if (errorData.solution) {
+                            adicionarLog(`💡 ${errorData.solution}`, 'warning');
+                        }
+                    }
+                } catch (error) {
+                    totalFalhas++;
+                    adicionarLog(`❌ Erro para ${motorista.nome}: ${error.message}`, 'danger');
+                    console.error('❌ Erro ao enviar mensagem:', error);
+                }
 
-  // Páginas
-  for (let i = 1; i <= totalPages; i++) {
-    if (i === 1 || i === totalPages || (i >= currentPage - 2 && i <= currentPage + 2)) {
-      html += `
-        <li class="page-item ${i === currentPage ? 'active' : ''}">
-          <a class="page-link" href="#" onclick="mudarPagina(${i})">${i}</a>
-        </li>
-      `;
-    } else if (i === currentPage - 3 || i === currentPage + 3) {
-      html += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
-    }
-  }
+                // Atualizar progresso
+                const progresso = ((totalEnviados + totalFalhas) / selectedMotoristas.size) * 100;
+                document.getElementById('progressBar').style.width = `${progresso}%`;
+                document.getElementById('progressText').textContent = `${totalEnviados + totalFalhas} de ${selectedMotoristas.size} enviados`;
 
-  // Botão próximo
-  html += `
-    <li class="page-item ${currentPage === totalPages ? 'disabled' : ''}">
-      <a class="page-link" href="#" onclick="mudarPagina(${currentPage + 1})">›</a>
-    </li>
-  `;
+                // Pequena pausa para não sobrecarregar
+                await new Promise(resolve => setTimeout(resolve, 100));
+            }
 
-  pagination.innerHTML = html;
-}
+            // Finalizar
+            isDisparoAtivo = false;
+            document.getElementById('btnIniciarDisparo').disabled = false;
+            document.getElementById('btnIniciarDisparo').innerHTML = '<i class="fas fa-rocket me-2"></i>Iniciar Disparo';
 
-function mudarPagina(pagina) {
-  currentPage = pagina;
-  atualizarListaContatos();
-}
+            adicionarLog(`🎉 Disparo concluído! Enviados: ${totalEnviados}, Falhas: ${totalFalhas}`, 'success');
+            mostrarSucesso(`Disparo concluído!<br>Enviados: ${totalEnviados}<br>Falhas: ${totalFalhas}`);
+        }
 
-function toggleContactSelection(contactNumber, isSelected) {
-  if (isSelected) {
-    selectedContacts.add(contactNumber);
-  } else {
-    selectedContacts.delete(contactNumber);
-  }
-  atualizarContadorSelecionados();
-  
-  // Atualizar checkbox "Selecionar todos"
-  const checkboxes = document.querySelectorAll('.contact-checkbox:not(#selectAllCheckbox)');
-  const allChecked = Array.from(checkboxes).every(cb => cb.checked);
-  document.getElementById('selectAllCheckbox').checked = allChecked;
-}
+        // ========== UTILITÁRIOS ==========
+        function adicionarLog(mensagem, tipo = 'info') {
+            const log = document.getElementById('disparoLog');
+            const timestamp = new Date().toLocaleTimeString();
+            
+            const logItem = document.createElement('div');
+            logItem.className = `alert alert-modern alert-modern-${tipo} mb-2`;
+            logItem.innerHTML = `<small>${timestamp}</small> - ${mensagem}`;
+            
+            log.appendChild(logItem);
+            log.scrollTop = log.scrollHeight;
+        }
 
-function atualizarContadorSelecionados() {
-  const selectedCount = document.getElementById('selectedCount');
-  selectedCount.textContent = selectedContacts.size;
-}
+        function mostrarSucesso(mensagem) {
+            const alert = document.createElement('div');
+            alert.className = 'alert alert-modern alert-modern-success alert-dismissible fade show';
+            alert.innerHTML = `
+                <i class="fas fa-check-circle me-2"></i>
+                ${mensagem}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            document.body.insertBefore(alert, document.body.firstChild);
+            
+            setTimeout(() => alert.remove(), 5000);
+        }
 
-async function adicionarContato() {
-  const name = document.getElementById('newName').value.trim();
-  const number = document.getElementById('newNumber').value.trim();
-  const category = document.getElementById('newCategory').value;
-  
-  if (!name || !number) {
-    alert('⚠️ Preencha nome e número');
-    return;
-  }
-  
-  try {
-    const res = await fetch(`${SERVER_URL}/webhook/contatos`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, number, category })
-    });
-    
-    if (res.ok) {
-      alert(`✅ Contato "${name}" adicionado com sucesso!`);
-      document.getElementById('newName').value = '';
-      document.getElementById('newNumber').value = '';
-      
-      // Recarregar contatos se a categoria for a mesma
-      if (selectedCat === category) {
-        carregarContatos(category);
-      }
-    } else {
-      alert('❌ Erro ao adicionar contato');
-    }
-  } catch (err) {
-    console.error('❌ Erro de conexão:', err);
-    alert('❌ Erro de conexão com o servidor');
-  }
-}
+        function mostrarAviso(mensagem) {
+            const alert = document.createElement('div');
+            alert.className = 'alert alert-modern alert-modern-warning alert-dismissible fade show';
+            alert.innerHTML = `
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                ${mensagem}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            document.body.insertBefore(alert, document.body.firstChild);
+            
+            setTimeout(() => alert.remove(), 5000);
+        }
 
-function renderMessage(template, contact) {
-  return template
-    .replace(/{{\s*name\s*}}/gi, contact.name || '')
-    .replace(/{{\s*number\s*}}/gi, contact.number || '')
-    .replace(/{{\s*category\s*}}/gi, contact.category || '');
-}
+        function mostrarErro(mensagem) {
+            const alert = document.createElement('div');
+            alert.className = 'alert alert-modern alert-modern-danger alert-dismissible fade show';
+            alert.innerHTML = `
+                <i class="fas fa-exclamation-circle me-2"></i>
+                ${mensagem}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            document.body.insertBefore(alert, document.body.firstChild);
+            
+            setTimeout(() => alert.remove(), 5000);
+        }
 
-// ========== DISPARO EM MASSA COM SELEÇÃO ==========
-async function iniciarDisparo() {
-  if (!selectedCat) {
-    alert('⚠️ Selecione uma categoria primeiro');
-    return;
-  }
-  
-  if (selectedContacts.size === 0) {
-    alert('⚠️ Selecione pelo menos um contato para enviar');
-    return;
-  }
+        function toggleTheme() {
+            const body = document.body;
+            const currentTheme = body.getAttribute('data-theme');
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            
+            body.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+            
+            const icon = document.querySelector('.header-actions .btn i');
+            icon.className = newTheme === 'dark' ? 'fas fa-sun' : 'fas fa-moon';
+        }
 
-  const template = document.getElementById('msg').value;
-  if (!template.trim()) {
-    alert('⚠️ Digite uma mensagem para enviar');
-    return;
-  }
-
-  // Filtrar contatos selecionados
-  const contactsToSend = allContacts.filter(contact => 
-    selectedContacts.has(contact.number)
-  );
-
-  console.log(`📨 Contatos para enviar: ${contactsToSend.length}`);
-  console.log('📋 Lista de contatos selecionados:', contactsToSend);
-
-  if (contactsToSend.length === 0) {
-    alert('❌ Nenhum contato válido encontrado para envio. Verifique a seleção.');
-    return;
-  }
-
-  // Calcular tempo estimado (30-120 segundos por mensagem)
-  const tempoMin = Math.ceil((contactsToSend.length * 30) / 60);
-  const tempoMax = Math.ceil((contactsToSend.length * 120) / 60);
-  
-  if (!confirm(`🚀 Iniciar disparo para ${contactsToSend.length} contatos selecionados?\n\n⏰ Tempo estimado: ${tempoMin} a ${tempoMax} minutos\n🔒 Delay de segurança: 30s a 2min entre mensagens`)) {
-    return;
-  }
-
-  // Configurar interface para envio
-  envioAtivo = true;
-  const sendBtn = document.getElementById('sendBtn');
-  const stopBtn = document.getElementById('stopBtn');
-  const progBar = document.getElementById('progBar');
-  const progressText = document.getElementById('progressText');
-  const statusDiv = document.getElementById('status');
-  
-  sendBtn.disabled = true;
-  sendBtn.innerHTML = '<i class="fas fa-play me-2"></i>⏳ ENVIANDO...';
-  stopBtn.style.display = 'block';
-  progBar.style.width = '0%';
-  progressText.textContent = '0%';
-  
-  let completed = 0;
-  let successCount = 0;
-  let errorCount = 0;
-
-  // Enviar mensagens COM DELAY ALEATÓRIO
-  for (const contact of contactsToSend) {
-    if (!envioAtivo) break;
-    
-    const message = renderMessage(template, contact);
-    
-    try {
-      const res = await fetch(`${SERVER_URL}/webhook/send`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          number: contact.number, 
-          message: message, 
-          category: selectedCat, 
-          meta: { name: contact.name } 
-        })
-      });
-      
-      const result = await res.json();
-      
-      if (result.success) {
-        successCount++;
-        console.log(`✅ Enviado para: ${contact.name} (${contact.number})`);
-      } else {
-        errorCount++;
-        console.error(`❌ Erro para ${contact.name}:`, result.error);
-      }
-    } catch (err) {
-      errorCount++;
-      console.error(`❌ Erro de conexão para ${contact.name}:`, err);
-    }
-    
-    // Atualizar progresso
-    completed++;
-    const progress = Math.round((completed / contactsToSend.length) * 100);
-    progBar.style.width = progress + '%';
-    progressText.textContent = `${progress}%`;
-    
-    // Aplicar delay aleatório entre mensagens (30s a 60s) - exceto na última
-    if (envioAtivo && completed < contactsToSend.length) {
-      const delaySeconds = Math.floor(Math.random() * (60 - 30 + 1)) + 30;
-      
-      statusDiv.innerHTML = `
-        <div class="text-center">
-          <strong><i class="fas fa-paper-plane me-2"></i>Enviando: ${completed} / ${contactsToSend.length}</strong><br>
-          <small><i class="fas fa-check-circle text-success me-1"></i>Sucessos: ${successCount} | <i class="fas fa-times-circle text-danger me-1"></i>Erros: ${errorCount}</small>
-          <div class="mt-1">
-            <small class="text-warning"><i class="fas fa-clock me-1"></i>Próxima mensagem em ${delaySeconds} segundos...</small>
-          </div>
-        </div>
-      `;
-      
-      console.log(`⏰ Aguardando ${delaySeconds} segundos para próxima mensagem...`);
-      
-      // Aguardar o delay
-      await new Promise(resolve => setTimeout(resolve, delaySeconds * 1000));
-    } else {
-      statusDiv.innerHTML = `
-        <div class="text-center">
-          <strong><i class="fas fa-paper-plane me-2"></i>Enviando: ${completed} / ${contactsToSend.length}</strong><br>
-          <small><i class="fas fa-check-circle text-success me-1"></i>Sucessos: ${successCount} | <i class="fas fa-times-circle text-danger me-1"></i>Erros: ${errorCount}</small>
-        </div>
-      `;
-    }
-  }
-
-  // Finalizar
-  finalizarEnvio(successCount, errorCount, contactsToSend.length);
-}
-
-function pararEnvio() {
-  envioAtivo = false;
-  const stopBtn = document.getElementById('stopBtn');
-  const statusDiv = document.getElementById('status');
-  
-  stopBtn.style.display = 'none';
-  statusDiv.innerHTML = '<div class="alert alert-warning"><i class="fas fa-stop-circle me-2"></i>Envio interrompido pelo usuário</div>';
-}
-
-function finalizarEnvio(successCount, errorCount, totalEnviados) {
-  envioAtivo = false;
-  const sendBtn = document.getElementById('sendBtn');
-  const stopBtn = document.getElementById('stopBtn');
-  const progBar = document.getElementById('progBar');
-  const progressText = document.getElementById('progressText');
-  const statusDiv = document.getElementById('status');
-  
-  // ✅ RESETAR TODA A INTERFACE
-  sendBtn.disabled = false;
-  sendBtn.innerHTML = '<i class="fas fa-play me-2"></i>INICIAR DISPARO EM MASSA';
-  stopBtn.style.display = 'none';
-  progBar.style.width = '100%';
-  progBar.classList.remove('progress-bar-animated');
-  progressText.textContent = '100%';
-  
-  let message = `✅ Disparo concluído!\n\n`;
-  message += `📊 Total selecionado: ${totalEnviados}\n`;
-  message += `✅ Mensagens enviadas: ${successCount}\n`;
-  
-  if (errorCount > 0) {
-    message += `❌ Erros: ${errorCount}`;
-  }
-  
-  alert(message);
-  
-  statusDiv.innerHTML = `
-    <div class="alert alert-success">
-      <strong><i class="fas fa-check-circle me-2"></i>Disparo Concluído!</strong><br>
-      <i class="fas fa-chart-bar me-1"></i>Total selecionado: ${totalEnviados} contatos<br>
-      <i class="fas fa-check-circle me-1"></i>Sucessos: ${successCount} mensagens<br>
-      ${errorCount > 0 ? `<i class="fas fa-times-circle me-1"></i>Erros: ${errorCount} mensagens` : '<i class="fas fa-party-horn me-1"></i>Todos os envios foram bem-sucedidos!'}
-    </div>
-  `;
-  
-  console.log('✅ Interface resetada após envio');
-}
-
-console.log('✅ Sistema carregado com sucesso!');
-console.log('🔒 Modo seguro ativo: Delay aleatório de 30s a 60s entre mensagens');
-console.log('📄 Sistema de paginação ativo: Selecione contatos específicos para envio');
-console.log('👑 Controle administrativo: Botão de reset visível apenas para admin');
+        // Carregar tema salvo
+        document.addEventListener('DOMContentLoaded', () => {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            document.body.setAttribute('data-theme', savedTheme);
+            
+            const icon = document.querySelector('.header-actions .btn i');
+            if (icon) {
+                icon.className = savedTheme === 'dark' ? 'fas fa-sun' : 'fas fa-moon';
+            }
+        });
 </script>
 </body>
 </html>
