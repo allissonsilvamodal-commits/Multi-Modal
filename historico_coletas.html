@@ -1,0 +1,783 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Histórico de Coletas - Portal de Ferramentas</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/permissions.js"></script>
+    <style>
+        :root {
+            --azul-escuro: #002776;
+            --vermelho: #C60C30;
+            --branco: #FFFFFF;
+            --cinza-claro: #F5F5F5;
+            --cinza-escuro: #333333;
+            --gradient-primary: linear-gradient(135deg, #002776 0%, #0044AA 100%);
+            --gradient-success: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            --gradient-danger: linear-gradient(135deg, #C60C30 0%, #E63946 100%);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+            background-attachment: fixed;
+            color: var(--cinza-escuro);
+            line-height: 1.6;
+            min-height: 100vh;
+            padding: 2rem;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: var(--gradient-primary);
+            color: var(--branco);
+            padding: 2rem;
+            border-radius: 20px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            margin-bottom: 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1.5rem;
+        }
+
+        .header-title {
+            font-size: 2.5rem;
+            font-weight: 800;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .back-btn {
+            background: rgba(255, 255, 255, 0.2);
+            color: var(--branco);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            padding: 0.8rem 1.5rem;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-weight: 600;
+        }
+
+        .back-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 2rem;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.2);
+        }
+
+        .stat-value {
+            font-size: 3rem;
+            font-weight: 900;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-label {
+            font-size: 1rem;
+            color: #6c757d;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .stat-value.ganhou { color: #28a745; }
+        .stat-value.perdeu { color: #dc3545; }
+        .stat-value.total { color: var(--azul-escuro); }
+
+        .filters {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 1.5rem;
+            border-radius: 20px;
+            margin-bottom: 2rem;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .filter-group {
+            flex: 1;
+            min-width: 200px;
+        }
+
+        .filter-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            color: var(--cinza-escuro);
+        }
+
+        .filter-group select {
+            width: 100%;
+            padding: 0.8rem;
+            border: 2px solid #e9ecef;
+            border-radius: 10px;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+        }
+
+        .filter-group select:focus {
+            outline: none;
+            border-color: var(--azul-escuro);
+            box-shadow: 0 0 0 3px rgba(0, 39, 118, 0.1);
+        }
+
+        .coletas-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 2rem;
+        }
+
+        .coleta-card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 2rem;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .coleta-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 5px;
+            background: var(--gradient-primary);
+        }
+
+        .coleta-card.ganhou::before {
+            background: var(--gradient-success);
+        }
+
+        .coleta-card.perdeu::before {
+            background: var(--gradient-danger);
+        }
+
+        .coleta-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.2);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 1.5rem;
+        }
+
+        .coleta-id {
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            color: #6c757d;
+            font-weight: 600;
+        }
+
+        .resultado-badge {
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 700;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .resultado-badge.ganhou {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            color: white;
+        }
+
+        .resultado-badge.perdeu {
+            background: linear-gradient(135deg, #C60C30 0%, #E63946 100%);
+            color: white;
+        }
+
+        .card-body {
+            margin-bottom: 1rem;
+        }
+
+        .info-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 0.8rem;
+            color: var(--cinza-escuro);
+        }
+
+        .info-item i {
+            color: var(--azul-escuro);
+            width: 20px;
+        }
+
+        .card-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-top: 1rem;
+            border-top: 2px solid #e9ecef;
+        }
+
+        .data-info {
+            font-size: 0.85rem;
+            color: #6c757d;
+        }
+
+        .empty-state {
+            grid-column: 1 / -1;
+            text-align: center;
+            padding: 4rem 2rem;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        .empty-state i {
+            font-size: 5rem;
+            color: #6c757d;
+            opacity: 0.5;
+            margin-bottom: 1rem;
+        }
+
+        .empty-state h3 {
+            color: var(--cinza-escuro);
+            margin-bottom: 0.5rem;
+        }
+
+        .empty-state p {
+            color: #6c757d;
+        }
+
+        @media (max-width: 768px) {
+            .coletas-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            
+            .filters {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div>
+                <h1 class="header-title">
+                    <i class="fas fa-history"></i>
+                    Histórico de Coletas
+                </h1>
+                <p style="margin-top: 0.5rem; opacity: 0.9;">Visualize todas as coletas finalizadas (ganhas e perdidas)</p>
+            </div>
+            <a href="coletas.html" class="back-btn">
+                <i class="fas fa-arrow-left"></i>
+                Voltar para Coletas
+            </a>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-value ganhou" id="totalGanhou">0</div>
+                <div class="stat-label">
+                    <i class="fas fa-trophy"></i>
+                    Coletas Ganhas
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value perdeu" id="totalPerdeu">0</div>
+                <div class="stat-label">
+                    <i class="fas fa-times-circle"></i>
+                    Coletas Perdidas
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value total" id="totalFinalizadas">0</div>
+                <div class="stat-label">
+                    <i class="fas fa-check-double"></i>
+                    Total Finalizadas
+                </div>
+            </div>
+        </div>
+
+        <div class="filters">
+            <div class="filter-group">
+                <label for="resultadoFilter"><i class="fas fa-filter"></i> Resultado</label>
+                <select id="resultadoFilter" onchange="filterColetas()">
+                    <option value="">Todos os Resultados</option>
+                    <option value="ganhou">Ganhou</option>
+                    <option value="perdeu">Perdeu</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label for="periodFilter"><i class="fas fa-calendar"></i> Período</label>
+                <select id="periodFilter" onchange="filterColetas()">
+                    <option value="todos">Todos</option>
+                    <option value="hoje">Hoje</option>
+                    <option value="semana">Esta Semana</option>
+                    <option value="mes">Este Mês</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label for="searchFilter"><i class="fas fa-search"></i> Buscar</label>
+                <input type="text" id="searchFilter" placeholder="Buscar por cliente..." oninput="filterColetas()" style="width: 100%; padding: 0.8rem; border: 2px solid #e9ecef; border-radius: 10px; font-size: 1rem;">
+            </div>
+        </div>
+
+        <div class="coletas-grid" id="coletasGrid">
+            <div class="empty-state">
+                <i class="fas fa-spinner fa-spin"></i>
+                <h3>Carregando histórico...</h3>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Detalhes da Coleta -->
+    <div class="modal-overlay" id="modalDetalhes" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
+        <div class="modal-content" style="background: white; max-width: 800px; width: 90%; max-height: 90vh; overflow-y: auto; border-radius: 20px; padding: 2rem; position: relative;">
+            <button onclick="fecharModalDetalhes()" style="position: absolute; top: 1rem; right: 1rem; background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #666;">
+                <i class="fas fa-times"></i>
+            </button>
+            <h2 style="margin-bottom: 1.5rem;">Detalhes da Coleta</h2>
+            <div id="modalDetalhesContent"></div>
+            <div id="modalHistoricoMovimentacoes" style="margin-top: 2rem;"></div>
+            <div style="margin-top: 2rem; display: flex; gap: 1rem; justify-content: flex-end;">
+                <button onclick="fecharModalDetalhes()" style="padding: 0.8rem 1.5rem; border: 2px solid #ccc; background: white; border-radius: 10px; cursor: pointer; font-weight: 600;">
+                    Fechar
+                </button>
+                <button onclick="reabrirColeta()" id="btnReabrirColeta" style="padding: 0.8rem 1.5rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 10px; cursor: pointer; font-weight: 600; display: none;">
+                    <i class="fas fa-redo"></i> Reabrir Coleta
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let supabase;
+        let historicoColetas = [];
+        let currentUser = null;
+
+        document.addEventListener('DOMContentLoaded', async function() {
+            console.log('📜 Iniciando historico_coletas.html...');
+            
+            await verificarEAplicarPermissao('coletas');
+            await inicializarSupabase();
+            await verificarAutenticacao();
+            await carregarHistoricoColetas();
+        });
+
+        async function inicializarSupabase() {
+            try {
+                const response = await fetch('/api/supabase-config');
+                const config = await response.json();
+                supabase = window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey);
+                console.log('✅ Supabase inicializado');
+            } catch (error) {
+                console.error('❌ Erro:', error);
+            }
+        }
+
+        async function verificarAutenticacao() {
+            try {
+                const loggedInUserData = localStorage.getItem('loggedInUser');
+                if (loggedInUserData) {
+                    const userData = JSON.parse(loggedInUserData);
+                    currentUser = userData;
+                } else {
+                    window.location.href = 'login.html';
+                }
+            } catch (error) {
+                window.location.href = 'login.html';
+            }
+        }
+
+        async function carregarHistoricoColetas() {
+            try {
+                console.log('📚 Carregando coletas arquivadas...');
+                
+                const { data, error } = await supabase
+                    .from('coletas')
+                    .select('*')
+                    .eq('arquivado', true)
+                    .order('data_finalizacao', { ascending: false });
+
+                if (error) throw error;
+
+                historicoColetas = data || [];
+                console.log('📚 Coletas arquivadas carregadas:', historicoColetas.length);
+                
+                atualizarEstatisticas();
+                renderColetas();
+                
+            } catch (error) {
+                console.error('❌ Erro ao carregar histórico:', error);
+            }
+        }
+
+        function atualizarEstatisticas() {
+            const ganhou = historicoColetas.filter(c => c.resultado_final === 'ganhou').length;
+            const perdeu = historicoColetas.filter(c => c.resultado_final === 'perdeu').length;
+            
+            document.getElementById('totalGanhou').textContent = ganhou;
+            document.getElementById('totalPerdeu').textContent = perdeu;
+            document.getElementById('totalFinalizadas').textContent = historicoColetas.length;
+        }
+
+        function filterColetas() {
+            const resultadoFilter = document.getElementById('resultadoFilter').value;
+            const periodFilter = document.getElementById('periodFilter').value;
+            const searchFilter = document.getElementById('searchFilter').value.toLowerCase();
+
+            let filtered = historicoColetas;
+
+            // Filtrar por resultado
+            if (resultadoFilter) {
+                filtered = filtered.filter(c => c.resultado_final === resultadoFilter);
+            }
+
+            // Filtrar por período
+            if (periodFilter !== 'todos') {
+                const hoje = new Date();
+                filtered = filtered.filter(c => {
+                    const dataFinal = new Date(c.data_finalizacao);
+                    switch(periodFilter) {
+                        case 'hoje': return dataFinal.toDateString() === hoje.toDateString();
+                        case 'semana': 
+                            const umaSemanaAtras = new Date(hoje.getTime() - 7 * 24 * 60 * 60 * 1000);
+                            return dataFinal >= umaSemanaAtras;
+                        case 'mes':
+                            const umMesAtras = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+                            return dataFinal >= umMesAtras;
+                        default: return true;
+                    }
+                });
+            }
+
+            // Filtrar por busca
+            if (searchFilter) {
+                filtered = filtered.filter(c => 
+                    (c.cliente && c.cliente.toLowerCase().includes(searchFilter)) ||
+                    (c.titulo && c.titulo.toLowerCase().includes(searchFilter)) ||
+                    (c.id && c.id.toLowerCase().includes(searchFilter))
+                );
+            }
+
+            renderColetas(filtered);
+        }
+
+        function renderColetas(dataToRender = historicoColetas) {
+            const grid = document.getElementById('coletasGrid');
+
+            if (dataToRender.length === 0) {
+                grid.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-inbox"></i>
+                        <h3>Nenhuma coleta arquivada encontrada</h3>
+                        <p>As coletas finalizadas aparecerão aqui</p>
+                    </div>
+                `;
+                return;
+            }
+
+            grid.innerHTML = dataToRender.map(coleta => `
+                <div class="coleta-card ${coleta.resultado_final}" onclick="abrirModalDetalhes('${coleta.id}')" style="cursor: pointer;">
+                    <div class="card-header">
+                        <div class="coleta-id">#${coleta.id.substring(0, 8)}</div>
+                        <div class="resultado-badge ${coleta.resultado_final}">
+                            <i class="fas ${coleta.resultado_final === 'ganhou' ? 'fa-trophy' : 'fa-times-circle'}"></i>
+                            ${coleta.resultado_final === 'ganhou' ? 'GANHOU' : 'PERDEU'}
+                        </div>
+                    </div>
+                    
+                    <div class="card-body">
+                        <div class="info-item">
+                            <i class="fas fa-building"></i>
+                            <strong>Cliente:</strong> ${coleta.cliente || 'Não informado'}
+                        </div>
+                        <div class="info-item">
+                            <i class="fas fa-file-alt"></i>
+                            <strong>Título:</strong> ${coleta.titulo || 'Não informado'}
+                        </div>
+                        <div class="info-item">
+                            <i class="fas fa-map-marker-alt"></i>
+                            <strong>Origem:</strong> ${coleta.origem || 'Não informado'}
+                        </div>
+                        <div class="info-item">
+                            <i class="fas fa-map-marker-alt"></i>
+                            <strong>Destino:</strong> ${coleta.destino || 'Não informado'}
+                        </div>
+                    </div>
+
+                    <div class="card-footer">
+                        <div class="data-info">
+                            <i class="fas fa-calendar"></i>
+                            ${formatarData(coleta.data_finalizacao || coleta.created_at)}
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function formatarData(dateString) {
+            if (!dateString) return 'N/A';
+            const date = new Date(dateString);
+            return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        }
+
+        let coletaSelecionadaId = null;
+        let coletaSelecionada = null;
+
+        async function abrirModalDetalhes(coletaId) {
+            try {
+                // Buscar detalhes completos da coleta
+                const { data, error } = await supabase
+                    .from('coletas')
+                    .select('*')
+                    .eq('id', coletaId)
+                    .single();
+
+                if (error) throw error;
+
+                coletaSelecionada = data;
+                coletaSelecionadaId = coletaId;
+
+                // Renderizar detalhes com campos corretos da tabela
+                const contentDiv = document.getElementById('modalDetalhesContent');
+                contentDiv.innerHTML = `
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+                        <div>
+                            <h4 style="color: #667eea; margin-bottom: 0.5rem;"><i class="fas fa-info-circle"></i> Informações Básicas</h4>
+                            <p><strong>Cliente:</strong> ${data.cliente || 'N/A'}</p>
+                            <p><strong>Filial:</strong> ${data.filial || 'N/A'}</p>
+                            <p><strong>Prioridade:</strong> ${data.prioridade || 'N/A'}</p>
+                            <p><strong>Status:</strong> ${data.status || 'N/A'}</p>
+                            <p><strong>Etapa:</strong> ${data.etapa_atual || 'N/A'}</p>
+                        </div>
+                        <div>
+                            <h4 style="color: #667eea; margin-bottom: 0.5rem;"><i class="fas fa-route"></i> Localização</h4>
+                            <p><strong>Origem:</strong> ${data.origem || 'N/A'}</p>
+                            <p><strong>Destino:</strong> ${data.destino || 'N/A'}</p>
+                            <p><strong>KM:</strong> ${data.km || 0} km</p>
+                            <p><strong>Veículo:</strong> ${data.veiculo || 'N/A'}</p>
+                            <p><strong>Motorista ID:</strong> ${data.motorista_id || 'N/A'}</p>
+                        </div>
+                        <div>
+                            <h4 style="color: #667eea; margin-bottom: 0.5rem;"><i class="fas fa-calendar"></i> Datas</h4>
+                            <p><strong>Criado em:</strong> ${formatarData(data.created_at)}</p>
+                            <p><strong>Recebimento:</strong> ${formatarData(data.data_recebimento)}</p>
+                            <p><strong>Finalizada em:</strong> ${formatarData(data.data_finalizacao)}</p>
+                            <p><strong>Atualizado em:</strong> ${formatarData(data.updated_at)}</p>
+                        </div>
+                        <div>
+                            <h4 style="color: #667eea; margin-bottom: 0.5rem;"><i class="fas fa-money-bill-wave"></i> Financeiro</h4>
+                            <p><strong>Valor:</strong> R$ ${(data.valor || 0).toFixed(2)}</p>
+                            <p><strong>Resultado:</strong> <span style="color: ${data.resultado_final === 'ganhou' ? '#28a745' : '#dc3545'}; font-weight: bold;">${data.resultado_final ? (data.resultado_final === 'ganhou' ? 'GANHOU' : 'PERDEU') : 'N/A'}</span></p>
+                            ${data.gr_aprovado ? `<p style="color: #28a745;"><strong>GR:</strong> Aprovado por ${data.gr_aprovado_por}</p>` : ''}
+                            <p><strong>Observações:</strong> ${data.observacoes || 'Nenhuma'}</p>
+                        </div>
+                    </div>
+                `;
+
+                // Buscar histórico de movimentações
+                await carregarHistoricoMovimentacoes(coletaId);
+
+                // Mostrar botão de reabrir
+                document.getElementById('btnReabrirColeta').style.display = 'inline-block';
+
+                // Mostrar modal
+                document.getElementById('modalDetalhes').style.display = 'flex';
+
+            } catch (error) {
+                console.error('❌ Erro ao abrir detalhes:', error);
+                alert('Erro ao carregar detalhes da coleta');
+            }
+        }
+
+        function fecharModalDetalhes() {
+            document.getElementById('modalDetalhes').style.display = 'none';
+            coletaSelecionadaId = null;
+            coletaSelecionada = null;
+        }
+
+        async function carregarHistoricoMovimentacoes(coletaId) {
+            try {
+                const { data, error } = await supabase
+                    .from('historico_movimentacoes')
+                    .select('*')
+                    .eq('coleta_id', coletaId)
+                    .order('created_at', { ascending: false });
+
+                if (error) throw error;
+
+                const historicoDiv = document.getElementById('modalHistoricoMovimentacoes');
+                
+                if (data && data.length > 0) {
+                    historicoDiv.innerHTML = `
+                        <h4 style="color: #667eea; margin-bottom: 1rem;"><i class="fas fa-history"></i> Histórico de Movimentações</h4>
+                        <div style="max-height: 300px; overflow-y: auto;">
+                            ${data.map(mov => `
+                                <div style="padding: 1rem; margin-bottom: 0.5rem; background: #f8f9fa; border-radius: 10px; border-left: 4px solid #667eea;">
+                                    <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                                        <strong>${mov.acao || 'Movimentação'}</strong>
+                                        <small style="color: #666;">${formatarDataEHora(mov.created_at)}</small>
+                                    </div>
+                                    <div style="color: #666; font-size: 0.9rem;">
+                                        <i class="fas fa-user"></i> ${mov.usuario_nome || 'Desconhecido'}
+                                    </div>
+                                    ${mov.detalhes ? `<div style="margin-top: 0.5rem; font-style: italic;">${mov.detalhes}</div>` : ''}
+                                </div>
+                            `).join('')}
+                        </div>
+                    `;
+                } else {
+                    historicoDiv.innerHTML = `<p style="color: #999; font-style: italic;">Nenhuma movimentação registrada</p>`;
+                }
+
+            } catch (error) {
+                console.error('❌ Erro ao carregar histórico:', error);
+            }
+        }
+
+        function formatarDataEHora(dateString) {
+            if (!dateString) return 'N/A';
+            const date = new Date(dateString);
+            return date.toLocaleString('pt-BR');
+        }
+
+        async function reabrirColeta() {
+            if (!coletaSelecionadaId || !coletaSelecionada) {
+                alert('Erro: Coleta não selecionada');
+                return;
+            }
+
+            if (!confirm('Deseja reabrir esta coleta? Ela voltará para a etapa atual e não ficará mais arquivada.')) {
+                return;
+            }
+
+            try {
+                console.log('🔄 Reabrindo coleta:', coletaSelecionadaId);
+
+                // Atualizar coleta: desarquivar e mudar status
+                const { error: updateError } = await supabase
+                    .from('coletas')
+                    .update({
+                        arquivado: false,
+                        status: 'em_andamento',
+                        resultado_final: null,
+                        data_finalizacao: null
+                    })
+                    .eq('id', coletaSelecionadaId);
+
+                if (updateError) throw updateError;
+
+                // Registrar no histórico de movimentações
+                const userData = JSON.parse(localStorage.getItem('loggedInUser'));
+                
+                const { error: histError } = await supabase
+                    .from('historico_movimentacoes')
+                    .insert({
+                        coleta_id: coletaSelecionadaId,
+                        acao: 'Reabertura',
+                        detalhes: `Coleta reaberta da etapa "${coletaSelecionada.etapa_atual}". Status: ${coletaSelecionada.resultado_final}`,
+                        usuario_id: userData.id,
+                        usuario_nome: userData.email,
+                        created_at: new Date().toISOString()
+                    });
+
+                if (histError) {
+                    console.error('❌ Erro ao registrar histórico:', histError);
+                    // Não bloquear a operação por causa do histórico
+                }
+
+                console.log('✅ Coleta reaberta com sucesso!');
+
+                // Mostrar notificação
+                showNotification('Coleta reaberta com sucesso!', 'success');
+
+                // Fechar modal e recarregar
+                fecharModalDetalhes();
+                await carregarHistoricoColetas();
+
+                // Opcional: redirecionar para coletas.html
+                setTimeout(() => {
+                    if (confirm('Coleta reaberta! Deseja ir para a página de coletas ativas?')) {
+                        window.location.href = 'coletas.html';
+                    }
+                }, 1000);
+
+            } catch (error) {
+                console.error('❌ Erro ao reabrir coleta:', error);
+                alert('Erro ao reabrir coleta. Tente novamente.');
+            }
+        }
+
+        function showNotification(message, type = 'info') {
+            const notification = document.createElement('div');
+            notification.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                padding: 1rem 2rem;
+                background: ${type === 'success' ? '#28a745' : '#dc3545'};
+                color: white;
+                border-radius: 10px;
+                box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+                z-index: 10000;
+                animation: slideIn 0.3s ease;
+            `;
+            notification.innerHTML = `<i class="fas fa-${type === 'success' ? 'check' : 'exclamation'}-circle"></i> ${message}`;
+            document.body.appendChild(notification);
+
+            setTimeout(() => {
+                notification.style.animation = 'slideOut 0.3s ease';
+                setTimeout(() => notification.remove(), 300);
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
+

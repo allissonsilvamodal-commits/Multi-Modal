@@ -1,0 +1,776 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Monitoramento - Multimodal Logística</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --primary: #667eea;
+            --secondary: #764ba2;
+            --success: #11998e;
+            --warning: #ffc107;
+            --danger: #dc3545;
+            --info: #17a2b8;
+            --light: #f8f9fa;
+            --dark: #343a40;
+            --white: #ffffff;
+            --border-radius: 12px;
+            --box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            --transition: all 0.3s ease;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            min-height: 100vh;
+            color: var(--dark);
+        }
+
+        .navbar {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: var(--box-shadow);
+        }
+
+        .navbar-brand {
+            font-weight: 700;
+            color: var(--primary) !important;
+            font-size: 1.5rem;
+        }
+
+        .main-container {
+            padding: 2rem 0;
+            min-height: calc(100vh - 76px);
+        }
+
+        .card {
+            border: none;
+            border-radius: var(--border-radius);
+            box-shadow: var(--box-shadow);
+            background: var(--white);
+            transition: var(--transition);
+            margin-bottom: 1.5rem;
+        }
+
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+        }
+
+        .card-header {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: var(--white);
+            border-radius: var(--border-radius) var(--border-radius) 0 0 !important;
+            padding: 1.5rem;
+            border: none;
+        }
+
+        .metric-card {
+            background: linear-gradient(135deg, var(--success), #11998e);
+            color: var(--white);
+            border-radius: var(--border-radius);
+            padding: 1.5rem;
+            text-align: center;
+            transition: var(--transition);
+        }
+
+        .metric-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(17, 153, 142, 0.3);
+        }
+
+        .metric-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        .metric-label {
+            font-size: 1rem;
+            opacity: 0.9;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .status-online {
+            background-color: var(--success);
+            animation: pulse 2s infinite;
+        }
+
+        .status-offline {
+            background-color: var(--danger);
+        }
+
+        .status-warning {
+            background-color: var(--warning);
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        .chart-container {
+            position: relative;
+            height: 300px;
+            margin: 1rem 0;
+        }
+
+        .alert-modern {
+            border: none;
+            border-radius: var(--border-radius);
+            padding: 1rem 1.5rem;
+            margin-bottom: 1rem;
+            font-weight: 500;
+        }
+
+        .alert-success {
+            background: linear-gradient(135deg, #d4edda, #c3e6cb);
+            color: #155724;
+        }
+
+        .alert-danger {
+            background: linear-gradient(135deg, #f8d7da, #f5c6cb);
+            color: #721c24;
+        }
+
+        .alert-warning {
+            background: linear-gradient(135deg, #fff3cd, #ffeaa7);
+            color: #856404;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            border: none;
+            border-radius: 8px;
+            padding: 0.75rem 1.5rem;
+            font-weight: 600;
+            transition: var(--transition);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: var(--white);
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .table-modern {
+            background: var(--white);
+            border-radius: var(--border-radius);
+            overflow: hidden;
+            box-shadow: var(--box-shadow);
+        }
+
+        .table-modern th {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: var(--white);
+            border: none;
+            font-weight: 600;
+            padding: 1rem;
+        }
+
+        .table-modern td {
+            padding: 1rem;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+            vertical-align: middle;
+        }
+
+        .table-modern tbody tr:hover {
+            background-color: rgba(102, 126, 234, 0.05);
+        }
+
+        .badge-modern {
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 0.875rem;
+        }
+
+        .badge-success {
+            background: linear-gradient(135deg, var(--success), #11998e);
+            color: var(--white);
+        }
+
+        .badge-danger {
+            background: linear-gradient(135deg, var(--danger), #c82333);
+            color: var(--white);
+        }
+
+        .badge-warning {
+            background: linear-gradient(135deg, var(--warning), #e0a800);
+            color: var(--dark);
+        }
+
+        .badge-info {
+            background: linear-gradient(135deg, var(--info), #138496);
+            color: var(--white);
+        }
+
+        /* Dark Mode */
+        body.dark-mode {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: #ffffff;
+        }
+
+        body.dark-mode .navbar {
+            background: rgba(10, 10, 10, 0.95);
+        }
+
+        body.dark-mode .navbar * {
+            color: #ffffff !important;
+        }
+
+        body.dark-mode .card {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        body.dark-mode .table-modern {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+        }
+
+        body.dark-mode .table-modern td {
+            color: #ffffff;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        body.dark-mode .table-modern tbody tr:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+    </style>
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-light">
+        <div class="container">
+            <a class="navbar-brand" href="portal.html">
+                <i class="fas fa-chart-line me-2"></i>
+                Monitoramento - Multimodal
+            </a>
+            <div class="navbar-nav ms-auto">
+                <div class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                        <i class="fas fa-user me-2"></i>
+                        <span id="currentUser">Carregando...</span>
+                    </a>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="portal.html"><i class="fas fa-home me-2"></i>Portal</a></li>
+                        <li><a class="dropdown-item" href="painel.html"><i class="fas fa-tachometer-alt me-2"></i>Painel</a></li>
+                        <li><a class="dropdown-item" href="cadastro.html"><i class="fas fa-truck me-2"></i>Motoristas</a></li>
+                        <li><a class="dropdown-item" href="relatorios.html"><i class="fas fa-chart-bar me-2"></i>Relatórios</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" href="#" onclick="logout()"><i class="fas fa-sign-out-alt me-2"></i>Sair</a></li>
+                    </ul>
+                </div>
+                <button class="btn btn-outline-primary ms-2" id="themeToggle" onclick="toggleTheme()">
+                    <i class="fas fa-moon"></i>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Container -->
+    <div class="main-container">
+        <div class="container">
+            <!-- Alertas -->
+            <div id="alertContainer"></div>
+
+            <!-- Métricas Principais -->
+            <div class="row mb-4">
+                <div class="col-md-3">
+                    <div class="metric-card">
+                        <div class="metric-value" id="totalMotoristas">0</div>
+                        <div class="metric-label">Motoristas Ativos</div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="metric-card" style="background: linear-gradient(135deg, var(--info), #17a2b8);">
+                        <div class="metric-value" id="totalDisparos">0</div>
+                        <div class="metric-label">Disparos Hoje</div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="metric-card" style="background: linear-gradient(135deg, var(--warning), #ffc107); color: var(--dark);">
+                        <div class="metric-value" id="taxaSucesso">0%</div>
+                        <div class="metric-label">Taxa de Sucesso</div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="metric-card" style="background: linear-gradient(135deg, var(--danger), #dc3545);">
+                        <div class="metric-value" id="alertasAtivos">0</div>
+                        <div class="metric-label">Alertas Ativos</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Status dos Sistemas -->
+            <div class="row mb-4">
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="fas fa-server me-2"></i>
+                                Status dos Sistemas
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-modern">
+                                    <tbody id="statusTable">
+                                        <tr>
+                                            <td><i class="fas fa-database me-2"></i>Supabase</td>
+                                            <td><span class="status-indicator status-online"></span>Online</td>
+                                            <td><span class="badge badge-modern badge-success">Ativo</span></td>
+                                        </tr>
+                                        <tr>
+                                            <td><i class="fas fa-mobile-alt me-2"></i>Evolution API</td>
+                                            <td><span class="status-indicator status-warning"></span>Verificando...</td>
+                                            <td><span class="badge badge-modern badge-warning">Verificando</span></td>
+                                        </tr>
+                                        <tr>
+                                            <td><i class="fas fa-truck me-2"></i>Sistema de Coletas</td>
+                                            <td><span class="status-indicator status-online"></span>Online</td>
+                                            <td><span class="badge badge-modern badge-success">Ativo</span></td>
+                                        </tr>
+                                        <tr>
+                                            <td><i class="fas fa-chart-bar me-2"></i>Sistema de Relatórios</td>
+                                            <td><span class="status-indicator status-online"></span>Online</td>
+                                            <td><span class="badge badge-modern badge-success">Ativo</span></td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="fas fa-chart-line me-2"></i>
+                                Disparos por Hora
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="chart-container">
+                                <canvas id="disparosChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Atividade Recente -->
+            <div class="row">
+                <div class="col-md-8">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="fas fa-history me-2"></i>
+                                Atividade Recente
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-modern">
+                                    <thead>
+                                        <tr>
+                                            <th>Horário</th>
+                                            <th>Ação</th>
+                                            <th>Usuário</th>
+                                            <th>Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="activityTable">
+                                        <tr>
+                                            <td>14:30</td>
+                                            <td>Disparo em massa</td>
+                                            <td>Admin</td>
+                                            <td><span class="badge badge-modern badge-success">Sucesso</span></td>
+                                        </tr>
+                                        <tr>
+                                            <td>14:25</td>
+                                            <td>Cadastro de motorista</td>
+                                            <td>Admin</td>
+                                            <td><span class="badge badge-modern badge-success">Sucesso</span></td>
+                                        </tr>
+                                        <tr>
+                                            <td>14:20</td>
+                                            <td>Login do usuário</td>
+                                            <td>Admin</td>
+                                            <td><span class="badge badge-modern badge-info">Info</span></td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="fas fa-bell me-2"></i>
+                                Alertas
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div id="alertsList">
+                                <div class="alert alert-modern alert-success">
+                                    <i class="fas fa-check-circle me-2"></i>
+                                    Sistema funcionando normalmente
+                                </div>
+                                <div class="alert alert-modern alert-warning">
+                                    <i class="fas fa-exclamation-triangle me-2"></i>
+                                    Verificar conexão Evolution API
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script>
+        // ========== CONFIGURAÇÕES SUPABASE ==========
+        let supabase = null;
+        let currentUser = null;
+        let chart = null;
+
+        // ========== INICIALIZAÇÃO ==========
+        document.addEventListener('DOMContentLoaded', async function() {
+            console.log('🚀 Monitoramento inicializando...');
+            
+            await inicializarSupabase();
+            await verificarAutenticacao();
+            await carregarDados();
+            inicializarChart();
+            configurarAtualizacaoAutomatica();
+            
+            console.log('✅ Monitoramento carregado com sucesso!');
+        });
+
+        // ========== SUPABASE ==========
+        async function inicializarSupabase() {
+            try {
+                const response = await fetch('/api/supabase-config');
+                if (!response.ok) {
+                    throw new Error('Erro ao buscar configurações');
+                }
+                
+                const config = await response.json();
+                supabase = window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey);
+                window.supabase = supabase;
+                
+                console.log('✅ Supabase inicializado no monitoramento');
+                return true;
+            } catch (error) {
+                console.error('❌ Erro ao inicializar Supabase:', error);
+                mostrarAlerta('Erro ao conectar com o banco de dados', 'danger');
+                return false;
+            }
+        }
+
+        // ========== AUTENTICAÇÃO ==========
+        async function verificarAutenticacao() {
+            try {
+                console.log('🔐 Verificando autenticação...');
+                
+                const loggedInUserData = localStorage.getItem('loggedInUser');
+                if (loggedInUserData) {
+                    const userData = JSON.parse(loggedInUserData);
+                    const now = Date.now();
+                    const sessionAge = now - userData.loginTimestamp;
+                    const SESSION_TIMEOUT = 12 * 60 * 60 * 1000;
+                    
+                    if (sessionAge < SESSION_TIMEOUT && userData.authenticated) {
+                        currentUser = {
+                            id: userData.id,
+                            email: userData.email,
+                            username: userData.username,
+                            nome: userData.username,
+                            isAdmin: userData.isAdmin || userData.role === 'admin',
+                            role: userData.role || 'user'
+                        };
+                        
+                        const currentUserElement = document.getElementById('currentUser');
+                        if (currentUserElement) {
+                            currentUserElement.textContent = currentUser.username;
+                        }
+                        
+                        console.log('✅ Usuário autenticado:', currentUser.username);
+                        return currentUser;
+                    } else {
+                        localStorage.removeItem('loggedInUser');
+                    }
+                }
+                
+                console.log('❌ Usuário não autenticado, redirecionando...');
+                window.location.href = 'login.html';
+                return null;
+                
+            } catch (error) {
+                console.error('❌ Erro na verificação de autenticação:', error);
+                window.location.href = 'login.html';
+                return null;
+            }
+        }
+
+        // ========== CARREGAR DADOS ==========
+        async function carregarDados() {
+            try {
+                await carregarMetricas();
+                await verificarStatusSistemas();
+                await carregarAtividadeRecente();
+            } catch (error) {
+                console.error('❌ Erro ao carregar dados:', error);
+                mostrarAlerta('Erro ao carregar dados do monitoramento', 'danger');
+            }
+        }
+
+        async function carregarMetricas() {
+            try {
+                // Simular dados - em produção, buscar do Supabase
+                document.getElementById('totalMotoristas').textContent = '127';
+                document.getElementById('totalDisparos').textContent = '342';
+                document.getElementById('taxaSucesso').textContent = '98.5%';
+                document.getElementById('alertasAtivos').textContent = '2';
+                
+                console.log('✅ Métricas carregadas');
+            } catch (error) {
+                console.error('❌ Erro ao carregar métricas:', error);
+            }
+        }
+
+        async function verificarStatusSistemas() {
+            try {
+                // Verificar Evolution API
+                const response = await fetch('/webhook/status-evolution');
+                const statusRow = document.querySelector('#statusTable tr:nth-child(2)');
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.success) {
+                        statusRow.innerHTML = `
+                            <td><i class="fas fa-mobile-alt me-2"></i>Evolution API</td>
+                            <td><span class="status-indicator status-online"></span>Online</td>
+                            <td><span class="badge badge-modern badge-success">Ativo</span></td>
+                        `;
+                    } else {
+                        statusRow.innerHTML = `
+                            <td><i class="fas fa-mobile-alt me-2"></i>Evolution API</td>
+                            <td><span class="status-indicator status-warning"></span>Problemas</td>
+                            <td><span class="badge badge-modern badge-warning">Instável</span></td>
+                        `;
+                    }
+                } else {
+                    statusRow.innerHTML = `
+                        <td><i class="fas fa-mobile-alt me-2"></i>Evolution API</td>
+                        <td><span class="status-indicator status-offline"></span>Offline</td>
+                        <td><span class="badge badge-modern badge-danger">Inativo</span></td>
+                    `;
+                }
+                
+                console.log('✅ Status dos sistemas verificado');
+            } catch (error) {
+                console.error('❌ Erro ao verificar status:', error);
+            }
+        }
+
+        async function carregarAtividadeRecente() {
+            try {
+                // Simular dados - em produção, buscar do Supabase
+                const atividades = [
+                    { horario: '14:30', acao: 'Disparo em massa', usuario: 'Admin', status: 'success' },
+                    { horario: '14:25', acao: 'Cadastro de motorista', usuario: 'Admin', status: 'success' },
+                    { horario: '14:20', acao: 'Login do usuário', usuario: 'Admin', status: 'info' },
+                    { horario: '14:15', acao: 'Atualização de configurações', usuario: 'Admin', status: 'success' },
+                    { horario: '14:10', acao: 'Verificação de sistema', usuario: 'Sistema', status: 'info' }
+                ];
+                
+                const tbody = document.getElementById('activityTable');
+                tbody.innerHTML = '';
+                
+                atividades.forEach(atividade => {
+                    const row = document.createElement('tr');
+                    const statusClass = atividade.status === 'success' ? 'badge-success' : 
+                                      atividade.status === 'danger' ? 'badge-danger' : 'badge-info';
+                    const statusText = atividade.status === 'success' ? 'Sucesso' : 
+                                     atividade.status === 'danger' ? 'Erro' : 'Info';
+                    
+                    row.innerHTML = `
+                        <td>${atividade.horario}</td>
+                        <td>${atividade.acao}</td>
+                        <td>${atividade.usuario}</td>
+                        <td><span class="badge badge-modern ${statusClass}">${statusText}</span></td>
+                    `;
+                    tbody.appendChild(row);
+                });
+                
+                console.log('✅ Atividade recente carregada');
+            } catch (error) {
+                console.error('❌ Erro ao carregar atividade:', error);
+            }
+        }
+
+        // ========== CHART ==========
+        function inicializarChart() {
+            const ctx = document.getElementById('disparosChart').getContext('2d');
+            
+            chart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: ['00h', '04h', '08h', '12h', '16h', '20h'],
+                    datasets: [{
+                        label: 'Disparos',
+                        data: [12, 8, 45, 78, 92, 67],
+                        borderColor: '#667eea',
+                        backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                        borderWidth: 3,
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.1)'
+                            }
+                        },
+                        x: {
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.1)'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // ========== ATUALIZAÇÃO AUTOMÁTICA ==========
+        function configurarAtualizacaoAutomatica() {
+            // Atualizar dados a cada 30 segundos
+            setInterval(async () => {
+                await carregarDados();
+                console.log('🔄 Dados atualizados automaticamente');
+            }, 30000);
+        }
+
+        // ========== UTILITÁRIOS ==========
+        function mostrarAlerta(mensagem, tipo = 'info') {
+            const alertContainer = document.getElementById('alertContainer');
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `alert alert-modern alert-${tipo} alert-dismissible fade show`;
+            alertDiv.innerHTML = `
+                <i class="fas fa-${tipo === 'success' ? 'check-circle' : tipo === 'danger' ? 'exclamation-circle' : 'info-circle'} me-2"></i>
+                ${mensagem}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            alertContainer.appendChild(alertDiv);
+            
+            setTimeout(() => {
+                if (alertDiv.parentNode) {
+                    alertDiv.parentNode.removeChild(alertDiv);
+                }
+            }, 5000);
+        }
+
+        function toggleTheme() {
+            const body = document.body;
+            const themeIcon = document.querySelector('#themeToggle i');
+            
+            if (body.classList.contains('dark-mode')) {
+                body.classList.remove('dark-mode');
+                themeIcon.className = 'fas fa-moon';
+                localStorage.setItem('theme', 'light');
+            } else {
+                body.classList.add('dark-mode');
+                themeIcon.className = 'fas fa-sun';
+                localStorage.setItem('theme', 'dark');
+            }
+        }
+
+        async function logout() {
+            try {
+                console.log('🚪 Fazendo logout...');
+                
+                if (window.supabase) {
+                    await window.supabase.auth.signOut();
+                }
+                
+                localStorage.removeItem('loggedInUser');
+                localStorage.removeItem('lastActivity');
+                localStorage.removeItem('permissoesData');
+                
+                console.log('✅ Logout realizado com sucesso');
+                window.location.href = 'login.html';
+            } catch (error) {
+                console.error('❌ Erro no logout:', error);
+                localStorage.removeItem('loggedInUser');
+                localStorage.removeItem('lastActivity');
+                window.location.href = 'login.html';
+            }
+        }
+
+        // ========== CARREGAR TEMA SALVO ==========
+        document.addEventListener('DOMContentLoaded', function() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            document.body.setAttribute('data-theme', savedTheme);
+            
+            if (savedTheme === 'dark') {
+                document.body.classList.add('dark-mode');
+                const themeIcon = document.querySelector('#themeToggle i');
+                if (themeIcon) {
+                    themeIcon.className = 'fas fa-sun';
+                }
+            }
+        });
+    </script>
+</body>
+</html>
