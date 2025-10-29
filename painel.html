@@ -501,6 +501,16 @@
             box-shadow: 0 8px 25px rgba(248, 150, 30, 0.3);
         }
 
+        .btn-modern-info {
+            background: linear-gradient(135deg, var(--info), #3b82f6);
+            color: white;
+        }
+
+        .btn-modern-info:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(72, 149, 239, 0.3);
+        }
+
         /* Loading */
         .loading-spinner {
       display: inline-block;
@@ -596,6 +606,31 @@
             color: white;
         }
 
+        /* Dark Mode - Botões */
+        body[data-theme="dark"] .btn-modern-primary,
+        body[data-theme="dark"] .btn-modern-success,
+        body[data-theme="dark"] .btn-modern-warning,
+        body[data-theme="dark"] .btn-modern-info {
+            color: white !important;
+            opacity: 1 !important;
+        }
+
+        body[data-theme="dark"] .btn-modern-primary {
+            background: linear-gradient(135deg, var(--primary), var(--secondary)) !important;
+        }
+
+        body[data-theme="dark"] .btn-modern-success {
+            background: linear-gradient(135deg, var(--success), #06b6d4) !important;
+        }
+
+        body[data-theme="dark"] .btn-modern-warning {
+            background: linear-gradient(135deg, var(--warning), #f97316) !important;
+        }
+
+        body[data-theme="dark"] .btn-modern-info {
+            background: linear-gradient(135deg, var(--info), #3b82f6) !important;
+        }
+
         body[data-theme="dark"] .motorista-item {
             border-bottom-color: var(--border-color);
         }
@@ -615,6 +650,38 @@
             border-color: var(--primary);
             color: var(--text-color);
     }
+
+        /* Delay Counter Styles */
+        .delay-counter-container {
+            margin-top: 1rem;
+            animation: fadeIn 0.3s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .delay-counter-number {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--info);
+            margin: 0 0.5rem;
+            display: inline-block;
+            min-width: 3rem;
+            text-align: center;
+        }
+
+        .delay-counter-container .alert {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+        }
+
+        body[data-theme="dark"] .delay-counter-number {
+            color: var(--info);
+        }
   </style>
 </head>
 <body>
@@ -794,14 +861,18 @@
                             <i class="fas fa-search me-2"></i>
                             Buscar
                         </button>
-                        <button class="btn btn-modern btn-modern-success me-2" id="btnSelecionarTodos">
+                        <button class="btn btn-modern btn-modern-success me-2 mb-2 mb-md-0" id="btnSelecionarTodos">
                             <i class="fas fa-check-double me-2"></i>
                             Selecionar Todos
                         </button>
-                        <button class="btn btn-modern btn-modern-warning" id="btnLimparSelecao">
+                        <button class="btn btn-modern btn-modern-info me-2 mb-2 mb-md-0" id="btnSelecionarPagina">
+                            <i class="fas fa-check-square me-2"></i>
+                            Selecionar Página
+                        </button>
+                        <button class="btn btn-modern btn-modern-warning mb-2 mb-md-0" id="btnLimparSelecao">
                             <i class="fas fa-times me-2"></i>
                             Limpar Seleção
-                  </button>
+                        </button>
                 </div>
               </div>
             </div>
@@ -908,6 +979,10 @@
                                         <i class="fas fa-rocket me-2"></i>
                                         Iniciar Disparo
                   </button>
+                                    <button class="btn btn-modern btn-modern-danger" id="btnPararDisparo" style="display: none;">
+                                        <i class="fas fa-stop me-2"></i>
+                                        Parar Disparo
+                  </button>
               </div>
             </div>
 
@@ -919,6 +994,15 @@
                                 <div class="text-center">
                                     <small class="text-muted" id="progressText">0 de 0 enviados</small>
               </div>
+                                <!-- Contador de Delay -->
+                                <div id="delayCounterContainer" class="delay-counter-container" style="display: none;">
+                                    <div class="alert alert-modern alert-modern-info mb-2">
+                                        <i class="fas fa-clock me-2"></i>
+                                        <strong>Aguardando próximo envio:</strong>
+                                        <span id="delayCounter" class="delay-counter-number">0</span>
+                                        <span>segundos</span>
+                                    </div>
+                                </div>
               </div>
             </div>
           </div>
@@ -1003,6 +1087,7 @@ async function inicializarSupabase() {
         let selectedMotoristas = new Set();
         let currentClass = null;
         let isDisparoAtivo = false;
+        let disparoCancelado = false;
         let totalEnviados = 0;
         let totalFalhas = 0;
         
@@ -1285,30 +1370,122 @@ const estados = [
                 console.log('✅ Filtro de estados carregado');
             }
 
-            // Carregar tipos de veículo
+            // Carregar tipos de veículo do banco de dados
             const filtroTipoVeiculo = document.getElementById('filtroTipoVeiculo');
             if (filtroTipoVeiculo) {
-                // Adicionar todos os tipos de veículo
-                const todosTipos = [...new Set(Object.values(tiposVeiculo).flat())];
-                todosTipos.forEach(tipo => {
-                    const option = document.createElement('option');
-                    option.value = tipo;
-                    option.textContent = tipo;
-                    filtroTipoVeiculo.appendChild(option);
-                });
+                try {
+                    if (supabase) {
+                        // Buscar tipos de veículo reais do banco
+                        const { data: tipos, error } = await supabase
+                            .from('motoristas')
+                            .select('tipo_veiculo')
+                            .not('tipo_veiculo', 'is', null);
+                        
+                        if (!error && tipos && tipos.length > 0) {
+                            // Extrair valores únicos
+                            const tiposUnicos = [...new Set(tipos.map(t => t.tipo_veiculo))].sort();
+                            
+                            tiposUnicos.forEach(tipo => {
+                                const option = document.createElement('option');
+                                option.value = tipo; // Usar valor exato do banco
+                                option.textContent = tipo;
+                                filtroTipoVeiculo.appendChild(option);
+                            });
+                            
+                            console.log('✅ Filtro de tipos de veículo carregado do banco:', tiposUnicos.length, tiposUnicos);
+                        } else {
+                            // Fallback: usar mapeamento estático
+                            console.warn('⚠️ Erro ao carregar tipos de veículo do banco, usando mapeamento estático');
+                            const todosTipos = [...new Set(Object.values(tiposVeiculo).flat())];
+                            todosTipos.forEach(tipo => {
+                                const option = document.createElement('option');
+                                option.value = tipo;
+                                option.textContent = tipo;
+                                filtroTipoVeiculo.appendChild(option);
+                            });
+                        }
+                    } else {
+                        // Fallback: usar mapeamento estático
+                        const todosTipos = [...new Set(Object.values(tiposVeiculo).flat())];
+                        todosTipos.forEach(tipo => {
+                            const option = document.createElement('option');
+                            option.value = tipo;
+                            option.textContent = tipo;
+                            filtroTipoVeiculo.appendChild(option);
+                        });
+                    }
+                } catch (error) {
+                    console.error('❌ Erro ao carregar tipos de veículo:', error);
+                    // Fallback: usar mapeamento estático
+                    const todosTipos = [...new Set(Object.values(tiposVeiculo).flat())];
+                    todosTipos.forEach(tipo => {
+                        const option = document.createElement('option');
+                        option.value = tipo;
+                        option.textContent = tipo;
+                        filtroTipoVeiculo.appendChild(option);
+                    });
+                }
                 
                 console.log('✅ Filtro de tipos de veículo carregado');
             }
 
-            // Carregar carrocerias
+            // Carregar carrocerias do banco de dados
             const filtroCarroceria = document.getElementById('filtroCarroceria');
             if (filtroCarroceria) {
-                Object.keys(tiposCarroceriaMap).forEach(key => {
-                    const option = document.createElement('option');
-                    option.value = key;
-                    option.textContent = tiposCarroceriaMap[key];
-                    filtroCarroceria.appendChild(option);
-                });
+                try {
+                    if (supabase) {
+                        // Buscar carrocerias reais do banco
+                        const { data: carrocerias, error } = await supabase
+                            .from('motoristas')
+                            .select('tipo_carroceria')
+                            .not('tipo_carroceria', 'is', null);
+                        
+                        if (!error && carrocerias && carrocerias.length > 0) {
+                            // Extrair valores únicos
+                            const carroceriasUnicas = [...new Set(carrocerias.map(c => c.tipo_carroceria))].sort();
+                            
+                            carroceriasUnicas.forEach(carroceria => {
+                                const option = document.createElement('option');
+                                option.value = carroceria; // Usar valor exato do banco
+                                // Tentar mapear para nome amigável, senão usar valor direto
+                                const nomeAmigavel = Object.keys(tiposCarroceriaMap).find(k => 
+                                    tiposCarroceriaMap[k].toLowerCase() === carroceria.toLowerCase() ||
+                                    k.toLowerCase() === carroceria.toLowerCase()
+                                );
+                                option.textContent = nomeAmigavel ? tiposCarroceriaMap[nomeAmigavel] : carroceria;
+                                filtroCarroceria.appendChild(option);
+                            });
+                            
+                            console.log('✅ Filtro de carrocerias carregado do banco:', carroceriasUnicas.length, carroceriasUnicas);
+                        } else {
+                            // Fallback: usar mapeamento estático
+                            console.warn('⚠️ Erro ao carregar carrocerias do banco, usando mapeamento estático');
+                            Object.keys(tiposCarroceriaMap).forEach(key => {
+                                const option = document.createElement('option');
+                                option.value = key;
+                                option.textContent = tiposCarroceriaMap[key];
+                                filtroCarroceria.appendChild(option);
+                            });
+                        }
+                    } else {
+                        // Fallback: usar mapeamento estático
+                        Object.keys(tiposCarroceriaMap).forEach(key => {
+                            const option = document.createElement('option');
+                            option.value = key;
+                            option.textContent = tiposCarroceriaMap[key];
+                            filtroCarroceria.appendChild(option);
+                        });
+                    }
+                } catch (error) {
+                    console.error('❌ Erro ao carregar carrocerias:', error);
+                    // Fallback: usar mapeamento estático
+                    Object.keys(tiposCarroceriaMap).forEach(key => {
+                        const option = document.createElement('option');
+                        option.value = key;
+                        option.textContent = tiposCarroceriaMap[key];
+                        filtroCarroceria.appendChild(option);
+                    });
+                }
                 
                 console.log('✅ Filtro de carrocerias carregado');
             }
@@ -1326,10 +1503,12 @@ const estados = [
 
             // Botões de ação
             document.getElementById('btnSelecionarTodos').addEventListener('click', selecionarTodos);
+            document.getElementById('btnSelecionarPagina').addEventListener('click', selecionarPaginaAtual);
             document.getElementById('btnLimparSelecao').addEventListener('click', limparSelecao);
             document.getElementById('btnTestarMensagem').addEventListener('click', testarMensagem);
             document.getElementById('btnTestarEnvio').addEventListener('click', testarEnvioReal);
             document.getElementById('btnIniciarDisparo').addEventListener('click', iniciarDisparo);
+            document.getElementById('btnPararDisparo').addEventListener('click', pararDisparo);
             document.getElementById('btnBuscar').addEventListener('click', aplicarFiltros);
             document.getElementById('btnVerificarEvolution').addEventListener('click', verificarEvolutionAPI);
 
@@ -1504,12 +1683,23 @@ const estados = [
             }
             
             // Atualizar contadores
-            document.getElementById('motoristasSelecionados').textContent = selectedMotoristas.size.toLocaleString('pt-BR');
-            document.getElementById('motoristasSelecionadosBadge').textContent = `${selectedMotoristas.size} selecionados`;
+            atualizarContadorSelecionados();
         }
 
         // ========== SELECIONAR TODOS ==========
         function selecionarTodos() {
+            // Selecionar TODOS os motoristas filtrados
+            motoristasFiltrados.forEach(motorista => {
+                selectedMotoristas.add(motorista.id);
+            });
+            
+            atualizarListaMotoristas(motoristasFiltrados);
+            atualizarContadorSelecionados();
+        }
+
+        // ========== SELECIONAR PÁGINA ATUAL ==========
+        function selecionarPaginaAtual() {
+            // Selecionar apenas os motoristas da página atual
             const startIndex = (currentPage - 1) * itemsPerPage;
             const endIndex = startIndex + itemsPerPage;
             const motoristasPagina = motoristasFiltrados.slice(startIndex, endIndex);
@@ -1519,15 +1709,21 @@ const estados = [
             });
             
             atualizarListaMotoristas(motoristasFiltrados);
+            atualizarContadorSelecionados();
+        }
+
+        // ========== ATUALIZAR CONTADOR DE SELECIONADOS ==========
+        function atualizarContadorSelecionados() {
+            const total = selectedMotoristas.size;
+            document.getElementById('motoristasSelecionados').textContent = total.toLocaleString('pt-BR');
+            document.getElementById('motoristasSelecionadosBadge').textContent = `${total.toLocaleString('pt-BR')} selecionados`;
         }
 
         // ========== LIMPAR SELEÇÃO ==========
         function limparSelecao() {
             selectedMotoristas.clear();
             atualizarListaMotoristas(motoristasFiltrados);
-            
-            document.getElementById('motoristasSelecionados').textContent = '0';
-            document.getElementById('motoristasSelecionadosBadge').textContent = '0 selecionados';
+            atualizarContadorSelecionados();
         }
 
         // ========== APLICAR FILTROS (INTELIGENTE) ==========
@@ -1560,12 +1756,25 @@ const estados = [
                 let todosMotoristas = [];
                 
                 if (supabase) {
+                    // Determinar classe a usar: filtro do select tem prioridade sobre currentClass
+                    const classeParaFiltro = filtroClasse || currentClass;
+                    
+                    if (!classeParaFiltro) {
+                        mostrarAviso('Selecione uma categoria primeiro');
+                        return;
+                    }
+                    
                     // Construir query do Supabase com filtros
                     let query = supabase
                         .from('motoristas')
                         .select('id, nome, telefone1, telefone2, estado, classe_veiculo, tipo_veiculo, tipo_carroceria, status')
-                        .eq('classe_veiculo', currentClass)
-                        .eq('status', 'ativo');
+                        .eq('classe_veiculo', classeParaFiltro);
+
+                    // Aplicar filtro de status (se não houver filtro, não aplicar nenhum filtro de status)
+                    if (filtroStatus) {
+                        query = query.eq('status', filtroStatus);
+                    }
+                    // Se não houver filtro de status especificado, não filtrar por status
 
                     // Aplicar filtros adicionais
                     if (filtroTipoVeiculo) {
@@ -1573,15 +1782,12 @@ const estados = [
                     }
                     
                     if (filtroCarroceria) {
+                        // Filtro de carroceria - usar valor exato do banco (já vem correto do dropdown)
                         query = query.eq('tipo_carroceria', filtroCarroceria);
                     }
                     
                     if (filtroEstado) {
                         query = query.eq('estado', filtroEstado);
-                    }
-                    
-                    if (filtroStatus) {
-                        query = query.eq('status', filtroStatus);
                     }
 
                     // Para busca por nome/telefone, usar ilike
@@ -1619,9 +1825,12 @@ const estados = [
                     console.log(`🔍 ${todosMotoristas.length.toLocaleString('pt-BR')} motoristas encontrados com filtros aplicados`);
                 } else {
                     // Usar dados mockados com filtros locais
+                    // Determinar classe a usar: filtro do select tem prioridade sobre currentClass
+                    const classeParaFiltro = filtroClasse || currentClass;
+                    
                     todosMotoristas = allMotoristas.filter(motorista => {
-                        // Filtro de classe (já aplicado por currentClass)
-                        if (motorista.classe_veiculo !== currentClass) return false;
+                        // Filtro de classe (usar filtroClasse se existir, senão currentClass)
+                        if (classeParaFiltro && motorista.classe_veiculo !== classeParaFiltro) return false;
                         
                         // Filtro de tipo de veículo
                         if (filtroTipoVeiculo && motorista.tipo_veiculo !== filtroTipoVeiculo) return false;
@@ -1632,7 +1841,7 @@ const estados = [
                         // Filtro de estado
                         if (filtroEstado && motorista.estado !== filtroEstado) return false;
                         
-                        // Filtro de status
+                        // Filtro de status (se não houver filtro, não filtrar)
                         if (filtroStatus && motorista.status !== filtroStatus) return false;
                         
                         // Filtro de busca
@@ -1664,7 +1873,12 @@ const estados = [
                 console.error('❌ Erro ao aplicar filtros:', error);
                 
                 // Fallback para filtros locais
-                motoristasFiltrados = allMotoristas.filter(m => m.classe_veiculo === currentClass && m.status === 'ativo');
+                const classeParaFiltro = filtroClasse || currentClass;
+                motoristasFiltrados = allMotoristas.filter(m => {
+                    if (classeParaFiltro && m.classe_veiculo !== classeParaFiltro) return false;
+                    // Não filtrar por status no fallback, mostrar todos
+                    return true;
+                });
                 currentPage = 1;
                 atualizarListaMotoristas(motoristasFiltrados);
                 
@@ -1937,6 +2151,52 @@ const estados = [
             log.scrollTop = log.scrollHeight;
         }
 
+        // ========== FUNÇÃO PARA AGUARDAR COM CONTADOR ==========
+        async function aguardarComContador(segundos) {
+            const delayCounterContainer = document.getElementById('delayCounterContainer');
+            const delayCounter = document.getElementById('delayCounter');
+            let tempoRestante = segundos;
+
+            // Exibir contador
+            delayCounterContainer.style.display = 'block';
+            delayCounter.textContent = tempoRestante;
+
+            // Atualizar contador a cada segundo
+            while (tempoRestante > 0 && !disparoCancelado) {
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                if (disparoCancelado) break;
+                tempoRestante--;
+                delayCounter.textContent = tempoRestante;
+            }
+
+            // Ocultar contador
+            delayCounterContainer.style.display = 'none';
+        }
+
+        // ========== PARAR DISPARO ==========
+        function pararDisparo() {
+            disparoCancelado = true;
+            isDisparoAtivo = false;
+            
+            // Ocultar contador se estiver visível
+            document.getElementById('delayCounterContainer').style.display = 'none';
+            
+            // Atualizar interface
+            document.getElementById('btnIniciarDisparo').disabled = false;
+            document.getElementById('btnIniciarDisparo').innerHTML = '<i class="fas fa-rocket me-2"></i>Iniciar Disparo';
+            document.getElementById('btnPararDisparo').style.display = 'none';
+            
+            adicionarLog(`⏹️ Disparo cancelado pelo usuário! Enviados: ${totalEnviados}, Falhas: ${totalFalhas}`, 'warning');
+            mostrarAviso(`Disparo cancelado!<br>Enviados: ${totalEnviados}<br>Falhas: ${totalFalhas}`);
+        }
+
+        // ========== GERAR DELAY ALEATÓRIO ==========
+        function gerarDelayAleatorio() {
+            const min = 20; // 20 segundos
+            const max = 80; // 80 segundos
+            return Math.floor(Math.random() * (max - min + 1)) + min;
+        }
+
         // ========== INICIAR DISPARO ==========
         async function iniciarDisparo() {
             if (!currentClass) {
@@ -1956,19 +2216,47 @@ const estados = [
   }
 
             isDisparoAtivo = true;
+            disparoCancelado = false;
             totalEnviados = 0;
             totalFalhas = 0;
 
             // Atualizar interface
             document.getElementById('btnIniciarDisparo').disabled = true;
             document.getElementById('btnIniciarDisparo').innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Enviando...';
+            document.getElementById('btnPararDisparo').style.display = 'block';
+
+            // Ocultar contador inicialmente
+            document.getElementById('delayCounterContainer').style.display = 'none';
 
             adicionarLog(`🚀 Iniciando disparo para ${selectedMotoristas.size} motoristas...`, 'info');
 
+            // Converter Set em Array para ter controle de índice
+            const motoristasArray = Array.from(selectedMotoristas);
+
             // Processar envios
-            for (const motoristaId of selectedMotoristas) {
+            for (let i = 0; i < motoristasArray.length; i++) {
+                // Verificar se o disparo foi cancelado
+                if (disparoCancelado) {
+                    adicionarLog(`⏹️ Disparo interrompido na iteração ${i + 1}`, 'warning');
+                    break;
+                }
+
+                const motoristaId = motoristasArray[i];
                 const motorista = motoristasFiltrados.find(m => m.id === motoristaId);
                 if (!motorista) continue;
+
+                // Aguardar delay aleatório ANTES de cada envio (exceto o primeiro)
+                if (i > 0) {
+                    // Verificar novamente se foi cancelado antes de aguardar
+                    if (disparoCancelado) break;
+                    
+                    const delaySegundos = gerarDelayAleatorio();
+                    adicionarLog(`⏳ Aguardando ${delaySegundos} segundos antes do próximo envio...`, 'info');
+                    await aguardarComContador(delaySegundos);
+                    
+                    // Verificar se foi cancelado durante a espera
+                    if (disparoCancelado) break;
+                }
 
                 const mensagemPersonalizada = mensagem
                     .replace(/\{\{name\}\}/g, motorista.nome || 'Motorista')
@@ -2052,22 +2340,32 @@ const estados = [
                     console.error('❌ Erro ao enviar mensagem:', error);
                 }
 
+                // Verificar se foi cancelado após o envio
+                if (disparoCancelado) {
+                    break;
+                }
+
                 // Atualizar progresso
                 const progresso = ((totalEnviados + totalFalhas) / selectedMotoristas.size) * 100;
                 document.getElementById('progressBar').style.width = `${progresso}%`;
                 document.getElementById('progressText').textContent = `${totalEnviados + totalFalhas} de ${selectedMotoristas.size} enviados`;
-
-                // Pequena pausa para não sobrecarregar
-                await new Promise(resolve => setTimeout(resolve, 100));
             }
 
             // Finalizar
             isDisparoAtivo = false;
             document.getElementById('btnIniciarDisparo').disabled = false;
             document.getElementById('btnIniciarDisparo').innerHTML = '<i class="fas fa-rocket me-2"></i>Iniciar Disparo';
+            document.getElementById('btnPararDisparo').style.display = 'none';
+            document.getElementById('delayCounterContainer').style.display = 'none';
 
-            adicionarLog(`🎉 Disparo concluído! Enviados: ${totalEnviados}, Falhas: ${totalFalhas}`, 'success');
-            mostrarSucesso(`Disparo concluído!<br>Enviados: ${totalEnviados}<br>Falhas: ${totalFalhas}`);
+            // Mostrar mensagem final baseado se foi cancelado ou concluído
+            if (disparoCancelado) {
+                adicionarLog(`⏹️ Disparo interrompido! Enviados: ${totalEnviados}, Falhas: ${totalFalhas}`, 'warning');
+                mostrarAviso(`Disparo interrompido!<br>Enviados: ${totalEnviados}<br>Falhas: ${totalFalhas}`);
+            } else {
+                adicionarLog(`🎉 Disparo concluído! Enviados: ${totalEnviados}, Falhas: ${totalFalhas}`, 'success');
+                mostrarSucesso(`Disparo concluído!<br>Enviados: ${totalEnviados}<br>Falhas: ${totalFalhas}`);
+            }
         }
 
         // ========== UTILITÁRIOS ==========

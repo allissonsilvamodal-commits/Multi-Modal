@@ -1066,30 +1066,21 @@
                 const saudeSistema = 100;
                 console.log('✅ Saúde do sistema: 100%');
 
-                // 4. Conexões Ativas - Evolution APIs ativas e válidas
+                // 4. Conexões Ativas - Usuários logados (sessões ativas)
                 let conexoesAtivas = 0;
                 try {
-                    const { count, error } = await supabase
-                        .from('user_evolution_apis')
-                        .select('*', { count: 'exact', head: true })
-                        .eq('active', true)
-                        .eq('is_valid', true);
-                    
-                    if (error) throw error;
-                    conexoesAtivas = count || 0;
-                    console.log('✅ Conexões ativas:', conexoesAtivas);
-                } catch (error) {
-                    console.error('❌ Erro ao buscar conexões ativas:', error);
-                    // Fallback: tentar outra abordagem
-                    try {
-                        const { count } = await supabase
-                            .from('user_evolution_apis')
-                            .select('*', { count: 'exact', head: true })
-                            .eq('active', true);
-                        conexoesAtivas = count || 0;
-                    } catch (e) {
+                    const response = await fetch('/api/active-sessions');
+                    if (response.ok) {
+                        const data = await response.json();
+                        conexoesAtivas = data.count || 0;
+                        console.log('✅ Usuários logados (sessões ativas):', conexoesAtivas);
+                    } else {
+                        console.warn('⚠️ Erro ao buscar sessões ativas, usando fallback');
                         conexoesAtivas = 0;
                     }
+                } catch (error) {
+                    console.error('❌ Erro ao buscar sessões ativas:', error);
+                    conexoesAtivas = 0;
                 }
 
                 // Animar métricas com dados reais
