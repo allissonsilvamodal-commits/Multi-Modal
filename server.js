@@ -25,12 +25,14 @@ if (isDevelopment) {
     contentSecurityPolicy: {
       directives: {
         defaultSrc: ["'self'"],
-        styleSrc: ["'self'", "'unsafe-inline'", "https:", "data:"],
-        scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https:"],
+        styleSrc: ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net", "https://cdnjs.cloudflare.com", "https://unpkg.com", "https://fonts.googleapis.com", "https:", "data:"],
+        styleSrcElem: ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net", "https://cdnjs.cloudflare.com", "https://unpkg.com", "https://fonts.googleapis.com", "https:", "data:"],
+        scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://cdn.jsdelivr.net", "https://cdnjs.cloudflare.com", "https://unpkg.com", "https:"],
+        scriptSrcElem: ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net", "https://cdnjs.cloudflare.com", "https://unpkg.com", "https:"],
         scriptSrcAttr: ["'unsafe-inline'"],
         imgSrc: ["'self'", "data:", "https:", "blob:"],
-        connectSrc: ["'self'", "https:", "ws:", "wss:"],
-        fontSrc: ["'self'", "https:", "data:"],
+        connectSrc: ["'self'", "https://*.supabase.co", "https://cdn.jsdelivr.net", "https://cdnjs.cloudflare.com", "https://unpkg.com", "https:", "ws:", "wss:"],
+        fontSrc: ["'self'", "https://cdnjs.cloudflare.com", "https://fonts.gstatic.com", "https://fonts.googleapis.com", "https:", "data:"],
         objectSrc: ["'none'"],
         mediaSrc: ["'self'"],
         frameSrc: ["'none'"],
@@ -51,7 +53,9 @@ if (isDevelopment) {
       directives: {
         defaultSrc: ["'self'"],
         styleSrc: ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net", "https://cdnjs.cloudflare.com", "https://unpkg.com", "https://fonts.googleapis.com"],
+        styleSrcElem: ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net", "https://cdnjs.cloudflare.com", "https://unpkg.com", "https://fonts.googleapis.com"],
         scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://cdn.jsdelivr.net", "https://cdnjs.cloudflare.com", "https://unpkg.com"],
+        scriptSrcElem: ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net", "https://cdnjs.cloudflare.com", "https://unpkg.com"],
         scriptSrcAttr: ["'unsafe-inline'"],
         imgSrc: ["'self'", "data:", "https:", "blob:"],
         connectSrc: ["'self'", "https://*.supabase.co", "https://cdn.jsdelivr.net", "https://cdnjs.cloudflare.com", "https://unpkg.com"],
@@ -3396,6 +3400,70 @@ app.get('/api/diagnostico', requireAuth, async (req, res) => {
     console.error('❌ Erro no diagnóstico:', error);
     res.status(500).json({
       error: 'Erro no diagnóstico: ' + error.message
+    });
+  }
+});
+
+// ========== API PARA REPROVAR MOTORISTA ==========
+app.post('/api/motoristas/reprovar', async (req, res) => {
+  try {
+    const { motoristaId, coletaId, motivo, usuarioNome } = req.body;
+
+    if (!motoristaId || !coletaId || !motivo) {
+      return res.status(400).json({
+        success: false,
+        error: 'motoristaId, coletaId e motivo são obrigatórios'
+      });
+    }
+
+    console.log('🔄 Reprovar motorista via API:', {
+      motoristaId,
+      coletaId,
+      motivo,
+      usuarioNome
+    });
+
+    // Atualizar motorista com reprovação usando service key (ignora RLS)
+    const updateData = {
+      reprovado: true,
+      motivo_reprovacao: motivo,
+      reprovado_por: usuarioNome || 'Sistema',
+      data_reprovacao: new Date().toISOString(),
+      coleta_id_reprovacao: coletaId
+    };
+
+    const { data: dataMotorista, error: errorMotorista } = await supabaseAdmin
+      .from('motoristas')
+      .update(updateData)
+      .eq('id', motoristaId)
+      .select();
+
+    if (errorMotorista) {
+      console.error('❌ Erro ao atualizar motorista:', errorMotorista);
+      return res.status(500).json({
+        success: false,
+        error: `Erro ao atualizar motorista: ${errorMotorista.message}`
+      });
+    }
+
+    console.log('✅ Motorista atualizado:', dataMotorista);
+
+    // NÃO remover vínculo do motorista - manter vinculado mas marcado como reprovado
+    // O usuário pode trocar manualmente se desejar
+    // Isso permite que o card continue sendo exibido com a informação de reprovação
+    console.log('✅ Motorista mantido vinculado (mas reprovado) - usuário pode trocar se desejar');
+
+    res.json({
+      success: true,
+      message: 'Motorista reprovado com sucesso',
+      data: dataMotorista
+    });
+
+  } catch (error) {
+    console.error('❌ Erro ao reprovar motorista:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Erro interno ao reprovar motorista: ' + error.message
     });
   }
 });

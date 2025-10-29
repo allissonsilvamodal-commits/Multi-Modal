@@ -1728,9 +1728,23 @@
 
         // Inicializar o mapa quando a página carregar
         document.addEventListener('DOMContentLoaded', () => {
-            setTimeout(() => {
-                initMap();
-            }, 1000);
+            // Verificar se o Leaflet foi carregado
+            function verificarLeaflet() {
+                if (typeof L === 'undefined') {
+                    console.warn('⚠️ Leaflet ainda não carregou, aguardando...');
+                    setTimeout(verificarLeaflet, 500);
+                    return;
+                }
+                console.log('✅ Leaflet carregado, inicializando mapa...');
+                try {
+                    initMap();
+                } catch (error) {
+                    console.error('❌ Erro ao inicializar mapa:', error);
+                }
+            }
+            
+            // Aguardar um pouco para garantir que os scripts carregaram
+            setTimeout(verificarLeaflet, 500);
         });
 
         // ========== SMOOTH SCROLLING ==========
