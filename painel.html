@@ -1375,11 +1375,12 @@ const estados = [
             if (filtroTipoVeiculo) {
                 try {
                     if (supabase) {
-                        // Buscar tipos de veículo reais do banco
+                        // Buscar tipos de veículo reais do banco (com limite para performance)
                         const { data: tipos, error } = await supabase
                             .from('motoristas')
                             .select('tipo_veiculo')
-                            .not('tipo_veiculo', 'is', null);
+                            .not('tipo_veiculo', 'is', null)
+                            .limit(5000); // Limite para evitar timeout em grandes volumes
                         
                         if (!error && tipos && tipos.length > 0) {
                             // Extrair valores únicos
@@ -1392,10 +1393,12 @@ const estados = [
                                 filtroTipoVeiculo.appendChild(option);
                             });
                             
-                            console.log('✅ Filtro de tipos de veículo carregado do banco:', tiposUnicos.length, tiposUnicos);
+                            console.log('✅ Filtro de tipos de veículo carregado do banco:', tiposUnicos.length, 'tipos únicos');
                         } else {
                             // Fallback: usar mapeamento estático
-                            console.warn('⚠️ Erro ao carregar tipos de veículo do banco, usando mapeamento estático');
+                            if (error) {
+                                console.log('ℹ️ Não foi possível carregar tipos do banco, usando mapeamento estático');
+                            }
                             const todosTipos = [...new Set(Object.values(tiposVeiculo).flat())];
                             todosTipos.forEach(tipo => {
                                 const option = document.createElement('option');
@@ -1415,8 +1418,7 @@ const estados = [
                         });
                     }
                 } catch (error) {
-                    console.error('❌ Erro ao carregar tipos de veículo:', error);
-                    // Fallback: usar mapeamento estático
+                    // Fallback silencioso: usar mapeamento estático
                     const todosTipos = [...new Set(Object.values(tiposVeiculo).flat())];
                     todosTipos.forEach(tipo => {
                         const option = document.createElement('option');
@@ -1434,11 +1436,12 @@ const estados = [
             if (filtroCarroceria) {
                 try {
                     if (supabase) {
-                        // Buscar carrocerias reais do banco
+                        // Buscar carrocerias reais do banco (com limite para performance)
                         const { data: carrocerias, error } = await supabase
                             .from('motoristas')
                             .select('tipo_carroceria')
-                            .not('tipo_carroceria', 'is', null);
+                            .not('tipo_carroceria', 'is', null)
+                            .limit(5000); // Limite para evitar timeout em grandes volumes
                         
                         if (!error && carrocerias && carrocerias.length > 0) {
                             // Extrair valores únicos
@@ -1456,10 +1459,12 @@ const estados = [
                                 filtroCarroceria.appendChild(option);
                             });
                             
-                            console.log('✅ Filtro de carrocerias carregado do banco:', carroceriasUnicas.length, carroceriasUnicas);
+                            console.log('✅ Filtro de carrocerias carregado do banco:', carroceriasUnicas.length, 'tipos únicos');
                         } else {
                             // Fallback: usar mapeamento estático
-                            console.warn('⚠️ Erro ao carregar carrocerias do banco, usando mapeamento estático');
+                            if (error) {
+                                console.log('ℹ️ Não foi possível carregar carrocerias do banco, usando mapeamento estático');
+                            }
                             Object.keys(tiposCarroceriaMap).forEach(key => {
                                 const option = document.createElement('option');
                                 option.value = key;
@@ -1477,8 +1482,7 @@ const estados = [
                         });
                     }
                 } catch (error) {
-                    console.error('❌ Erro ao carregar carrocerias:', error);
-                    // Fallback: usar mapeamento estático
+                    // Fallback silencioso: usar mapeamento estático
                     Object.keys(tiposCarroceriaMap).forEach(key => {
                         const option = document.createElement('option');
                         option.value = key;
