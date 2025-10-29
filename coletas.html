@@ -2304,8 +2304,8 @@
                 </button>
             </div>
             <div id="conteudoHistoricoCompleto"></div>
-        </div>
-    </div>
+                                </div>
+                            </div>
 
     <!-- Botões Flutuantes -->
     <div class="floating-action-buttons">
@@ -2618,10 +2618,7 @@
                                         <div class="col-md-4">
                                             <input type="text" id="filtroNome" class="form-control" placeholder="🔍 Buscar por nome..." style="margin-bottom: 0.5rem;">
                                         </div>
-                                        <div class="col-md-4">
-                                            <input type="text" id="filtroCPF" class="form-control" placeholder="🆔 Buscar por CPF..." style="margin-bottom: 0.5rem;">
-                                        </div>
-                                        <div class="col-md-4">
+                                        <div class="col-md-6">
                                             <input type="text" id="filtroCNH" class="form-control" placeholder="📋 Buscar por CNH..." style="margin-bottom: 0.5rem;">
                                         </div>
                                     </div>
@@ -2650,11 +2647,10 @@
                                 <!-- Lista de motoristas -->
                                 <div class="motoristas-list" id="motoristasListContainer" style="max-height: 400px; overflow-y: auto;">
                                     ${motoristas.map(motorista => `
-                                        <div class="motorista-item" data-nome="${motorista.nome}" data-cpf="${motorista.cpf || ''}" data-cnh="${motorista.cnh || ''}" data-categoria="${motorista.categoria_cnh || ''}" data-status="${motorista.status || 'ativo'}" onclick="selecionarMotorista('${coletaId}', '${motorista.id}')">
+                                        <div class="motorista-item" data-nome="${motorista.nome}" data-cnh="${motorista.cnh || ''}" data-categoria="${motorista.categoria_cnh || ''}" data-status="${motorista.status || 'ativo'}" onclick="selecionarMotorista('${coletaId}', '${motorista.id}')">
                                             <div class="motorista-info">
                                                 <div class="motorista-nome">${motorista.nome}</div>
                                                 <div class="motorista-detalhes">
-                                                    <span><i class="fas fa-id-card"></i> ${motorista.cpf || 'N/A'}</span>
                                                     <span><i class="fas fa-id-badge"></i> CNH: ${motorista.cnh || 'N/A'}</span>
                                                     <span><i class="fas fa-car"></i> ${motorista.categoria_cnh || 'N/A'}</span>
                                                     <span><i class="fas fa-phone"></i> ${motorista.telefone || motorista.telefone1 || 'N/A'}</span>
@@ -2680,7 +2676,6 @@
                 
                 // Adicionar event listeners para filtros
                 document.getElementById('filtroNome').addEventListener('input', () => filtrarMotoristas());
-                document.getElementById('filtroCPF').addEventListener('input', () => filtrarMotoristas());
                 document.getElementById('filtroCNH').addEventListener('input', () => filtrarMotoristas());
                 document.getElementById('filtroCategoria').addEventListener('change', () => filtrarMotoristas());
                 document.getElementById('filtroStatus').addEventListener('change', () => filtrarMotoristas());
@@ -2738,7 +2733,6 @@
         // Função para filtrar motoristas
         function filtrarMotoristas() {
             const filtroNome = document.getElementById('filtroNome')?.value.toLowerCase() || '';
-            const filtroCPF = document.getElementById('filtroCPF')?.value.toLowerCase() || '';
             const filtroCNH = document.getElementById('filtroCNH')?.value.toLowerCase() || '';
             const filtroCategoria = document.getElementById('filtroCategoria')?.value || '';
             const filtroStatus = document.getElementById('filtroStatus')?.value || '';
@@ -2748,18 +2742,16 @@
             
             motoristasItens.forEach(item => {
                 const nome = item.dataset.nome?.toLowerCase() || '';
-                const cpf = item.dataset.cpf?.toLowerCase() || '';
                 const cnh = item.dataset.cnh?.toLowerCase() || '';
                 const categoria = item.dataset.categoria || '';
                 const status = item.dataset.status || '';
                 
                 const matchNome = !filtroNome || nome.includes(filtroNome);
-                const matchCPF = !filtroCPF || cpf.includes(filtroCPF);
                 const matchCNH = !filtroCNH || cnh.includes(filtroCNH);
                 const matchCategoria = !filtroCategoria || categoria === filtroCategoria;
                 const matchStatus = !filtroStatus || status === filtroStatus;
                 
-                if (matchNome && matchCPF && matchCNH && matchCategoria && matchStatus) {
+                if (matchNome && matchCNH && matchCategoria && matchStatus) {
                     item.style.display = 'flex';
                     totalVisiveis++;
                 } else {
@@ -2797,6 +2789,7 @@
             }
 
             try {
+                // Aprovar GR
                 const { error } = await supabase
                     .from('coletas')
                     .update({ 
@@ -2811,7 +2804,31 @@
                 // Salvar no histórico
                 await salvarNoHistorico(coletaId, 'GR Aprovado', `Aprovado por ${currentUser.nome || currentUser.username}`);
 
-                showNotification('Coleta aprovada pelo GR!', 'success');
+                // Avançar automaticamente para a próxima etapa (Documentação)
+                const etapaAtualIndex = ETAPAS.findIndex(e => e.id === 'gr');
+                if (etapaAtualIndex < ETAPAS.length - 1) {
+                    const proximaEtapa = ETAPAS[etapaAtualIndex + 1];
+                    
+                    const { error: updateError } = await supabase
+                        .from('coletas')
+                        .update({ 
+                            etapa_atual: proximaEtapa.id,
+                            updated_at: new Date().toISOString()
+                        })
+                        .eq('id', coletaId);
+
+                    if (updateError) throw updateError;
+
+                    // Salvar no histórico do avanço
+                    await salvarNoHistorico(coletaId, 'etapa_avancada', 
+                        `Etapa avançada de GR para ${proximaEtapa.nome} após aprovação`
+                    );
+
+                    showNotification(`✅ GR aprovado! Coleta avançada para ${proximaEtapa.nome}`, 'success');
+                } else {
+                    showNotification('✅ Coleta aprovada pelo GR!', 'success');
+                }
+
                 await carregarColetas();
                 
             } catch (error) {
@@ -2835,21 +2852,22 @@
                 // Criar modal para motivo da reprovação
                 const modal = document.createElement('div');
                 modal.className = 'modal fade show';
-                modal.style.display = 'block';
+                modal.id = 'modalReprovarGR';
+                modal.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.7); backdrop-filter: blur(10px); display: flex; justify-content: center; align-items: center; z-index: 9999; padding: 2rem;';
                 modal.innerHTML = `
-                    <div class="modal-dialog">
-                        <div class="modal-content">
-                            <div class="modal-header">
-                                <h5 class="modal-title"><i class="fas fa-exclamation-triangle"></i> Reprovar GR</h5>
-                                <button type="button" class="btn-close" onclick="this.closest('.modal').remove()"></button>
+                    <div class="modal-dialog" style="background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.98) 100%); backdrop-filter: blur(20px); border-radius: 20px; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3); max-width: 600px; width: 100%; max-height: 90vh; overflow: hidden; display: flex; flex-direction: column;">
+                        <div class="modal-content" style="padding: 0; background: transparent;">
+                            <div class="modal-header" style="background: linear-gradient(135deg, #dc3545 0%, #c82333 100%); color: white; padding: 1.5rem; border-radius: 20px 20px 0 0;">
+                                <h5 class="modal-title" style="margin: 0; font-size: 1.5rem; font-weight: 600;"><i class="fas fa-exclamation-triangle"></i> Reprovar GR</h5>
+                                <button type="button" class="btn-close" style="filter: invert(1); opacity: 0.9; font-size: 1.5rem;" onclick="this.closest('.modal').remove()"></button>
                             </div>
-                            <div class="modal-body">
-                                <p>Informe o motivo da reprovação:</p>
-                                <textarea id="motivoReprovacao" class="form-control" rows="4" placeholder="Digite o motivo da reprovação..." required></textarea>
+                            <div class="modal-body" style="flex: 1; overflow-y: auto; padding: 2rem;">
+                                <p style="margin-bottom: 1rem; color: #333; font-size: 1rem;">Informe o motivo da reprovação:</p>
+                                <textarea id="motivoReprovacao" class="form-control" rows="6" placeholder="Digite o motivo da reprovação..." required style="width: 100%; padding: 1rem; border: 2px solid #e9ecef; border-radius: 10px; font-size: 1rem; resize: vertical; min-height: 120px;"></textarea>
                             </div>
-                            <div class="modal-footer">
-                                <button type="button" class="btn btn-secondary" onclick="this.closest('.modal').remove()">Cancelar</button>
-                                <button type="button" class="btn btn-danger" onclick="confirmarReprovarGR('${coletaId}')">
+                            <div class="modal-footer" style="padding: 1.5rem; border-top: 1px solid #e9ecef; display: flex; justify-content: flex-end; gap: 1rem; border-radius: 0 0 20px 20px;">
+                                <button type="button" class="btn btn-secondary" onclick="this.closest('.modal').remove()" style="padding: 0.75rem 2rem; border-radius: 10px; border: none; font-weight: 600;">Cancelar</button>
+                                <button type="button" class="btn btn-danger" onclick="confirmarReprovarGR('${coletaId}')" style="padding: 0.75rem 2rem; border-radius: 10px; border: none; font-weight: 600; background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);">
                                     <i class="fas fa-times"></i> Reprovar
                                 </button>
                             </div>
@@ -2857,6 +2875,14 @@
                     </div>
                 `;
                 document.body.appendChild(modal);
+
+                // Fechar modal ao clicar no backdrop (fora do conteúdo)
+                modal.addEventListener('click', (e) => {
+                    if (e.target === modal) {
+                        modal.remove();
+                        delete window.confirmarReprovarGR;
+                    }
+                });
 
                 // Adicionar função global temporária
                 window.confirmarReprovarGR = async (coletaId) => {
@@ -2867,24 +2893,34 @@
                     }
 
                     try {
-                        // Reprovar GR
+                        // Reprovar GR e voltar para etapa anterior (Contratação)
+                        const etapaAnterior = ETAPAS.find(e => e.id === 'contratacao');
+                        
                         const { error: updateError } = await supabase
-                    .from('coletas')
+                            .from('coletas')
                             .update({ 
                                 gr_aprovado: false,
                                 gr_reprovado_por: currentUser.nome || currentUser.username || currentUser.email,
                                 gr_motivo_reprovacao: motivo,
                                 gr_data_reprovacao: new Date().toISOString(),
-                                etapa_atual: 'contratacao' // Volta para Contratação
+                                etapa_atual: 'contratacao', // Volta para Contratação
+                                updated_at: new Date().toISOString()
                             })
                             .eq('id', coletaId);
 
                         if (updateError) throw updateError;
 
-                        // Salvar no histórico
-                        await salvarNoHistorico(coletaId, 'GR Reprovação', `Reprovado por ${currentUser.nome || currentUser.username || currentUser.email}. Motivo: ${motivo}`);
+                        // Salvar no histórico da reprovação
+                        await salvarNoHistorico(coletaId, 'GR Reprovação', 
+                            `Reprovado por ${currentUser.nome || currentUser.username || currentUser.email}. Motivo: ${motivo}`
+                        );
 
-                        showNotification('Coleta reprovada pelo GR! Voltando para etapa de Contratação.', 'warning');
+                        // Salvar no histórico da volta de etapa
+                        await salvarNoHistorico(coletaId, 'etapa_retornada', 
+                            `Etapa voltou de GR para ${etapaAnterior?.nome || 'Contratação'} após reprovação`
+                        );
+
+                        showNotification(`⚠️ GR reprovado! Coleta voltou para etapa de ${etapaAnterior?.nome || 'Contratação'}.`, 'warning');
                         modal.remove();
                         delete window.confirmarReprovarGR;
                         await carregarColetas();
@@ -2960,48 +2996,183 @@
 
         async function buscarMotoristaPorId(motoristaId) {
             try {
-                if (!supabase || !motoristaId) return null;
+                if (!supabase || !motoristaId) {
+                    console.warn('⚠️ Supabase não inicializado ou motoristaId inválido:', { supabase: !!supabase, motoristaId });
+                    return null;
+                }
                 
+                console.log('🔍 Buscando motorista por ID:', motoristaId);
+                
+                // Buscar todos os campos usando * (evita erro de coluna inexistente)
                 const { data, error } = await supabase
                     .from('motoristas')
                     .select('*')
                     .eq('id', motoristaId)
                     .single();
 
-                if (error) throw error;
+                if (error) {
+                    console.error('❌ Erro ao buscar motorista:', error);
+                    throw error;
+                }
+                
+                console.log('✅ Motorista encontrado:', {
+                    id: data?.id,
+                    nome: data?.nome,
+                    reprovado: data?.reprovado,
+                    motivo: data?.motivo_reprovacao?.substring(0, 50)
+                });
+                
                 return data;
             } catch (error) {
-                console.error('❌ Erro ao buscar motorista:', error);
+                console.error('❌ Erro completo ao buscar motorista:', error);
                 return null;
             }
         }
 
         async function carregarInfoMotorista(coletaId, motoristaId, anexos) {
-            const motorista = await buscarMotoristaPorId(motoristaId);
+            console.log('🔄 Carregando informações do motorista:', { coletaId, motoristaId });
+            
             const motoristaInfoDiv = document.getElementById(`motorista-info-${coletaId}`);
             
-            if (motoristaInfoDiv && motorista) {
+            if (!motoristaInfoDiv) {
+                console.warn('⚠️ Elemento motorista-info não encontrado para coleta:', coletaId);
+                return;
+            }
+            
+            // Limpar conteúdo anterior antes de adicionar novo para evitar duplicação
+            motoristaInfoDiv.innerHTML = '';
+            
+            // Buscar informações da coleta para verificar a etapa atual
+            const coleta = coletasData.find(c => c.id === coletaId);
+            const isEtapaGR = coleta && coleta.etapa_atual === 'gr';
+            
+            const motorista = await buscarMotoristaPorId(motoristaId);
+            
+            if (!motorista) {
+                console.error('❌ Motorista não encontrado:', motoristaId);
+                motoristaInfoDiv.innerHTML = '<span style="color: #dc3545;"><i class="fas fa-exclamation-triangle"></i> Erro ao carregar motorista</span>';
+                return;
+            }
+            
+            const isReprovado = motorista.reprovado === true || motorista.reprovado === 'true';
+            console.log('📊 Status do motorista:', { 
+                nome: motorista.nome, 
+                reprovado: motorista.reprovado, 
+                isReprovado,
+                motivo: motorista.motivo_reprovacao?.substring(0, 30)
+            });
+            
+            const cardBackground = isReprovado 
+                ? 'linear-gradient(135deg, rgba(220, 53, 69, 0.1) 0%, rgba(200, 35, 51, 0.1) 100%)'
+                : 'linear-gradient(135deg, rgba(40, 167, 69, 0.1) 0%, rgba(32, 201, 151, 0.1) 100%)';
+            const cardBorder = isReprovado ? '#dc3545' : '#28a745';
+            
                 motoristaInfoDiv.innerHTML = `
-                    <div style="display: flex; flex-wrap: wrap; gap: 1rem; align-items: center;">
+                    <div style="display: flex; flex-wrap: wrap; gap: 1rem; align-items: center; width: 100%;">
                         <div style="flex: 1; min-width: 200px;">
                             <strong>${motorista.nome}</strong>
+                            ${isReprovado ? `
+                                <div style="margin-top: 0.5rem; padding: 0.5rem; background: rgba(220, 53, 69, 0.1); border-left: 3px solid #dc3545; border-radius: 5px;">
+                                    <div style="color: #dc3545; font-weight: 600; font-size: 0.85rem; display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.3rem;">
+                                        <i class="fas fa-exclamation-triangle"></i> Motorista Reprovado
+                                    </div>
+                                    ${motorista.motivo_reprovacao ? `
+                                        <div style="color: #721c24; font-size: 0.8rem; margin-top: 0.3rem; font-style: italic;">
+                                            ${motorista.motivo_reprovacao.length > 80 ? motorista.motivo_reprovacao.substring(0, 80) + '...' : motorista.motivo_reprovacao}
+                                        </div>
+                                    ` : ''}
+                                    ${motorista.reprovado_por && motorista.data_reprovacao ? `
+                                        <div style="color: #6c757d; font-size: 0.75rem; margin-top: 0.3rem;">
+                                            Por ${motorista.reprovado_por} em ${new Date(motorista.data_reprovacao).toLocaleDateString('pt-BR')}
+                                        </div>
+                                    ` : ''}
+                                </div>
+                            ` : ''}
                             <div style="font-size: 0.85rem; color: #6c757d; margin-top: 0.3rem;">
-                                <span><i class="fas fa-id-card"></i> ${motorista.cpf || 'N/A'}</span>
-                                <span style="margin-left: 1rem;"><i class="fas fa-id-badge"></i> CNH: ${motorista.cnh || 'N/A'}</span>
+                                <span><i class="fas fa-id-badge"></i> CNH: ${motorista.cnh || 'N/A'}</span>
+                                ${motorista.classe_veiculo ? `<span style="margin-left: 1rem;"><i class="fas fa-car"></i> ${motorista.classe_veiculo}</span>` : ''}
                             </div>
                             <div style="font-size: 0.85rem; color: #6c757d; margin-top: 0.3rem;">
                                 <span><i class="fas fa-car"></i> ${motorista.categoria_cnh || 'N/A'}</span>
                                 <span style="margin-left: 1rem;"><i class="fas fa-phone"></i> ${motorista.telefone1 || 'N/A'}</span>
                             </div>
                         </div>
+                        <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
                         ${anexos && anexos.length > 0 ? `
                             <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 0.5rem 1rem; border-radius: 10px; font-size: 0.85rem; box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);">
                                 <i class="fas fa-paperclip"></i> ${anexos.length} Documento(s)
                             </div>
                         ` : ''}
+                            ${isReprovado ? `
+                                <button onclick="event.stopPropagation(); trocarMotorista('${coletaId}')" 
+                                        style="background: linear-gradient(135deg, #ffc107 0%, #ff9800 100%); color: white; border: none; padding: 0.5rem 1rem; border-radius: 10px; font-size: 0.85rem; font-weight: 600; cursor: pointer; box-shadow: 0 2px 8px rgba(255, 193, 7, 0.3); transition: transform 0.2s;"
+                                        onmouseover="this.style.transform='scale(1.05)'" 
+                                        onmouseout="this.style.transform='scale(1)'"
+                                        title="Trocar Motorista">
+                                    <i class="fas fa-exchange-alt"></i> Trocar
+                                </button>
+                            ` : isEtapaGR ? `
+                                <button onclick="event.stopPropagation(); reprovarMotorista('${coletaId}', '${motoristaId}')" 
+                                        style="background: linear-gradient(135deg, #dc3545 0%, #c82333 100%); color: white; border: none; padding: 0.5rem 1rem; border-radius: 10px; font-size: 0.85rem; font-weight: 600; cursor: pointer; box-shadow: 0 2px 8px rgba(220, 53, 69, 0.3); transition: transform 0.2s;"
+                                        onmouseover="this.style.transform='scale(1.05)'" 
+                                        onmouseout="this.style.transform='scale(1)'"
+                                        title="Reprovar Motorista (Apenas na etapa GR)">
+                                    <i class="fas fa-times-circle"></i> Reprovar
+                                </button>
+                                <button onclick="event.stopPropagation(); trocarMotorista('${coletaId}')" 
+                                        style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 0.5rem 1rem; border-radius: 10px; font-size: 0.85rem; font-weight: 600; cursor: pointer; box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3); transition: transform 0.2s;"
+                                        onmouseover="this.style.transform='scale(1.05)'" 
+                                        onmouseout="this.style.transform='scale(1)'"
+                                        title="Trocar Motorista">
+                                    <i class="fas fa-exchange-alt"></i> Trocar
+                                </button>
+                            ` : `
+                                <button onclick="event.stopPropagation(); trocarMotorista('${coletaId}')" 
+                                        style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 0.5rem 1rem; border-radius: 10px; font-size: 0.85rem; font-weight: 600; cursor: pointer; box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3); transition: transform 0.2s;"
+                                        onmouseover="this.style.transform='scale(1.05)'" 
+                                        onmouseout="this.style.transform='scale(1)'"
+                                        title="Trocar Motorista">
+                                    <i class="fas fa-exchange-alt"></i> Trocar
+                                </button>
+                            `}
+                        </div>
                     </div>
                 `;
+            
+            // Atualizar o card do motorista com a cor correta
+            const motoristaCard = document.getElementById(`motorista-card-wrapper-${coletaId}`);
+            const motoristaLabel = document.getElementById(`motorista-label-${coletaId}`);
+            
+            if (motoristaCard) {
+                motoristaCard.style.background = cardBackground;
+                motoristaCard.style.borderColor = cardBorder;
+                
+                // Atualizar sombra e hover para motoristas reprovados
+                if (isReprovado) {
+                    motoristaCard.setAttribute('onmouseover', 'this.style.transform=\'translateY(-2px)\'; this.style.boxShadow=\'0 4px 12px rgba(220, 53, 69, 0.3)\';');
+                } else {
+                    motoristaCard.setAttribute('onmouseover', 'this.style.transform=\'translateY(-2px)\'; this.style.boxShadow=\'0 4px 12px rgba(40, 167, 69, 0.3)\';');
+                }
             }
+            
+            // Atualizar o título do card se motorista estiver reprovado
+            if (motoristaLabel) {
+                if (isReprovado) {
+                    motoristaLabel.style.color = '#dc3545';
+                    const labelSpan = motoristaLabel.querySelector('span');
+                    if (labelSpan) {
+                        labelSpan.innerHTML = '<i class="fas fa-user-times"></i> Motorista Reprovado';
+                    }
+                } else {
+                    motoristaLabel.style.color = '#28a745';
+                    const labelSpan = motoristaLabel.querySelector('span');
+                    if (labelSpan) {
+                        labelSpan.innerHTML = '<i class="fas fa-user-check"></i> Motorista Vinculado';
+                    }
+                }
+            }
+            
+            console.log('✅ Informações do motorista carregadas com sucesso');
         }
 
         async function verDetalhesMotorista(coletaId) {
@@ -3012,6 +3183,7 @@
             if (!motorista) return;
             
             const anexos = await carregarAnexos(coletaId);
+            const isEtapaGR = coleta && coleta.etapa_atual === 'gr';
             
             // Criar modal com detalhes do motorista
             const modal = document.createElement('div');
@@ -3029,30 +3201,50 @@
                         </div>
                         
                         <!-- Informações do Motorista -->
-                        <div style="background: linear-gradient(135deg, rgba(40, 167, 69, 0.1) 0%, rgba(32, 201, 151, 0.1) 100%); padding: 1.5rem; border-radius: 15px; margin-bottom: 2rem; border: 1px solid #28a745;">
+                        <div style="background: ${motorista.reprovado ? 'linear-gradient(135deg, rgba(220, 53, 69, 0.1) 0%, rgba(200, 35, 51, 0.1) 100%)' : 'linear-gradient(135deg, rgba(40, 167, 69, 0.1) 0%, rgba(32, 201, 151, 0.1) 100%)'}; padding: 1.5rem; border-radius: 15px; margin-bottom: 2rem; border: 1px solid ${motorista.reprovado ? '#dc3545' : '#28a745'};">
+                            ${motorista.reprovado ? `
+                                <div style="background: rgba(220, 53, 69, 0.2); padding: 1rem; border-radius: 10px; margin-bottom: 1.5rem; border-left: 4px solid #dc3545;">
+                                    <div style="display: flex; align-items: center; gap: 0.5rem; color: #dc3545; font-weight: 700; font-size: 1rem; margin-bottom: 0.5rem;">
+                                        <i class="fas fa-exclamation-triangle"></i>
+                                        Motorista Reprovado
+                                    </div>
+                                    ${motorista.motivo_reprovacao ? `
+                                        <div style="color: #721c24; font-size: 0.9rem; margin-bottom: 0.5rem; font-style: italic; background: white; padding: 0.8rem; border-radius: 8px;">
+                                            <strong>Motivo:</strong> ${motorista.motivo_reprovacao}
+                                        </div>
+                                    ` : ''}
+                                    <div style="color: #6c757d; font-size: 0.85rem;">
+                                        ${motorista.reprovado_por ? `<span><i class="fas fa-user"></i> Reprovado por: ${motorista.reprovado_por}</span>` : ''}
+                                        ${motorista.data_reprovacao ? `<span style="margin-left: 1rem;"><i class="fas fa-calendar"></i> ${new Date(motorista.data_reprovacao).toLocaleDateString('pt-BR')} às ${new Date(motorista.data_reprovacao).toLocaleTimeString('pt-BR')}</span>` : ''}
+                                        ${motorista.coleta_id_reprovacao ? `<span style="margin-left: 1rem;"><i class="fas fa-box"></i> Coleta: ${motorista.coleta_id_reprovacao}</span>` : ''}
+                                    </div>
+                                </div>
+                            ` : ''}
                             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
                                 <div>
-                                    <strong style="color: #28a745; font-size: 0.9rem;">Nome Completo</strong>
+                                    <strong style="color: ${motorista.reprovado ? '#dc3545' : '#28a745'}; font-size: 0.9rem;">Nome Completo</strong>
                                     <div style="font-size: 1.1rem; margin-top: 0.5rem;">${motorista.nome}</div>
                                 </div>
                                 <div>
-                                    <strong style="color: #28a745; font-size: 0.9rem;">CPF</strong>
-                                    <div style="font-size: 1.1rem; margin-top: 0.5rem;">${motorista.cpf || 'N/A'}</div>
-                                </div>
-                                <div>
-                                    <strong style="color: #28a745; font-size: 0.9rem;">CNH</strong>
+                                    <strong style="color: ${motorista.reprovado ? '#dc3545' : '#28a745'}; font-size: 0.9rem;">CNH</strong>
                                     <div style="font-size: 1.1rem; margin-top: 0.5rem;">${motorista.cnh || 'N/A'}</div>
                                 </div>
+                                ${motorista.classe_veiculo ? `
                                 <div>
-                                    <strong style="color: #28a745; font-size: 0.9rem;">Categoria</strong>
+                                    <strong style="color: ${motorista.reprovado ? '#dc3545' : '#28a745'}; font-size: 0.9rem;">Classe Veículo</strong>
+                                    <div style="font-size: 1.1rem; margin-top: 0.5rem;">${motorista.classe_veiculo}</div>
+                                </div>
+                                ` : ''}
+                                <div>
+                                    <strong style="color: ${motorista.reprovado ? '#dc3545' : '#28a745'}; font-size: 0.9rem;">Categoria</strong>
                                     <div style="font-size: 1.1rem; margin-top: 0.5rem;">${motorista.categoria_cnh || 'N/A'}</div>
                                 </div>
                                 <div>
-                                    <strong style="color: #28a745; font-size: 0.9rem;">Telefone</strong>
+                                    <strong style="color: ${motorista.reprovado ? '#dc3545' : '#28a745'}; font-size: 0.9rem;">Telefone</strong>
                                     <div style="font-size: 1.1rem; margin-top: 0.5rem;">${motorista.telefone1 || motorista.telefone || 'N/A'}</div>
                                 </div>
                                 <div>
-                                    <strong style="color: #28a745; font-size: 0.9rem;">Estado</strong>
+                                    <strong style="color: ${motorista.reprovado ? '#dc3545' : '#28a745'}; font-size: 0.9rem;">Estado</strong>
                                     <div style="font-size: 1.1rem; margin-top: 0.5rem;">${motorista.estado || 'N/A'}</div>
                                 </div>
                             </div>
@@ -3101,14 +3293,181 @@
                             `}
                         </div>
                         
-                        <div class="modal-footer" style="padding-top: 1.5rem; border-top: 1px solid #e9ecef;">
-                            <button class="btn btn-secondary" onclick="this.closest('.modal').remove()">Fechar</button>
+                        <div class="modal-footer" style="padding-top: 1.5rem; border-top: 1px solid #e9ecef; display: flex; justify-content: space-between; gap: 1rem;">
+                            <div>
+                                <button class="btn btn-warning" onclick="event.stopPropagation(); trocarMotorista('${coletaId}')" style="padding: 0.75rem 1.5rem; border-radius: 10px; border: none; font-weight: 600;">
+                                    <i class="fas fa-exchange-alt"></i> Trocar Motorista
+                                </button>
+                                ${!motorista.reprovado && isEtapaGR ? `
+                                    <button class="btn btn-danger" onclick="event.stopPropagation(); reprovarMotorista('${coletaId}', '${motorista.id}')" style="padding: 0.75rem 1.5rem; border-radius: 10px; border: none; font-weight: 600; margin-left: 0.5rem;">
+                                        <i class="fas fa-times-circle"></i> Reprovar Motorista
+                                    </button>
+                                ` : ''}
+                            </div>
+                            <button class="btn btn-secondary" onclick="this.closest('.modal').remove()" style="padding: 0.75rem 1.5rem; border-radius: 10px; border: none; font-weight: 600;">Fechar</button>
                         </div>
                     </div>
                 </div>
             `;
 
             document.body.appendChild(modal);
+            
+            // Fechar modal ao clicar no backdrop
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    modal.remove();
+                }
+            });
+        }
+
+        async function reprovarMotorista(coletaId, motoristaId) {
+            console.log('🔄 Função reprovarMotorista chamada:', { coletaId, motoristaId });
+            
+            const coleta = coletasData.find(c => c.id === coletaId);
+            if (!coleta) {
+                console.error('❌ Coleta não encontrada:', coletaId);
+                showNotification('Coleta não encontrada', 'error');
+                return;
+            }
+            
+            // Verificar se está na etapa GR
+            if (coleta.etapa_atual !== 'gr') {
+                console.error('❌ A reprovação do motorista só pode ser feita na etapa GR');
+                showNotification('A reprovação do motorista só pode ser feita na etapa GR', 'warning');
+                return;
+            }
+            
+            if (!motoristaId) {
+                console.error('❌ Motorista ID não fornecido');
+                showNotification('ID do motorista não fornecido', 'error');
+                return;
+            }
+            
+            try {
+                // Criar modal para motivo da reprovação
+                const modal = document.createElement('div');
+                modal.className = 'modal fade show';
+                modal.id = 'modalReprovarMotorista';
+                modal.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.7); backdrop-filter: blur(10px); display: flex; justify-content: center; align-items: center; z-index: 9999; padding: 2rem;';
+                modal.innerHTML = `
+                    <div class="modal-dialog" style="background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.98) 100%); backdrop-filter: blur(20px); border-radius: 20px; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3); max-width: 600px; width: 100%; max-height: 90vh; overflow: hidden; display: flex; flex-direction: column;">
+                        <div class="modal-content" style="padding: 0; background: transparent;">
+                            <div class="modal-header" style="background: linear-gradient(135deg, #dc3545 0%, #c82333 100%); color: white; padding: 1.5rem; border-radius: 20px 20px 0 0;">
+                                <h5 class="modal-title" style="margin: 0; font-size: 1.5rem; font-weight: 600;"><i class="fas fa-exclamation-triangle"></i> Reprovar Motorista</h5>
+                                <button type="button" class="btn-close" style="filter: invert(1); opacity: 0.9; font-size: 1.5rem;" onclick="this.closest('.modal').remove()"></button>
+                            </div>
+                            <div class="modal-body" style="flex: 1; overflow-y: auto; padding: 2rem;">
+                                <p style="margin-bottom: 1rem; color: #333; font-size: 1rem;">Informe o motivo da reprovação do motorista:</p>
+                                <textarea id="motivoReprovacaoMotorista" class="form-control" rows="6" placeholder="Digite o motivo da reprovação do motorista..." required style="width: 100%; padding: 1rem; border: 2px solid #e9ecef; border-radius: 10px; font-size: 1rem; resize: vertical; min-height: 120px;"></textarea>
+                            </div>
+                            <div class="modal-footer" style="padding: 1.5rem; border-top: 1px solid #e9ecef; display: flex; justify-content: flex-end; gap: 1rem; border-radius: 0 0 20px 20px;">
+                                <button type="button" class="btn btn-secondary" onclick="this.closest('.modal').remove()" style="padding: 0.75rem 2rem; border-radius: 10px; border: none; font-weight: 600;">Cancelar</button>
+                                <button type="button" class="btn btn-danger" onclick="confirmarReprovarMotorista('${coletaId}', '${motoristaId}')" style="padding: 0.75rem 2rem; border-radius: 10px; border: none; font-weight: 600; background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);">
+                                    <i class="fas fa-times"></i> Reprovar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                document.body.appendChild(modal);
+
+                // Fechar modal ao clicar no backdrop
+                modal.addEventListener('click', (e) => {
+                    if (e.target === modal) {
+                        modal.remove();
+                        delete window.confirmarReprovarMotorista;
+                    }
+                });
+
+                // Adicionar função global temporária
+                window.confirmarReprovarMotorista = async (coletaIdParam, motoristaIdParam) => {
+                    const motivo = document.getElementById('motivoReprovacaoMotorista').value.trim();
+                    if (!motivo) {
+                        showNotification('Por favor, informe o motivo da reprovação.', 'warning');
+                        return;
+                    }
+
+                    try {
+                        const userData = JSON.parse(localStorage.getItem('loggedInUser'));
+                        const usuarioNome = currentUser?.nome || currentUser?.username || userData?.email || 'Sistema';
+
+                        console.log('🔄 Iniciando reprovação de motorista:', {
+                            coletaId: coletaIdParam,
+                            motoristaId: motoristaIdParam,
+                            motivo: motivo,
+                            usuarioNome: usuarioNome
+                        });
+
+                        // Usar API do servidor para reprovar motorista (usa service key, ignora RLS)
+                        const response = await fetch('/api/motoristas/reprovar', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                motoristaId: motoristaIdParam,
+                                coletaId: coletaIdParam,
+                                motivo: motivo,
+                                usuarioNome: usuarioNome
+                            })
+                        });
+
+                        const result = await response.json();
+
+                        if (!response.ok || !result.success) {
+                            throw new Error(result.error || `Erro HTTP: ${response.status}`);
+                        }
+
+                        console.log('✅ Motorista reprovado via API:', result);
+
+                        // Salvar no histórico da coleta
+                        try {
+                            await salvarNoHistorico(coletaIdParam, 'Motorista Reprovado', `Motorista ${motoristaIdParam} reprovado por ${usuarioNome}. Motivo: ${motivo}`);
+                            console.log('✅ Histórico salvo');
+                        } catch (errorHist) {
+                            console.warn('⚠️ Erro ao salvar histórico (não crítico):', errorHist);
+                        }
+
+                        showNotification('Motorista reprovado! O motorista foi mantido vinculado, mas você pode trocá-lo se desejar.', 'warning');
+                        
+                        // Fechar todos os modais abertos
+                        document.querySelectorAll('.modal').forEach(m => m.remove());
+                        delete window.confirmarReprovarMotorista;
+                        
+                        // Limpar o conteúdo do card antes de recarregar para evitar duplicação
+                        const motoristaInfoDiv = document.getElementById(`motorista-info-${coletaIdParam}`);
+                        if (motoristaInfoDiv) {
+                            motoristaInfoDiv.innerHTML = '<span><i class="fas fa-spinner fa-spin"></i> Carregando...</span>';
+                        }
+                        
+                        // Recarregar coletas para atualizar a interface e mostrar o motorista reprovado
+                        await carregarColetas();
+                        
+                    } catch (error) {
+                        console.error('❌ Erro completo ao reprovar motorista:', error);
+                        console.error('Stack trace:', error.stack);
+                        showNotification('Erro ao reprovar motorista: ' + (error.message || error), 'error');
+                    }
+                };
+                
+            } catch (error) {
+                console.error('❌ Erro ao criar modal de reprovação:', error);
+                showNotification('Erro ao abrir modal de reprovação: ' + error.message, 'error');
+            }
+        }
+
+        async function trocarMotorista(coletaId) {
+            const coleta = coletasData.find(c => c.id === coletaId);
+            if (!coleta) return;
+
+            // Fechar modal de detalhes se estiver aberto
+            const modalDetalhes = document.querySelector('.modal.show');
+            if (modalDetalhes) {
+                modalDetalhes.remove();
+            }
+
+            // Abrir modal de seleção de motorista
+            await vincularMotorista(coletaId);
         }
 
         async function salvarMotorista(motoristaData) {
@@ -3944,8 +4303,8 @@
                             </div>
                         </div>
                         ${coleta.motorista_id ? `
-                        <div class="info-item" style="grid-column: 1 / -1; background: linear-gradient(135deg, rgba(40, 167, 69, 0.1) 0%, rgba(32, 201, 151, 0.1) 100%); padding: 0.8rem; border-radius: 10px; border: 1px solid #28a745; cursor: pointer; transition: all 0.3s;" onclick="event.stopPropagation(); verDetalhesMotorista('${coleta.id}')" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(40, 167, 69, 0.3)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none';">
-                            <div class="info-label" style="color: #28a745; font-weight: 700; display: flex; justify-content: space-between; align-items: center;">
+                        <div class="info-item motorista-card-${coleta.id}" id="motorista-card-wrapper-${coleta.id}" style="grid-column: 1 / -1; background: linear-gradient(135deg, rgba(40, 167, 69, 0.1) 0%, rgba(32, 201, 151, 0.1) 100%); padding: 0.8rem; border-radius: 10px; border: 1px solid #28a745; cursor: pointer; transition: all 0.3s;" onclick="event.stopPropagation(); verDetalhesMotorista('${coleta.id}')" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(40, 167, 69, 0.3)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none';">
+                            <div class="info-label motorista-label-${coleta.id}" id="motorista-label-${coleta.id}" style="color: #28a745; font-weight: 700; display: flex; justify-content: space-between; align-items: center;">
                                 <span><i class="fas fa-user-check"></i> Motorista Vinculado</span>
                                 <i class="fas fa-chevron-right" style="font-size: 0.8rem; opacity: 0.7;"></i>
                             </div>
