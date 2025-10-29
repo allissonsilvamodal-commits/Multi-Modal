@@ -863,8 +863,8 @@
             // Carregar dados
             await carregarDados();
             
-            // Inicializar gráficos
-            inicializarGraficos();
+            // Inicializar gráficos (agora é async)
+            await inicializarGraficos();
             
             // Configurar animações
             configurarAnimações();
@@ -1006,15 +1006,113 @@
 
         async function carregarMetricas() {
             try {
-                // Animar métricas
-                animarMetrica('totalUsers', 127);
-                animarMetrica('totalOperations', 342);
-                animarMetrica('systemHealth', 98.5, '%');
-                animarMetrica('activeConnections', 15);
+                // Verificar se o Supabase está inicializado
+                if (!supabase) {
+                    console.warn('⚠️ Supabase não inicializado, usando valores padrão');
+                    animarMetrica('totalUsers', 0);
+                    animarMetrica('totalOperations', 0);
+                    animarMetrica('systemHealth', 0, '%');
+                    animarMetrica('activeConnections', 0);
+                    return;
+                }
+
+                console.log('📊 Carregando métricas reais do Supabase...');
+
+                // 1. Usuários Ativos - contar usuários ativos na tabela user_profiles
+                let usuariosAtivos = 0;
+                try {
+                    const { count, error } = await supabase
+                        .from('user_profiles')
+                        .select('*', { count: 'exact', head: true })
+                        .eq('active', true);
+                    
+                    if (error) throw error;
+                    usuariosAtivos = count || 0;
+                    console.log('✅ Usuários ativos:', usuariosAtivos);
+                } catch (error) {
+                    console.error('❌ Erro ao buscar usuários ativos:', error);
+                    // Fallback: tentar tabela usuarios
+                    try {
+                        const { count } = await supabase
+                            .from('usuarios')
+                            .select('*', { count: 'exact', head: true });
+                        usuariosAtivos = count || 0;
+                    } catch (e) {
+                        usuariosAtivos = 0;
+                    }
+                }
+
+                // 2. Operações Hoje - coletas criadas hoje
+                let operacoesHoje = 0;
+                try {
+                    const hoje = new Date();
+                    hoje.setHours(0, 0, 0, 0);
+                    const hojeISO = hoje.toISOString();
+                    
+                    const { count, error } = await supabase
+                        .from('coletas')
+                        .select('*', { count: 'exact', head: true })
+                        .gte('created_at', hojeISO);
+                    
+                    if (error) throw error;
+                    operacoesHoje = count || 0;
+                    console.log('✅ Operações hoje:', operacoesHoje);
+                } catch (error) {
+                    console.error('❌ Erro ao buscar operações de hoje:', error);
+                    operacoesHoje = 0;
+                }
+
+                // 3. Saúde do Sistema - sempre 100%
+                const saudeSistema = 100;
+                console.log('✅ Saúde do sistema: 100%');
+
+                // 4. Conexões Ativas - Evolution APIs ativas e válidas
+                let conexoesAtivas = 0;
+                try {
+                    const { count, error } = await supabase
+                        .from('user_evolution_apis')
+                        .select('*', { count: 'exact', head: true })
+                        .eq('active', true)
+                        .eq('is_valid', true);
+                    
+                    if (error) throw error;
+                    conexoesAtivas = count || 0;
+                    console.log('✅ Conexões ativas:', conexoesAtivas);
+                } catch (error) {
+                    console.error('❌ Erro ao buscar conexões ativas:', error);
+                    // Fallback: tentar outra abordagem
+                    try {
+                        const { count } = await supabase
+                            .from('user_evolution_apis')
+                            .select('*', { count: 'exact', head: true })
+                            .eq('active', true);
+                        conexoesAtivas = count || 0;
+                    } catch (e) {
+                        conexoesAtivas = 0;
+                    }
+                }
+
+                // Animar métricas com dados reais
+                console.log('📊 Métricas carregadas:', {
+                    usuariosAtivos,
+                    operacoesHoje,
+                    saudeSistema: saudeSistema.toFixed(1) + '%',
+                    conexoesAtivas
+                });
+
+                animarMetrica('totalUsers', usuariosAtivos);
+                animarMetrica('totalOperations', operacoesHoje);
+                animarMetrica('systemHealth', saudeSistema, '%');
+                animarMetrica('activeConnections', conexoesAtivas);
                 
-                console.log('✅ Métricas carregadas');
+                console.log('✅ Métricas carregadas com sucesso');
             } catch (error) {
                 console.error('❌ Erro ao carregar métricas:', error);
+                // Fallback para valores padrão em caso de erro
+                animarMetrica('totalUsers', 0);
+                animarMetrica('totalOperations', 0);
+                animarMetrica('systemHealth', 0, '%');
+                animarMetrica('activeConnections', 0);
             }
         }
 
@@ -1402,16 +1500,63 @@
         }
 
         // ========== GRÁFICOS ==========
-        function inicializarGraficos() {
+        async function inicializarGraficos() {
             const ctx = document.getElementById('systemChart').getContext('2d');
+            
+            // Buscar dados reais do Supabase
+            let atividadeData = [0, 0, 0, 0, 0, 0];
+            const labels = ['00h', '04h', '08h', '12h', '16h', '20h'];
+            
+            try {
+                if (supabase) {
+                    console.log('📊 Carregando dados de atividade do sistema...');
+                    
+                    // Buscar coletas criadas nas últimas 24 horas
+                    const agora = new Date();
+                    const ontem = new Date(agora);
+                    ontem.setDate(ontem.getDate() - 1);
+                    
+                    const { data: coletas, error } = await supabase
+                        .from('coletas')
+                        .select('created_at')
+                        .gte('created_at', ontem.toISOString())
+                        .order('created_at', { ascending: true });
+                    
+                    if (!error && coletas && coletas.length > 0) {
+                        console.log('✅ Coletas encontradas para o gráfico:', coletas.length);
+                        
+                        // Agrupar por períodos do dia
+                        coletas.forEach(coleta => {
+                            const data = new Date(coleta.created_at);
+                            const hora = data.getHours();
+                            
+                            if (hora >= 0 && hora < 4) atividadeData[0]++;
+                            else if (hora >= 4 && hora < 8) atividadeData[1]++;
+                            else if (hora >= 8 && hora < 12) atividadeData[2]++;
+                            else if (hora >= 12 && hora < 16) atividadeData[3]++;
+                            else if (hora >= 16 && hora < 20) atividadeData[4]++;
+                            else if (hora >= 20) atividadeData[5]++;
+                        });
+                        
+                        console.log('📊 Atividade por período:', atividadeData);
+                    } else {
+                        console.log('⚠️ Nenhuma coleta nas últimas 24h, usando dados padrão');
+                    }
+                } else {
+                    console.warn('⚠️ Supabase não inicializado, usando dados padrão');
+                }
+            } catch (error) {
+                console.error('❌ Erro ao buscar dados de atividade:', error);
+                // Em caso de erro, usar dados padrão mínimos
+            }
             
             systemChart = new Chart(ctx, {
                 type: 'line',
                 data: {
-                    labels: ['00h', '04h', '08h', '12h', '16h', '20h'],
+                    labels: labels,
                     datasets: [{
                         label: 'Atividade',
-                        data: [12, 8, 45, 78, 92, 67],
+                        data: atividadeData,
                         borderColor: '#667eea',
                         backgroundColor: 'rgba(102, 126, 234, 0.1)',
                         borderWidth: 3,
@@ -1429,6 +1574,13 @@
                     plugins: {
                         legend: {
                             display: false
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(15, 15, 35, 0.9)',
+                            titleColor: '#ffffff',
+                            bodyColor: '#ffffff',
+                            borderColor: '#667eea',
+                            borderWidth: 1
                         }
                     },
                     scales: {
@@ -1449,9 +1601,15 @@
                                 color: 'rgba(255, 255, 255, 0.8)'
                             }
                         }
+                    },
+                    animation: {
+                        duration: 1500,
+                        easing: 'easeInOutQuart'
                     }
                 }
             });
+            
+            console.log('✅ Gráfico de atividade inicializado com dados reais');
         }
 
         // ========== STATUS DOS SERVIÇOS ==========
