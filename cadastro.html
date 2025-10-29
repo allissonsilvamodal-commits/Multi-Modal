@@ -693,6 +693,16 @@
       </div>
     </div>
 
+    <!-- Cards de Carrocerias -->
+    <div class="mt-4 mb-4">
+      <h5 class="mb-3 fw-bold text-dark">
+        <i class="fas fa-truck me-2"></i>Quantidade por Carroceria
+      </h5>
+      <div class="status-grid" id="carroceriasGrid">
+        <!-- Cards serão gerados dinamicamente via JavaScript -->
+      </div>
+    </div>
+
     <!-- Navegação Moderna -->
     <div class="modern-tabs">
       <nav class="nav-modern">
@@ -1579,6 +1589,64 @@ function atualizarEstatisticas() {
   document.getElementById('contatosAtivos').textContent = ativos.toLocaleString('pt-BR');
   document.getElementById('contatosInativos').textContent = inativos.toLocaleString('pt-BR');
   document.getElementById('contatosBloqueados').textContent = bloqueados.toLocaleString('pt-BR');
+  
+  // Atualizar cards de carrocerias
+  atualizarCardsCarrocerias();
+}
+
+function atualizarCardsCarrocerias() {
+  const carroceriasGrid = document.getElementById('carroceriasGrid');
+  if (!carroceriasGrid) return;
+  
+  // Contar motoristas por carroceria
+  const contagemPorCarroceria = {};
+  
+  todosContatos.forEach(contato => {
+    const carroceria = contato.tipo_carroceria;
+    if (carroceria) {
+      if (!contagemPorCarroceria[carroceria]) {
+        contagemPorCarroceria[carroceria] = 0;
+      }
+      contagemPorCarroceria[carroceria]++;
+    }
+  });
+  
+  // Ordenar por quantidade (maior para menor)
+  const carroceriasOrdenadas = Object.entries(contagemPorCarroceria)
+    .sort((a, b) => b[1] - a[1]);
+  
+  // Limpar grid
+  carroceriasGrid.innerHTML = '';
+  
+  // Cores para os cards
+  const cores = ['primary', 'success', 'info', 'warning', 'danger'];
+  let corIndex = 0;
+  
+  // Criar cards para cada carroceria
+  carroceriasOrdenadas.forEach(([carroceria, quantidade]) => {
+    const nomeAmigavel = tiposCarroceriaMap[carroceria] || carroceria;
+    const cor = cores[corIndex % cores.length];
+    
+    const card = document.createElement('div');
+    card.className = 'status-card';
+    card.innerHTML = `
+      <div class="status-icon ${cor}">
+        <i class="fas fa-truck"></i>
+      </div>
+      <div class="status-number">${quantidade.toLocaleString('pt-BR')}</div>
+      <div class="status-label">${nomeAmigavel}</div>
+    `;
+    
+    carroceriasGrid.appendChild(card);
+    corIndex++;
+  });
+  
+  // Se não houver carrocerias, mostrar mensagem
+  if (carroceriasOrdenadas.length === 0) {
+    carroceriasGrid.innerHTML = '<div class="col-12 text-center text-muted py-3">Nenhuma carroceria encontrada</div>';
+  }
+  
+  console.log(`✅ Cards de carrocerias atualizados: ${carroceriasOrdenadas.length} tipos`);
 }
 
 function carregarFiltros() {
