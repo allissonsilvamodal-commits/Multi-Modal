@@ -932,6 +932,60 @@ app.get('/api/auth/status', async (req, res) => {
   }
 });
 
+// ========== ENDPOINT PARA CONTAR USUÁRIOS LOGADOS ==========
+app.get('/api/active-sessions', async (req, res) => {
+  try {
+    const db = new sqlite3.Database('./sessions.db');
+    
+    // Contar todas as sessões e verificar quais têm usuário válido
+    const query = `SELECT sid, sess, expires FROM sessions WHERE expires > datetime('now')`;
+    
+    db.all(query, [], (err, rows) => {
+      db.close();
+      
+      if (err) {
+        console.error('❌ Erro ao buscar sessões ativas:', err);
+        return res.json({ 
+          success: true, 
+          count: 0,
+          error: 'Erro ao buscar sessões'
+        });
+      }
+      
+      // Filtrar sessões que têm usuário válido
+      let count = 0;
+      if (rows) {
+        rows.forEach(row => {
+          try {
+            // Tentar extrair dados da sessão
+            const sessData = typeof row.sess === 'string' ? JSON.parse(row.sess) : row.sess;
+            if (sessData && sessData.usuario) {
+              count++;
+            }
+          } catch (parseError) {
+            // Ignorar sessões com formato inválido
+            console.warn('⚠️ Erro ao parsear sessão:', parseError.message);
+          }
+        });
+      }
+      
+      console.log(`📊 Sessões ativas encontradas: ${count}`);
+      
+      res.json({ 
+        success: true, 
+        count: count 
+      });
+    });
+  } catch (error) {
+    console.error('❌ Erro ao contar sessões ativas:', error);
+    res.json({ 
+      success: true, 
+      count: 0,
+      error: error.message 
+    });
+  }
+});
+
 // ========== ENDPOINT CHECK-AUTH PARA PAINEL.HTML ==========
 app.get('/api/check-auth', async (req, res) => {
   const autenticado = !!(req.session && req.session.usuario);
@@ -1344,11 +1398,11 @@ app.get('/webhook/status-evolution', async (req, res) => {
     if (!config) {
       console.log('🔄 Usando configuração padrão do .env');
       config = {
-        api_url: process.env.EVOLUTION_BASE_URL || 'https://b1336382a159.ngrok-free.app',
-        api_key: process.env.EVOLUTION_API_KEY || '2CA53A24D6A7-4544-A440-36BBE4FB80C5',
+      api_url: process.env.EVOLUTION_BASE_URL || 'https://b1336382a159.ngrok-free.app',
+      api_key: process.env.EVOLUTION_API_KEY || '2CA53A24D6A7-4544-A440-36BBE4FB80C5',
         instance_name: process.env.EVOLUTION_INSTANCE_NAME || 'TESTE',
         source: 'env_default'
-      };
+    };
     }
     
     console.log('📋 Configuração Evolution:', {
@@ -1617,11 +1671,11 @@ app.post('/webhook/send-supabase', async (req, res) => {
       console.log('📧 Buscando userId pelo email:', usuario);
       
       try {
-        const { data: authUsers, error: authError } = await supabaseAdmin.auth.admin.listUsers();
-        
+    const { data: authUsers, error: authError } = await supabaseAdmin.auth.admin.listUsers();
+    
         if (!authError && authUsers?.users) {
-          const user = authUsers.users.find(u => u.email === usuario);
-          if (user) {
+      const user = authUsers.users.find(u => u.email === usuario);
+      if (user) {
             userIdentity = user.id;
             console.log('✅ User_id encontrado via admin API:', userIdentity);
           }
