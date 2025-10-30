@@ -1487,7 +1487,9 @@ async function cadastrarMotorista() {
     classe_veiculo: classeSelecionada.dataset.class,
     data_cadastro: new Date().toISOString(),
     data_atualizacao: new Date().toISOString(),
-    usuario_id: await getCurrentUserId()
+    usuario_id: await getCurrentUserId(),
+    created_by: await getCurrentUserId(),
+    created_by_departamento: await getCurrentUserDepartment()
   };
 
   try {
@@ -1873,6 +1875,17 @@ async function getCurrentUserId() {
     return user.id || 'default_user';
   }
   return 'default_user';
+}
+
+async function getCurrentUserDepartment() {
+  try {
+    const userData = localStorage.getItem('loggedInUser');
+    if (userData) {
+      const user = JSON.parse(userData);
+      if (user.departamento) return user.departamento;
+    }
+  } catch {}
+  return null;
 }
 
 function mostrarSucesso(mensagem) {
