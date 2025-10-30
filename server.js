@@ -936,52 +936,67 @@ app.get('/api/auth/status', async (req, res) => {
 app.get('/api/active-sessions', async (req, res) => {
   try {
     const db = new sqlite3.Database('./sessions.db');
-    
-    // Contar todas as sessões e verificar quais têm usuário válido
-    const query = `SELECT sid, sess, expires FROM sessions WHERE expires > datetime('now')`;
-    
+
+    // Buscar sem filtro de data; filtramos em JS por segurança
+    const query = `SELECT sid, sess, expire, expired, expires FROM sessions`;
+
     db.all(query, [], (err, rows) => {
       db.close();
-      
+
       if (err) {
         console.error('❌ Erro ao buscar sessões ativas:', err);
-        return res.json({ 
-          success: true, 
+        return res.json({
+          success: true,
           count: 0,
           error: 'Erro ao buscar sessões'
         });
       }
-      
-      // Filtrar sessões que têm usuário válido
+
       let count = 0;
-      if (rows) {
+      const now = Date.now();
+
+      if (rows && rows.length) {
         rows.forEach(row => {
           try {
+            // Colunas possíveis de expiração (stores variam): expire/expired em ms epoch, ou expires como ISO
+            const expireMs = typeof row.expire === 'number' ? row.expire
+              : (typeof row.expired === 'number' ? row.expired : null);
+
+            let notExpired = true;
+            if (expireMs !== null) {
+              notExpired = expireMs > now;
+            } else if (row.expires) {
+              // Tentar tratar como string/ISO
+              const expParsed = new Date(row.expires).getTime();
+              if (!Number.isNaN(expParsed)) {
+                notExpired = expParsed > now;
+              }
+            }
+
             // Tentar extrair dados da sessão
             const sessData = typeof row.sess === 'string' ? JSON.parse(row.sess) : row.sess;
-            if (sessData && sessData.usuario) {
+            if (notExpired && sessData && sessData.usuario) {
               count++;
             }
           } catch (parseError) {
-            // Ignorar sessões com formato inválido
-            console.warn('⚠️ Erro ao parsear sessão:', parseError.message);
+            console.warn('⚠️ Erro ao processar sessão:', parseError.message);
           }
         });
       }
-      
+
       console.log(`📊 Sessões ativas encontradas: ${count}`);
-      
-      res.json({ 
-        success: true, 
-        count: count 
+
+      res.json({
+        success: true,
+        count
       });
     });
   } catch (error) {
     console.error('❌ Erro ao contar sessões ativas:', error);
-    res.json({ 
-      success: true, 
+    res.json({
+      success: true,
       count: 0,
-      error: error.message 
+      error: error.message
     });
   }
 });
@@ -1517,6 +1532,20 @@ app.post('/webhook/send', async (req, res) => {
       const data = await response.json();
       console.log('✅ Mensagem enviada com sucesso:', data);
       
+      // Registrar disparo anônimo (sem auth) no Supabase
+      try {
+        const { supabase } = require('./supabase-secure');
+        await supabase.from('disparos_log').insert([{
+          user_id: null,
+          departamento: null,
+          numero: number,
+          mensagem_tamanho: (text || '').length,
+          status: 'success'
+        }]);
+      } catch (logErr) {
+        console.warn('⚠️ Falha ao registrar disparo (send):', logErr.message);
+      }
+      
       res.json({
         success: true,
         message: 'Mensagem enviada com sucesso',
@@ -1601,6 +1630,20 @@ app.post('/webhook/send-auth', requireAuth, async (req, res) => {
     if (response.ok) {
       const result = await response.json();
       console.log('✅ Mensagem enviada com sucesso:', result);
+      
+      // Registrar disparo autenticado no Supabase
+      try {
+        const { supabase } = require('./supabase-secure');
+        await supabase.from('disparos_log').insert([{
+          user_id: usuario,
+          departamento: req.session?.userData?.departamento || null,
+          numero: formattedNumber,
+          mensagem_tamanho: (message || '').length,
+          status: 'success'
+        }]);
+      } catch (logErr) {
+        console.warn('⚠️ Falha ao registrar disparo (send-auth):', logErr.message);
+      }
       
       res.json({ 
         success: true, 
@@ -3068,6 +3111,118 @@ app.get('/api/relatorio-dados', requireAuth, async (req, res) => {
         console.error('❌ Erro ao obter dados do relatório:', error);
         res.status(500).json({ error: 'Erro ao obter dados do relatório' });
     }
+});
+
+// ========== RELATÓRIOS: MOTORISTAS (KPIs e Séries) ==========
+app.get('/api/relatorios/motoristas/filtros', async (req, res) => {
+  try {
+    const { data: mot, error: motErr } = await supabaseAdmin
+      .from('motoristas')
+      .select('created_by, created_by_departamento')
+      .not('created_by', 'is', null);
+    if (motErr) throw motErr;
+    const ids = Array.from(new Set((mot || []).map(m => m.created_by)));
+    // Departamentos diretos dos registros (quando já gravados no cadastro)
+    const departamentosDiretos = new Set((mot || [])
+      .map(m => m.created_by_departamento)
+      .filter(Boolean));
+    let usuarios = [];
+    if (ids.length) {
+      const { data: perfis, error: perfErr } = await supabaseAdmin
+        .from('user_profiles')
+        .select('id, nome, departamento')
+        .in('id', ids);
+      if (perfErr) throw perfErr;
+      usuarios = perfis || [];
+    }
+    const departamentosViaPerfil = new Set(usuarios.map(u => u.departamento).filter(Boolean));
+    const departamentos = Array.from(new Set([ ...departamentosDiretos, ...departamentosViaPerfil ]));
+    res.json({ usuarios, departamentos });
+  } catch (error) {
+    console.error('❌ Erro filtros motoristas:', error);
+    res.status(500).json({ error: 'Erro ao carregar filtros' });
+  }
+});
+
+app.get('/api/relatorios/motoristas/kpis', async (req, res) => {
+  try {
+    const { inicio, fim, usuarioId, departamento } = req.query;
+    let query = supabaseAdmin.from('motoristas').select('id, created_by, created_by_departamento, data_cadastro');
+    if (inicio) query = query.gte('data_cadastro', inicio);
+    if (fim) query = query.lte('data_cadastro', fim);
+    if (usuarioId) query = query.eq('created_by', usuarioId);
+    const { data: motoristas, error } = await query;
+    if (error) throw error;
+    const porUsuario = new Map();
+    const userIds = new Set();
+    (motoristas || []).forEach(m => { if (m.created_by) { userIds.add(m.created_by); porUsuario.set(m.created_by, (porUsuario.get(m.created_by) || 0) + 1); } });
+    let idToPerfil = new Map();
+    if (userIds.size) {
+      const { data: perf } = await supabaseAdmin
+        .from('user_profiles')
+        .select('id, departamento')
+        .in('id', Array.from(userIds));
+      idToPerfil = new Map((perf || []).map(p => [p.id, p]));
+    }
+    const porDept = new Map();
+    porUsuario.forEach((count, uid) => {
+      // Preferir departamento salvo no registro; se não houver, usar perfil
+      const depDireto = (motoristas || []).find(m => m.created_by === uid && m.created_by_departamento)?.created_by_departamento;
+      const dep = depDireto || idToPerfil.get(uid)?.departamento || 'Sem Dep.';
+      if (departamento && dep !== departamento) return;
+      porDept.set(dep, (porDept.get(dep) || 0) + count);
+    });
+    res.json({ total: (motoristas || []).length, usuarios: porUsuario.size, departamentos: porDept.size });
+  } catch (error) {
+    console.error('❌ Erro KPIs motoristas:', error);
+    res.status(500).json({ error: 'Erro ao carregar KPIs' });
+  }
+});
+
+app.get('/api/relatorios/motoristas/series', async (req, res) => {
+  try {
+    const { inicio, fim, usuarioId, departamento } = req.query;
+    let query = supabaseAdmin.from('motoristas').select('id, created_by, created_by_departamento, data_cadastro');
+    if (inicio) query = query.gte('data_cadastro', inicio);
+    if (fim) query = query.lte('data_cadastro', fim);
+    if (usuarioId) query = query.eq('created_by', usuarioId);
+    const { data: motoristas, error } = await query;
+    if (error) throw error;
+    const porUsuario = new Map();
+    const userIds = new Set();
+    (motoristas || []).forEach(m => { if (m.created_by) { userIds.add(m.created_by); porUsuario.set(m.created_by, (porUsuario.get(m.created_by) || 0) + 1); } });
+    let idToPerfil = new Map();
+    if (userIds.size) {
+      const { data: perf } = await supabaseAdmin
+        .from('user_profiles')
+        .select('id, nome, departamento')
+        .in('id', Array.from(userIds));
+      idToPerfil = new Map((perf || []).map(p => [p.id, p]));
+    }
+    const byUser = Array.from(porUsuario.entries()).map(([uid, count]) => ({
+      usuarioId: uid, nome: idToPerfil.get(uid)?.nome || uid, count
+    }));
+    const porDept = new Map();
+    byUser.forEach(u => {
+      const depDireto = (motoristas || []).find(m => m.created_by === u.usuarioId && m.created_by_departamento)?.created_by_departamento;
+      const dep = depDireto || idToPerfil.get(u.usuarioId)?.departamento || 'Sem Dep.';
+      if (departamento && dep !== departamento) return;
+      porDept.set(dep, (porDept.get(dep) || 0) + u.count);
+    });
+    const byDepartment = Array.from(porDept.entries()).map(([dep, count]) => ({ departamento: dep, count }));
+    const porDia = new Map();
+    (motoristas || []).forEach(m => {
+      const d = m.data_cadastro ? new Date(m.data_cadastro) : null;
+      if (!d) return;
+      const key = d.toISOString().slice(0, 10);
+      porDia.set(key, (porDia.get(key) || 0) + 1);
+    });
+    const byDay = Array.from(porDia.entries()).sort((a,b)=>a[0].localeCompare(b[0])).map(([date, count]) => ({ date, count }));
+    res.json({ byUser, byDepartment, byDay });
+  } catch (error) {
+    console.error('❌ Erro séries motoristas:', error);
+    res.status(500).json({ error: 'Erro ao carregar séries' });
+  }
 });
 
 // Obter estatísticas gerais

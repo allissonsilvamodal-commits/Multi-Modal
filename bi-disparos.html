@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BI de Disparos</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body { background: #0f0f23; color: #fff; }
+        .container { padding: 2rem 1rem; }
+        .chart-container { height: 340px; }
+        .card { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); border-radius: 12px; }
+        .card-header { background: transparent; color: #fff; font-weight: 700; }
+        .form-select, .form-control { background: rgba(255,255,255,0.06); color: #fff; border-color: rgba(255,255,255,0.15); }
+    </style>
+    <script>
+        let supabase;
+        let charts = {};
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            await initSupabase();
+            await carregarFiltros();
+            await carregarDados();
+        });
+
+        async function initSupabase() {
+            const res = await fetch('/api/supabase-config');
+            const cfg = await res.json();
+            supabase = window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey);
+        }
+
+        async function carregarFiltros() {
+            // Usuários
+            const { data: users } = await supabase.from('user_profiles').select('id, nome, email, departamento').eq('active', true).order('nome');
+            const selUser = document.getElementById('filtroUsuario');
+            selUser.innerHTML = '<option value="">Todos os usuários</option>';
+            (users||[]).forEach(u => {
+                const opt = document.createElement('option');
+                opt.value = u.id;
+                opt.textContent = u.nome || u.email || u.id;
+                selUser.appendChild(opt);
+            });
+
+            // Departamentos (distintos)
+            const departamentos = [...new Set((users||[]).map(u => u.departamento).filter(Boolean))];
+            const selDept = document.getElementById('filtroDepartamento');
+            selDept.innerHTML = '<option value="">Todos os departamentos</option>';
+            departamentos.forEach(d => {
+                const opt = document.createElement('option');
+                opt.value = d; opt.textContent = d; selDept.appendChild(opt);
+            });
+        }
+
+        async function carregarDados() {
+            const periodo = document.getElementById('filtroPeriodo').value;
+            const usuarioId = document.getElementById('filtroUsuario').value;
+            const departamento = document.getElementById('filtroDepartamento').value;
+
+            const { start, end, group } = obterIntervalo(periodo);
+            let query = supabase.from('disparos_log').select('user_id, departamento, created_at').gte('created_at', start).lte('created_at', end);
+            if (usuarioId) query = query.eq('user_id', usuarioId);
+            if (departamento) query = query.eq('departamento', departamento);
+            const { data, error } = await query;
+            if (error) { console.error(error); return; }
+
+            const rows = data || [];
+            atualizarKpis(rows);
+            await desenharPorUsuario(rows);
+            desenharPorDepartamento(rows);
+            desenharSerieTemporal(rows, group);
+        }
+
+        function obterIntervalo(periodo) {
+            const now = new Date();
+            let start = new Date(2000,0,1), end = new Date(2099,11,31,23,59,59), group = 'day';
+            if (periodo === 'hoje') { start = new Date(now.getFullYear(), now.getMonth(), now.getDate()); end = new Date(start); end.setHours(23,59,59); group = 'hour'; }
+            else if (periodo === 'mes') { start = new Date(now.getFullYear(), now.getMonth(), 1); end = new Date(now.getFullYear(), now.getMonth()+1, 0, 23,59,59); group = 'day'; }
+            else if (periodo === 'ano') { start = new Date(now.getFullYear(), 0, 1); end = new Date(now.getFullYear(), 11, 31, 23,59,59); group = 'month'; }
+            return { start: start.toISOString(), end: end.toISOString(), group };
+        }
+
+        function atualizarKpis(rows) {
+            document.getElementById('kpiTotal').textContent = rows.length;
+            const usuarios = new Set(rows.map(r => r.user_id).filter(Boolean));
+            document.getElementById('kpiUsuarios').textContent = usuarios.size;
+            const deps = new Set(rows.map(r => r.departamento).filter(Boolean));
+            document.getElementById('kpiDepartamentos').textContent = deps.size;
+        }
+
+        async function desenharPorUsuario(rows) {
+            const ctx = document.getElementById('chartUsuario'); if (!ctx) return;
+            const counts = {};
+            rows.forEach(r => { const k = r.user_id || 'Anônimo'; counts[k] = (counts[k]||0)+1; });
+            // Mapear nomes
+            const ids = Object.keys(counts).filter(id => id !== 'Anônimo');
+            let namesMap = {};
+            if (ids.length) {
+                const { data: users } = await supabase.from('user_profiles').select('id, nome, email').in('id', ids);
+                (users||[]).forEach(u => namesMap[u.id] = u.nome || u.email || u.id);
+            }
+            const labels = Object.keys(counts).map(id => id === 'Anônimo' ? 'Anônimo' : (namesMap[id] || id));
+            const values = Object.values(counts);
+            if (charts.usr) charts.usr.destroy();
+            charts.usr = new Chart(ctx, { type:'bar', data:{ labels, datasets:[{ label:'Disparos', data: values, backgroundColor:'#667eea' }] }, options:{ responsive:true, maintainAspectRatio:false } });
+        }
+
+        function desenharPorDepartamento(rows) {
+            const ctx = document.getElementById('chartDepartamento'); if (!ctx) return;
+            const counts = {};
+            rows.forEach(r => { const k = r.departamento || 'Não informado'; counts[k] = (counts[k]||0)+1; });
+            if (charts.dep) charts.dep.destroy();
+            charts.dep = new Chart(ctx, { type:'doughnut', data:{ labels:Object.keys(counts), datasets:[{ data:Object.values(counts) }] }, options:{ responsive:true, maintainAspectRatio:false } });
+        }
+
+        function desenharSerieTemporal(rows, group) {
+            const ctx = document.getElementById('chartTemporal'); if (!ctx) return;
+            const bucket = {};
+            rows.forEach(r => {
+                const d = new Date(r.created_at);
+                let key = `${d.getFullYear()}-${(d.getMonth()+1).toString().padStart(2,'0')}-${d.getDate().toString().padStart(2,'0')}`;
+                if (group === 'month') key = `${d.getFullYear()}-${(d.getMonth()+1).toString().padStart(2,'0')}`;
+                if (group === 'hour') key = `${d.getHours().toString().padStart(2,'0')}:00`;
+                bucket[key] = (bucket[key]||0)+1;
+            });
+            const labels = Object.keys(bucket).sort();
+            const values = labels.map(k => bucket[k]);
+            if (charts.tmp) charts.tmp.destroy();
+            charts.tmp = new Chart(ctx, { type:'line', data:{ labels, datasets:[{ label:'Disparos', data: values, borderColor:'#f093fb', backgroundColor:'rgba(240,147,251,0.2)', fill:true, tension:0.3 }] }, options:{ responsive:true, maintainAspectRatio:false } });
+        }
+    </script>
+</head>
+<body>
+    <nav class="navbar navbar-dark bg-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="portal.html"><i class="fas fa-chart-line"></i> BI de Disparos</a>
+            <a href="portal.html" class="btn btn-outline-light btn-sm"><i class="fas fa-arrow-left"></i> Voltar</a>
+        </div>
+    </nav>
+    <div class="container">
+        <div class="row g-3 mb-3">
+            <div class="col-md-3">
+                <label class="form-label">Período</label>
+                <select id="filtroPeriodo" class="form-select" onchange="carregarDados()">
+                    <option value="hoje">Hoje</option>
+                    <option value="mes" selected>Este Mês</option>
+                    <option value="ano">Este Ano</option>
+                    <option value="todos">Todos</option>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Usuário</label>
+                <select id="filtroUsuario" class="form-select" onchange="carregarDados()"></select>
+            </div>
+            <div class="col-md-5">
+                <label class="form-label">Departamento</label>
+                <select id="filtroDepartamento" class="form-select" onchange="carregarDados()"></select>
+            </div>
+        </div>
+
+        <div class="row g-3 mb-3">
+            <div class="col-md-4">
+                <div class="card text-center">
+                    <div class="card-header">Total de Disparos</div>
+                    <div class="card-body"><h2 id="kpiTotal">0</h2></div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card text-center">
+                    <div class="card-header">Usuários Enviando</div>
+                    <div class="card-body"><h2 id="kpiUsuarios">0</h2></div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card text-center">
+                    <div class="card-header">Departamentos Ativos</div>
+                    <div class="card-body"><h2 id="kpiDepartamentos">0</h2></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-3">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header"><i class="fas fa-user"></i> Disparos por Usuário</div>
+                    <div class="card-body chart-container"><canvas id="chartUsuario"></canvas></div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header"><i class="fas fa-building"></i> Disparos por Departamento</div>
+                    <div class="card-body chart-container"><canvas id="chartDepartamento"></canvas></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-3 mt-3">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header"><i class="fas fa-calendar"></i> Disparos por Período</div>
+                    <div class="card-body chart-container"><canvas id="chartTemporal"></canvas></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
+
+

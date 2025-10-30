@@ -3,16 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Relatórios - Multimodal</title>
+    <title>Relatórios Inteligentes</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
-    <script src="https://cdn.jsdelivr.net/npm/particles.js@2.0.0/particles.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script>
-        window.supabase = supabase;
-    </script>
-    <script src="js/permissions.js"></script>
     <style>
         :root {
             --primary: #667eea;
@@ -23,632 +18,132 @@
             --danger: #dc3545;
             --info: #17a2b8;
             --dark: #0f0f23;
-            --glass: rgba(255, 255, 255, 0.1);
-            --glass-border: rgba(255, 255, 255, 0.2);
+            --white: #ffffff;
+            --glass: rgba(255, 255, 255, 0.09);
+            --glass-border: rgba(255, 255, 255, 0.14);
             --text-primary: #ffffff;
-            --text-secondary: rgba(255, 255, 255, 0.8);
-            --border-radius: 25px;
-            --box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
-            --transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            --text-secondary: rgba(255,255,255,0.85);
+            --border-radius: 22px;
+            --box-shadow: 0 8px 32px rgba(0,0,0,.24);
+            --transition: all 0.4s cubic-bezier(0.4,0,0.2,1);
         }
-
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-
         body {
-            font-family: 'Segoe UI', sans-serif;
-            background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 50%, #16213e 100%);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             min-height: 100vh;
+            background: linear-gradient(135deg,#0f0f23 0%,#1a1a2e 64%,#16213e 100%);
             color: var(--text-primary);
             overflow-x: hidden;
             position: relative;
         }
-
-        #particles-js {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: -1;
-        }
-
+        #particles-js { position: fixed; top: 0; left:0; width: 100vw;height: 100vh;z-index:-1; }
         .light-effect {
-            position: absolute;
-            width: 400px;
-            height: 400px;
-            border-radius: 50%;
-            background: radial-gradient(circle, rgba(102, 126, 234, 0.4) 0%, transparent 70%);
-            filter: blur(60px);
-            animation: float 8s ease-in-out infinite;
+            position:absolute; z-index:-1; border-radius:50%; filter:blur(45px); animation: float 7s infinite alternate ease-in-out; opacity:.5;
         }
-
-        .light-effect:nth-child(1) {
-            top: -100px;
-            left: -100px;
-            animation-delay: 0s;
-        }
-
-        .light-effect:nth-child(2) {
-            bottom: -100px;
-            right: -100px;
-            animation-delay: 3s;
-        }
-
-        @keyframes float {
-            0%, 100% { transform: translateY(0px) scale(1); }
-            50% { transform: translateY(-30px) scale(1.2); }
-        }
-
+        .light-effect:nth-child(1){width:300px;height:300px;background:radial-gradient(circle,#667eea30 0%,transparent 78%);top:14%;left:7%;}
+        .light-effect:nth-child(2){width:260px;height:280px;background:radial-gradient(circle,#f093fb25 0%,transparent 80%);bottom:14%;right:7%;animation-delay:2s;}
+        .light-effect:nth-child(3){width:220px;height:200px;background:radial-gradient(circle,#764ba240 0%,transparent 85%);top:60%;left:52%;animation-delay:4s;}
+        @keyframes float { 0%,100%{transform:translateY(0) scale(1);} 50%{transform:translateY(-14px) scale(1.06);} }
         .navbar {
-            background: rgba(15, 15, 35, 0.95);
-            backdrop-filter: blur(30px);
-            border-bottom: 1px solid var(--glass-border);
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
-            position: sticky;
-            top: 0;
-            z-index: 1000;
-            padding: 1.5rem 2rem;
-        }
-
-        .navbar-brand {
-            font-weight: 800;
-            font-size: 2rem;
-            background: linear-gradient(135deg, var(--primary), var(--accent));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            text-shadow: 0 0 40px rgba(102, 126, 234, 0.6);
-        }
-
-        .container { padding: 3rem 1rem; position: relative; }
-
-        .card-tech {
-            background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
-            backdrop-filter: blur(40px);
-            border: 2px solid rgba(255, 255, 255, 0.25);
-            border-radius: var(--border-radius);
-            box-shadow: inset 0 0 40px rgba(102, 126, 234, 0.15), 0 20px 60px rgba(0, 0, 0, 0.5);
-            transition: var(--transition);
-            position: relative;
-            overflow: hidden;
-        }
-
-        .card-tech::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-            transition: all 1s;
-            z-index: 1;
-        }
-
-        .card-tech:hover::before { left: 100%; }
-        
-        .card-tech::after {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: linear-gradient(135deg, rgba(102, 126, 234, 0.2), rgba(118, 75, 162, 0.2));
-            opacity: 0;
-            transition: all 0.5s;
-            z-index: 0;
-        }
-
-        .card-tech:hover::after { opacity: 1; }
-        
-        .card-tech:hover { 
-            transform: translateY(-20px) scale(1.02) rotateX(2deg); 
-            box-shadow: inset 0 0 60px rgba(102, 126, 234, 0.4), 0 30px 80px rgba(102, 126, 234, 0.6);
-            border-color: rgba(102, 126, 234, 0.8);
-        }
-
-        .card-header-tech {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
-            border: none;
-            padding: 2.5rem;
-            border-radius: var(--border-radius) var(--border-radius) 0 0;
-            position: relative;
-            overflow: hidden;
-            box-shadow: 0 10px 40px rgba(102, 126, 234, 0.4);
-        }
-
-        .card-header-tech::before {
-            content: '';
-            position: absolute;
-            top: -50%;
-            left: -50%;
-            width: 200%;
-            height: 200%;
-            background: linear-gradient(45deg, transparent 30%, rgba(255, 255, 255, 0.3) 50%, transparent 70%);
-            animation: shimmer 4s infinite;
-        }
-
-        .card-header-tech::after {
-            content: '';
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            height: 4px;
-            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.6), transparent);
-            animation: shimmer-bar 3s infinite;
-        }
-
-        @keyframes shimmer {
-            0% { transform: translate(-50%, -50%) rotate(0deg); }
-            100% { transform: translate(-50%, -50%) rotate(360deg); }
-        }
-
-        @keyframes shimmer-bar {
-            0% { transform: translateX(-100%); }
-            100% { transform: translateX(100%); }
-        }
-
-        .card-header-tech h5 {
-            margin: 0;
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-            font-weight: 700;
-            font-size: 1.3rem;
-            position: relative;
-            z-index: 1;
-        }
-
-        .stat-card {
-            background: linear-gradient(135deg, rgba(102, 126, 234, 0.15), rgba(118, 75, 162, 0.15));
-            backdrop-filter: blur(40px);
-            border: 2px solid rgba(255, 255, 255, 0.3);
-            border-radius: var(--border-radius);
-            padding: 3rem 2rem;
-            text-align: center;
-            transition: var(--transition);
-            position: relative;
-            overflow: hidden;
-            box-shadow: inset 0 0 60px rgba(102, 126, 234, 0.2), 0 20px 60px rgba(0, 0, 0, 0.5);
-        }
-
-        .stat-card::before {
-            content: '';
-            position: absolute;
-            top: -50%;
-            left: -50%;
-            width: 200%;
-            height: 200%;
-            background: radial-gradient(circle, rgba(102, 126, 234, 0.4) 0%, transparent 70%);
-            transition: all 0.8s;
-        }
-
-        .stat-card:hover::before { 
-            top: -30%;
-            left: -30%;
-            opacity: 0.8;
-        }
-
-        .stat-card::after {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-            transition: all 1s;
-        }
-
-        .stat-card:hover::after { left: 100%; }
-
-        .stat-card:hover { 
-            transform: translateY(-20px) scale(1.05); 
-            box-shadow: inset 0 0 80px rgba(102, 126, 234, 0.4), 0 30px 80px rgba(102, 126, 234, 0.6);
-            border-color: rgba(102, 126, 234, 0.8);
-        }
-
-        .stat-icon {
-            font-size: 4rem;
-            margin-bottom: 1.5rem;
-            display: inline-block;
-            animation: pulse 2s infinite;
-            filter: drop-shadow(0 0 20px currentColor);
-        }
-
-        @keyframes pulse {
-            0%, 100% { transform: scale(1) rotate(0deg); filter: drop-shadow(0 0 20px currentColor); }
-            50% { transform: scale(1.15) rotate(5deg); filter: drop-shadow(0 0 30px currentColor); }
-        }
-
-        .stat-number {
-            font-size: 5rem;
-            font-weight: 900;
-            background: linear-gradient(135deg, #667eea, #f093fb, #764ba2);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            margin: 1.5rem 0;
-            text-shadow: 0 0 60px rgba(102, 126, 234, 1);
-            animation: countUp 1.2s cubic-bezier(0.34, 1.56, 0.64, 1);
-            letter-spacing: 2px;
-            position: relative;
-        }
-
-        .stat-number::after {
-            content: attr(id);
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: linear-gradient(135deg, #667eea, #f093fb);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            filter: blur(10px);
-            z-index: -1;
-        }
-
-        @keyframes countUp {
-            from { 
-                opacity: 0; 
-                transform: translateY(30px) scale(0.8); 
-            }
-            to { 
-                opacity: 1; 
-                transform: translateY(0) scale(1); 
-            }
-        }
-
-        .stat-label {
-            color: var(--text-secondary);
-            font-size: 1.2rem;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 1.5px;
-            position: relative;
-            z-index: 1;
-        }
-
-        .stat-label::after {
-            content: '';
-            position: absolute;
-            bottom: -8px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 40px;
-            height: 3px;
-            background: linear-gradient(135deg, var(--primary), var(--accent));
-            border-radius: 10px;
-        }
-
-        .chart-container {
-            height: 350px;
-            margin: 1.5rem 0;
-            position: relative;
-        }
-
-        .table-tech {
-            color: var(--text-primary);
-        }
-
-        .table-tech thead th {
-            background: linear-gradient(135deg, rgba(102, 126, 234, 0.2), rgba(118, 75, 162, 0.2));
-            border: none;
-            padding: 1.5rem;
-            font-weight: 700;
-            text-transform: uppercase;
-            font-size: 0.9rem;
-            letter-spacing: 1px;
-        }
-
-        .table-tech tbody tr {
-            background: rgba(255, 255, 255, 0.05);
-            border-bottom: 1px solid var(--glass-border);
-            transition: var(--transition);
-        }
-
-        .table-tech tbody tr {
-            position: relative;
-        }
-
-        .table-tech tbody tr::before {
-            content: '';
-            position: absolute;
-            left: 0;
-            top: 0;
-            bottom: 0;
-            width: 4px;
-            background: linear-gradient(135deg, var(--primary), var(--accent));
-            opacity: 0;
-            transition: opacity 0.3s;
-        }
-
-        .table-tech tbody tr:hover {
-            background: rgba(102, 126, 234, 0.25);
-            transform: scale(1.02) translateX(5px);
-            box-shadow: 0 15px 40px rgba(102, 126, 234, 0.4);
-        }
-
-        .table-tech tbody tr:hover::before {
-            opacity: 1;
-        }
-
-        .table-tech td {
-            padding: 1.5rem;
-            vertical-align: middle;
-        }
-
-        .badge-tech {
-            padding: 0.6rem 1.2rem;
-            border-radius: 25px;
-            font-weight: 700;
-            font-size: 0.85rem;
-            letter-spacing: 0.5px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
-        }
-
-        .btn-tech {
-            border-radius: 50px;
-            padding: 1rem 2.5rem;
-            font-weight: 700;
-            background: linear-gradient(135deg, var(--primary), var(--secondary));
-            border: none;
-            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
-            transition: var(--transition);
-            position: relative;
-            overflow: hidden;
-        }
-
-        .btn-tech::before {
-            content: '';
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            width: 0;
-            height: 0;
-            background: rgba(255, 255, 255, 0.3);
-            border-radius: 50%;
-            transform: translate(-50%, -50%);
-            transition: all 0.6s;
-        }
-
-        .btn-tech:hover::before {
-            width: 300px;
-            height: 300px;
-        }
-
-        .btn-tech:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 15px 40px rgba(102, 126, 234, 0.6);
-        }
-
-        .filtros-card {
-            background: var(--glass);
-            backdrop-filter: blur(30px);
-            border: 1px solid var(--glass-border);
-            border-radius: var(--border-radius);
-            padding: 2.5rem;
-            margin-bottom: 3rem;
-            box-shadow: var(--box-shadow);
-        }
-
-        .form-label {
-            color: var(--text-secondary);
-            font-weight: 700;
-            margin-bottom: 0.8rem;
-            font-size: 1rem;
-            letter-spacing: 0.5px;
-        }
-
-        .form-select, .form-control {
-            background: rgba(255, 255, 255, 0.1);
-            border: 2px solid var(--glass-border);
-            color: var(--text-primary);
-            border-radius: 15px;
-            padding: 1rem 1.5rem;
-            transition: var(--transition);
-            font-weight: 500;
-        }
-
-        .form-select:focus, .form-control:focus {
-            background: rgba(255, 255, 255, 0.15);
-            border-color: var(--primary);
-            box-shadow: 0 0 30px rgba(102, 126, 234, 0.5);
-            outline: none;
-            transform: translateY(-2px);
-        }
-
-        .loading-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(15, 15, 35, 0.95);
+            background: rgba(15,15,35,0.90);
             backdrop-filter: blur(20px);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 9999;
-            flex-direction: column;
+            border-bottom: 1px solid var(--glass-border);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.23);
         }
-
-        .spinner {
-            width: 60px;
-            height: 60px;
-            border: 5px solid var(--glass-border);
-            border-top: 5px solid var(--primary);
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        .loading-text {
-            margin-top: 2rem;
-            font-size: 1.2rem;
-            font-weight: 600;
-            animation: pulse 2s infinite;
-        }
-
-        @media (max-width: 768px) {
-            .stat-number { font-size: 3rem; }
-            .stat-icon { font-size: 3rem; }
-            .chart-container { height: 280px; }
-        }
-
-        /* Efeito de entrada para cards */
-        .fade-in {
-            animation: fadeIn 0.8s ease-out;
-        }
-
-        @keyframes fadeIn {
-            from { 
-                opacity: 0; 
-                transform: translateY(30px) scale(0.95); 
-            }
-            to { 
-                opacity: 1; 
-                transform: translateY(0) scale(1); 
-            }
-        }
-
-        /* Scrollbar personalizada */
-        ::-webkit-scrollbar {
-            width: 10px;
-        }
-
-        ::-webkit-scrollbar-track {
-            background: rgba(255, 255, 255, 0.05);
-        }
-
-        ::-webkit-scrollbar-thumb {
-            background: linear-gradient(135deg, var(--primary), var(--accent));
-            border-radius: 10px;
-        }
-
-        ::-webkit-scrollbar-thumb:hover {
-            background: linear-gradient(135deg, var(--accent), var(--primary));
-        }
-
-        /* Insight Items */
-        .insight-item {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-            padding: 1rem;
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 10px;
-            transition: var(--transition);
-            cursor: pointer;
-        }
-
-        .insight-item:hover {
-            background: rgba(102, 126, 234, 0.2);
-            transform: translateX(5px);
-        }
-
-        .insight-item i {
-            font-size: 1.5rem;
-        }
-
-        /* Performance List */
-        .performance-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 0.75rem;
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 8px;
-            margin-bottom: 0.5rem;
-            transition: var(--transition);
-        }
-
-        .performance-item:hover {
-            background: rgba(102, 126, 234, 0.2);
-            transform: scale(1.02);
-        }
-
-        .performance-bar {
-            height: 8px;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 10px;
-            overflow: hidden;
-            margin-top: 0.5rem;
-        }
-
-        .performance-bar-fill {
-            height: 100%;
-            background: linear-gradient(90deg, var(--primary), var(--accent));
-            transition: width 1s ease-out;
-            animation: shimmer-bar 2s infinite;
-        }
-
-        /* Minigraficos */
-        #chartMetas {
-            max-height: 200px;
-        }
+        .navbar-brand { font-weight: 700; font-size: 1.6rem;background: linear-gradient(135deg,var(--primary),var(--accent));-webkit-background-clip: text;-webkit-text-fill-color: transparent; background-clip:text; }
+        .nav-tabs { border: none;margin-bottom: 1.75rem;}
+        .nav-tabs .nav-link { color: var(--text-secondary); background: var(--glass); margin-right:8px; border:none; border-radius: 16px 16px 0 0; padding:18px 32px; font-size:1.07rem; font-weight: 600; transition: var(--transition); }
+        .nav-tabs .nav-link.active { background: linear-gradient(90deg,#667eea80,#764ba260,#f093fb15); color: var(--primary); border-bottom:2.5px solid var(--accent); }
+        .main-container { padding: 2.5rem 0 1.3rem 0; min-height:calc(100vh - 70px);}        
+        .card-futuristic,.metric-card { background: var(--glass); border-radius: var(--border-radius); border:1.5px solid var(--glass-border); box-shadow: var(--box-shadow); backdrop-filter:blur(18px); position:relative; transition: var(--transition);overflow:hidden;}
+        .card-futuristic {margin-bottom:2.5rem;}
+        .card-futuristic:hover{ box-shadow:0 14px 52px 0 #222b4e2c; border:1.5px solid var(--primary);}        
+        .metric-card { text-align:center; padding:2.5rem 0 2.2rem 0; }
+        .metric-value { font-size:2.1rem;font-weight:800; letter-spacing:-1.5px; margin-bottom: .45rem; background:linear-gradient(135deg,var(--primary),var(--accent));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text; }
+        .metric-label { font-size:1.05rem;color:var(--text-secondary);font-weight:600;}
+        .filter-card{ background: var(--glass); border: 1px solid var(--glass-border);border-radius: 15px;box-shadow:0 2px 20px #23213e13;margin-bottom:1.6rem;padding:1.2rem 1.4rem; }
+        .form-label { color:var(--text-secondary);font-weight:600;margin-bottom:.5rem; }
+        .form-select, .form-control {background:rgba(255,255,255,0.11);color:#fff; border:1.2px solid var(--glass-border); border-radius: 13px;padding:.85rem 1.2rem; font-size:1rem;}
+        .form-select:focus,.form-control:focus{outline:none;border-color:var(--primary);} 
+        .dashboard-row {display:flex;gap:2rem;flex-wrap:wrap; margin-bottom:1.6rem}
+        .dashboard-row>.col,.dashboard-row>div{flex:1 1 230px;min-width:220px;}
+        .charts-row {display:flex;gap:1.7rem;flex-wrap:wrap;margin-bottom:1.7rem}
+        .charts-row>.card-futuristic{flex:1 1 330px;min-width:300px;}
+        .chart-container { background:none;padding:.7rem 1.4rem;border-radius:13px;}
+        .table-tech thead th {background:rgba(102,126,234,0.08);color:var(--text-primary);font-weight:700;}
+        .table-tech th, .table-tech td{font-size:1rem; color:var(--text-primary); padding:1rem .7rem;}
+        .loading-overlay { position: fixed; inset: 0; background: rgba(28,20,65,0.20); display: none; align-items: center; justify-content: center; z-index: 1050; }
+        .spinner { width: 40px; height: 40px; border: 4px solid #dbeafe; border-top-color: #667eea; border-radius: 50%; animation: spin 1s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        @media (max-width:1020px){ .dashboard-row,.charts-row{flex-direction:column;gap:1.3rem;} }
+        /* Botões futurísticos e toggle de tema */
+        .btn-futuristic { background: linear-gradient(135deg, var(--primary), var(--secondary)); border: none; border-radius: 50px; padding: 0.75rem 1.2rem; font-weight: 600; color: #fff; transition: var(--transition); position: relative; overflow: hidden; }
+        .btn-futuristic:hover { transform: translateY(-2px); box-shadow: 0 10px 25px rgba(102,126,234,0.35); }
+        .theme-toggle { background: var(--glass); border: 1px solid var(--glass-border); border-radius: 50px; padding: 8px 14px; color: var(--text-primary); transition: var(--transition); backdrop-filter: blur(10px); }
+        .theme-toggle:hover { background: rgba(102,126,234,0.20); box-shadow: 0 0 18px rgba(102, 126, 234, 0.28); transform: translateY(-1px); }
+        /* Cabeçalho de cards */
+        .card-header-futuristic { background: linear-gradient(135deg, var(--primary), var(--secondary)); border-radius: var(--border-radius) var(--border-radius) 0 0; padding: 1rem 1.25rem; border: none; position: relative; overflow: hidden; }
+        .card-header-futuristic h5 { color: #fff; margin: 0; font-weight: 700; }
+        .card-header-futuristic::before { content: ''; position: absolute; inset: 0; background: linear-gradient(45deg, transparent 30%, rgba(255,255,255,0.12) 50%, transparent 70%); animation: shimmer 3s infinite; }
+        @keyframes shimmer { 0% { transform: translateX(-100%);} 100% { transform: translateX(100%);} }
+        /* Light mode overrides */
+        body.light-mode { color: #0f0f23; background: linear-gradient(135deg, #eef2ff 0%, #f8fafc 60%, #ffffff 100%); }
+        body.light-mode .navbar { background: rgba(255,255,255,0.85); border-bottom: 1px solid rgba(0,0,0,0.08); }
+        body.light-mode .navbar-brand { -webkit-text-fill-color: initial; background: linear-gradient(135deg, #4f46e5, #a855f7); -webkit-background-clip: text; background-clip: text; }
+        body.light-mode .card-futuristic, body.light-mode .metric-card, body.light-mode .filter-card { background: rgba(255,255,255,0.75); border: 1px solid rgba(0,0,0,0.08); box-shadow: 0 8px 26px rgba(0,0,0,0.10); }
+        body.light-mode .metric-label, body.light-mode .form-label { color: #334155; }
+        body.light-mode .table-tech thead th { background: #eef2ff; color: #0f172a; }
+        body.light-mode .table-tech td, body.light-mode .table-tech th { color: #0f172a; }
+        body.light-mode .form-select, body.light-mode .form-control { background: rgba(255,255,255,0.95); color: #0f172a; border: 1px solid rgba(0,0,0,0.12); }
+        body.light-mode .nav-tabs .nav-link { color: #334155; background: rgba(0,0,0,0.04); }
+        body.light-mode .nav-tabs .nav-link.active { color: #4f46e5; border-bottom-color: #a855f7; background: linear-gradient(90deg, #e0e7ff, #f3e8ff, #fdf4ff); }
+        body.light-mode .theme-toggle { color: #0f172a; background: rgba(255,255,255,0.8); border: 1px solid rgba(0,0,0,0.08); }
     </style>
 </head>
 <body>
+    <div class="light-effect"></div>
+    <div class="light-effect"></div>
+    <div class="light-effect"></div>
     <div id="particles-js"></div>
-    <div class="light-effect"></div>
-    <div class="light-effect"></div>
-
-    <nav class="navbar">
-        <div class="container-fluid">
-            <a class="navbar-brand" href="portal.html">
-                <i class="fas fa-chart-line"></i> Relatórios Inteligentes
+    <nav class="navbar navbar-expand-lg">
+        <div class="container d-flex justify-content-between align-items-center">
+            <a class="navbar-brand d-flex align-items-center" href="#">
+                <i class="fas fa-chart-bar me-2"></i> Relatórios Inteligentes
             </a>
-            <div class="d-flex align-items-center gap-3">
-                <span class="text-white" id="currentUser"><i class="fas fa-user"></i> Usuário</span>
-                <a href="portal.html" class="btn btn-sm btn-outline-light" style="border-radius: 25px;">
-                    <i class="fas fa-arrow-left"></i> Voltar
-                </a>
+            <div class="d-flex align-items-center gap-2">
+                <a href="portal.html" class="btn btn-futuristic"><i class="fas fa-arrow-left me-2"></i>Voltar ao Portal</a>
+                <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()"><i class="fas fa-moon"></i></button>
             </div>
         </div>
     </nav>
-
+    <div class="main-container">
     <div class="container">
-        <div class="row mb-4">
-            <div class="col-md-3 mb-3">
-                <div class="stat-card">
-                    <i class="fas fa-box stat-icon" style="color: var(--primary);"></i>
-                    <div class="stat-number" id="totalColetas">0</div>
-                    <div class="stat-label">Total de Coletas</div>
+            <ul class="nav nav-tabs" id="tabsRelatorios">
+                <li class="nav-item"><button class="nav-link active" id="tabColetas" onclick="mostrarAba('coletas')">Coletas</button></li>
+                <li class="nav-item"><button class="nav-link" id="tabBI" onclick="mostrarAba('bi')">BI Disparos</button></li>
+				<li class="nav-item"><button class="nav-link" id="tabMotoristas" onclick="mostrarAba('motoristas')">Motoristas</button></li>
+            </ul>
+            <div id="abaColetas">
+                <div class="dashboard-row">
+                    <div class="metric-card card-futuristic">
+                        <div class="metric-value" id="totalColetas">0</div>
+                        <div class="metric-label"><i class="fas fa-box"></i> Total de Coletas</div>
                 </div>
+                    <div class="metric-card card-futuristic">
+                        <div class="metric-value" id="emAndamento">0</div>
+                        <div class="metric-label"><i class="fas fa-clock"></i> Em Andamento</div>
             </div>
-            <div class="col-md-3 mb-3">
-                <div class="stat-card">
-                    <i class="fas fa-clock stat-icon" style="color: var(--warning);"></i>
-                    <div class="stat-number" id="emAndamento">0</div>
-                    <div class="stat-label">Em Andamento</div>
+                    <div class="metric-card card-futuristic">
+                        <div class="metric-value" id="concluidas">0</div>
+                        <div class="metric-label"><i class="fas fa-check-circle"></i> Concluídas</div>
                 </div>
+                    <div class="metric-card card-futuristic">
+                        <div class="metric-value" id="canceladas">0</div>
+                        <div class="metric-label"><i class="fas fa-times-circle"></i> Canceladas</div>
             </div>
-            <div class="col-md-3 mb-3">
-                <div class="stat-card">
-                    <i class="fas fa-check-circle stat-icon" style="color: var(--success);"></i>
-                    <div class="stat-number" id="concluidas">0</div>
-                    <div class="stat-label">Concluídas</div>
                 </div>
-            </div>
-            <div class="col-md-3 mb-3">
-                <div class="stat-card">
-                    <i class="fas fa-times-circle stat-icon" style="color: var(--danger);"></i>
-                    <div class="stat-number" id="canceladas">0</div>
-                    <div class="stat-label">Canceladas</div>
-                </div>
-            </div>
-        </div>
-
-        <div class="filtros-card">
+                <div class="filter-card">
             <div class="row">
-                <div class="col-md-4 mb-3">
+                        <div class="col-md-4 mb-2">
                     <label class="form-label"><i class="fas fa-calendar"></i> Período</label>
                     <select id="filtroPeriodo" class="form-select">
                         <option value="hoje">Hoje</option>
@@ -658,70 +153,41 @@
                         <option value="todos">Todos</option>
                     </select>
                 </div>
-                <div class="col-md-4 mb-3">
+                        <div class="col-md-4 mb-2">
                     <label class="form-label"><i class="fas fa-user"></i> Usuário</label>
                     <select id="filtroUsuario" class="form-select">
                         <option value="">Todos os usuários</option>
                     </select>
                 </div>
-                <div class="col-md-4 mb-3 d-flex align-items-end">
-                    <button class="btn btn-tech w-100" onclick="aplicarFiltros()">
-                        <i class="fas fa-filter"></i> Aplicar Filtros
+                        <div class="col-md-4 mb-2 d-flex align-items-end">
+                            <button class="btn btn-futuristic w-100" onclick="aplicarFiltros()">
+                                <i class="fas fa-filter me-1"></i>Aplicar Filtros
                     </button>
                 </div>
             </div>
         </div>
-
-        <div class="row mb-4">
-            <div class="col-md-6 mb-4">
-                <div class="card-tech">
-                    <div class="card-header-tech">
-                        <h5><i class="fas fa-chart-pie"></i> Distribuição por Status</h5>
+                <div class="charts-row">
+                    <div class="card-futuristic">
+                        <div class="card-header-futuristic"><h5><i class="fas fa-chart-pie me-2"></i>Distribuição por Status</h5></div>
+                        <div class="chart-container"><canvas id="chartStatus"></canvas></div>
                     </div>
-                    <div class="chart-container">
-                        <canvas id="chartStatus"></canvas>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-6 mb-4">
-                <div class="card-tech">
-                    <div class="card-header-tech">
-                        <h5><i class="fas fa-chart-bar"></i> Coletas por Mês</h5>
-                    </div>
-                    <div class="chart-container">
-                        <canvas id="chartMensal"></canvas>
+                    <div class="card-futuristic">
+                        <div class="card-header-futuristic"><h5><i class="fas fa-chart-bar me-2"></i>Coletas por Mês</h5></div>
+                        <div class="chart-container"><canvas id="chartMensal"></canvas></div>
                     </div>
                 </div>
+                <div class="charts-row">
+                    <div class="card-futuristic">
+                        <div class="card-header-futuristic"><h5><i class="fas fa-users me-2"></i>Performance por Usuário</h5></div>
+                        <div class="chart-container"><canvas id="chartUsuarios"></canvas></div>
             </div>
-        </div>
-
-        <div class="row mb-4">
-            <div class="col-md-6 mb-4">
-                <div class="card-tech">
-                    <div class="card-header-tech">
-                        <h5><i class="fas fa-users"></i> Performance por Usuário</h5>
+                    <div class="card-futuristic">
+                        <div class="card-header-futuristic"><h5><i class="fas fa-priority-high me-2"></i>Por Prioridade</h5></div>
+                        <div class="chart-container"><canvas id="chartPrioridade"></canvas></div>
                     </div>
-                    <div class="chart-container">
-                        <canvas id="chartUsuarios"></canvas>
                     </div>
-                </div>
-            </div>
-            <div class="col-md-6 mb-4">
-                <div class="card-tech">
-                    <div class="card-header-tech">
-                        <h5><i class="fas fa-priority-high"></i> Por Prioridade</h5>
-                    </div>
-                    <div class="chart-container">
-                        <canvas id="chartPrioridade"></canvas>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="card-tech">
-            <div class="card-header-tech">
-                <h5><i class="fas fa-table"></i> Relatório Detalhado</h5>
-            </div>
+                <div class="card-futuristic">
+                    <div class="card-header-futuristic"><h5><i class="fas fa-table me-2"></i>Relatório Detalhado</h5></div>
             <div class="table-responsive p-3">
                 <table class="table table-tech">
                     <thead>
@@ -735,871 +201,325 @@
                         </tr>
                     </thead>
                     <tbody id="tabelaRelatorio">
-                        <tr>
-                            <td colspan="6" class="text-center text-muted py-4">
-                                Carregando dados...
-                            </td>
-                        </tr>
+                                <tr><td colspan="6" class="text-center text-muted py-4">Carregando dados...</td></tr>
                     </tbody>
                 </table>
             </div>
         </div>
-        <!-- Métricas Adicionais -->
-        <div class="row mb-4">
-            <div class="col-md-3 mb-3">
-                <div class="stat-card">
-                    <i class="fas fa-clock stat-icon" style="color: var(--info);"></i>
-                    <div class="stat-number" id="tempoMedio">0</div>
-                    <div class="stat-label">Tempo Médio</div>
+                <div class="dashboard-row">
+                    <div class="metric-card card-futuristic">
+                        <div class="metric-value" id="tempoMedio">0</div>
+                        <div class="metric-label"><i class="fas fa-clock"></i> Tempo Médio</div>
+                </div>
+                    <div class="metric-card card-futuristic">
+                        <div class="metric-value" id="taxaSucesso">0%</div>
+                        <div class="metric-label"><i class="fas fa-percentage"></i> Taxa de Sucesso</div>
+            </div>
+                    <div class="metric-card card-futuristic">
+                        <div class="metric-value" id="noPrazo">0</div>
+                        <div class="metric-label"><i class="fas fa-calendar-check"></i> No Prazo</div>
+                </div>
+                    <div class="metric-card card-futuristic">
+                        <div class="metric-value" id="atrasadas">0</div>
+                        <div class="metric-label"><i class="fas fa-exclamation-triangle"></i> Atrasadas</div>
+            </div>
                 </div>
             </div>
-            <div class="col-md-3 mb-3">
-                <div class="stat-card">
-                    <i class="fas fa-percentage stat-icon" style="color: var(--success);"></i>
-                    <div class="stat-number" id="taxaSucesso">0%</div>
-                    <div class="stat-label">Taxa de Sucesso</div>
+            <div id="abaBI" style="display:none">
+                <div class="dashboard-row">
+                    <div class="metric-card card-futuristic">
+                        <div class="metric-value" id="kpiTotalDisp">0</div>
+                        <div class="metric-label"><i class="fas fa-paper-plane"></i> Total de Disparos</div>
                 </div>
+                    <div class="metric-card card-futuristic">
+                        <div class="metric-value" id="kpiUsuariosDisp">0</div>
+                        <div class="metric-label"><i class="fas fa-users"></i> Usuários Enviando</div>
             </div>
-            <div class="col-md-3 mb-3">
-                <div class="stat-card">
-                    <i class="fas fa-calendar-check stat-icon" style="color: var(--warning);"></i>
-                    <div class="stat-number" id="noPrazo">0</div>
-                    <div class="stat-label">No Prazo</div>
+                    <div class="metric-card card-futuristic">
+                        <div class="metric-value" id="kpiDepartamentosDisp">0</div>
+                        <div class="metric-label"><i class="fas fa-building"></i> Departamentos Ativos</div>
+        </div>
+                    </div>
+			<div id="abaMotoristas" style="display:none">
+				<div class="dashboard-row">
+					<div class="metric-card card-futuristic">
+						<div class="metric-value" id="kpiTotalMot">0</div>
+						<div class="metric-label"><i class="fas fa-id-card"></i> Total de Motoristas</div>
+					</div>
+					<div class="metric-card card-futuristic">
+						<div class="metric-value" id="kpiUsuariosMot">0</div>
+						<div class="metric-label"><i class="fas fa-users"></i> Usuários Cadastrando</div>
+					</div>
+					<div class="metric-card card-futuristic">
+						<div class="metric-value" id="kpiDepartamentosMot">0</div>
+						<div class="metric-label"><i class="fas fa-building"></i> Departamentos Ativos</div>
+					</div>
+				</div>
+				<div class="filter-card">
+					<div class="row">
+						<div class="col-md-3 mb-2">
+							<label class="form-label"><i class="fas fa-calendar"></i> Período</label>
+							<select id="filtroPeriodoMot" class="form-select" onchange="carregarMotoristas()">
+								<option value="hoje">Hoje</option>
+								<option value="mes" selected>Este Mês</option>
+								<option value="ano">Este Ano</option>
+								<option value="todos">Todos</option>
+							</select>
+						</div>
+						<div class="col-md-4 mb-2">
+							<label class="form-label"><i class="fas fa-user"></i> Usuário</label>
+							<select id="filtroUsuarioMot" class="form-select" onchange="carregarMotoristas()">
+								<option value="">Todos os usuários</option>
+							</select>
+						</div>
+						<div class="col-md-5 mb-2">
+							<label class="form-label"><i class="fas fa-building"></i> Departamento</label>
+							<select id="filtroDepartamentoMot" class="form-select" onchange="carregarMotoristas()">
+								<option value="">Todos os departamentos</option>
+							</select>
+						</div>
+					</div>
+				</div>
+				<div class="charts-row">
+					<div class="card-futuristic">
+						<div class="card-header-futuristic"><h5><i class="fas fa-user"></i> Motoristas por Usuário (Criador)</h5></div>
+						<div class="chart-container"><canvas id="chartUsuarioMot"></canvas></div>
+					</div>
+					<div class="card-futuristic">
+						<div class="card-header-futuristic"><h5><i class="fas fa-building"></i> Motoristas por Departamento</h5></div>
+						<div class="chart-container"><canvas id="chartDepartamentoMot"></canvas></div>
+					</div>
+				</div>
+				<div class="charts-row">
+					<div class="card-futuristic w-100">
+						<div class="card-header-futuristic"><h5><i class="fas fa-calendar"></i> Cadastros de Motoristas por Período</h5></div>
+						<div class="chart-container"><canvas id="chartTemporalMot"></canvas></div>
+					</div>
+        </div>
+                    </div>
+                <div class="filter-card">
+                    <div class="row">
+                        <div class="col-md-3 mb-2">
+                            <label class="form-label"><i class="fas fa-calendar"></i> Período</label>
+                            <select id="filtroPeriodoDisp" class="form-select" onchange="carregarDisparos()">
+                                <option value="hoje">Hoje</option>
+                                <option value="mes" selected>Este Mês</option>
+                                <option value="ano">Este Ano</option>
+                                <option value="todos">Todos</option>
+                            </select>
+                    </div>
+                        <div class="col-md-4 mb-2">
+                            <label class="form-label"><i class="fas fa-user"></i> Usuário</label>
+                            <select id="filtroUsuarioDisp" class="form-select" onchange="carregarDisparos()">
+                                <option value="">Todos os usuários</option>
+                            </select>
                 </div>
+                        <div class="col-md-5 mb-2">
+                            <label class="form-label"><i class="fas fa-building"></i> Departamento</label>
+                            <select id="filtroDepartamentoDisp" class="form-select" onchange="carregarDisparos()">
+                                <option value="">Todos os departamentos</option>
+                            </select>
             </div>
-            <div class="col-md-3 mb-3">
-                <div class="stat-card">
-                    <i class="fas fa-exclamation-triangle stat-icon" style="color: var(--danger);"></i>
-                    <div class="stat-number" id="atrasadas">0</div>
-                    <div class="stat-label">Atrasadas</div>
+                    </div>
+                    </div>
+                <div class="charts-row">
+                    <div class="card-futuristic">
+                        <div class="card-header-futuristic"><h5><i class="fas fa-user"></i> Disparos por Usuário</h5></div>
+                        <div class="chart-container"><canvas id="chartUsuarioDisp"></canvas></div>
                 </div>
+                    <div class="card-futuristic">
+                        <div class="card-header-futuristic"><h5><i class="fas fa-building"></i> Disparos por Departamento</h5></div>
+                        <div class="chart-container"><canvas id="chartDepartamentoDisp"></canvas></div>
             </div>
         </div>
-
-        <!-- Gráficos Avançados -->
-        <div class="row mb-4">
-            <div class="col-md-6 mb-4">
-                <div class="card-tech">
-                    <div class="card-header-tech">
-                        <h5><i class="fas fa-route"></i> Desempenho por Etapa</h5>
+                <div class="charts-row">
+                    <div class="card-futuristic w-100">
+                        <div class="card-header-futuristic"><h5><i class="fas fa-calendar"></i> Disparos por Período</h5></div>
+                        <div class="chart-container"><canvas id="chartTemporalDisp"></canvas></div>
                     </div>
-                    <div class="chart-container">
-                        <canvas id="chartEtapas"></canvas>
                     </div>
                 </div>
             </div>
-            <div class="col-md-6 mb-4">
-                <div class="card-tech">
-                    <div class="card-header-tech">
-                        <h5><i class="fas fa-map-marked-alt"></i> Distribuição Geográfica</h5>
                     </div>
-                    <div class="chart-container">
-                        <canvas id="chartGeografico"></canvas>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="row mb-4">
-            <div class="col-md-6 mb-4">
-                <div class="card-tech">
-                    <div class="card-header-tech">
-                        <h5><i class="fas fa-chart-line"></i> Tendência Semanal</h5>
-                    </div>
-                    <div class="chart-container">
-                        <canvas id="chartTendencia"></canvas>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-6 mb-4">
-                <div class="card-tech">
-                    <div class="card-header-tech">
-                        <h5><i class="fas fa-balance-scale"></i> Eficiência por Responsável</h5>
-                    </div>
-                    <div class="chart-container">
-                        <canvas id="chartEficiencia"></canvas>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Cards de Insights -->
-        <div class="row mb-4">
-            <div class="col-md-4 mb-3">
-                <div class="card-tech" style="min-height: 250px;">
-                    <div class="card-header-tech">
-                        <h6><i class="fas fa-lightbulb"></i> Insights Automáticos</h6>
-                    </div>
-                    <div class="card-body">
-                        <div class="insight-item">
-                            <i class="fas fa-trending-up" style="color: var(--success);"></i>
-                            <span id="insight1">Analisando dados...</span>
-                        </div>
-                        <hr class="my-2" style="border-color: var(--glass-border);">
-                        <div class="insight-item">
-                            <i class="fas fa-chart-pie" style="color: var(--info);"></i>
-                            <span id="insight2">Processando informações...</span>
-                        </div>
-                        <hr class="my-2" style="border-color: var(--glass-border);">
-                        <div class="insight-item">
-                            <i class="fas fa-exclamation-circle" style="color: var(--warning);"></i>
-                            <span id="insight3">Gerando recomendações...</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-4 mb-3">
-                <div class="card-tech" style="min-height: 250px;">
-                    <div class="card-header-tech">
-                        <h6><i class="fas fa-star"></i> Top Performers</h6>
-                    </div>
-                    <div class="card-body" id="topPerformers">
-                        <div class="text-center text-muted py-4">
-                            <i class="fas fa-spinner fa-spin fa-2x"></i>
-                            <p class="mt-2">Carregando...</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-4 mb-3">
-                <div class="card-tech" style="min-height: 250px;">
-                    <div class="card-header-tech">
-                        <h6><i class="fas fa-bullseye"></i> Metas e Objetivos</h6>
-                    </div>
-                    <div class="card-body" id="metasObjetivos">
-                        <canvas id="chartMetas"></canvas>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
     <div id="loadingOverlay" class="loading-overlay" style="display: none;">
-        <div class="text-center">
-            <div class="spinner"></div>
-            <p class="loading-text">Carregando relatórios...</p>
+        <div class="text-center"><div class="spinner"></div><p class="loading-text">Carregando relatórios...</p></div>
         </div>
-    </div>
-
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+	<script src="js/permissions.js"></script>
     <script>
-        let supabase;
-        let currentUser = null;
-        let relatorioData = [];
-        let charts = {};
-
-        // Métricas adicionais
-        async function calcularMetricasAvancadas() {
-            if (!relatorioData || relatorioData.length === 0) return;
-
-            // Tempo médio
-            const tempoMedio = calcularTempoMedio();
-            atualizarElemento('tempoMedio', tempoMedio);
-
-            // Taxa de sucesso
-            const sucessos = relatorioData.filter(c => c.status === 'concluida').length;
-            const taxaSucesso = relatorioData.length > 0 ? ((sucessos / relatorioData.length) * 100).toFixed(1) : '0';
-            atualizarElemento('taxaSucesso', `${taxaSucesso}%`);
-
-            // No prazo vs Atrasadas
-            const { noPrazo, atrasadas } = calcularPrazo();
-            atualizarElemento('noPrazo', noPrazo);
-            atualizarElemento('atrasadas', atrasadas);
-
-            // Gerar insights
-            gerarInsights();
-            atualizarTopPerformers();
-            atualizarGraficoEtapas();
-            atualizarGraficoGeografico();
-            atualizarGraficoTendencia();
-            atualizarGraficoEficiencia();
-            atualizarGraficoMetas();
-        }
-
-        function calcularTempoMedio() {
-            const concluidas = relatorioData.filter(c => c.status === 'concluida');
-            if (concluidas.length === 0) return '0 dias';
-
-            let totalDias = 0;
-            concluidas.forEach(coleta => {
-                const inicio = new Date(coleta.data_criacao || coleta.created_at);
-                const fim = coleta.data_conclusao ? new Date(coleta.data_conclusao) : new Date();
-                const diffTime = Math.abs(fim - inicio);
-                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                totalDias += diffDays;
-            });
-
-            const media = Math.round(totalDias / concluidas.length);
-            return `${media} dias`;
-        }
-
-        function calcularPrazo() {
-            const hoje = new Date();
-            let noPrazo = 0, atrasadas = 0;
-
-            relatorioData.forEach(coleta => {
-                if (coleta.data_prevista_fim) {
-                    const prevista = new Date(coleta.data_prevista_fim);
-                    if (hoje <= prevista) noPrazo++;
-                    else atrasadas++;
-                }
-            });
-
-            return { noPrazo, atrasadas };
-        }
-
-        function gerarInsights() {
-            const total = relatorioData.length;
-            const concluidas = relatorioData.filter(c => c.status === 'concluida').length;
-            const emAndamento = relatorioData.filter(c => c.status === 'em_andamento').length;
-
-            // Insight 1
-            const taxa = total > 0 ? ((concluidas / total) * 100).toFixed(1) : 0;
-            document.getElementById('insight1').textContent = `Taxa de conclusão: ${taxa}%`;
-
-            // Insight 2
-            document.getElementById('insight2').textContent = `${emAndamento} coletas em andamento`;
-
-            // Insight 3
-            const prioritarias = relatorioData.filter(c => c.prioridade === 'alta').length;
-            document.getElementById('insight3').textContent = `${prioritarias} tarefas prioritárias pendentes`;
-        }
-
-        async function atualizarTopPerformers() {
-            const usuariosMap = {};
-            relatorioData.forEach(c => {
-                const user = c.created_by || 'Sistema';
-                if (!usuariosMap[user]) {
-                    usuariosMap[user] = { nome: user, total: 0, concluidas: 0 };
-                }
-                usuariosMap[user].total++;
-                if (c.status === 'concluida') usuariosMap[user].concluidas++;
-            });
-
-            const usuarios = Object.values(usuariosMap).sort((a, b) => b.concluidas - a.concluidas).slice(0, 5);
-            const html = usuarios.map(u => {
-                const eficiencia = u.total > 0 ? ((u.concluidas / u.total) * 100).toFixed(0) : 0;
-                return `
-                    <div class="performance-item">
-                        <div>
-                            <strong>${u.nome}</strong>
-                            <div class="performance-bar">
-                                <div class="performance-bar-fill" style="width: ${eficiencia}%"></div>
-                            </div>
-                        </div>
-                        <span>${eficiencia}%</span>
-                    </div>
-                `;
-            }).join('');
-
-            document.getElementById('topPerformers').innerHTML = html || '<p class="text-muted text-center">Sem dados</p>';
-        }
-
-        function atualizarGraficoEtapas() {
-            const ctx = document.getElementById('chartEtapas');
-            if (!ctx) return;
-
-            const etapas = {};
-            relatorioData.forEach(c => {
-                const etapa = c.etapa_atual || 'Desconhecida';
-                etapas[etapa] = (etapas[etapa] || 0) + 1;
-            });
-
-            if (charts.etapas) charts.etapas.destroy();
-            charts.etapas = new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: Object.keys(etapas),
-                    datasets: [{
-                        label: 'Coletas por Etapa',
-                        data: Object.values(etapas),
-                        backgroundColor: 'rgba(102, 126, 234, 0.3)',
-                        borderColor: 'rgba(102, 126, 234, 1)',
-                        borderWidth: 2,
-                        borderRadius: 8
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: { display: false },
-                        tooltip: { enabled: true }
-                    },
-                    scales: {
-                        y: { beginAtZero: true, ticks: { color: 'rgba(255, 255, 255, 0.8)' }, grid: { color: 'rgba(255, 255, 255, 0.1)' } },
-                        x: { ticks: { color: 'rgba(255, 255, 255, 0.8)' }, grid: { display: false } }
-                    }
-                }
-            });
-        }
-
-        function atualizarGraficoGeografico() {
-            const ctx = document.getElementById('chartGeografico');
-            if (!ctx) return;
-
-            const regioes = {};
-            relatorioData.forEach(c => {
-                const origem = c.origem || 'Desconhecido';
-                const estado = origem.split('/')[1]?.trim() || 'Outros';
-                regioes[estado] = (regioes[estado] || 0) + 1;
-            });
-
-            if (charts.geografico) charts.geografico.destroy();
-            charts.geografico = new Chart(ctx, {
-                type: 'doughnut',
-                data: {
-                    labels: Object.keys(regioes),
-                    datasets: [{
-                        data: Object.values(regioes),
-                        backgroundColor: [
-                            'rgba(102, 126, 234, 0.8)',
-                            'rgba(118, 75, 162, 0.8)',
-                            'rgba(240, 147, 251, 0.8)',
-                            'rgba(17, 153, 142, 0.8)',
-                            'rgba(255, 193, 7, 0.8)'
-                        ]
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { display: true, position: 'bottom', labels: { color: 'rgba(255, 255, 255, 0.8)' } } }
-                }
-            });
-        }
-
-        function atualizarGraficoTendencia() {
-            const ctx = document.getElementById('chartTendencia');
-            if (!ctx) return;
-
-            const semanas = {};
-            for (let i = 6; i >= 0; i--) {
-                const data = new Date();
-                data.setDate(data.getDate() - (i * 7));
-                const semana = `${data.getDate()}/${data.getMonth() + 1}`;
-                semanas[semana] = 0;
-            }
-
-            relatorioData.forEach(c => {
-                const data = new Date(c.data_criacao || c.created_at);
-                const sem = `${data.getDate()}/${data.getMonth() + 1}`;
-                if (semanas.hasOwnProperty(sem)) semanas[sem]++;
-            });
-
-            if (charts.tendencia) charts.tendencia.destroy();
-            charts.tendencia = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: Object.keys(semanas),
-                    datasets: [{
-                        label: 'Coletas',
-                        data: Object.values(semanas),
-                        borderColor: 'rgba(102, 126, 234, 1)',
-                        backgroundColor: 'rgba(102, 126, 234, 0.1)',
-                        tension: 0.4,
-                        fill: true,
-                        borderWidth: 3,
-                        pointRadius: 5,
-                        pointBackgroundColor: 'rgba(102, 126, 234, 1)'
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { display: false } },
-                    scales: {
-                        y: { beginAtZero: true, ticks: { color: 'rgba(255, 255, 255, 0.8)' }, grid: { color: 'rgba(255, 255, 255, 0.1)' } },
-                        x: { ticks: { color: 'rgba(255, 255, 255, 0.8)' }, grid: { display: false } }
-                    }
-                }
-            });
-        }
-
-        function atualizarGraficoEficiencia() {
-            const ctx = document.getElementById('chartEficiencia');
-            if (!ctx) return;
-
-            const usuarios = {};
-            relatorioData.forEach(c => {
-                const user = c.created_by || 'Sistema';
-                if (!usuarios[user]) usuarios[user] = { nome: user, total: 0, concluidas: 0 };
-                usuarios[user].total++;
-                if (c.status === 'concluida') usuarios[user].concluidas++;
-            });
-
-            const top5 = Object.values(usuarios)
-                .map(u => ({ nome: u.nome || 'Desconhecido', eficiencia: u.total > 0 ? (u.concluidas / u.total) * 100 : 0 }))
-                .sort((a, b) => b.eficiencia - a.eficiencia)
-                .slice(0, 5);
-
-            if (top5.length === 0) return;
-
-            if (charts.eficiencia) charts.eficiencia.destroy();
-            charts.eficiencia = new Chart(ctx, {
-                type: 'radar',
-                data: {
-                    labels: top5.map(u => (u.nome || 'Desconhecido').substring(0, 10)),
-                    datasets: [{
-                        label: 'Eficiência',
-                        data: top5.map(u => parseFloat(u.eficiencia.toFixed(0))),
-                        backgroundColor: 'rgba(102, 126, 234, 0.2)',
-                        borderColor: 'rgba(102, 126, 234, 1)',
-                        borderWidth: 2
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {
-                        r: {
-                            beginAtZero: true,
-                            max: 100,
-                            ticks: { color: 'rgba(255, 255, 255, 0.8)' },
-                            grid: { color: 'rgba(255, 255, 255, 0.1)' }
-                        }
-                    },
-                    plugins: { legend: { display: false } }
-                }
-            });
-        }
-
-        function atualizarGraficoMetas() {
-            const ctx = document.getElementById('chartMetas');
-            if (!ctx) return;
-
-            const concluidas = relatorioData.filter(c => c.status === 'concluida').length;
-            const emAndamento = relatorioData.filter(c => c.status === 'em_andamento').length;
-            const pendentes = relatorioData.filter(c => c.status === 'pendente').length;
-
-            if (charts.metas) charts.metas.destroy();
-            charts.metas = new Chart(ctx, {
-                type: 'doughnut',
-                data: {
-                    labels: ['Concluídas', 'Em Andamento', 'Pendentes'],
-                    datasets: [{
-                        data: [concluidas, emAndamento, pendentes],
-                        backgroundColor: [
-                            'rgba(17, 153, 142, 0.8)',
-                            'rgba(255, 193, 7, 0.8)',
-                            'rgba(220, 53, 69, 0.8)'
-                        ]
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { display: true, position: 'bottom', labels: { color: 'rgba(255, 255, 255, 0.8)' } } }
-                }
-            });
-        }
-
-        function atualizarElemento(id, valor) {
-            const el = document.getElementById(id);
-            if (el) {
-                const current = parseInt(el.textContent) || 0;
-                const target = parseInt(valor) || 0;
-                animarNumero(el, current, target);
+    function mostrarAba(aba) {
+        document.getElementById('tabColetas').classList.toggle('active', aba==='coletas');
+        document.getElementById('tabBI').classList.toggle('active', aba==='bi');
+		const tabMot = document.getElementById('tabMotoristas');
+		if(tabMot) tabMot.classList.toggle('active', aba==='motoristas');
+        document.getElementById('abaColetas').style.display = aba==='coletas' ? '' : 'none';
+        document.getElementById('abaBI').style.display = aba==='bi' ? '' : 'none';
+		const abaMot = document.getElementById('abaMotoristas');
+		if(abaMot) abaMot.style.display = aba==='motoristas' ? '' : 'none';
+        if(aba==='bi' && typeof carregarDisparos==='function' && typeof carregarFiltrosDisparos==='function') {
+            if(!window._rel_bi_inited){
+                carregarFiltrosDisparos().then(() => carregarDisparos());
+                window._rel_bi_inited=true;
             }
         }
-
-        function animarNumero(el, start, end, duration = 1000) {
-            let startTimestamp = null;
-            const step = timestamp => {
-                if (!startTimestamp) startTimestamp = timestamp;
-                const progress = Math.min((timestamp - startTimestamp) / duration, 1);
-                el.textContent = Math.floor(progress * (end - start) + start);
-                if (progress < 1) window.requestAnimationFrame(step);
-            };
-            window.requestAnimationFrame(step);
-        }
-
-        document.addEventListener('DOMContentLoaded', async function() {
-            console.log('🚀 Iniciando relatorios.html...');
-            
-            const temPermissao = await verificarEAplicarPermissao('relatorios');
-            if (!temPermissao) return;
-            
-            // Removido particlesJS para evitar erros
-            console.log('✅ Visual moderno com glassmorphism ativo');
-            
-            await inicializarSupabase();
-            await verificarAutenticacao();
-            await carregarUsuarios();
-            await gerarRelatorio();
-        });
-
-        async function inicializarSupabase() {
-            try {
-                const response = await fetch('/api/supabase-config');
-                const config = await response.json();
-                const supabaseClient = window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey);
-                supabase = supabaseClient;
-                if (!window.supabaseClient) window.supabaseClient = supabase;
-                console.log('✅ Supabase inicializado');
-            } catch (error) {
-                console.error('❌ Erro:', error);
-            }
-        }
-
-        async function verificarAutenticacao() {
-            try {
-                const loggedInUserData = localStorage.getItem('loggedInUser');
-                if (loggedInUserData) {
-                    const userData = JSON.parse(loggedInUserData);
-                    currentUser = userData.email || userData.nome;
-                    document.getElementById('currentUser').textContent = currentUser;
+		if(aba==='motoristas'){
+			(async ()=>{
+				try{
+					const st = await fetch('/api/auth/status', { credentials:'include' });
+					if(handleUnauthorized(st)) return;
+					if(!window._rel_mot_inited){
+						await carregarFiltrosMotoristas();
+						await carregarMotoristas();
+						window._rel_mot_inited=true;
+					}else{
+						await carregarMotoristas();
+					}
+				}catch(e){ console.error('Erro ao carregar Motoristas:', e); }
+			})();
+		}
+    }
+    function toggleTheme(){
+        const body = document.body;
+        const themeIcon = document.querySelector('#themeToggle i');
+        if(body.classList.contains('light-mode')){
+            body.classList.remove('light-mode');
+            if(themeIcon) themeIcon.className = 'fas fa-moon';
+            localStorage.setItem('theme','dark');
                 } else {
-                    window.location.href = 'login.html';
-                }
-            } catch (error) {
-                window.location.href = 'login.html';
-            }
+            body.classList.add('light-mode');
+            if(themeIcon) themeIcon.className = 'fas fa-sun';
+            localStorage.setItem('theme','light');
         }
-
-        async function carregarUsuarios() {
-            try {
-                const { data } = await supabase.from('user_profiles').select('id, nome, email').eq('active', true);
-                const select = document.getElementById('filtroUsuario');
-                select.innerHTML = '<option value="">Todos os usuários</option>';
-                data.forEach(u => {
-                    const opt = document.createElement('option');
-                    opt.value = u.id;
-                    opt.textContent = u.nome || u.email;
-                    select.appendChild(opt);
-                });
-            } catch (error) {
-                console.error('❌ Erro ao carregar usuários:', error);
-            }
+    }
+    document.addEventListener('DOMContentLoaded', ()=>{
+        const savedTheme = localStorage.getItem('theme') || 'dark';
+        if(savedTheme==='light'){
+            document.body.classList.add('light-mode');
+            const themeIcon = document.querySelector('#themeToggle i');
+            if(themeIcon) themeIcon.className = 'fas fa-sun';
         }
+			(async ()=>{
+				try{
+					if(typeof verificarEAplicarPermissao==='function'){
+						const ok = await verificarEAplicarPermissao('relatorios');
+						if(!ok) return; // será redirecionado pelo permissions.js
+					}
+					mostrarAba('coletas');
+				}catch(e){
+					console.error('Erro ao verificar permissão para relatórios:', e);
+					// fallback: ainda mostra aba coletas (não exige chamadas protegidas imediatamente)
+        mostrarAba('coletas');
+				}
+			})();
+		});
 
-        async function gerarRelatorio() {
-            mostrarLoading(true);
-            try {
-                const filtroPeriodo = document.getElementById('filtroPeriodo').value;
-                const filtroUsuario = document.getElementById('filtroUsuario').value;
-                const hoje = new Date();
-                let filtroDataInicio, filtroDataFim;
-                
-                switch(filtroPeriodo) {
-                    case 'hoje': filtroDataInicio = filtroDataFim = hoje.toISOString().split('T')[0]; break;
-                    case 'semana': filtroDataInicio = new Date(hoje.getTime() - 7*24*60*60*1000).toISOString().split('T')[0]; filtroDataFim = hoje.toISOString().split('T')[0]; break;
-                    case 'mes': filtroDataInicio = new Date(hoje.getFullYear(), hoje.getMonth(), 1).toISOString().split('T')[0]; filtroDataFim = hoje.toISOString().split('T')[0]; break;
-                    default: filtroDataInicio = '2000-01-01'; filtroDataFim = '2099-12-31';
-                }
-                
-                let query = supabase.from('coletas').select('*').gte('created_at', filtroDataInicio).lte('created_at', filtroDataFim + 'T23:59:59');
-                if (filtroUsuario) query = query.eq('created_by', filtroUsuario);
-                const { data } = await query.order('created_at', { ascending: false });
-                
-                relatorioData = data || [];
-                atualizarEstatisticas();
-                atualizarGraficos();
-                atualizarTabela();
-                await calcularMetricasAvancadas();
-                mostrarLoading(false);
-            } catch (error) {
-                console.error('❌ Erro:', error);
-                alert('Erro ao gerar relatório: ' + error.message);
-                mostrarLoading(false);
-            }
-        }
+	// ====== SUPABASE (reutiliza endpoint backend para config) ======
+	let _sbClient = null;
+	async function getSupabaseClientRel(){
+		if(_sbClient) return _sbClient;
+		const resp = await fetch('/api/supabase-config');
+		if(!resp.ok) return null;
+		const cfg = await resp.json();
+		if(typeof window.supabase==='undefined') return null;
+		_sbClient = window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey);
+		return _sbClient;
+	}
 
-        function aplicarFiltros() { gerarRelatorio(); }
-        function mostrarLoading(show) { document.getElementById('loadingOverlay').style.display = show ? 'flex' : 'none'; }
+	function handleUnauthorized(resp){
+		if(resp && resp.status===401){
+			alert('Sessão expirada ou não autenticada. Faça login para acessar os relatórios.');
+			return true;
+		}
+		return false;
+	}
 
-        function atualizarEstatisticas() {
-            document.getElementById('totalColetas').textContent = relatorioData.length;
-            document.getElementById('emAndamento').textContent = relatorioData.filter(c => c.status === 'em_andamento').length;
-            document.getElementById('concluidas').textContent = relatorioData.filter(c => c.status === 'concluida').length;
-            document.getElementById('canceladas').textContent = relatorioData.filter(c => c.status === 'cancelada').length;
-        }
+	// ====== MOTORISTAS - FILTROS E CARGA ======
+	let chartUsuarioMot = null, chartDepartamentoMot = null, chartTemporalMot = null;
 
-        function atualizarGraficos() {
-            atualizarGraficoStatus();
-            atualizarGraficoMensal();
-            atualizarGraficoUsuarios();
-            atualizarGraficoPrioridade();
-        }
+	function periodoToRange(periodo){
+		const now = new Date();
+		let inicio = null;
+		if(periodo==='hoje'){
+			inicio = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+		}else if(periodo==='mes'){
+			inicio = new Date(now.getFullYear(), now.getMonth(), 1);
+		}else if(periodo==='ano'){
+			inicio = new Date(now.getFullYear(), 0, 1);
+		}
+		return { inicio, fim: now };
+	}
 
-        function atualizarGraficoStatus() {
-            const canvas = document.getElementById('chartStatus');
-            if (!canvas) return;
-            const ctx = canvas.getContext('2d');
-            if (charts.status) charts.status.destroy();
-            charts.status = new Chart(ctx, {
-                type: 'doughnut',
-                data: {
-                    labels: ['Em Andamento', 'Concluída', 'Cancelada'],
-                    datasets: [{
-                        data: [
-                            relatorioData.filter(d => d.status === 'em_andamento').length,
-                            relatorioData.filter(d => d.status === 'concluida').length,
-                            relatorioData.filter(d => d.status === 'cancelada').length
-                        ],
-                        backgroundColor: ['#667eea', '#11998e', '#dc3545'],
-                        borderWidth: 4,
-                        borderColor: '#0f0f23'
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: { position: 'bottom', labels: { color: '#fff', padding: 20, font: { size: 12, weight: 'bold' } } }
-                    }
-                }
-            });
-        }
+	async function carregarFiltrosMotoristas(){
+		const resp = await fetch('/api/relatorios/motoristas/filtros', { credentials: 'include' });
+		if(handleUnauthorized(resp)) return;
+		if(!resp.ok) return;
+		const json = await resp.json();
+		const usuarios = json.usuarios || [];
+		const departamentos = json.departamentos || [];
+		const selUsuario = document.getElementById('filtroUsuarioMot');
+		const selDept = document.getElementById('filtroDepartamentoMot');
+		if(selUsuario){
+			selUsuario.innerHTML = '<option value="">Todos os usuários</option>' +
+			usuarios.map(u=>`<option value="${u.id}">${u.nome||u.id}</option>`).join('');
+		}
+		if(selDept){
+			selDept.innerHTML = '<option value="">Todos os departamentos</option>' +
+			departamentos.map(d=>`<option value="${d}">${d}</option>`).join('');
+		}
+	}
 
-        function atualizarGraficoMensal() {
-            const canvas = document.getElementById('chartMensal');
-            if (!canvas) return;
-            const ctx = canvas.getContext('2d');
-            if (charts.mensal) charts.mensal.destroy();
-            const meses = {};
-            relatorioData.forEach(c => {
-                const m = new Date(c.created_at).toLocaleDateString('pt-BR', { month: 'short' });
-                meses[m] = (meses[m] || 0) + 1;
-            });
-            charts.mensal = new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: Object.keys(meses),
-                    datasets: [{
-                        label: 'Coletas',
-                        data: Object.values(meses),
-                        backgroundColor: '#667eea',
-                        borderRadius: 10
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {
-                        y: { beginAtZero: true, ticks: { color: '#fff' } },
-                        x: { ticks: { color: '#fff' } }
-                    },
-                    plugins: { legend: { display: false } }
-                }
-            });
-        }
+	function ensureChart(ctxId, type, data, options){
+		const ctx = document.getElementById(ctxId);
+		if(!ctx) return null;
+		if(ctx._chart){ ctx._chart.destroy(); }
+		ctx._chart = new Chart(ctx, { type, data, options });
+		return ctx._chart;
+	}
 
-        async function atualizarGraficoUsuarios() {
-            const canvas = document.getElementById('chartUsuarios');
-            if (!canvas) return;
-            const ctx = canvas.getContext('2d');
-            if (charts.usuarios) charts.usuarios.destroy();
-            
-            // Buscar nomes dos usuários
-            const { data: userProfiles } = await supabase.from('user_profiles').select('id, nome, email');
-            const userMap = {};
-            if (userProfiles) {
-                userProfiles.forEach(u => userMap[u.id] = u.nome || u.email || 'Desconhecido');
-            }
-            
-            const usuarios = {};
-            relatorioData.forEach(c => {
-                const userId = c.created_by;
-                const nome = userMap[userId] || 'Sistema';
-                usuarios[nome] = (usuarios[nome] || 0) + 1;
-            });
-            
-            // Top 5 usuários com mais coletas
-            const top5 = Object.entries(usuarios)
-                .sort((a, b) => b[1] - a[1])
-                .slice(0, 5);
-            
-            charts.usuarios = new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: top5.map(u => u[0]),
-                    datasets: [{
-                        label: 'Total de Coletas',
-                        data: top5.map(u => u[1]),
-                        backgroundColor: [
-                            'rgba(102, 126, 234, 0.9)',
-                            'rgba(118, 75, 162, 0.9)',
-                            'rgba(240, 147, 251, 0.9)',
-                            'rgba(17, 153, 142, 0.9)',
-                            'rgba(255, 193, 7, 0.9)'
-                        ],
-                        borderColor: [
-                            'rgba(102, 126, 234, 1)',
-                            'rgba(118, 75, 162, 1)',
-                            'rgba(240, 147, 251, 1)',
-                            'rgba(17, 153, 142, 1)',
-                            'rgba(255, 193, 7, 1)'
-                        ],
-                        borderWidth: 3,
-                        borderRadius: 12
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: { 
-                            display: false 
-                        },
-                        tooltip: {
-                            backgroundColor: 'rgba(15, 15, 35, 0.95)',
-                            titleColor: '#fff',
-                            bodyColor: '#fff',
-                            borderColor: 'rgba(102, 126, 234, 1)',
-                            borderWidth: 2,
-                            padding: 15,
-                            titleFont: { size: 16, weight: 'bold' },
-                            bodyFont: { size: 14 },
-                            callbacks: {
-                                label: (context) => ` ${context.dataset.label}: ${context.parsed.y} coletas`
-                            }
-                        },
-                        datalabels: {
-                            anchor: 'end',
-                            align: 'top',
-                            color: '#fff',
-                            font: { size: 14, weight: 'bold' },
-                            formatter: (value) => value
-                        }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            ticks: {
-                                color: 'rgba(255, 255, 255, 0.9)',
-                                font: { size: 12, weight: 'bold' },
-                                stepSize: 1
-                            },
-                            grid: {
-                                color: 'rgba(255, 255, 255, 0.1)',
-                                lineWidth: 1
-                            },
-                            title: {
-                                display: true,
-                                text: 'Quantidade de Coletas',
-                                color: 'rgba(255, 255, 255, 0.9)',
-                                font: { size: 14, weight: 'bold' }
-                            }
-                        },
-                        x: {
-                            ticks: {
-                                color: 'rgba(255, 255, 255, 0.9)',
-                                font: { size: 12, weight: 'bold' }
-                            },
-                            grid: { display: false },
-                            title: {
-                                display: true,
-                                text: 'Usuários',
-                                color: 'rgba(255, 255, 255, 0.9)',
-                                font: { size: 14, weight: 'bold' }
-                            }
-                        }
-                    }
-                }
-            });
-        }
-
-        function atualizarGraficoPrioridade() {
-            const canvas = document.getElementById('chartPrioridade');
-            if (!canvas) return;
-            const ctx = canvas.getContext('2d');
-            if (charts.prioridade) charts.prioridade.destroy();
-            
-            const alta = relatorioData.filter(c => c.prioridade === 'alta').length;
-            const media = relatorioData.filter(c => c.prioridade === 'media').length;
-            const baixa = relatorioData.filter(c => c.prioridade === 'baixa').length;
-            
-            charts.prioridade = new Chart(ctx, {
-                type: 'doughnut',
-                data: {
-                    labels: ['Alta Prioridade', 'Média Prioridade', 'Baixa Prioridade'],
-                    datasets: [{
-                        data: [alta, media, baixa],
-                        backgroundColor: [
-                            'rgba(220, 53, 69, 0.9)',
-                            'rgba(255, 193, 7, 0.9)',
-                            'rgba(17, 153, 142, 0.9)'
-                        ],
-                        borderColor: [
-                            'rgba(220, 53, 69, 1)',
-                            'rgba(255, 193, 7, 1)',
-                            'rgba(17, 153, 142, 1)'
-                        ],
-                        borderWidth: 4,
-                        hoverOffset: 15
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            position: 'bottom',
-                            labels: {
-                                color: '#fff',
-                                padding: 20,
-                                font: { size: 14, weight: 'bold' }
-                            }
-                        },
-                        tooltip: {
-                            backgroundColor: 'rgba(15, 15, 35, 0.95)',
-                            titleColor: '#fff',
-                            bodyColor: '#fff',
-                            borderColor: 'rgba(102, 126, 234, 1)',
-                            borderWidth: 2,
-                            padding: 15,
-                            titleFont: { size: 16, weight: 'bold' },
-                            bodyFont: { size: 14 },
-                            callbacks: {
-                                label: (context) => {
-                                    const label = context.label || '';
-                                    const value = context.parsed || 0;
-                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
-                                    const percentage = ((value / total) * 100).toFixed(1);
-                                    return `${label}: ${value} coletas (${percentage}%)`;
-                                }
-                            }
-                        },
-                        datalabels: {
-                            color: '#fff',
-                            font: { size: 16, weight: 'bold' },
-                            formatter: (value, context) => {
-                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
-                                const percentage = ((value / total) * 100).toFixed(0);
-                                return value > 0 ? `${value}\n(${percentage}%)` : '';
-                            }
-                        }
-                    }
-                }
-            });
-        }
-
-        function atualizarTabela() {
-            const tbody = document.querySelector('#tabelaRelatorio');
-            if (!tbody) return;
-            tbody.innerHTML = '';
-            if (relatorioData.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">Nenhuma coleta encontrada</td></tr>';
-                return;
-            }
-            relatorioData.slice(0, 25).forEach(coleta => {
-                const row = document.createElement('tr');
-                row.innerHTML = `
-                    <td>${coleta.id.substring(0, 8)}...</td>
-                    <td>${coleta.cliente || '-'}</td>
-                    <td>${coleta.titulo || '-'}</td>
-                    <td><span class="badge badge-tech bg-${getStatusColor(coleta.status)}">${coleta.status}</span></td>
-                    <td>${coleta.etapa_atual || '-'}</td>
-                    <td>${new Date(coleta.created_at).toLocaleDateString('pt-BR')}</td>
-                `;
-                tbody.appendChild(row);
-            });
-        }
-
-        function getStatusColor(status) {
-            const colors = { 'em_andamento': 'warning', 'concluida': 'success', 'cancelada': 'danger' };
-            return colors[status] || 'secondary';
-        }
+	async function carregarMotoristas(){
+		const overlay = document.getElementById('loadingOverlay');
+		if(overlay) overlay.style.display = 'flex';
+		try{
+			const periodo = document.getElementById('filtroPeriodoMot')?.value || 'mes';
+			const usuarioId = document.getElementById('filtroUsuarioMot')?.value || '';
+			const departamento = document.getElementById('filtroDepartamentoMot')?.value || '';
+			const range = periodoToRange(periodo);
+			const params = new URLSearchParams({
+				inicio: range.inicio ? range.inicio.toISOString() : '',
+				fim: range.fim ? range.fim.toISOString() : '',
+				usuarioId,
+				departamento
+			});
+			const [kpiResp, seriesResp] = await Promise.all([
+				fetch(`/api/relatorios/motoristas/kpis?${params}`, { credentials:'include' }),
+				fetch(`/api/relatorios/motoristas/series?${params}`, { credentials:'include' })
+			]);
+			if(handleUnauthorized(kpiResp) || handleUnauthorized(seriesResp)) return;
+			if(kpiResp.ok){
+				const k = await kpiResp.json();
+				document.getElementById('kpiTotalMot').innerText = (k.total||0).toString();
+				document.getElementById('kpiUsuariosMot').innerText = (k.usuarios||0).toString();
+				document.getElementById('kpiDepartamentosMot').innerText = (k.departamentos||0).toString();
+			}
+			if(seriesResp.ok){
+				const s = await seriesResp.json();
+				chartUsuarioMot = ensureChart('chartUsuarioMot','bar',{
+					labels: (s.byUser||[]).map(u=>u.nome),
+					datasets:[{ label:'Motoristas', data: (s.byUser||[]).map(u=>u.count), backgroundColor:'#667eea' }]
+				},{ responsive:true, plugins:{ legend:{ display:false }}});
+				chartDepartamentoMot = ensureChart('chartDepartamentoMot','bar',{
+					labels: (s.byDepartment||[]).map(d=>d.departamento),
+					datasets:[{ label:'Motoristas', data: (s.byDepartment||[]).map(d=>d.count), backgroundColor:'#22c55e' }]
+				},{ responsive:true, plugins:{ legend:{ display:false }}});
+				chartTemporalMot = ensureChart('chartTemporalMot','line',{
+					labels: (s.byDay||[]).map(d=>d.date),
+					datasets:[{ label:'Cadastros', data: (s.byDay||[]).map(d=>d.count), borderColor:'#f59e0b', backgroundColor:'rgba(245,158,11,0.25)', fill:true, tension:0.3 }]
+				},{ responsive:true });
+			}
+		} finally {
+			if(overlay) overlay.style.display = 'none';
+		}
+	}
     </script>
 </body>
 </html>
