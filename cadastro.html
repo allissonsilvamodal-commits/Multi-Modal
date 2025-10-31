@@ -1131,75 +1131,7 @@
       <!-- Aba: Backup & Reset -->
       <div class="tab-pane" id="backup">
         <div class="row">
-          <div class="col-md-6">
-            <div class="modern-card h-100">
-              <div class="card-header">
-                <i class="fas fa-download me-2"></i>Backup dos Dados
-              </div>
-              <div class="card-body">
-                <p class="card-text">Faça backup completo da base de dados de motoristas.</p>
-                
-                <div class="mb-4">
-                  <label class="form-label-modern">Formato do Backup</label>
-                  <select id="formatoBackup" class="form-select form-select-modern">
-                    <option value="csv">CSV (Excel)</option>
-                    <option value="json">JSON</option>
-                  </select>
-                </div>
-                
-                <button class="btn btn-modern btn-modern-success w-100 mb-3" id="btnBackup">
-                  <i class="fas fa-database me-2"></i>Gerar Backup Completo
-                </button>
-                
-                <div class="alert alert-info">
-                  <small>
-                    <i class="fas fa-info-circle me-1"></i>
-                    <strong>Último backup:</strong> <span id="ultimoBackup">Nunca</span>
-                  </small>
-                </div>
-              </div>
-            </div>
-          </div>
-          
-          <div class="col-md-6">
-            <div class="modern-card h-100">
-              <div class="card-header">
-                <i class="fas fa-trash-alt me-2"></i>Gestão de Risco
-              </div>
-              <div class="card-body">
-                <p class="card-text">Ações administrativas para gestão da base de dados.</p>
-                
-                <div class="d-grid gap-2">
-                  <button class="btn btn-modern btn-modern-warning" id="btnLimparInativos">
-                    <i class="fas fa-user-slash me-2"></i>Limpar Contatos Inativos
-                  </button>
-                  
-                  <button class="btn btn-modern btn-modern-danger" id="btnResetar">
-                    <i class="fas fa-trash me-2"></i>Resetar Base Completa
-                  </button>
-                </div>
-                
-                <div class="alert alert-warning mt-3">
-                  <small>
-                    <i class="fas fa-exclamation-triangle me-1"></i>
-                    <strong>Atenção:</strong> Estas ações não podem ser desfeitas.
-                  </small>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-        
-        <div class="modern-card mt-4">
-          <div class="card-header">
-            <i class="fas fa-chart-bar me-2"></i>Estatísticas do Sistema
-          </div>
-          <div class="card-body">
-            <div class="row g-3" id="estatisticasSistema">
-              <!-- Estatísticas serão carregadas via JavaScript -->
-            </div>
-          </div>
-        </div>
+    </div>
       </div>
     </div>
   </main>
@@ -1969,43 +1901,7 @@ function adicionarCSSPersonalizado() {
   document.head.appendChild(style);
 }
 
-async function carregarEstatisticasSistema() {
-  const statsContainer = document.getElementById('estatisticasSistema');
-  if (!statsContainer) return;
-  
-  try {
-    const { data: motoristas, error } = await supabase.from('motoristas').select('*');
-    if (error) throw error;
-    
-    const stats = [
-      { icon: 'fa-database', label: 'Total de Registros', value: motoristas ? motoristas.length : 0 },
-      { icon: 'fa-hdd', label: 'Espaço Utilizado', value: '~' + Math.round((motoristas ? motoristas.length : 0) * 0.5) + ' KB' },
-      { icon: 'fa-calendar', label: 'Última Atualização', value: new Date().toLocaleDateString('pt-BR') },
-      { icon: 'fa-code-branch', label: 'Versão do Sistema', value: '1.0.0' }
-    ];
-    
-    let html = '';
-    stats.forEach(stat => {
-      html += `
-        <div class="col-md-3">
-          <div class="status-card">
-            <div class="status-icon primary">
-              <i class="fas ${stat.icon}"></i>
-            </div>
-            <div class="status-number">${stat.value}</div>
-            <div class="status-label">${stat.label}</div>
-          </div>
-        </div>
-      `;
-    });
-    
-    statsContainer.innerHTML = html;
-    
-  } catch (error) {
-    console.error('Erro ao carregar estatísticas:', error);
-    statsContainer.innerHTML = '<div class="col-12 text-center text-muted">Erro ao carregar estatísticas</div>';
-  }
-}
+async function carregarEstatisticasSistema() { /* removido */ }
 
 // ========== INICIALIZAÇÃO FINAL ==========
 document.addEventListener('DOMContentLoaded', inicializarAplicacao);
