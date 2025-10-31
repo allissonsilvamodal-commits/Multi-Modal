@@ -3225,6 +3225,107 @@ app.get('/api/relatorios/motoristas/series', async (req, res) => {
   }
 });
 
+// ========== RELATÓRIOS: DISPAROS (KPIs e Séries) ==========
+app.get('/api/relatorios/disparos/filtros', async (req, res) => {
+  try {
+    const { data: rows, error } = await supabaseAdmin
+      .from('disparos_log')
+      .select('user_id, departamento');
+    if (error) throw error;
+    const userIds = Array.from(new Set((rows || []).map(r => r.user_id).filter(Boolean)));
+    const departamentosDiretos = Array.from(new Set((rows || []).map(r => r.departamento).filter(Boolean)));
+    let usuarios = [];
+    if (userIds.length) {
+      const { data: perfis, error: perfErr } = await supabaseAdmin
+        .from('user_profiles')
+        .select('id, nome, departamento')
+        .in('id', userIds);
+      if (perfErr) throw perfErr;
+      usuarios = perfis || [];
+    }
+    const departamentosViaPerfil = new Set(usuarios.map(u => u.departamento).filter(Boolean));
+    const departamentos = Array.from(new Set([ ...departamentosDiretos, ...departamentosViaPerfil ]));
+    res.json({ usuarios, departamentos });
+  } catch (e) {
+    console.error('❌ Erro filtros disparos:', e);
+    res.status(500).json({ error: 'Erro ao carregar filtros de disparos' });
+  }
+});
+
+app.get('/api/relatorios/disparos/kpis', async (req, res) => {
+  try {
+    const { inicio, fim, usuarioId, departamento } = req.query;
+    let query = supabaseAdmin.from('disparos_log').select('user_id, departamento, created_at');
+    if (inicio) query = query.gte('created_at', inicio);
+    if (fim) query = query.lte('created_at', fim);
+    if (usuarioId) query = query.eq('user_id', usuarioId);
+    if (departamento) query = query.eq('departamento', departamento);
+    const { data: logs, error } = await query;
+    if (error) throw error;
+    const total = (logs || []).length;
+    const usuariosSet = new Set((logs || []).map(l => l.user_id).filter(Boolean));
+    const departamentosSet = new Set((logs || []).map(l => l.departamento).filter(Boolean));
+    // Caso não haja departamento salvo, tentar buscar via perfil
+    if (!departamento && departamentosSet.size === 0 && usuariosSet.size) {
+      const { data: perfis } = await supabaseAdmin
+        .from('user_profiles')
+        .select('id, departamento')
+        .in('id', Array.from(usuariosSet));
+      (perfis || []).forEach(p => { if (p.departamento) departamentosSet.add(p.departamento); });
+    }
+    res.json({ total, usuarios: usuariosSet.size, departamentos: departamentosSet.size });
+  } catch (e) {
+    console.error('❌ Erro KPIs disparos:', e);
+    res.status(500).json({ error: 'Erro ao carregar KPIs de disparos' });
+  }
+});
+
+app.get('/api/relatorios/disparos/series', async (req, res) => {
+  try {
+    const { inicio, fim, usuarioId, departamento } = req.query;
+    let query = supabaseAdmin.from('disparos_log').select('user_id, departamento, created_at');
+    if (inicio) query = query.gte('created_at', inicio);
+    if (fim) query = query.lte('created_at', fim);
+    if (usuarioId) query = query.eq('user_id', usuarioId);
+    if (departamento) query = query.eq('departamento', departamento);
+    const { data: logs, error } = await query;
+    if (error) throw error;
+    const porUsuario = new Map();
+    const userIds = new Set();
+    (logs || []).forEach(l => { if (l.user_id) { userIds.add(l.user_id); porUsuario.set(l.user_id, (porUsuario.get(l.user_id) || 0) + 1); } });
+    let idToPerfil = new Map();
+    if (userIds.size) {
+      const { data: perf } = await supabaseAdmin
+        .from('user_profiles')
+        .select('id, nome, departamento')
+        .in('id', Array.from(userIds));
+      idToPerfil = new Map((perf || []).map(p => [p.id, p]));
+    }
+    const byUser = Array.from(porUsuario.entries()).map(([uid, count]) => ({
+      usuarioId: uid, nome: idToPerfil.get(uid)?.nome || uid, count
+    }));
+    const porDept = new Map();
+    (logs || []).forEach(l => {
+      const dep = l.departamento || idToPerfil.get(l.user_id)?.departamento || 'Sem Dep.';
+      if (departamento && dep !== departamento) return;
+      porDept.set(dep, (porDept.get(dep) || 0) + 1);
+    });
+    const byDepartment = Array.from(porDept.entries()).map(([dep, count]) => ({ departamento: dep, count }));
+    const porDia = new Map();
+    (logs || []).forEach(l => {
+      const d = l.created_at ? new Date(l.created_at) : null;
+      if (!d) return;
+      const key = d.toISOString().slice(0, 10);
+      porDia.set(key, (porDia.get(key) || 0) + 1);
+    });
+    const byDay = Array.from(porDia.entries()).sort((a,b)=>a[0].localeCompare(b[0])).map(([date, count]) => ({ date, count }));
+    res.json({ byUser, byDepartment, byDay });
+  } catch (e) {
+    console.error('❌ Erro séries disparos:', e);
+    res.status(500).json({ error: 'Erro ao carregar séries de disparos' });
+  }
+});
+
 // Obter estatísticas gerais
 app.get('/api/estatisticas-gerais', requireAuth, async (req, res) => {
     try {

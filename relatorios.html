@@ -520,6 +520,86 @@
 			if(overlay) overlay.style.display = 'none';
 		}
 	}
+
+    // ====== DISPAROS - FILTROS E CARGA ======
+    async function carregarFiltrosDisparos(){
+        const resp = await fetch('/api/relatorios/disparos/filtros', { credentials:'include' });
+        if(handleUnauthorized(resp)) return;
+        if(!resp.ok) return;
+        const json = await resp.json();
+        const usuarios = json.usuarios || [];
+        const departamentos = json.departamentos || [];
+        const selUsuario = document.getElementById('filtroUsuarioDisp');
+        const selDept = document.getElementById('filtroDepartamentoDisp');
+        if(selUsuario){
+            selUsuario.innerHTML = '<option value="">Todos os usuários</option>' +
+                usuarios.map(u=>`<option value="${u.id}">${u.nome||u.id}</option>`).join('');
+        }
+        if(selDept){
+            selDept.innerHTML = '<option value="">Todos os departamentos</option>' +
+                departamentos.map(d=>`<option value="${d}">${d}</option>`).join('');
+        }
+    }
+
+    async function carregarDisparos(){
+        const overlay = document.getElementById('loadingOverlay');
+        if(overlay) overlay.style.display = 'flex';
+        try{
+            const periodo = document.getElementById('filtroPeriodoDisp')?.value || 'mes';
+            const usuarioId = document.getElementById('filtroUsuarioDisp')?.value || '';
+            const departamento = document.getElementById('filtroDepartamentoDisp')?.value || '';
+            const range = periodoToRange(periodo);
+            const params = new URLSearchParams({
+                inicio: range.inicio ? range.inicio.toISOString() : '',
+                fim: range.fim ? range.fim.toISOString() : '',
+                usuarioId,
+                departamento
+            });
+            const [kpiResp, seriesResp] = await Promise.all([
+                fetch(`/api/relatorios/disparos/kpis?${params}`, { credentials:'include' }),
+                fetch(`/api/relatorios/disparos/series?${params}`, { credentials:'include' })
+            ]);
+            if(handleUnauthorized(kpiResp) || handleUnauthorized(seriesResp)) return;
+            if(kpiResp.ok){
+                const k = await kpiResp.json();
+                document.getElementById('kpiTotalDisp').innerText = (k.total||0).toString();
+                document.getElementById('kpiUsuariosDisp').innerText = (k.usuarios||0).toString();
+                document.getElementById('kpiDepartamentosDisp').innerText = (k.departamentos||0).toString();
+            }
+            if(seriesResp.ok){
+                const s = await seriesResp.json();
+                const ctxUser = document.getElementById('chartUsuarioDisp');
+                const ctxDept = document.getElementById('chartDepartamentoDisp');
+                const ctxDay = document.getElementById('chartTemporalDisp');
+                if(ctxUser){
+                    if(ctxUser._chart) ctxUser._chart.destroy();
+                    ctxUser._chart = new Chart(ctxUser, {
+                        type:'bar',
+                        data:{ labels:(s.byUser||[]).map(u=>u.nome), datasets:[{ label:'Disparos', data:(s.byUser||[]).map(u=>u.count), backgroundColor:'#4f46e5' }] },
+                        options:{ responsive:true, plugins:{ legend:{ display:false }}}
+                    });
+                }
+                if(ctxDept){
+                    if(ctxDept._chart) ctxDept._chart.destroy();
+                    ctxDept._chart = new Chart(ctxDept, {
+                        type:'bar',
+                        data:{ labels:(s.byDepartment||[]).map(d=>d.departamento), datasets:[{ label:'Disparos', data:(s.byDepartment||[]).map(d=>d.count), backgroundColor:'#10b981' }] },
+                        options:{ responsive:true, plugins:{ legend:{ display:false }}}
+                    });
+                }
+                if(ctxDay){
+                    if(ctxDay._chart) ctxDay._chart.destroy();
+                    ctxDay._chart = new Chart(ctxDay, {
+                        type:'line',
+                        data:{ labels:(s.byDay||[]).map(d=>d.date), datasets:[{ label:'Disparos', data:(s.byDay||[]).map(d=>d.count), borderColor:'#f59e0b', backgroundColor:'rgba(245,158,11,0.25)', fill:true, tension:0.3 }] },
+                        options:{ responsive:true }
+                    });
+                }
+            }
+        } finally {
+            if(overlay) overlay.style.display = 'none';
+        }
+    }
     </script>
 </body>
 </html>
