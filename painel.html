@@ -1431,67 +1431,58 @@ const estados = [
                 console.log('✅ Filtro de tipos de veículo carregado');
             }
 
-            // Carregar carrocerias do banco de dados
+            // Carregar carrocerias do banco de dados (normalizando valores e combinando com mapa estático)
             const filtroCarroceria = document.getElementById('filtroCarroceria');
             if (filtroCarroceria) {
+                const valoresNormalizados = new Map();
                 try {
                     if (supabase) {
-                        // Buscar carrocerias reais do banco (com limite para performance)
                         const { data: carrocerias, error } = await supabase
                             .from('motoristas')
                             .select('tipo_carroceria')
                             .not('tipo_carroceria', 'is', null)
-                            .limit(5000); // Limite para evitar timeout em grandes volumes
-                        
-                        if (!error && carrocerias && carrocerias.length > 0) {
-                            // Extrair valores únicos
-                            const carroceriasUnicas = [...new Set(carrocerias.map(c => c.tipo_carroceria))].sort();
-                            
-                            carroceriasUnicas.forEach(carroceria => {
-                                const option = document.createElement('option');
-                                option.value = carroceria; // Usar valor exato do banco
-                                // Tentar mapear para nome amigável, senão usar valor direto
-                                const nomeAmigavel = Object.keys(tiposCarroceriaMap).find(k => 
-                                    tiposCarroceriaMap[k].toLowerCase() === carroceria.toLowerCase() ||
-                                    k.toLowerCase() === carroceria.toLowerCase()
-                                );
-                                option.textContent = nomeAmigavel ? tiposCarroceriaMap[nomeAmigavel] : carroceria;
-                                filtroCarroceria.appendChild(option);
+                            .limit(5000);
+                        if (!error && carrocerias) {
+                            carrocerias.forEach(item => {
+                                const valorBruto = (item.tipo_carroceria || '').trim();
+                                if (!valorBruto) return;
+                                const chaveNormalizada = valorBruto.toLowerCase();
+                                if (!valoresNormalizados.has(chaveNormalizada)) {
+                                    valoresNormalizados.set(chaveNormalizada, valorBruto);
+                                }
                             });
-                            
-                            console.log('✅ Filtro de carrocerias carregado do banco:', carroceriasUnicas.length, 'tipos únicos');
-                        } else {
-                            // Fallback: usar mapeamento estático
-                            if (error) {
-                                console.log('ℹ️ Não foi possível carregar carrocerias do banco, usando mapeamento estático');
-                            }
-                            Object.keys(tiposCarroceriaMap).forEach(key => {
-                                const option = document.createElement('option');
-                                option.value = key;
-                                option.textContent = tiposCarroceriaMap[key];
-                                filtroCarroceria.appendChild(option);
-                            });
+                            console.log('✅ Carrocerias carregadas do banco:', valoresNormalizados.size);
+                        } else if (error) {
+                            console.log('ℹ️ Não foi possível carregar carrocerias do banco, usando mapeamento estático');
                         }
-                    } else {
-                        // Fallback: usar mapeamento estático
-                        Object.keys(tiposCarroceriaMap).forEach(key => {
-                            const option = document.createElement('option');
-                            option.value = key;
-                            option.textContent = tiposCarroceriaMap[key];
-                            filtroCarroceria.appendChild(option);
-                        });
                     }
                 } catch (error) {
-                    // Fallback silencioso: usar mapeamento estático
-                    Object.keys(tiposCarroceriaMap).forEach(key => {
-                        const option = document.createElement('option');
-                        option.value = key;
-                        option.textContent = tiposCarroceriaMap[key];
-                        filtroCarroceria.appendChild(option);
-                    });
+                    console.warn('⚠️ Erro ao carregar carrocerias do banco, usando mapeamento estático:', error.message);
                 }
-                
-                console.log('✅ Filtro de carrocerias carregado');
+
+                // Garantir que todas as carrocerias do mapeamento estático estejam disponíveis
+                Object.keys(tiposCarroceriaMap).forEach(key => {
+                    const chaveNormalizada = key.toLowerCase();
+                    if (!valoresNormalizados.has(chaveNormalizada)) {
+                        valoresNormalizados.set(chaveNormalizada, key);
+                    }
+                });
+
+                // Ordenar alfabeticamente pelo nome amigável quando possível
+                const listaOrdenada = Array.from(valoresNormalizados.values()).sort((a, b) => a.localeCompare(b, 'pt-BR'));
+
+                listaOrdenada.forEach(valorOriginal => {
+                    const option = document.createElement('option');
+                    option.value = valorOriginal;
+                    const chaveEncontrada = Object.keys(tiposCarroceriaMap).find(k =>
+                        k.toLowerCase() === valorOriginal.toLowerCase() ||
+                        tiposCarroceriaMap[k].toLowerCase() === valorOriginal.toLowerCase()
+                    );
+                    option.textContent = chaveEncontrada ? tiposCarroceriaMap[chaveEncontrada] : valorOriginal;
+                    filtroCarroceria.appendChild(option);
+                });
+
+                console.log('✅ Filtro de carrocerias carregado com', listaOrdenada.length, 'opções');
             }
         }
 
