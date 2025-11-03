@@ -873,17 +873,21 @@
                   Placas
                 </div>
                 <div class="row g-3">
-                  <div class="col-md-4">
+                  <div class="col-md-3">
                     <label class="form-label-modern">Placa do Cavalo</label>
                     <input type="text" id="placa_cavalo" class="form-control form-control-modern" placeholder="ABC1D23">
                   </div>
-                  <div class="col-md-4">
+                  <div class="col-md-3">
                     <label class="form-label-modern">Placa da Carreta 1</label>
                     <input type="text" id="placa_carreta1" class="form-control form-control-modern" placeholder="XYZ4W56">
                   </div>
-                  <div class="col-md-4">
+                  <div class="col-md-3">
                     <label class="form-label-modern">Placa da Carreta 2</label>
                     <input type="text" id="placa_carreta2" class="form-control form-control-modern" placeholder="QRS7T89">
+                  </div>
+                  <div class="col-md-3">
+                    <label class="form-label-modern">Placa da Carreta 3</label>
+                    <input type="text" id="placa_carreta3" class="form-control form-control-modern" placeholder="LMN8P10">
                   </div>
                 </div>
               </div>
@@ -1131,7 +1135,7 @@
       <!-- Aba: Backup & Reset -->
       <div class="tab-pane" id="backup">
         <div class="row">
-    </div>
+              </div>
       </div>
     </div>
   </main>
@@ -1275,18 +1279,14 @@ async function inicializarAplicacao() {
 async function carregarInformacoesUsuario() {
   try {
     const userData = localStorage.getItem('loggedInUser');
-    
-    if (userData) {
-      const user = JSON.parse(userData);
-      document.getElementById('currentUser').textContent = user.nome || 'Administrador';
-      
-      if (!user.isAdmin) {
-        alert('Acesso negado. Apenas administradores podem acessar esta página.');
-        window.location.href = 'portal.html';
-      }
-    } else {
+    if (!userData) {
       window.location.href = 'login.html';
+      return;
     }
+
+    const user = JSON.parse(userData);
+    document.getElementById('currentUser').textContent = user.nome || user.email || 'Usuário';
+    // Controle de acesso já é feito por verificarEAplicarPermissao('cadastro') na inicialização
   } catch (error) {
     console.error('Erro de autenticação:', error);
     window.location.href = 'login.html';
@@ -1406,6 +1406,7 @@ async function cadastrarMotorista() {
     placa_cavalo: document.getElementById('placa_cavalo').value.trim() || null,
     placa_carreta1: document.getElementById('placa_carreta1').value.trim() || null,
     placa_carreta2: document.getElementById('placa_carreta2').value.trim() || null,
+    placa_carreta3: document.getElementById('placa_carreta3').value.trim() || null,
     status: document.getElementById('status').value || 'ativo'
   };
 
@@ -1653,9 +1654,6 @@ function atualizarTabelaContatos() {
             <button class="btn btn-sm btn-outline-primary" onclick="editarMotorista('${contato.id}')" title="Editar">
               <i class="fas fa-edit"></i>
             </button>
-            <button class="btn btn-sm btn-outline-danger" onclick="excluirMotorista('${contato.id}')" title="Excluir">
-              <i class="fas fa-trash"></i>
-            </button>
         </td>
       </tr>
     `;
@@ -1701,18 +1699,32 @@ function mudarPagina(pagina) {
 
 async function editarMotorista(id) {
     try {
-        const { data: motorista, error } = await supabase
+    let motorista = null;
+
+    if (supabase) {
+      const { data, error } = await supabase
             .from('motoristas')
             .select('*')
             .eq('id', id)
             .single();
+      if (error && error.code !== 'PGRST116') throw error;
+      motorista = data || null;
+    }
 
-        if (error) throw error;
+    if (!motorista) {
+      motorista = todosContatos.find(c => c.id === id) || null;
+    }
+
         if (!motorista) {
             mostrarErro('Motorista não encontrado');
             return;
         }
 
+    // Garantir que estamos na aba de cadastro
+    const abaCadastro = document.querySelector('.nav-modern .nav-link[data-tab="cadastro"]');
+    if (abaCadastro) abaCadastro.click();
+
+    // Preencher campos básicos
         document.getElementById('nome').value = motorista.nome || '';
         document.getElementById('cnh').value = motorista.cnh || '';
         document.getElementById('categoria_cnh').value = motorista.categoria_cnh || '';
@@ -1722,20 +1734,42 @@ async function editarMotorista(id) {
         document.getElementById('placa_cavalo').value = motorista.placa_cavalo || '';
         document.getElementById('placa_carreta1').value = motorista.placa_carreta1 || '';
         document.getElementById('placa_carreta2').value = motorista.placa_carreta2 || '';
+    const inputCarreta3 = document.getElementById('placa_carreta3');
+    if (inputCarreta3) inputCarreta3.value = motorista.placa_carreta3 || '';
         document.getElementById('status').value = motorista.status || 'ativo';
 
-        selecionarClasseCadastro(motorista.classe_veiculo);
+    // Selecionar classe e ajustar opções dependentes
+    const classe = (motorista.classe_veiculo || '').toLowerCase();
+    if (classe) {
+      selecionarClasseCadastro(classe);
+    } else {
+      // limpa seleção se não houver classe
+      document.querySelectorAll('.vehicle-class').forEach(el => el.classList.remove('active'));
+    }
 
+    // Ajustar selects dependentes (após atualização das opções)
         setTimeout(() => {
-            document.getElementById('tipo_veiculo').value = motorista.tipo_veiculo || '';
-            document.getElementById('tipo_carroceria').value = motorista.tipo_carroceria || '';
-    }, 300);
+      const selectTipoVeiculo = document.getElementById('tipo_veiculo');
+      const selectTipoCarroceria = document.getElementById('tipo_carroceria');
+      const tipoVeiculo = (motorista.tipo_veiculo || '').toLowerCase();
+      const tipoCarroceria = (motorista.tipo_carroceria || '').toLowerCase();
+      if (selectTipoVeiculo) {
+        selectTipoVeiculo.value = tipoVeiculo;
+      }
+      if (selectTipoCarroceria) {
+        selectTipoCarroceria.value = tipoCarroceria;
+      }
+    }, 100);
 
-        document.getElementById('formCadastro').dataset.editing = id;
+    // Marcar formulário em modo edição
+    const form = document.getElementById('formCadastro');
+    form.dataset.editing = id;
         
+    mostrarSucesso('Modo edição habilitado. Atualize as informações e salve.');
+    window.scrollTo({ top: form.offsetTop - 80, behavior: 'smooth' });
     } catch (error) {
-    console.error('❌ Erro ao carregar motorista:', error);
-    mostrarErro('Erro ao carregar dados: ' + error.message);
+    console.error('❌ Erro ao editar motorista:', error);
+    mostrarErro('Erro ao carregar dados para edição: ' + error.message);
     }
 }
 
@@ -1765,6 +1799,7 @@ async function atualizarMotorista() {
     placa_cavalo: dados.placa_cavalo || null,
     placa_carreta1: dados.placa_carreta1 || null,
     placa_carreta2: dados.placa_carreta2 || null,
+    placa_carreta3: dados.placa_carreta3 || null,
     status: dados.status || 'ativo',
     data_atualizacao: new Date().toISOString()
   };

@@ -9,11 +9,13 @@ const multer = require('multer');
 const bcrypt = require('bcryptjs');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
+const crypto = require('crypto');
 const { validate } = require('./validation');
 const { logger } = require('./logger');
 
 const app = express();
 const PORT = process.env.PORT || 5680;
+const APP_BASE_URL = process.env.PUBLIC_BASE_URL || `http://localhost:${PORT}`;
 
 // ========== CONFIGURAÇÕES DE SEGURANÇA ==========
 // Helmet para headers de segurança
@@ -107,23 +109,11 @@ const loginLimiter = rateLimit({
   }
 });
 
-// Configuração do Multer para uploads
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    const uploadDir = './uploads';
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
-    }
-    cb(null, uploadDir);
-  },
-  filename: function (req, file, cb) {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, uniqueSuffix + '-' + file.originalname);
-  }
-});
+// Configuração do Multer para uploads (armazenamento em memória)
+const storage = multer.memoryStorage();
 
-const upload = multer({ 
-  storage: storage,
+const upload = multer({
+  storage,
   limits: {
     fileSize: 10 * 1024 * 1024 // 10MB
   }
@@ -403,6 +393,8 @@ app.set('trust proxy', 1);
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static('.'));
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // ✅✅✅ SESSÃO PRIMEIRO, DEPOIS DEBUG ✅✅✅
 const SQLiteStore = require('connect-sqlite3')(session);
@@ -456,14 +448,30 @@ const usuarios = parseUsuarios();
 console.log('👥 Usuários carregados:', Object.keys(usuarios));
 
 // Middleware de autenticação
-function requireAuth(req, res, next) {
-  if (req.session && req.session.usuario) {
-    console.log('🔐 Usuário autenticado:', req.session.usuario);
-    next();
-  } else {
-    console.log('❌ Acesso não autorizado');
-    res.status(401).json({ error: 'Não autenticado' });
+async function requireAuth(req, res, next) {
+  try {
+    if (req.session && req.session.usuario) {
+      console.log('🔐 Usuário autenticado (sessão):', req.session.usuario);
+      return next();
+    }
+
+    const { user, error } = await getSupabaseUserFromRequest(req);
+
+    if (user && !error) {
+      req.supabaseUser = user;
+      console.log('🔐 Usuário autenticado via Supabase:', user.email || user.id);
+      return next();
+    }
+
+    if (error && error.status && error.status !== 401) {
+      console.warn('⚠️ Erro ao validar token Supabase em requireAuth:', error.message || error);
+    }
+  } catch (authError) {
+    console.warn('⚠️ Erro inesperado no middleware requireAuth:', authError.message || authError);
   }
+
+  console.log('❌ Acesso não autorizado');
+  return res.status(401).json({ error: 'Não autenticado' });
 }
 
 // ========== BANCO DE DADOS ==========
@@ -708,6 +716,239 @@ function formatNumberForEvolution(number) {
   return cleanNumber + '@c.us';
 }
 
+function normalizePhone(value) {
+  if (!value) return '';
+  const digits = value.toString().replace(/\D/g, '');
+  if (!digits) return '';
+  if (digits.length > 11) {
+    return digits.slice(-11);
+  }
+  if (digits.startsWith('55') && digits.length > 11) {
+    return digits.slice(-11);
+  }
+  return digits;
+}
+
+function phonesMatch(inputPhone, ...storedPhones) {
+  const normalizedInput = normalizePhone(inputPhone);
+  if (!normalizedInput) return false;
+  return storedPhones
+    .map(normalizePhone)
+    .filter(Boolean)
+    .some(stored => normalizedInput.endsWith(stored) || stored.endsWith(normalizedInput));
+}
+
+const MOTORISTA_SELECT_FIELDS = 'id, nome, status, telefone1, telefone2, placa_cavalo, placa_carreta1, placa_carreta2, placa_carreta3, classe_veiculo, tipo_veiculo, tipo_carroceria, created_by_departamento, auth_user_id, created_by, usuario_id';
+
+async function fetchMotoristasByPhone(normalizedPhone) {
+  if (!normalizedPhone) return [];
+
+  const phonePattern = `%${normalizedPhone}%`;
+  const phonePatternFull = `%${normalizedPhone.split('').join('%')}%`;
+  const last7 = normalizedPhone.length > 7 ? normalizedPhone.slice(-7) : normalizedPhone;
+  const phonePatternShort = `%${last7.split('').join('%')}%`;
+
+  const filters = Array.from(new Set([
+    `telefone1.ilike.${phonePattern}`,
+    `telefone2.ilike.${phonePattern}`,
+    `telefone1.ilike.${phonePatternFull}`,
+    `telefone2.ilike.${phonePatternFull}`,
+    `telefone1.ilike.${phonePatternShort}`,
+    `telefone2.ilike.${phonePatternShort}`
+  ])).join(',');
+
+  let motoristas = [];
+
+  if (filters.length > 0) {
+    const { data, error } = await supabaseAdmin
+      .from('motoristas')
+      .select(MOTORISTA_SELECT_FIELDS)
+      .or(filters)
+      .limit(100);
+
+    if (error && error.code !== '42703') {
+      throw error;
+    }
+
+    motoristas = data || [];
+  }
+
+  if (!motoristas || motoristas.length === 0) {
+    const { data: fallbackData, error: fallbackError } = await supabaseAdmin
+      .from('motoristas')
+      .select(MOTORISTA_SELECT_FIELDS)
+      .limit(500);
+
+    if (fallbackError && fallbackError.code !== '42703') {
+      throw fallbackError;
+    }
+
+    const dataset = fallbackData || [];
+    motoristas = dataset.filter(m => phonesMatch(normalizedPhone, m.telefone1, m.telefone2));
+  }
+
+  return motoristas || [];
+}
+
+function mapMotoristaResponse(motorista) {
+  if (!motorista) return null;
+  return {
+    id: motorista.id,
+    nome: motorista.nome,
+    status: motorista.status || 'ativo',
+    telefone1: motorista.telefone1 || null,
+    telefone2: motorista.telefone2 || null,
+    placas: {
+      cavalo: motorista.placa_cavalo || null,
+      carreta1: motorista.placa_carreta1 || null,
+      carreta2: motorista.placa_carreta2 || null,
+      carreta3: motorista.placa_carreta3 || null
+    },
+    classeVeiculo: motorista.classe_veiculo || null,
+    tipoVeiculo: motorista.tipo_veiculo || null,
+    tipoCarroceria: motorista.tipo_carroceria || null,
+    cidade: motorista.cidade || null,
+    estado: motorista.estado || null,
+    empresa: motorista.empresa || null,
+    createdAt: motorista.created_at || null,
+    departamento: motorista.created_by_departamento || null
+  };
+}
+
+function mapColetaOpportunity(coleta) {
+  if (!coleta) return null;
+  return {
+    id: coleta.id,
+    cliente: coleta.cliente || '—',
+    origem: coleta.origem || '—',
+    destino: coleta.destino || '—',
+    status: coleta.status || 'pendente',
+    etapaAtual: coleta.etapa_atual || 'comercial',
+    prioridade: coleta.prioridade || 'normal',
+    dataRecebimento: coleta.data_recebimento || null,
+    valor: coleta.valor !== undefined ? coleta.valor : null,
+    km: coleta.km !== undefined ? coleta.km : null,
+    veiculo: coleta.veiculo || null,
+    observacoes: coleta.observacoes || null,
+    filial: coleta.filial || null
+  };
+}
+
+const REQUIRED_DOCUMENT_CATEGORIES = ['proprietario', 'veiculo', 'motorista'];
+const DOCUMENT_CATEGORY_LABELS = {
+  proprietario: 'Documentos - Proprietário',
+  veiculo: 'Documentos - Veículo',
+  motorista: 'Documentos - Motorista',
+  documento: 'Documentos',
+  outro: 'Documentos'
+};
+
+const DOCUMENT_STATUS_PRIORITY = {
+  aprovado: 3,
+  pendente: 2,
+  reprovado: 1
+};
+
+function parseJsonArray(value) {
+  if (!value) return [];
+  try {
+    const parsed = typeof value === 'string' ? JSON.parse(value) : value;
+    if (Array.isArray(parsed)) {
+      return parsed
+        .map(item => (item ?? '').toString().trim())
+        .filter(item => item.length > 0);
+    }
+  } catch (error) {
+    console.warn('⚠️ Não foi possível converter valor em lista JSON:', error.message || error);
+  }
+  return [];
+}
+
+async function getSupabaseUserFromRequest(req) {
+  const authHeader = req.headers.authorization || '';
+  if (!authHeader.toLowerCase().startsWith('bearer ')) {
+    return { error: { status: 401, message: 'Sessão não encontrada. Faça login com sua conta Google.' } };
+  }
+
+  const token = authHeader.slice(7).trim();
+  if (!token) {
+    return { error: { status: 401, message: 'Token de acesso inválido.' } };
+  }
+
+  console.log('🔐 Validando token Supabase...', {
+    tokenPrefix: token.slice(0, 12) + '...'
+  });
+
+  try {
+    const { data, error } = await supabaseAdmin.auth.getUser(token);
+    if (!error && data && data.user) {
+      console.log('🔐 Token válido via supabaseAdmin');
+      return { user: data.user, token };
+    }
+    if (error) {
+      console.warn('⚠️ Falha ao validar token via supabaseAdmin:', error.message || error);
+      if (error.status === 403) {
+        console.warn('⚠️ Service role sem permissão para auth.getUser; tentando fallback.');
+      }
+    }
+  } catch (err) {
+    console.warn('⚠️ Erro inesperado ao validar token via supabaseAdmin:', err);
+  }
+
+  // 🆕 Fallback: validar token chamando o Auth Admin API do Supabase
+  try {
+    const authUrl = `${process.env.SUPABASE_URL.replace(/\/$/, '')}/auth/v1/user`;
+    const resp = await fetch(authUrl, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        apikey: process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_ANON_KEY || ''
+      }
+    });
+    if (resp.ok) {
+      console.log('🔐 Token válido via Auth API');
+      const data = await resp.json();
+      if (data && data.id) {
+        return {
+          user: {
+            id: data.id,
+            email: data.email,
+            user_metadata: data.user_metadata || {}
+          },
+          token
+        };
+      }
+    } else {
+      const text = await resp.text();
+      console.warn('⚠️ Auth API retornou status', resp.status, text);
+    }
+  } catch (err) {
+    console.warn('⚠️ Erro inesperado ao validar token via Auth API:', err);
+  }
+
+  console.warn('❌ Token inválido. Encerrando sessão.');
+  return { error: { status: 401, message: 'Sessão expirada ou inválida. Faça login novamente.' } };
+}
+
+function normalizePlate(value) {
+  if (!value) return '';
+  return value.toString().toUpperCase().replace(/[^A-Z0-9]/g, '');
+}
+
+function buildPlateVariants(plate) {
+  const normalized = normalizePlate(plate);
+  if (!normalized) return [];
+  const variants = new Set();
+  variants.add(normalized);
+  if (normalized.length === 7) {
+    variants.add(`${normalized.slice(0, 3)}-${normalized.slice(3)}`);
+    variants.add(`${normalized.slice(0, 4)}-${normalized.slice(4)}`);
+  }
+  if (normalized.length === 8) {
+    variants.add(`${normalized.slice(0, 3)}-${normalized.slice(3)}`);
+  }
+  return Array.from(variants);
+}
+
 function isValidApiConfig(config) {
   if (!config || config.error) {
     return false;
@@ -726,6 +967,194 @@ function isValidApiConfig(config) {
 
 function generateId() {
   return 'id_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+}
+
+function generateUUID() {
+  if (typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  const buffer = crypto.randomBytes(16);
+  buffer[6] = (buffer[6] & 0x0f) | 0x40;
+  buffer[8] = (buffer[8] & 0x3f) | 0x80;
+  const hex = buffer.toString('hex');
+  return `${hex.substring(0, 8)}-${hex.substring(8, 12)}-${hex.substring(12, 16)}-${hex.substring(16, 20)}-${hex.substring(20)}`;
+}
+
+const STORAGE_URL_PREFIX = 'storage://';
+const STORAGE_SIGNED_URL_TTL = parseInt(process.env.STORAGE_SIGNED_URL_TTL || '3600', 10);
+const ANEXOS_BUCKET = process.env.SUPABASE_ANEXOS_BUCKET || 'anexos';
+const MOTORISTA_DOCS_BUCKET = process.env.SUPABASE_MOTORISTA_DOCS_BUCKET || 'motoristas-docs';
+
+function sanitizeFilename(filename) {
+  if (!filename) {
+    return 'arquivo';
+  }
+
+  return filename
+    .toString()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-zA-Z0-9.\-_]/g, '_');
+}
+
+function buildStorageUrl(bucket, filePath) {
+  return `${STORAGE_URL_PREFIX}${bucket}/${filePath}`;
+}
+
+function parseStorageUrl(value) {
+  if (!value || typeof value !== 'string') {
+    return null;
+  }
+
+  if (!value.startsWith(STORAGE_URL_PREFIX)) {
+    return null;
+  }
+
+  const withoutPrefix = value.slice(STORAGE_URL_PREFIX.length);
+  if (!withoutPrefix) {
+    return null;
+  }
+
+  const segments = withoutPrefix.split('/');
+  if (segments.length < 2) {
+    return null;
+  }
+
+  const [bucket, ...pathParts] = segments;
+  const pathValue = pathParts.join('/');
+
+  if (!bucket || !pathValue) {
+    return null;
+  }
+
+  return { bucket, path: pathValue };
+}
+
+async function createSignedUrlFromStorage(value, expiresIn = STORAGE_SIGNED_URL_TTL) {
+  const parsed = parseStorageUrl(value);
+
+  if (!parsed) {
+    return {
+      signedUrl: value || null,
+      bucket: null,
+      path: null,
+      isStorage: false
+    };
+  }
+
+  const { bucket, path: storagePath } = parsed;
+
+  try {
+    const { data, error } = await supabaseAdmin.storage
+      .from(bucket)
+      .createSignedUrl(storagePath, expiresIn);
+
+    if (error) {
+      console.warn('⚠️ Não foi possível gerar URL assinada, tentando URL pública:', error.message || error);
+      
+      // Tentar gerar URL pública como fallback (para buckets públicos)
+      try {
+        const { data: publicData } = supabaseAdmin.storage
+          .from(bucket)
+          .getPublicUrl(storagePath);
+        
+        if (publicData?.publicUrl) {
+          return {
+            signedUrl: publicData.publicUrl,
+            bucket,
+            path: storagePath,
+            isStorage: true
+          };
+        }
+      } catch (publicError) {
+        console.warn('⚠️ Não foi possível gerar URL pública:', publicError.message || publicError);
+      }
+      
+      return {
+        signedUrl: null,
+        bucket,
+        path: storagePath,
+        isStorage: true
+      };
+    }
+
+    return {
+      signedUrl: data?.signedUrl || null,
+      bucket,
+      path: storagePath,
+      isStorage: true
+    };
+  } catch (error) {
+    console.warn('⚠️ Erro inesperado ao gerar URL assinada:', error.message || error);
+    
+    // Tentar URL pública como fallback
+    try {
+      const { data: publicData } = supabaseAdmin.storage
+        .from(parsed.bucket)
+        .getPublicUrl(parsed.path);
+      
+      if (publicData?.publicUrl) {
+        return {
+          signedUrl: publicData.publicUrl,
+          bucket: parsed.bucket,
+          path: parsed.path,
+          isStorage: true
+        };
+      }
+    } catch (publicError) {
+      // Ignorar erro de URL pública
+    }
+    
+    return {
+      signedUrl: null,
+      bucket: parsed.bucket,
+      path: parsed.path,
+      isStorage: true
+    };
+  }
+}
+
+async function injectSignedUrl(record, options = {}) {
+  if (!record) {
+    return record;
+  }
+
+  const {
+    urlField = 'url',
+    targetField = 'signed_url',
+    expiresIn = STORAGE_SIGNED_URL_TTL
+  } = options;
+
+  const storageValue = record[urlField];
+  const info = await createSignedUrlFromStorage(storageValue, expiresIn);
+  const output = { ...record };
+
+  if (info.isStorage) {
+    output.storage_url = storageValue;
+    output.storage_bucket = info.bucket;
+    output.storage_path = info.path;
+  }
+
+  if (info.signedUrl) {
+    output[targetField] = info.signedUrl;
+    output[urlField] = info.signedUrl;
+  } else if (info.isStorage) {
+    output[targetField] = null;
+  }
+
+  return output;
+}
+
+async function injectSignedUrls(records, options = {}) {
+  if (!Array.isArray(records)) {
+    return records;
+  }
+
+  const results = [];
+  for (const record of records) {
+    results.push(await injectSignedUrl(record, options));
+  }
+  return results;
 }
 
 // ========== ROTAS DE AUTENTICAÇÃO ==========
@@ -887,6 +1316,1110 @@ app.post('/api/logout', (req, res) => {
     console.log('🚪 Logout do usuário:', usuario);
     res.json({ success: true });
   });
+});
+
+app.get('/api/motoristas/auth/me', async (req, res) => {
+  try {
+    const { user, error } = await getSupabaseUserFromRequest(req);
+    if (error) {
+      return res.status(error.status || 401).json({ success: false, error: error.message });
+    }
+
+    console.log('🆔 Supabase user autenticado:', {
+      id: user.id,
+      email: user.email,
+      metadata: user.user_metadata
+    });
+
+    const { data: existingMotorista, error: motoristaError } = await supabaseAdmin
+      .from('motoristas')
+      .select(MOTORISTA_SELECT_FIELDS)
+      .eq('auth_user_id', user.id)
+      .maybeSingle();
+
+    if (motoristaError) {
+      console.error('❌ Erro ao buscar motorista por auth_user_id:', motoristaError);
+    }
+
+    if (motoristaError && motoristaError.code !== 'PGRST116') {
+      throw motoristaError;
+    }
+
+    res.json({
+      success: true,
+      user: {
+        id: user.id,
+        email: user.email,
+        nome: user.user_metadata?.full_name || user.user_metadata?.name || user.email
+      },
+      motorista: existingMotorista ? mapMotoristaResponse(existingMotorista) : null
+    });
+  } catch (error) {
+    console.error('❌ Erro ao carregar sessão do motorista:', error);
+    res.status(500).json({ success: false, error: 'Erro ao validar sessão. Tente novamente.' });
+  }
+});
+
+app.post('/api/motoristas/auth/profile', express.json(), async (req, res) => {
+  try {
+    const { user, error } = await getSupabaseUserFromRequest(req);
+    if (error) {
+      return res.status(error.status || 401).json({ success: false, error: error.message });
+    }
+
+    const body = req.body || {};
+    const normalizedPhone = normalizePhone(body.telefone);
+
+    if (!normalizedPhone || normalizedPhone.length < 10) {
+      return res.status(400).json({ success: false, error: 'Informe um telefone válido com DDD.' });
+    }
+
+    const normalizedPhone2 = normalizePhone(body.telefoneSecundario);
+    const nome = (body.nome || user.user_metadata?.full_name || user.user_metadata?.name || user.email || '').toString().trim();
+    if (!nome) {
+      return res.status(400).json({ success: false, error: 'Informe o nome completo.' });
+    }
+
+    const { data: motoristaByAuth, error: motoristaByAuthError } = await supabaseAdmin
+      .from('motoristas')
+      .select(MOTORISTA_SELECT_FIELDS)
+      .eq('auth_user_id', user.id)
+      .maybeSingle();
+
+    if (motoristaByAuthError && motoristaByAuthError.code !== 'PGRST116') {
+      throw motoristaByAuthError;
+    }
+
+    let motoristaSelecionado = motoristaByAuth || null;
+
+    const motoristasPorTelefone = await fetchMotoristasByPhone(normalizedPhone);
+    const motoristaPorTelefone = motoristasPorTelefone.find(m => phonesMatch(normalizedPhone, m.telefone1, m.telefone2));
+
+    if (!motoristaSelecionado && motoristaPorTelefone) {
+      if (motoristaPorTelefone.auth_user_id && motoristaPorTelefone.auth_user_id !== user.id) {
+        return res.status(409).json({ success: false, error: 'Este telefone já está vinculado a outra conta. Contate a central.' });
+      }
+      motoristaSelecionado = motoristaPorTelefone;
+    }
+
+    const payload = {
+      nome,
+      telefone1: normalizedPhone,
+      auth_user_id: user.id,
+      created_by_departamento: body.departamento || motoristaSelecionado?.created_by_departamento || 'Portal Motorista',
+      created_by: motoristaSelecionado?.created_by || user.id,
+      usuario_id: motoristaSelecionado?.usuario_id || user.id
+    };
+
+    if (normalizedPhone2) {
+      payload.telefone2 = normalizedPhone2;
+    } else if (body.telefoneSecundario === '') {
+      payload.telefone2 = null;
+    }
+
+    const optionalFields = {
+      placa_cavalo: body.placaCavalo ? normalizePlate(body.placaCavalo) : null,
+      placa_carreta1: body.placaCarreta1 ? normalizePlate(body.placaCarreta1) : null,
+      placa_carreta2: body.placaCarreta2 ? normalizePlate(body.placaCarreta2) : null,
+      placa_carreta3: body.placaCarreta3 ? normalizePlate(body.placaCarreta3) : null,
+      classe_veiculo: body.classeVeiculo ? body.classeVeiculo.trim() : null,
+      tipo_veiculo: body.tipoVeiculo ? body.tipoVeiculo.trim() : null,
+      tipo_carroceria: body.tipoCarroceria ? body.tipoCarroceria.trim() : null,
+      cidade: body.cidade ? body.cidade.trim() : null,
+      estado: body.estado ? body.estado.trim() : null,
+      empresa: body.empresa ? body.empresa.trim() : null
+    };
+
+    Object.entries(optionalFields).forEach(([key, value]) => {
+      if (value) {
+        payload[key] = value;
+      }
+    });
+
+    if (!payload.classe_veiculo) {
+      payload.classe_veiculo = motoristaSelecionado?.classe_veiculo || 'Não informado';
+    }
+
+    let resultData = null;
+
+    if (motoristaSelecionado) {
+      const { data, error: updateError } = await supabaseAdmin
+        .from('motoristas')
+        .update(payload)
+        .eq('id', motoristaSelecionado.id)
+        .select(MOTORISTA_SELECT_FIELDS)
+        .single();
+
+      if (updateError) {
+        throw updateError;
+      }
+
+      resultData = data;
+    } else {
+      payload.status = body.status ? body.status.trim() : 'ativo';
+      const { data, error: insertError } = await supabaseAdmin
+        .from('motoristas')
+        .insert(payload)
+        .select(MOTORISTA_SELECT_FIELDS)
+        .single();
+
+      if (insertError) {
+        throw insertError;
+      }
+
+      resultData = data;
+    }
+
+    res.json({
+      success: true,
+      user: {
+        id: user.id,
+        email: user.email,
+        nome
+      },
+      motorista: mapMotoristaResponse(resultData)
+    });
+  } catch (error) {
+    console.error('❌ Erro ao vincular perfil de motorista:', error);
+    res.status(500).json({ success: false, error: 'Erro ao salvar dados do motorista. Tente novamente.' });
+  }
+});
+
+app.get('/api/motoristas/documentos/status', async (req, res) => {
+  try {
+    const { user, error } = await getSupabaseUserFromRequest(req);
+    if (error) {
+      return res.status(error.status || 401).json({ success: false, error: error.message });
+    }
+
+    const { data: motorista, error: motoristaError } = await supabaseAdmin
+      .from('motoristas')
+      .select('id')
+      .eq('auth_user_id', user.id)
+      .maybeSingle();
+
+    if (motoristaError && motoristaError.code !== 'PGRST116') {
+      throw motoristaError;
+    }
+
+    const defaultCategorias = () => {
+      const obj = {};
+      REQUIRED_DOCUMENT_CATEGORIES.forEach(cat => {
+        obj[cat] = {
+          possui: false,
+          status: 'ausente',
+          quantidade: 0,
+          ultimoEnvio: null,
+          label: DOCUMENT_CATEGORY_LABELS[cat] || 'Documentos',
+          documentos: []
+        };
+      });
+      return obj;
+    };
+
+    if (!motorista) {
+      const categorias = defaultCategorias();
+      return res.json({
+        success: true,
+        motorista: null,
+        categorias,
+        faltando: REQUIRED_DOCUMENT_CATEGORIES,
+        documentos: []
+      });
+    }
+
+    const { data: documentos, error: docsError } = await supabaseAdmin
+      .from('motorista_documentos')
+      .select('id, categoria, nome_arquivo, tipo_arquivo, tamanho, url, status, validade, observacoes, uploaded_by, created_at, updated_at')
+      .eq('motorista_id', motorista.id)
+      .order('created_at', { ascending: false });
+
+    if (docsError) {
+      throw docsError;
+    }
+
+    const documentosComUrls = await injectSignedUrls(documentos || []);
+
+    const categorias = defaultCategorias();
+
+    (documentosComUrls || []).forEach(doc => {
+      const categoria = (doc.categoria || 'outro').toLowerCase();
+      if (!categorias[categoria]) {
+        categorias[categoria] = {
+          possui: false,
+          status: 'ausente',
+          quantidade: 0,
+          ultimoEnvio: null,
+          label: DOCUMENT_CATEGORY_LABELS[categoria] || 'Documentos',
+          documentos: []
+        };
+      }
+
+      const categoriaInfo = categorias[categoria];
+      categoriaInfo.possui = true;
+      categoriaInfo.quantidade += 1;
+      categoriaInfo.documentos.push(doc);
+
+      const statusAtual = (doc.status || 'pendente').toLowerCase();
+      const scoreAtual = DOCUMENT_STATUS_PRIORITY[statusAtual] || 0;
+      const scoreAnterior = DOCUMENT_STATUS_PRIORITY[categoriaInfo.status] || 0;
+      if (scoreAtual > scoreAnterior) {
+        categoriaInfo.status = statusAtual;
+      }
+
+      if (doc.created_at) {
+        if (!categoriaInfo.ultimoEnvio || new Date(doc.created_at) > new Date(categoriaInfo.ultimoEnvio)) {
+          categoriaInfo.ultimoEnvio = doc.created_at;
+        }
+      }
+    });
+
+    const faltando = REQUIRED_DOCUMENT_CATEGORIES.filter(cat => !categorias[cat]?.possui);
+
+    res.json({
+      success: true,
+      motorista: motorista.id,
+      categorias,
+      faltando,
+      documentos: documentosComUrls || []
+    });
+  } catch (error) {
+    console.error('❌ Erro ao consultar status de documentos:', error);
+    res.status(500).json({ success: false, error: 'Erro ao consultar documentos. Tente novamente.' });
+  }
+});
+
+app.get('/api/motoristas/oportunidades', async (req, res) => {
+  try {
+    const { error } = await getSupabaseUserFromRequest(req);
+    if (error) {
+      return res.status(error.status || 401).json({ success: false, error: error.message });
+    }
+
+    const { data, error: coletasError } = await supabaseAdmin
+      .from('coletas')
+      .select('id, cliente, origem, destino, valor, km, veiculo, status, etapa_atual, prioridade, data_recebimento, observacoes, filial, motorista_id')
+      .is('motorista_id', null)
+      .order('data_recebimento', { ascending: true });
+
+    if (coletasError) {
+      throw coletasError;
+    }
+
+    const oportunidades = (data || []).filter(coleta => !coleta.motorista_id).map(mapColetaOpportunity);
+    res.json({ success: true, oportunidades });
+  } catch (error) {
+    console.error('❌ Erro ao listar oportunidades para motoristas:', error);
+    res.status(500).json({ success: false, error: 'Erro ao carregar oportunidades. Tente novamente.' });
+  }
+});
+
+app.get('/api/motoristas/viagens', async (req, res) => {
+  try {
+    const { user, error } = await getSupabaseUserFromRequest(req);
+    if (error) {
+      return res.status(error.status || 401).json({ success: false, error: error.message });
+    }
+
+    const { data: motorista, error: motoristaError } = await supabaseAdmin
+      .from('motoristas')
+      .select(MOTORISTA_SELECT_FIELDS)
+      .eq('auth_user_id', user.id)
+      .maybeSingle();
+
+    if (motoristaError && motoristaError.code !== 'PGRST116') {
+      throw motoristaError;
+    }
+
+    if (!motorista) {
+      return res.json({ success: true, cadastroPendente: true, viagens: [] });
+    }
+
+    const { data: viagensData, error: viagensError } = await supabaseAdmin
+      .from('coletas')
+      .select('id, cliente, origem, destino, valor, km, veiculo, status, etapa_atual, prioridade, data_recebimento, observacoes, filial')
+      .eq('motorista_id', motorista.id)
+      .order('data_recebimento', { ascending: true });
+
+    if (viagensError) {
+      throw viagensError;
+    }
+
+    res.json({
+      success: true,
+      motorista: mapMotoristaResponse(motorista),
+      viagens: (viagensData || []).map(mapColetaOpportunity)
+    });
+  } catch (error) {
+    console.error('❌ Erro ao listar viagens do motorista:', error);
+    res.status(500).json({ success: false, error: 'Erro ao carregar suas viagens. Tente novamente.' });
+  }
+});
+
+app.post('/api/motoristas/oportunidades/:coletaId/assumir', async (req, res) => {
+  try {
+    const { user, error } = await getSupabaseUserFromRequest(req);
+    if (error) {
+      return res.status(error.status || 401).json({ success: false, error: error.message });
+    }
+
+    const coletaId = req.params.coletaId;
+    if (!coletaId) {
+      return res.status(400).json({ success: false, error: 'Identificador da coleta é obrigatório.' });
+    }
+
+    const { data: motorista, error: motoristaError } = await supabaseAdmin
+      .from('motoristas')
+      .select(MOTORISTA_SELECT_FIELDS)
+      .eq('auth_user_id', user.id)
+      .maybeSingle();
+
+    if (motoristaError && motoristaError.code !== 'PGRST116') {
+      throw motoristaError;
+    }
+
+    if (!motorista) {
+      return res.status(409).json({ success: false, error: 'Complete seu cadastro para assumir uma coleta.' });
+    }
+
+    // Verificar se o motorista já tem uma viagem ativa
+    const { data: viagemAtiva, error: viagemAtivaError } = await supabaseAdmin
+      .from('coletas')
+      .select('id, cliente, origem, destino, status, etapa_atual')
+      .eq('motorista_id', motorista.id)
+      .in('status', ['pendente', 'em_andamento'])
+      .not('etapa_atual', 'eq', 'concluida')
+      .not('etapa_atual', 'eq', 'monitoramento')
+      .limit(1)
+      .maybeSingle();
+
+    if (viagemAtivaError && viagemAtivaError.code !== 'PGRST116') {
+      throw viagemAtivaError;
+    }
+
+    if (viagemAtiva) {
+      return res.status(409).json({ 
+        success: false, 
+        error: `Você já tem uma viagem ativa (${viagemAtiva.cliente || viagemAtiva.id}: ${viagemAtiva.origem} → ${viagemAtiva.destino}). Conclua ou cancele essa viagem antes de assumir outra.`,
+        viagemAtiva: {
+          id: viagemAtiva.id,
+          cliente: viagemAtiva.cliente,
+          origem: viagemAtiva.origem,
+          destino: viagemAtiva.destino,
+          status: viagemAtiva.status,
+          etapaAtual: viagemAtiva.etapa_atual
+        }
+      });
+    }
+
+    const { data: coletaAtual, error: coletaBuscaError } = await supabaseAdmin
+      .from('coletas')
+      .select('id, motorista_id, status, etapa_atual')
+      .eq('id', coletaId)
+      .maybeSingle();
+
+    if (coletaBuscaError && coletaBuscaError.code !== 'PGRST116') {
+      throw coletaBuscaError;
+    }
+
+    if (!coletaAtual) {
+      return res.status(404).json({ success: false, error: 'Coleta não encontrada.' });
+    }
+
+    if (coletaAtual.motorista_id) {
+      return res.status(409).json({ success: false, error: 'Essa coleta já foi assumida por outro motorista.' });
+    }
+
+    const updatePayload = {
+      motorista_id: motorista.id,
+      etapa_atual: 'gr'
+    };
+
+    if (coletaAtual.status && coletaAtual.status.toLowerCase() === 'pendente') {
+      updatePayload.status = 'em_andamento';
+    }
+
+    const { data: coletaAtualizada, error: updateError } = await supabaseAdmin
+      .from('coletas')
+      .update(updatePayload)
+      .eq('id', coletaId)
+      .select('id, cliente, origem, destino, valor, km, veiculo, status, etapa_atual, prioridade, data_recebimento, observacoes, filial, motorista_id')
+      .single();
+
+    if (updateError) {
+      throw updateError;
+    }
+
+    try {
+      await supabaseAdmin.from('historico_coletas').insert({
+        coleta_id: coletaId,
+        etapa_anterior: coletaAtual.etapa_atual,
+        etapa_atual: 'gr',
+        acao: 'motorista_assumiu',
+        usuario: motorista.nome || user.email || 'motorista_portal',
+        observacoes: `Motorista ${motorista.nome || motorista.id} assumiu a coleta via portal. Etapa movida para GR.`
+      });
+    } catch (historicoError) {
+      console.warn('⚠️ Não foi possível registrar histórico da coleta:', historicoError.message || historicoError);
+    }
+
+    try {
+      await supabaseAdmin.from('chat_mensagens').insert({
+        coleta_id: coletaId,
+        usuario: motorista.nome || user.email || 'motorista_portal',
+        mensagem: `🚚 Motorista ${motorista.nome || motorista.id} assumiu a coleta via portal. Etapa movida para GR.`,
+        tipo_mensagem: 'sistema'
+      });
+    } catch (chatError) {
+      console.warn('⚠️ Não foi possível registrar mensagem automática no chat:', chatError.message || chatError);
+    }
+
+    res.json({
+      success: true,
+      coleta: mapColetaOpportunity(coletaAtualizada),
+      motorista: mapMotoristaResponse(motorista)
+    });
+  } catch (error) {
+    console.error('❌ Erro ao assumir oportunidade de coleta:', error);
+    res.status(500).json({ success: false, error: 'Não foi possível assumir esta coleta agora. Tente novamente mais tarde.' });
+  }
+});
+
+app.post('/api/motoristas/coletas/:coletaId/documentos', upload.array('arquivos', 30), async (req, res) => {
+  try {
+    const { user, error } = await getSupabaseUserFromRequest(req);
+    if (error) {
+      return res.status(error.status || 401).json({ success: false, error: error.message });
+    }
+
+    const coletaId = req.params.coletaId;
+    if (!coletaId) {
+      return res.status(400).json({ success: false, error: 'Identificador da coleta é obrigatório.' });
+    }
+
+    const { data: motorista, error: motoristaError } = await supabaseAdmin
+      .from('motoristas')
+      .select('id, nome')
+      .eq('auth_user_id', user.id)
+      .maybeSingle();
+
+    if (motoristaError && motoristaError.code !== 'PGRST116') {
+      throw motoristaError;
+    }
+
+    if (!motorista) {
+      return res.status(409).json({ success: false, error: 'Complete seu cadastro para enviar documentos.' });
+    }
+
+    const arquivos = req.files || [];
+    if (!arquivos.length) {
+      return res.status(400).json({ success: false, error: 'Envie ao menos um arquivo.' });
+    }
+
+    // Processar categorias (pode vir como array ou string, com ou sem [] no nome)
+    const rawCategorias = req.body.categorias || req.body['categorias[]'];
+    let categorias = [];
+    
+    if (Array.isArray(rawCategorias)) {
+      categorias = rawCategorias.map(value => (value ?? '').toString().trim().toLowerCase());
+    } else if (typeof rawCategorias === 'string') {
+      // Se vier como string única, criar array com ela
+      categorias = [rawCategorias.toString().trim().toLowerCase()];
+    } else if (rawCategorias) {
+      // Caso seja objeto (improvável mas seguro)
+      categorias = [String(rawCategorias).trim().toLowerCase()];
+    }
+
+    // Garantir que temos uma categoria para cada arquivo
+    while (categorias.length < arquivos.length) {
+      categorias.push('documento');
+    }
+    
+    // Limitar ao número de arquivos (caso tenham enviado categorias extras)
+    categorias = categorias.slice(0, arquivos.length);
+
+    const categoriasObrigatorias = ['proprietario', 'veiculo', 'motorista'];
+    const presentes = new Set(categorias);
+    if (!categoriasObrigatorias.every(cat => presentes.has(cat))) {
+      return res.status(400).json({ success: false, error: 'Envie todos os documentos obrigatórios (proprietário, veículo e motorista).' });
+    }
+
+    const referenciasPessoais = parseJsonArray(req.body.referencias_pessoais);
+    const referenciasComerciais = parseJsonArray(req.body.referencias_comerciais);
+
+    if (referenciasPessoais.length < 2 || referenciasComerciais.length < 2) {
+      return res.status(400).json({ success: false, error: 'Informe ao menos duas referências pessoais e duas referências comerciais.' });
+    }
+
+    const processedFiles = [];
+
+    for (let index = 0; index < arquivos.length; index++) {
+      const file = arquivos[index];
+      if (!file || !file.buffer) {
+        throw new Error('Falha ao processar arquivo recebido.');
+      }
+      const categoriaOriginal = (categorias[index] || 'documento').toLowerCase();
+      const categoria = DOCUMENT_CATEGORY_LABELS[categoriaOriginal] ? categoriaOriginal : 'documento';
+      const safeOriginalName = sanitizeFilename(file.originalname);
+      const fileExt = path.extname(safeOriginalName) || '';
+      const uniqueName = `${Date.now()}-${generateId()}`;
+      const finalFileName = `${uniqueName}${fileExt}`;
+      const anexoStoragePath = `coletas/${coletaId}/${categoria}/${finalFileName}`;
+      const motoristaStoragePath = `motoristas/${motorista.id}/${categoria}/${finalFileName}`;
+      const uploadOptions = {
+        contentType: file.mimetype || 'application/octet-stream',
+        cacheControl: '3600',
+        upsert: false
+      };
+      const fileBuffer = file.buffer;
+
+      const { error: anexoUploadError } = await supabaseAdmin.storage
+        .from(ANEXOS_BUCKET)
+        .upload(anexoStoragePath, fileBuffer, uploadOptions);
+
+      if (anexoUploadError) {
+        throw anexoUploadError;
+      }
+
+      const { error: motoristaUploadError } = await supabaseAdmin.storage
+        .from(MOTORISTA_DOCS_BUCKET)
+        .upload(motoristaStoragePath, fileBuffer, uploadOptions);
+
+      if (motoristaUploadError) {
+        await supabaseAdmin.storage
+          .from(ANEXOS_BUCKET)
+          .remove([anexoStoragePath])
+          .catch(() => {});
+        throw motoristaUploadError;
+      }
+
+      categorias[index] = categoria;
+
+      processedFiles.push({
+        originalName: file.originalname,
+        mimetype: file.mimetype || 'application/octet-stream',
+        size: file.size,
+        categoria,
+        anexoStorageUrl: buildStorageUrl(ANEXOS_BUCKET, anexoStoragePath),
+        motoristaStorageUrl: buildStorageUrl(MOTORISTA_DOCS_BUCKET, motoristaStoragePath)
+      });
+    }
+
+    // Montar payload adaptativo para diferentes schemas
+    const anexosPayload = processedFiles.map((item) => {
+      const payload = {
+        id: generateUUID(),
+        coleta_id: coletaId,
+        nome_arquivo: item.originalName,
+        tipo_arquivo: item.mimetype,
+        tamanho: item.size,
+        url: item.anexoStorageUrl
+      };
+      
+      return payload;
+    });
+
+    console.log('📦 Inserindo anexos:', anexosPayload.length, 'arquivo(s)');
+    let { data: anexosInseridos, error: anexosError } = await supabaseAdmin
+      .from('anexos')
+      .insert(anexosPayload)
+      .select('id, nome_arquivo, url, tamanho, tipo_arquivo');
+
+    // Se falhar com 'tamanho', tentar com schema alternativo (tamanho_arquivo + caminho_arquivo)
+    if (anexosError && (anexosError.message?.includes('tamanho') || anexosError.message?.includes('url'))) {
+      console.log('⚠️ Tentando com schema alternativo (tamanho_arquivo + caminho_arquivo)');
+      const anexosPayloadAlt = processedFiles.map((item) => ({
+        id: generateUUID(),
+        coleta_id: coletaId,
+        nome_arquivo: item.originalName,
+        tipo_arquivo: item.mimetype,
+        tamanho_arquivo: item.size,
+        caminho_arquivo: item.anexoStorageUrl
+      }));
+      
+      ({ data: anexosInseridos, error: anexosError } = await supabaseAdmin
+        .from('anexos')
+        .insert(anexosPayloadAlt)
+        .select('id, nome_arquivo, caminho_arquivo as url, tamanho_arquivo as tamanho, tipo_arquivo'));
+    }
+
+    if (anexosError) {
+      console.error('❌ Erro ao inserir anexos:', anexosError);
+      console.error('❌ Detalhes do erro:', JSON.stringify(anexosError, null, 2));
+      throw anexosError;
+    }
+    
+    console.log('✅ Anexos inseridos com sucesso:', anexosInseridos?.length || 0);
+
+    // Tentar inserir documentos permanentes do motorista (opcional)
+    try {
+      const motoristaDocsPayload = processedFiles.map((item) => {
+        const categoria = REQUIRED_DOCUMENT_CATEGORIES.includes(item.categoria) ? item.categoria : 'outro';
+        return {
+          id: generateUUID(),
+          motorista_id: motorista.id,
+          categoria,
+          nome_arquivo: item.originalName,
+          tipo_arquivo: item.mimetype,
+          tamanho: item.size,
+          url: item.motoristaStorageUrl,
+          status: 'pendente'
+        };
+      });
+
+      if (motoristaDocsPayload.length) {
+        console.log('📁 Tentando inserir', motoristaDocsPayload.length, 'documento(s) permanente(s) do motorista');
+        const { error: motoristaDocsError } = await supabaseAdmin
+          .from('motorista_documentos')
+          .insert(motoristaDocsPayload);
+
+        if (motoristaDocsError) {
+          // Se a tabela não existir, apenas logar como aviso
+          if (motoristaDocsError.message?.includes('does not exist') || 
+              motoristaDocsError.code === 'PGRST116' ||
+              motoristaDocsError.message?.includes('motorista_documentos')) {
+            console.warn('⚠️ Tabela motorista_documentos não encontrada. Documentos serão salvos apenas em anexos.');
+          } else {
+            throw motoristaDocsError;
+          }
+        } else {
+          console.log('✅ Documentos permanentes do motorista inseridos com sucesso');
+        }
+      }
+    } catch (docError) {
+      console.warn('⚠️ Não foi possível registrar documentos permanentes do motorista:', docError.message || docError);
+      // Não bloquear o fluxo se falhar aqui
+    }
+
+    const referenciasMensagem = [];
+    if (referenciasPessoais.length) {
+      referenciasMensagem.push('• Referências pessoais:\n  - ' + referenciasPessoais.join('\n  - '));
+    }
+    if (referenciasComerciais.length) {
+      referenciasMensagem.push('• Referências comerciais:\n  - ' + referenciasComerciais.join('\n  - '));
+    }
+
+    const categoriaResumo = categorias.reduce((acc, categoria) => {
+      const key = (categoria || 'documento').toLowerCase();
+      acc[key] = (acc[key] || 0) + 1;
+      return acc;
+    }, {});
+
+    const linhasCategorias = Object.entries(categoriaResumo).map(([categoria, quantidade]) => {
+      const label = DOCUMENT_CATEGORY_LABELS[categoria] || categoria;
+      return `• ${label}: ${quantidade} arquivo(s)`;
+    });
+
+    const partesMensagem = ['📎 Documentos enviados pelo motorista via portal.'];
+    if (linhasCategorias.length) {
+      partesMensagem.push(...linhasCategorias);
+    }
+    if (referenciasMensagem.length) {
+      partesMensagem.push(...referenciasMensagem);
+    }
+
+    const mensagem = partesMensagem.join('\n');
+
+    try {
+      // Tentar com tipo_mensagem primeiro (schema mais recente)
+      let chatPayload = {
+        coleta_id: coletaId,
+        usuario: user.email || user.id,
+        mensagem
+      };
+      
+      // Tentar inserir com tipo_mensagem
+      let { error: chatError } = await supabaseAdmin
+        .from('chat_mensagens')
+        .insert({ ...chatPayload, tipo_mensagem: 'sistema' });
+      
+      // Se falhar, tentar com tipo (schema antigo)
+      if (chatError && chatError.message && chatError.message.includes('tipo_mensagem')) {
+        console.log('⚠️ Tentando com coluna "tipo" em vez de "tipo_mensagem"');
+        chatError = null;
+        ({ error: chatError } = await supabaseAdmin
+          .from('chat_mensagens')
+          .insert({ ...chatPayload, tipo: 'system' }));
+      }
+      
+      if (chatError) {
+        console.warn('⚠️ Não foi possível registrar mensagem automática no chat:', chatError.message || chatError);
+      }
+    } catch (chatError) {
+      console.warn('⚠️ Não foi possível registrar mensagem automática no chat:', chatError.message || chatError);
+    }
+
+    // Marcar solicitações pendentes como atendidas se o documento foi atualizado
+    try {
+      const categoriasEnviadas = new Set(categorias.map(c => c.toLowerCase()));
+      const { data: solicitacoesPendentes } = await supabaseAdmin
+        .from('solicitacoes_documentos')
+        .select('id, categoria')
+        .eq('motorista_id', motorista.id)
+        .eq('coleta_id', coletaId)
+        .eq('status', 'pendente');
+
+      if (solicitacoesPendentes && solicitacoesPendentes.length > 0) {
+        const solicitacoesAtendidas = solicitacoesPendentes
+          .filter(s => categoriasEnviadas.has(s.categoria.toLowerCase()))
+          .map(s => s.id);
+
+        if (solicitacoesAtendidas.length > 0) {
+          await supabaseAdmin
+            .from('solicitacoes_documentos')
+            .update({
+              status: 'atendida',
+              atendido_em: new Date().toISOString()
+            })
+            .in('id', solicitacoesAtendidas);
+
+          console.log('✅', solicitacoesAtendidas.length, 'solicitação(ões) marcada(s) como atendida(s)');
+        }
+      }
+    } catch (solicitacoesError) {
+      console.warn('⚠️ Não foi possível atualizar status das solicitações:', solicitacoesError);
+    }
+
+    console.log('🔗 Gerando URLs assinadas para', anexosInseridos?.length || 0, 'anexo(s)');
+    const anexosComUrls = await injectSignedUrls(anexosInseridos || []);
+    console.log('✅ URLs geradas com sucesso');
+
+    res.json({ success: true, anexos: anexosComUrls });
+  } catch (error) {
+    console.error('❌ Erro ao receber documentos do motorista:', error);
+    console.error('❌ Stack trace:', error.stack);
+    res.status(500).json({ success: false, error: 'Não foi possível enviar seus documentos agora. Tente novamente.' });
+  }
+});
+
+// ========== ENDPOINTS PARA SOLICITAÇÕES DE ATUALIZAÇÃO DE DOCUMENTOS ==========
+
+// Endpoint para GR solicitar atualização de documento
+app.post('/api/coletas/:coletaId/solicitar-atualizacao-documento', requireAuth, async (req, res) => {
+  try {
+    const coletaId = req.params.coletaId;
+    const { categoria, motivo } = req.body;
+
+    if (!categoria || !motivo) {
+      return res.status(400).json({ success: false, error: 'Categoria e motivo são obrigatórios.' });
+    }
+
+    if (!REQUIRED_DOCUMENT_CATEGORIES.includes(categoria.toLowerCase())) {
+      return res.status(400).json({ success: false, error: 'Categoria inválida. Use: proprietario, veiculo ou motorista.' });
+    }
+
+    // Buscar a coleta e verificar se está na etapa GR
+    const { data: coleta, error: coletaError } = await supabaseAdmin
+      .from('coletas')
+      .select('id, motorista_id, etapa_atual')
+      .eq('id', coletaId)
+      .single();
+
+    if (coletaError || !coleta) {
+      return res.status(404).json({ success: false, error: 'Coleta não encontrada.' });
+    }
+
+    if (coleta.etapa_atual !== 'gr') {
+      return res.status(400).json({ success: false, error: 'Solicitações de atualização só podem ser feitas na etapa GR.' });
+    }
+
+    if (!coleta.motorista_id) {
+      return res.status(400).json({ success: false, error: 'Coleta não tem motorista vinculado.' });
+    }
+
+    // Criar solicitação
+    const usuario = req.session?.usuario || req.supabaseUser?.email || req.supabaseUser?.id || 'sistema';
+    
+    console.log('📝 Criando solicitação:', { coletaId, motorista_id: coleta.motorista_id, categoria, usuario });
+    
+    const { data: solicitacao, error: solicitacaoError } = await supabaseAdmin
+      .from('solicitacoes_documentos')
+      .insert({
+        coleta_id: coletaId,
+        motorista_id: coleta.motorista_id,
+        categoria: categoria.toLowerCase(),
+        motivo: motivo.trim(),
+        solicitado_por: usuario,
+        status: 'pendente'
+      })
+      .select()
+      .single();
+
+    if (solicitacaoError) {
+      console.error('❌ Erro ao inserir solicitação:', solicitacaoError);
+      console.error('❌ Código do erro:', solicitacaoError.code);
+      console.error('❌ Mensagem completa:', JSON.stringify(solicitacaoError, null, 2));
+      
+      // Se a tabela não existir, informar ao usuário
+      if (solicitacaoError.code === '42P01' || 
+          solicitacaoError.code === 'PGRST202' ||
+          solicitacaoError.message?.includes('does not exist') || 
+          solicitacaoError.message?.includes('solicitacoes_documentos') ||
+          solicitacaoError.message?.includes('relation') && solicitacaoError.message?.includes('does not exist')) {
+        return res.status(500).json({ 
+          success: false, 
+          error: 'Tabela de solicitações não encontrada. É necessário criar a tabela no banco de dados primeiro.',
+          sql: 'Execute o SQL do arquivo sql/criar-solicitacoes-atualizacao-docs.sql no Supabase Dashboard',
+          endpoint: 'Ou use: POST /api/admin/criar-tabela-solicitacoes (requer login como admin)'
+        });
+      }
+      
+      throw solicitacaoError;
+    }
+    
+    console.log('✅ Solicitação criada:', solicitacao?.id);
+
+    // Criar mensagem no chat
+    try {
+      const chatPayload = {
+        coleta_id: coletaId,
+        usuario: usuario,
+        mensagem: `📋 Solicitação de atualização de documentos: ${DOCUMENT_CATEGORY_LABELS[categoria.toLowerCase()] || categoria}\n\nMotivo: ${motivo}`
+      };
+
+      let { error: chatError } = await supabaseAdmin
+        .from('chat_mensagens')
+        .insert({ ...chatPayload, tipo_mensagem: 'sistema' });
+
+      if (chatError && chatError.message?.includes('tipo_mensagem')) {
+        ({ error: chatError } = await supabaseAdmin
+          .from('chat_mensagens')
+          .insert({ ...chatPayload, tipo: 'system' }));
+      }
+    } catch (chatError) {
+      console.warn('⚠️ Não foi possível criar mensagem no chat:', chatError);
+    }
+
+    res.json({ success: true, solicitacao });
+  } catch (error) {
+    console.error('❌ Erro ao solicitar atualização de documento:', error);
+    console.error('❌ Stack trace:', error.stack);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Não foi possível criar a solicitação. Tente novamente.',
+      details: error.message || error.toString()
+    });
+  }
+});
+
+// Endpoint para motorista ver notificações de atualização de documentos
+app.get('/api/motoristas/notificacoes', async (req, res) => {
+  try {
+    const { user, error } = await getSupabaseUserFromRequest(req);
+    if (error) {
+      return res.status(error.status || 401).json({ success: false, error: error.message });
+    }
+
+    const { data: motorista, error: motoristaError } = await supabaseAdmin
+      .from('motoristas')
+      .select('id')
+      .eq('auth_user_id', user.id)
+      .maybeSingle();
+
+    if (motoristaError && motoristaError.code !== 'PGRST116') {
+      throw motoristaError;
+    }
+
+    if (!motorista) {
+      return res.json({ success: true, notificacoes: [] });
+    }
+
+    // Buscar solicitações pendentes
+    const { data: solicitacoes, error: solicitacoesError } = await supabaseAdmin
+      .from('solicitacoes_documentos')
+      .select(`
+        id,
+        coleta_id,
+        categoria,
+        motivo,
+        solicitado_por,
+        solicitado_em,
+        status,
+        observacoes,
+        coletas:coleta_id (
+          id,
+          cliente,
+          origem,
+          destino
+        )
+      `)
+      .eq('motorista_id', motorista.id)
+      .eq('status', 'pendente')
+      .order('solicitado_em', { ascending: false });
+
+    if (solicitacoesError) {
+      throw solicitacoesError;
+    }
+
+    const notificacoes = (solicitacoes || []).map(s => ({
+      id: s.id,
+      coletaId: s.coleta_id,
+      categoria: s.categoria,
+      categoriaLabel: DOCUMENT_CATEGORY_LABELS[s.categoria] || s.categoria,
+      motivo: s.motivo,
+      solicitadoPor: s.solicitado_por,
+      solicitadoEm: s.solicitado_em,
+      coleta: s.coletas ? {
+        id: s.coletas.id,
+        cliente: s.coletas.cliente,
+        origem: s.coletas.origem,
+        destino: s.coletas.destino
+      } : null
+    }));
+
+    res.json({ success: true, notificacoes, total: notificacoes.length });
+  } catch (error) {
+    console.error('❌ Erro ao buscar notificações:', error);
+    res.status(500).json({ success: false, error: 'Erro ao buscar notificações. Tente novamente.' });
+  }
+});
+
+// Endpoint para marcar solicitação como atendida (quando motorista atualizar documento)
+app.post('/api/motoristas/solicitacoes/:solicitacaoId/atender', async (req, res) => {
+  try {
+    const { user, error } = await getSupabaseUserFromRequest(req);
+    if (error) {
+      return res.status(error.status || 401).json({ success: false, error: error.message });
+    }
+
+    const solicitacaoId = req.params.solicitacaoId;
+
+    const { data: motorista, error: motoristaError } = await supabaseAdmin
+      .from('motoristas')
+      .select('id')
+      .eq('auth_user_id', user.id)
+      .maybeSingle();
+
+    if (motoristaError && motoristaError.code !== 'PGRST116') {
+      throw motoristaError;
+    }
+
+    if (!motorista) {
+      return res.status(404).json({ success: false, error: 'Motorista não encontrado.' });
+    }
+
+    // Verificar se a solicitação pertence ao motorista
+    const { data: solicitacao, error: solicitacaoError } = await supabaseAdmin
+      .from('solicitacoes_documentos')
+      .select('id, motorista_id, coleta_id, categoria')
+      .eq('id', solicitacaoId)
+      .single();
+
+    if (solicitacaoError || !solicitacao) {
+      return res.status(404).json({ success: false, error: 'Solicitação não encontrada.' });
+    }
+
+    if (solicitacao.motorista_id !== motorista.id) {
+      return res.status(403).json({ success: false, error: 'Você não tem permissão para atender esta solicitação.' });
+    }
+
+    // Marcar como atendida
+    const { error: updateError } = await supabaseAdmin
+      .from('solicitacoes_documentos')
+      .update({
+        status: 'atendida',
+        atendido_em: new Date().toISOString()
+      })
+      .eq('id', solicitacaoId);
+
+    if (updateError) {
+      throw updateError;
+    }
+
+    res.json({ success: true, message: 'Solicitação marcada como atendida.' });
+  } catch (error) {
+    console.error('❌ Erro ao atender solicitação:', error);
+    res.status(500).json({ success: false, error: 'Erro ao atualizar solicitação. Tente novamente.' });
+  }
+});
+
+// ========== ENDPOINT PARA CRIAR TABELA DE SOLICITAÇÕES ==========
+// Endpoint para criar tabela - pode ser chamado via MCP ou diretamente
+app.post('/api/admin/criar-tabela-solicitacoes', async (req, res) => {
+  try {
+    console.log('🔧 Endpoint chamado para criar tabela solicitacoes_documentos...');
+
+    console.log('🔧 Criando tabela solicitacoes_documentos...');
+
+    // SQL para criar a tabela
+    const createTableSQL = `
+CREATE TABLE IF NOT EXISTS solicitacoes_documentos (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  coleta_id UUID NOT NULL REFERENCES coletas(id) ON DELETE CASCADE,
+  motorista_id UUID NOT NULL REFERENCES motoristas(id) ON DELETE CASCADE,
+  categoria TEXT NOT NULL CHECK (categoria IN ('proprietario', 'veiculo', 'motorista', 'outro')),
+  motivo TEXT NOT NULL,
+  solicitado_por TEXT NOT NULL,
+  solicitado_em TIMESTAMPTZ DEFAULT NOW(),
+  status TEXT DEFAULT 'pendente' CHECK (status IN ('pendente', 'atendida', 'cancelada')),
+  atendido_em TIMESTAMPTZ,
+  observacoes TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+    `.trim();
+
+    // Tentar executar via RPC exec_sql
+    const { data: rpcData, error: rpcError } = await supabaseAdmin.rpc('exec_sql', {
+      sql_query: createTableSQL
+    });
+
+    if (rpcError) {
+      console.error('❌ Erro ao criar tabela via RPC:', rpcError);
+      return res.status(500).json({
+        success: false,
+        error: 'Não foi possível criar a tabela automaticamente. Execute o SQL manualmente no Supabase Dashboard.',
+        sql: createTableSQL,
+        instrucoes: 'Acesse: Supabase Dashboard > SQL Editor > New Query > Cole o SQL > Run'
+      });
+    }
+
+    // Criar índices
+    const indices = [
+      'CREATE INDEX IF NOT EXISTS idx_solicitacoes_documentos_motorista ON solicitacoes_documentos(motorista_id);',
+      'CREATE INDEX IF NOT EXISTS idx_solicitacoes_documentos_coleta ON solicitacoes_documentos(coleta_id);',
+      'CREATE INDEX IF NOT EXISTS idx_solicitacoes_documentos_status ON solicitacoes_documentos(status);',
+      'CREATE INDEX IF NOT EXISTS idx_solicitacoes_documentos_pendentes ON solicitacoes_documentos(motorista_id, status) WHERE status = \'pendente\';'
+    ];
+
+    const indicesCriados = [];
+    for (const indexSQL of indices) {
+      const { error: indexError } = await supabaseAdmin.rpc('exec_sql', {
+        sql_query: indexSQL
+      });
+      if (!indexError) {
+        indicesCriados.push(indexSQL.split(' ')[4]); // Nome do índice
+      }
+    }
+
+    // Verificar se a tabela foi criada
+    const { error: verifError } = await supabaseAdmin
+      .from('solicitacoes_documentos')
+      .select('id')
+      .limit(1);
+
+    if (verifError) {
+      return res.status(500).json({
+        success: false,
+        error: 'Tabela criada mas não está acessível. Verifique no Supabase Dashboard.',
+        sql: createTableSQL
+      });
+    }
+
+    console.log('✅ Tabela solicitacoes_documentos criada com sucesso!');
+
+    res.json({
+      success: true,
+      message: 'Tabela solicitacoes_documentos criada com sucesso!',
+      indices: indicesCriados
+    });
+  } catch (error) {
+    console.error('❌ Erro ao criar tabela:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Erro ao criar tabela: ' + error.message
+    });
+  }
 });
 
 app.get('/api/auth/status', async (req, res) => {
@@ -1690,35 +3223,87 @@ app.post('/webhook/send-auth', requireAuth, async (req, res) => {
 });
 
 // ========== NOVA ROTA PARA ENVIO COM SUPABASE ==========
-app.post('/webhook/send-supabase', async (req, res) => {
+app.post('/webhook/send-supabase', upload.single('media'), async (req, res) => {
   const { number, message, usuario, userId } = req.body;
-  
+  const mediaFile = req.file;
+
   console.log('📤 Nova requisição de envio via Supabase:');
   console.log('👤 Usuário:', usuario);
   console.log('🆔 User ID (direto):', userId);
   console.log('🔢 Número:', number);
+  if (mediaFile) {
+    console.log('🖼️ Arquivo recebido:', mediaFile.originalname, mediaFile.mimetype, `${Math.round(mediaFile.size / 1024)}KB`);
+  }
   
   if ((!usuario && !userId) || !number || !message) {
+    if (mediaFile) {
+      try { fs.unlinkSync(mediaFile.path); } catch (error) { console.warn('⚠️ Falha ao remover arquivo temporário', error.message); }
+    }
     return res.status(400).json({ 
       success: false, 
       error: 'User ID (ou email), número e mensagem são obrigatórios' 
     });
   }
   
+  const cleanupFile = () => {
+    if (mediaFile) {
+      try {
+        fs.unlinkSync(mediaFile.path);
+      } catch (error) {
+        console.warn('⚠️ Falha ao remover arquivo temporário:', error.message);
+      }
+    }
+  };
+
+  let mediaData = null;
+  if (mediaFile) {
+    if (!mediaFile.mimetype.startsWith('image/')) {
+      cleanupFile();
+      return res.status(400).json({
+        success: false,
+        error: 'Somente arquivos de imagem são permitidos'
+      });
+    }
+
+    if (mediaFile.size > 5 * 1024 * 1024) {
+      cleanupFile();
+      return res.status(400).json({
+        success: false,
+        error: 'A imagem deve ter no máximo 5MB'
+      });
+    }
+
+    try {
+      const buffer = fs.readFileSync(mediaFile.path);
+      mediaData = {
+        fileName: mediaFile.originalname,
+        mimetype: mediaFile.mimetype,
+        base64: buffer.toString('base64')
+      };
+    } catch (error) {
+      cleanupFile();
+      return res.status(500).json({
+        success: false,
+        error: 'Falha ao processar a imagem enviada',
+        details: error.message
+      });
+    }
+  }
+
   try {
     // ✅ Usar userId direto do body se disponível
     let userIdentity = userId;
-    
+
     // Se userId não foi fornecido, buscar pelo email
     if (!userId && usuario) {
       console.log('📧 Buscando userId pelo email:', usuario);
-      
+
       try {
-    const { data: authUsers, error: authError } = await supabaseAdmin.auth.admin.listUsers();
-    
+        const { data: authUsers, error: authError } = await supabaseAdmin.auth.admin.listUsers();
+
         if (!authError && authUsers?.users) {
-      const user = authUsers.users.find(u => u.email === usuario);
-      if (user) {
+          const user = authUsers.users.find(u => u.email === usuario);
+          if (user) {
             userIdentity = user.id;
             console.log('✅ User_id encontrado via admin API:', userIdentity);
           }
@@ -1729,27 +3314,26 @@ app.post('/webhook/send-supabase', async (req, res) => {
         console.warn('⚠️ Erro ao usar admin API:', adminError.message);
       }
     }
-    
+
     if (!userIdentity) {
       console.error('❌ User ID não encontrado');
-      return res.status(404).json({ 
-        success: false, 
+      cleanupFile();
+      return res.status(404).json({
+        success: false,
         error: 'User ID não identificado',
         solution: 'Faça login novamente',
         details: 'O ID do usuário não pôde ser determinado'
       });
     }
-    
+
     console.log('✅ Usando user_id:', userIdentity);
-    
+
     // Buscar credenciais da Evolution API do usuário
     console.log('🔍 Buscando credenciais para user_id:', userIdentity);
-    
+
     let userCreds = null;
     let credsError = null;
-    
-    // ✅ Usar bypass RLS com service role
-    // Para isso, vamos usar o método direto sem RLS
+
     const { data, error } = await supabaseAdmin
       .from('user_evolution_apis')
       .select('*')
@@ -1758,47 +3342,44 @@ app.post('/webhook/send-supabase', async (req, res) => {
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle();
-    
+
     userCreds = data;
     credsError = error;
-    
-    // Se não encontrou, tentar sem filtro de active para debug
+
     if (!userCreds) {
       console.log('🔍 Tentando buscar sem filtro de active...');
-      const { data: allCreds, error: allError } = await supabaseAdmin
+      const { data: allCreds } = await supabaseAdmin
         .from('user_evolution_apis')
         .select('*')
         .eq('user_id', userIdentity);
-      
+
       if (allCreds) {
         console.log('📋 Credenciais encontradas (ativas e inativas):', allCreds);
       }
     }
-    
-    console.log('📋 Resultado da busca:', { 
-      tem_credenciais: !!userCreds, 
+
+    console.log('📋 Resultado da busca:', {
+      tem_credenciais: !!userCreds,
       erro: credsError,
-      user_id_buscado: userIdentity 
+      user_id_buscado: userIdentity
     });
-    
+
     if (credsError || !userCreds) {
       console.error('❌ Credenciais não encontradas:', credsError);
       console.error('👤 Email do usuário:', usuario);
       console.error('🆔 ID do usuário:', userIdentity);
-      
-      // Verificar se existem credenciais inativas
+
       const { data: credenciaisInativas } = await supabaseAdmin
         .from('user_evolution_apis')
         .select('*')
         .eq('user_id', userIdentity);
-      
+
       console.log('📊 Credenciais do usuário (ativas e inativas):', credenciaisInativas);
-      
-      // Listar TODAS as credenciais para debug
+
       const { data: todasCredenciais } = await supabaseAdmin
         .from('user_evolution_apis')
         .select('*');
-      
+
       console.log('📋 TODAS as credenciais cadastradas:');
       if (todasCredenciais && todasCredenciais.length > 0) {
         todasCredenciais.forEach(cred => {
@@ -1807,81 +3388,525 @@ app.post('/webhook/send-supabase', async (req, res) => {
       } else {
         console.log('  - Nenhuma credencial encontrada no banco');
       }
-      
-      return res.status(404).json({ 
-        success: false, 
+
+      cleanupFile();
+      return res.status(404).json({
+        success: false,
         error: `Credenciais da Evolution API não configuradas para ${usuario}`,
         solution: 'Configure suas credenciais em Settings > Evolution API',
         details: credsError?.message || 'Nenhuma credencial ativa encontrada'
       });
     }
-    
+
     console.log('✅ Credenciais encontradas:');
     console.log('🏷️ Instância:', userCreds.instance_name);
     console.log('🔑 API Key:', userCreds.api_key ? '***' + userCreds.api_key.slice(-4) : 'NÃO CONFIGURADA');
     console.log('🔗 API URL:', userCreds.api_url);
     console.log('👤 User ID:', userCreds.user_id);
-    
-    // Validar credenciais
+
     if (!userCreds.api_key || !userCreds.api_url || !userCreds.instance_name) {
-      return res.status(500).json({ 
-        success: false, 
+      cleanupFile();
+      return res.status(500).json({
+        success: false,
         error: `Configuração incompleta para ${usuario}`,
         solution: 'Complete todas as informações das credenciais'
       });
     }
-    
-    // Enviar mensagem via Evolution API
+
     const formattedNumber = formatNumberForEvolution(number);
     console.log('🔢 Número formatado:', formattedNumber);
-    
+
     const evolutionUrl = userCreds.api_url;
-    const url = `${evolutionUrl}/message/sendText/${userCreds.instance_name}`;
-    
-    console.log('🌐 URL da requisição:', url);
-    
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'apikey': userCreds.api_key
-      },
-      body: JSON.stringify({
-        number: formattedNumber,
-        text: message
-      }),
-      timeout: 30000
-    });
-    
-    console.log('📡 Status da Evolution:', response.status);
-    
-    if (response.ok) {
-      const result = await response.json();
-      console.log('✅ Mensagem enviada com sucesso:', result);
-      
-      res.json({ 
-        success: true, 
-        message: '✅ Mensagem enviada com sucesso!',
-        usuario: usuario,
-        instancia: userCreds.instance_name,
-        messageId: result.key?.id
+
+    if (!mediaData) {
+      const textUrl = `${evolutionUrl}/message/sendText/${userCreds.instance_name}`;
+      console.log('🌐 URL da requisição:', textUrl);
+
+      const response = await fetch(textUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': userCreds.api_key
+        },
+        body: JSON.stringify({
+          number: formattedNumber,
+          text: message
+        }),
+        timeout: 30000
       });
-    } else {
+
+      console.log('📡 Status da Evolution:', response.status);
+
+      if (response.ok) {
+        const result = await response.json();
+        console.log('✅ Mensagem enviada com sucesso:', result);
+        cleanupFile();
+
+        res.json({
+          success: true,
+          message: '✅ Mensagem enviada com sucesso!',
+          usuario: usuario,
+          instancia: userCreds.instance_name,
+          messageId: result.key?.id,
+          mediaEnviada: null
+        });
+        return;
+      }
+
       const errorText = await response.text();
-      console.log('❌ Erro da Evolution:', errorText);
-      res.status(500).json({ 
-        success: false, 
+      console.log('❌ Erro da Evolution (texto):', errorText);
+      cleanupFile();
+      return res.status(500).json({
+        success: false,
         error: `❌ Erro ${response.status} do Evolution`,
         details: errorText
       });
     }
-    
+
+    const isImage = mediaData.mimetype.startsWith('image/');
+    const rawBase64 = mediaData.base64;
+    const prefixedBase64 = rawBase64.startsWith('data:') ? rawBase64 : `data:${mediaData.mimetype};base64,${rawBase64}`;
+    const guessedExtension = path.extname(mediaData.fileName) || (isImage ? '.jpg' : '');
+    const normalizedFileName = mediaData.fileName || `arquivo${guessedExtension}`;
+
+    const mediaAttempts = [
+      {
+        name: 'message/sendFileBase64',
+        url: `${evolutionUrl}/message/sendFileBase64/${userCreds.instance_name}`,
+        payload: {
+          number: formattedNumber,
+          caption: message,
+          fileName: normalizedFileName,
+          filename: normalizedFileName,
+          base64: rawBase64,
+          mimetype: mediaData.mimetype
+        }
+      },
+      {
+        name: 'message/sendMediaFromBase64',
+        url: `${evolutionUrl}/message/sendMediaFromBase64/${userCreds.instance_name}`,
+        payload: {
+          number: formattedNumber,
+          caption: message,
+          fileName: normalizedFileName,
+          mimetype: mediaData.mimetype,
+          mediaData: prefixedBase64,
+          base64: rawBase64,
+          media: prefixedBase64
+        }
+      },
+      {
+        name: 'message/sendMediaBase64',
+        url: `${evolutionUrl}/message/sendMediaBase64/${userCreds.instance_name}`,
+        payload: {
+          number: formattedNumber,
+          caption: message,
+          fileName: normalizedFileName,
+          mimetype: mediaData.mimetype,
+          base64: rawBase64,
+          media: prefixedBase64
+        }
+      },
+      {
+        name: 'message/sendMedia',
+        url: `${evolutionUrl}/message/sendMedia/${userCreds.instance_name}`,
+        payload: {
+          number: formattedNumber,
+          message,
+          caption: message,
+          mediatype: isImage ? 'image' : mediaData.mimetype,
+          mediaType: isImage ? 'image' : mediaData.mimetype,
+          fileName: normalizedFileName,
+          filename: normalizedFileName,
+          mimetype: mediaData.mimetype,
+          base64: rawBase64,
+          media: prefixedBase64,
+          mediaData: prefixedBase64,
+          owned: {
+            type: isImage ? 'image' : 'file',
+            media: prefixedBase64,
+            base64: rawBase64,
+            filename: normalizedFileName,
+            mimetype: mediaData.mimetype,
+            caption: message
+          },
+          mediaMessage: {
+            mediatype: isImage ? 'image' : mediaData.mimetype,
+            media: prefixedBase64,
+            base64: rawBase64,
+            fileName: normalizedFileName,
+            mimetype: mediaData.mimetype,
+            caption: message
+          }
+        }
+      },
+      {
+        name: 'message/sendImageBase64',
+        url: `${evolutionUrl}/message/sendImageBase64/${userCreds.instance_name}`,
+        payload: {
+          number: formattedNumber,
+          caption: message,
+          fileName: normalizedFileName,
+          filename: normalizedFileName,
+          base64: rawBase64,
+          media: prefixedBase64
+        }
+      }
+    ];
+
+    const attemptLogs = [];
+    let evolutionResult = null;
+    let lastErrorText = null;
+    let lastStatus = null;
+
+    for (const attempt of mediaAttempts) {
+      try {
+        console.log(`🌐 Tentando Evolution endpoint: ${attempt.name}`);
+        const response = await fetch(attempt.url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': userCreds.api_key
+          },
+          body: JSON.stringify(attempt.payload),
+          timeout: 30000
+        });
+
+        lastStatus = response.status;
+
+        if (response.ok) {
+          evolutionResult = await response.json();
+          attemptLogs.push({ endpoint: attempt.name, status: response.status, success: true });
+          console.log(`✅ Evolution aceitou no endpoint ${attempt.name}`);
+          break;
+        }
+
+        const errorText = await response.text();
+        attemptLogs.push({ endpoint: attempt.name, status: response.status, body: errorText });
+        console.log(`⚠️ Evolution respondeu ${response.status} em ${attempt.name}:`, errorText);
+
+        lastErrorText = errorText;
+
+        if (response.status === 404) {
+          continue; // tentar próximo endpoint
+        }
+
+        // Se não for 404, interrompe as tentativas
+        break;
+      } catch (err) {
+        lastErrorText = err.message;
+        attemptLogs.push({ endpoint: attempt.name, networkError: err.message });
+        console.log(`❌ Erro de rede em ${attempt.name}:`, err.message);
+        break;
+      }
+    }
+
+    console.log('📝 Tentativas Evolution:', attemptLogs);
+    cleanupFile();
+
+    if (evolutionResult) {
+      return res.json({
+        success: true,
+        message: '✅ Mensagem enviada com sucesso!',
+        usuario: usuario,
+        instancia: userCreds.instance_name,
+        messageId: evolutionResult.key?.id,
+        mediaEnviada: mediaData.fileName,
+        endpointUsado: attemptLogs.find(a => a.success)?.endpoint || null
+      });
+    }
+
+    return res.status(500).json({
+      success: false,
+      error: lastStatus ? `❌ Erro ${lastStatus} do Evolution` : '❌ Evolution não respondeu',
+      details: lastErrorText,
+      tentativas: attemptLogs
+    });
+
   } catch (error) {
     console.log('❌ Erro:', error.message);
-    res.status(500).json({ 
-      success: false, 
+    cleanupFile();
+    res.status(500).json({
+      success: false,
       error: '❌ Erro ao processar envio',
       details: error.message
+    });
+  }
+});
+
+// ========== ALERTA DE EMERGÊNCIA ==========
+app.post('/api/emergencia/acionar', async (req, res) => {
+  try {
+    // Verificar autenticação do motorista
+    const { user, error: authError } = await getSupabaseUserFromRequest(req);
+    if (authError) {
+      return res.status(authError.status || 401).json({ 
+        success: false, 
+        error: authError.message 
+      });
+    }
+
+    // Buscar motorista vinculado ao usuário
+    const { data: motorista, error: motoristaError } = await supabaseAdmin
+      .from('motoristas')
+      .select('id, nome, telefone1, telefone2, placa_cavalo, placa_carreta1, placa_carreta2, placa_carreta3')
+      .eq('auth_user_id', user.id)
+      .maybeSingle();
+
+    if (motoristaError && motoristaError.code !== 'PGRST116') {
+      throw motoristaError;
+    }
+
+    if (!motorista) {
+      return res.status(400).json({
+        success: false,
+        error: 'Motorista não encontrado. Complete seu cadastro primeiro.'
+      });
+    }
+
+    // Buscar coleta vinculada ao motorista
+    const { data: coletas, error: coletasError } = await supabaseAdmin
+      .from('coletas')
+      .select('id, cliente, origem, destino, valor, km, veiculo, status, etapa_atual, prioridade, observacoes')
+      .eq('motorista_id', motorista.id)
+      .in('status', ['pendente', 'em_andamento'])
+      .order('data_recebimento', { ascending: false })
+      .limit(1);
+
+    if (coletasError) {
+      throw coletasError;
+    }
+
+    if (!coletas || coletas.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'Você não está vinculado a nenhuma coleta/viagem no momento. Apenas motoristas com coletas ativas podem acionar o alerta de emergência.'
+      });
+    }
+
+    const coleta = coletas[0];
+
+    // Buscar configuração de usuários para notificações de emergência
+    const { data: config, error: configError } = await supabaseAdmin
+      .from('configuracoes_sistema')
+      .select('valor')
+      .eq('chave', 'emergencia_notificacoes')
+      .maybeSingle();
+
+    if (configError && configError.code !== 'PGRST116') {
+      console.error('❌ Erro ao buscar configuração de emergência:', configError);
+      throw configError;
+    }
+
+    console.log('📋 Configuração encontrada:', config);
+    
+    // O valor pode vir como string JSON ou como objeto, dependendo de como foi salvo
+    let valorConfig = config?.valor;
+    if (typeof valorConfig === 'string') {
+      try {
+        valorConfig = JSON.parse(valorConfig);
+      } catch (e) {
+        console.error('❌ Erro ao fazer parse do valor:', e);
+        valorConfig = null;
+      }
+    }
+    
+    const usuariosNotificar = valorConfig?.usuarios || [];
+    
+    console.log('👥 Usuários para notificar:', usuariosNotificar);
+    console.log('📊 Tipo do valor:', typeof valorConfig);
+    console.log('📊 Valor completo:', JSON.stringify(valorConfig, null, 2));
+    
+    if (!usuariosNotificar || usuariosNotificar.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'Nenhum usuário configurado para receber notificações de emergência. Configure em Settings > Sistema.'
+      });
+    }
+
+    // Buscar dados dos usuários que devem receber notificações
+    const { data: usuarios, error: usuariosError } = await supabaseAdmin
+      .from('user_profiles')
+      .select('id, nome, email, telefone, role')
+      .in('id', usuariosNotificar)
+      .eq('active', true);
+
+    if (usuariosError) {
+      throw usuariosError;
+    }
+
+    if (!usuarios || usuarios.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'Usuários configurados não foram encontrados ou estão inativos.'
+      });
+    }
+
+    // Montar mensagem de alerta
+    const dataHora = new Date().toLocaleString('pt-BR', { 
+      timeZone: 'America/Sao_Paulo',
+      dateStyle: 'short',
+      timeStyle: 'medium'
+    });
+
+    let mensagem = `🚨 *ALERTA DE EMERGÊNCIA* 🚨\n\n`;
+    mensagem += `*Data/Hora:* ${dataHora}\n\n`;
+    mensagem += `*MOTORISTA:*\n`;
+    mensagem += `Nome: ${motorista.nome || 'N/A'}\n`;
+    mensagem += `Telefone: ${motorista.telefone1 || 'N/A'}\n`;
+    if (motorista.telefone2) {
+      mensagem += `Telefone 2: ${motorista.telefone2}\n`;
+    }
+    mensagem += `Placa Cavalo: ${motorista.placa_cavalo || 'N/A'}\n`;
+    if (motorista.placa_carreta1) {
+      mensagem += `Placa Carreta 1: ${motorista.placa_carreta1}\n`;
+    }
+    if (motorista.placa_carreta2) {
+      mensagem += `Placa Carreta 2: ${motorista.placa_carreta2}\n`;
+    }
+    if (motorista.placa_carreta3) {
+      mensagem += `Placa Carreta 3: ${motorista.placa_carreta3}\n`;
+    }
+    mensagem += `\n*COLETA/VIAGEM:*\n`;
+    mensagem += `Cliente: ${coleta.cliente || 'N/A'}\n`;
+    mensagem += `Origem: ${coleta.origem || 'N/A'}\n`;
+    mensagem += `Destino: ${coleta.destino || 'N/A'}\n`;
+    mensagem += `Status: ${coleta.status || 'N/A'}\n`;
+    mensagem += `Etapa: ${coleta.etapa_atual || 'N/A'}\n`;
+    if (coleta.observacoes) {
+      mensagem += `Observações: ${coleta.observacoes}\n`;
+    }
+    mensagem += `\n⚠️ *Ação imediata necessária!*`;
+
+    // Enviar mensagem para cada usuário configurado
+    const resultados = [];
+    let sucessos = 0;
+    let falhas = 0;
+
+    for (const usuario of usuarios) {
+      if (!usuario.telefone) {
+        console.warn(`⚠️ Usuário ${usuario.nome} (${usuario.id}) não tem telefone cadastrado`);
+        falhas++;
+        resultados.push({
+          usuario: usuario.nome,
+          telefone: null,
+          status: 'erro',
+          motivo: 'Telefone não cadastrado'
+        });
+        continue;
+      }
+
+      try {
+        // Buscar credenciais da Evolution API do primeiro admin disponível
+        const { data: credenciais, error: credError } = await supabaseAdmin
+          .from('user_evolution_apis')
+          .select('api_url, api_key, instance_name, user_id')
+          .eq('active', true)
+          .eq('is_valid', true)
+          .limit(1)
+          .maybeSingle();
+
+        if (credError || !credenciais) {
+          throw new Error('Credenciais da Evolution API não disponíveis');
+        }
+
+        const telefoneFormatado = formatNumberForEvolution(usuario.telefone);
+        const url = `${credenciais.api_url}/message/sendText/${credenciais.instance_name}`;
+
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': credenciais.api_key
+          },
+          body: JSON.stringify({
+            number: telefoneFormatado,
+            text: mensagem
+          }),
+          timeout: 30000
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          sucessos++;
+          resultados.push({
+            usuario: usuario.nome,
+            telefone: usuario.telefone,
+            status: 'enviado',
+            messageId: result.key?.id
+          });
+
+          // Registrar no log de disparos
+          try {
+            await supabaseAdmin.from('disparos_log').insert([{
+              user_id: credenciais.user_id,
+              departamento: 'Emergência',
+              numero: telefoneFormatado,
+              mensagem_tamanho: mensagem.length,
+              status: 'success'
+            }]);
+          } catch (logErr) {
+            console.warn('⚠️ Erro ao registrar log:', logErr.message);
+          }
+        } else {
+          const errorText = await response.text();
+          falhas++;
+          resultados.push({
+            usuario: usuario.nome,
+            telefone: usuario.telefone,
+            status: 'erro',
+            motivo: `HTTP ${response.status}: ${errorText.substring(0, 100)}`
+          });
+        }
+      } catch (error) {
+        console.error(`❌ Erro ao enviar para ${usuario.nome}:`, error);
+        falhas++;
+        resultados.push({
+          usuario: usuario.nome,
+          telefone: usuario.telefone,
+          status: 'erro',
+          motivo: error.message
+        });
+      }
+    }
+
+    // Registrar histórico da emergência
+    try {
+      await supabaseAdmin.from('historico_coletas').insert([{
+        coleta_id: coleta.id,
+        usuario: motorista.nome,
+        acao: 'Alerta de Emergência Acionado',
+        detalhes: JSON.stringify({
+          motorista_id: motorista.id,
+          usuarios_notificados: resultados.length,
+          sucessos,
+          falhas
+        })
+      }]);
+    } catch (histErr) {
+      console.warn('⚠️ Erro ao registrar histórico:', histErr.message);
+    }
+
+    res.json({
+      success: true,
+      message: `Alerta de emergência acionado! ${sucessos} notificação(ões) enviada(s), ${falhas} falha(s).`,
+      resultados,
+      total: resultados.length,
+      sucessos,
+      falhas,
+      coleta: {
+        id: coleta.id,
+        cliente: coleta.cliente,
+        origem: coleta.origem,
+        destino: coleta.destino
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Erro ao acionar alerta de emergência:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Erro ao acionar alerta de emergência: ' + error.message
     });
   }
 });
@@ -2627,28 +4652,98 @@ app.post('/api/anexos', requireAuth, upload.single('file'), async (req, res) => 
     }
 
     console.log('📎 Upload de anexo:', req.file.originalname);
+    const sanitizedName = sanitizeFilename(req.file.originalname);
+    const fileExt = path.extname(sanitizedName) || '';
+    const uniqueName = `${Date.now()}-${generateId()}`;
+    const storagePath = `coletas/${coleta_id}/anexos/${uniqueName}${fileExt}`;
+    const uploadOptions = {
+      contentType: req.file.mimetype || 'application/octet-stream',
+      cacheControl: '3600',
+      upsert: false
+    };
 
-    // Salvar informações do anexo no Supabase
+    try {
+      if (!req.file.buffer) {
+        throw new Error('Falha ao processar arquivo recebido.');
+      }
+
+      if (!req.file.buffer) {
+        throw new Error('Falha ao processar arquivo recebido.');
+      }
+
+      const fileBuffer = req.file.buffer;
+
+      const { error: storageError } = await supabaseAdmin.storage
+        .from(ANEXOS_BUCKET)
+        .upload(storagePath, fileBuffer, uploadOptions);
+
+      if (storageError) {
+        throw storageError;
+      }
+
+      const storageUrl = buildStorageUrl(ANEXOS_BUCKET, storagePath);
+
+      const { data, error } = await supabase
+        .from('anexos')
+        .insert([{
+          id: generateUUID(),
+          coleta_id: coleta_id,
+          nome_arquivo: req.file.originalname,
+          tipo_arquivo: req.file.mimetype,
+          tamanho: req.file.size,
+          url: storageUrl
+        }])
+        .select();
+
+      if (error) {
+        await supabaseAdmin.storage
+          .from(ANEXOS_BUCKET)
+          .remove([storagePath])
+          .catch(() => {});
+        throw error;
+      }
+
+      const anexoInserido = data && data[0] ? data[0] : null;
+      const anexoComUrl = await injectSignedUrl(anexoInserido);
+
+      if (anexoComUrl) {
+        console.log('✅ Anexo salvo:', anexoComUrl.id);
+      }
+
+      return res.json({ success: true, anexo: anexoComUrl });
+    } catch (error) {
+      console.error('❌ Erro no upload:', error);
+      return res.status(500).json({ error: 'Erro ao fazer upload do arquivo' });
+    }
+
+  } catch (error) {
+    console.error('❌ Erro inesperado no upload:', error);
+    res.status(500).json({ error: 'Erro ao fazer upload do arquivo' });
+  }
+});
+
+app.get('/api/anexos/:id/info', requireAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+
     const { data, error } = await supabase
       .from('anexos')
-      .insert([{
-        coleta_id: coleta_id,
-        nome_arquivo: req.file.originalname,
-        caminho_arquivo: req.file.path,
-        tamanho_arquivo: req.file.size,
-        tipo_arquivo: req.file.mimetype,
-        usuario_upload: usuario || req.session.usuario
-      }])
-      .select();
+      .select('*')
+      .eq('id', id)
+      .maybeSingle();
 
     if (error) throw error;
 
-    console.log('✅ Anexo salvo:', data[0].id);
-    res.json({ success: true, anexo: data[0] });
+    if (!data) {
+      return res.status(404).json({ success: false, error: 'Anexo não encontrado' });
+    }
 
+    const anexoComUrl = await injectSignedUrl(data);
+
+    res.json({ success: true, anexo: anexoComUrl });
   } catch (error) {
-    console.error('❌ Erro no upload:', error);
-    res.status(500).json({ error: 'Erro ao fazer upload do arquivo' });
+    console.error('❌ Erro ao buscar anexo:', error);
+    res.status(500).json({ success: false, error: 'Erro ao buscar anexo' });
   }
 });
 
@@ -2671,12 +4766,36 @@ app.get('/api/anexos/:id/download', requireAuth, async (req, res) => {
       return res.status(404).json({ error: 'Anexo não encontrado' });
     }
 
-    // Verificar se o arquivo existe
-    if (!fs.existsSync(data.caminho_arquivo)) {
-      return res.status(404).json({ error: 'Arquivo não encontrado no servidor' });
+    const anexoComUrl = await injectSignedUrl(data);
+
+    if (anexoComUrl?.url) {
+      return res.redirect(anexoComUrl.url);
     }
 
-    res.download(data.caminho_arquivo, data.nome_arquivo);
+    let filePath = anexoComUrl?.caminho_arquivo || null;
+
+    if (!filePath && data.url && !data.url.startsWith(STORAGE_URL_PREFIX)) {
+      try {
+        let relativePath = data.url;
+        if (data.url.startsWith('http://') || data.url.startsWith('https://')) {
+          relativePath = data.url.replace(APP_BASE_URL, '');
+        }
+        relativePath = relativePath.replace(/^\//, '');
+        filePath = path.join(__dirname, relativePath);
+      } catch (err) {
+        console.warn('⚠️ Não foi possível determinar caminho local do anexo:', err.message || err);
+      }
+    }
+
+    if (filePath && fs.existsSync(filePath)) {
+      return res.download(filePath, data.nome_arquivo);
+    }
+
+    if (data.url && !data.url.startsWith(STORAGE_URL_PREFIX)) {
+      return res.redirect(data.url);
+    }
+
+    return res.status(404).json({ error: 'Arquivo não encontrado' });
 
   } catch (error) {
     console.error('❌ Erro no download:', error);
@@ -2694,12 +4813,27 @@ app.get('/api/anexos/coleta/:coleta_id', requireAuth, async (req, res) => {
     const { data, error } = await supabase
       .from('anexos')
       .select('*')
-      .eq('coleta_id', coleta_id)
-      .order('created_at', { ascending: false });
+      .eq('coleta_id', coleta_id);
 
     if (error) throw error;
 
-    res.json({ success: true, anexos: data || [] });
+    const anexosOrdenados = (data || []).slice().sort((a, b) => {
+      const dataB = b?.created_at || b?.data_upload || null;
+      const dataA = a?.created_at || a?.data_upload || null;
+
+      if (dataA && dataB) {
+        return new Date(dataB).getTime() - new Date(dataA).getTime();
+      }
+
+      if (dataB) return 1;
+      if (dataA) return -1;
+
+      return 0;
+    });
+
+    const anexos = await injectSignedUrls(anexosOrdenados);
+
+    res.json({ success: true, anexos });
 
   } catch (error) {
     console.error('❌ Erro ao listar anexos:', error);
@@ -2735,9 +4869,24 @@ app.delete('/api/anexos/:id', requireAuth, async (req, res) => {
 
     if (deleteError) throw deleteError;
 
-    // Excluir arquivo físico
-    if (fs.existsSync(anexo.caminho_arquivo)) {
+    // Excluir arquivo físico / storage
+    const storageInfo = parseStorageUrl(anexo.url);
+
+    if (storageInfo) {
+      await supabaseAdmin.storage
+        .from(storageInfo.bucket)
+        .remove([storageInfo.path])
+        .catch((removeError) => {
+          console.warn('⚠️ Falha ao remover arquivo do storage:', removeError.message || removeError);
+        });
+    } else if (anexo.caminho_arquivo && fs.existsSync(anexo.caminho_arquivo)) {
       fs.unlinkSync(anexo.caminho_arquivo);
+    } else if (anexo.url && !anexo.url.startsWith('http://') && !anexo.url.startsWith('https://')) {
+      const relativePath = anexo.url.replace(/^\//, '');
+      const localPath = path.join(__dirname, relativePath);
+      if (fs.existsSync(localPath)) {
+        fs.unlinkSync(localPath);
+      }
     }
 
     console.log('✅ Anexo excluído:', id);

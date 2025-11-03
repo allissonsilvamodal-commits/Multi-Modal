@@ -320,6 +320,56 @@
             margin-bottom: 0.5rem;
         }
         
+        /* Estilos para lista de usuários emergência */
+        #listaUsuariosEmergencia {
+            position: relative;
+        }
+        
+        .usuario-emergencia-item {
+            display: flex;
+            align-items: flex-start;
+            padding: 12px;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            background: white;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .usuario-emergencia-item:hover {
+            background: #f8f9fa;
+            border-color: #667eea;
+        }
+        
+        .usuario-emergencia-item.selected {
+            background: #e7f3ff;
+            border-color: #667eea;
+        }
+        
+        .usuario-emergencia-item.disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            background: #f8f9fa;
+        }
+        
+        .usuario-emergencia-item input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            margin-right: 12px;
+            margin-top: 2px;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+        
+        .usuario-emergencia-item.disabled input[type="checkbox"] {
+            cursor: not-allowed;
+        }
+        
+        .usuario-emergencia-info {
+            flex: 1;
+        }
+        
         /* Tables */
         .table {
             background: white;
@@ -834,6 +884,30 @@
                                         </select>
                                     </div>
                                 </div>
+                                
+                                <hr class="my-4">
+                                
+                                <div class="mb-4">
+                                    <h6 class="mb-3">
+                                        <i class="fas fa-bell text-danger me-2"></i>
+                                        Notificações de Emergência
+                                    </h6>
+                                    <div class="alert alert-warning">
+                                        <i class="fas fa-exclamation-triangle me-2"></i>
+                                        <strong>Atenção:</strong> Selecione os usuários que devem receber alertas de emergência via WhatsApp quando um motorista acionar o botão de emergência.
+                                        <br><small class="text-muted">Os usuários devem ter telefone cadastrado no perfil para receber as notificações.</small>
+                                    </div>
+                                    <label class="form-label">Usuários para receber notificações de emergência</label>
+                                    <div id="listaUsuariosEmergencia" class="border rounded p-3" style="max-height: 400px; overflow-y: auto; background-color: #f8f9fa;">
+                                        <div class="text-center py-3">
+                                            <div class="spinner-border spinner-border-sm text-primary" role="status">
+                                                <span class="visually-hidden">Carregando...</span>
+                                            </div>
+                                            <p class="text-muted mt-2 mb-0">Carregando usuários...</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                
                                     <div class="mt-4">
                                         <button type="button" class="btn btn-primary" onclick="salvarConfiguracoesSistema()">
                                         <i class="fas fa-save me-2"></i>Salvar Configurações
@@ -873,7 +947,22 @@
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label class="form-label">Senha *</label>
-                                <input type="password" id="senhaUsuarioInput" class="form-control" required>
+                                <div class="input-group">
+                                    <input type="password" id="senhaUsuarioInput" class="form-control" required 
+                                           minlength="6" placeholder="Mínimo 6 caracteres"
+                                           autocomplete="new-password">
+                                    <button class="btn btn-outline-secondary" type="button" id="toggleSenhaUsuario" 
+                                            onclick="togglePasswordVisibility('senhaUsuarioInput', 'toggleSenhaUsuario')">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                </div>
+                                <small class="text-muted">A senha deve ter no mínimo 6 caracteres</small>
+                                <div id="senhaStrengthIndicator" class="mt-2" style="display: none;">
+                                    <div class="progress" style="height: 4px;">
+                                        <div class="progress-bar" id="senhaStrengthBar" role="progressbar" style="width: 0%"></div>
+                                    </div>
+                                    <small id="senhaStrengthText" class="text-muted"></small>
+                                </div>
                             </div>
                             <div class="col-md-6 mb-3">
                                 <label class="form-label">Tipo de Usuário *</label>
@@ -918,25 +1007,27 @@
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    <form id="formNovaEtiqueta">
+                    <form id="formNovaEtiqueta" onsubmit="event.preventDefault(); salvarNovaEtiqueta(); return false;">
                         <div class="mb-3">
                             <label class="form-label">Nome da Etiqueta *</label>
                             <input type="text" id="nomeEtiquetaInput" class="form-control" required 
-                                   placeholder="Ex: Adiantamento de Frete">
+                                   placeholder="Ex: Adiantamento de Frete" autocomplete="off">
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Cor da Etiqueta *</label>
                             <div class="d-flex align-items-center gap-3">
                                 <input type="color" id="corEtiquetaInput" class="form-control form-control-color" 
-                                       value="#667eea" style="width: 80px; height: 50px;">
+                                       value="#667eea" style="width: 80px; height: 50px; cursor: pointer;">
                                 <input type="text" id="corEtiquetaHex" class="form-control" value="#667eea" 
-                                       pattern="^#[0-9A-Fa-f]{6}$" placeholder="#667eea">
+                                       pattern="^#[0-9A-Fa-f]{6}$" placeholder="#667eea" 
+                                       maxlength="7" autocomplete="off">
                             </div>
+                            <small class="text-muted">Use o seletor de cor ou digite o código hexadecimal (ex: #667eea)</small>
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Descrição</label>
                             <textarea id="descricaoEtiquetaInput" class="form-control" rows="3" 
-                                      placeholder="Descreva para que serve esta etiqueta..."></textarea>
+                                      placeholder="Descreva para que serve esta etiqueta..." autocomplete="off"></textarea>
                         </div>
                     </form>
                 </div>
@@ -1253,8 +1344,77 @@
         function abrirModalNovoUsuario() {
             document.getElementById('formNovoUsuario').reset();
             document.getElementById('tipoUsuarioInput').value = 'user';
+            document.getElementById('senhaStrengthIndicator').style.display = 'none';
+            document.getElementById('toggleSenhaUsuario').innerHTML = '<i class="fas fa-eye"></i>';
             new bootstrap.Modal(document.getElementById('modalNovoUsuario')).show();
         }
+        
+        function togglePasswordVisibility(inputId, buttonId) {
+            const input = document.getElementById(inputId);
+            const button = document.getElementById(buttonId);
+            const icon = button.querySelector('i');
+            
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.classList.remove('fa-eye');
+                icon.classList.add('fa-eye-slash');
+            } else {
+                input.type = 'password';
+                icon.classList.remove('fa-eye-slash');
+                icon.classList.add('fa-eye');
+            }
+        }
+        
+        // Validar força da senha em tempo real
+        document.addEventListener('DOMContentLoaded', function() {
+            const senhaInput = document.getElementById('senhaUsuarioInput');
+            if (senhaInput) {
+                senhaInput.addEventListener('input', function() {
+                    const senha = this.value;
+                    const indicator = document.getElementById('senhaStrengthIndicator');
+                    const bar = document.getElementById('senhaStrengthBar');
+                    const text = document.getElementById('senhaStrengthText');
+                    
+                    if (senha.length === 0) {
+                        indicator.style.display = 'none';
+                        return;
+                    }
+                    
+                    indicator.style.display = 'block';
+                    
+                    // Calcular força da senha
+                    let strength = 0;
+                    let strengthText = '';
+                    let strengthColor = '';
+                    
+                    if (senha.length >= 6) strength += 25;
+                    if (senha.length >= 8) strength += 15;
+                    if (senha.length >= 12) strength += 10;
+                    if (/[a-z]/.test(senha)) strength += 15;
+                    if (/[A-Z]/.test(senha)) strength += 15;
+                    if (/[0-9]/.test(senha)) strength += 10;
+                    if (/[^a-zA-Z0-9]/.test(senha)) strength += 10;
+                    
+                    if (strength < 30) {
+                        strengthText = 'Senha fraca';
+                        strengthColor = 'bg-danger';
+                    } else if (strength < 60) {
+                        strengthText = 'Senha média';
+                        strengthColor = 'bg-warning';
+                    } else if (strength < 80) {
+                        strengthText = 'Senha boa';
+                        strengthColor = 'bg-info';
+                    } else {
+                        strengthText = 'Senha forte';
+                        strengthColor = 'bg-success';
+                    }
+                    
+                    bar.style.width = Math.min(strength, 100) + '%';
+                    bar.className = 'progress-bar ' + strengthColor;
+                    text.textContent = strengthText;
+                });
+            }
+        });
 
         async function salvarNovoUsuario() {
             try {
@@ -1267,6 +1427,13 @@
 
                 if (!nome || !email || !senha || !tipo) {
                     mostrarErro('Preencha todos os campos obrigatórios');
+                    return;
+                }
+                
+                // Validar tamanho mínimo da senha
+                if (senha.length < 6) {
+                    mostrarErro('A senha deve ter no mínimo 6 caracteres');
+                    document.getElementById('senhaUsuarioInput').focus();
                     return;
                 }
 
@@ -1933,6 +2100,25 @@
                 document.getElementById('tempoLimitePadrao').value = configuracoesSistema.tempo_limite_padrao || 30;
                 document.getElementById('notificacoesEmail').value = configuracoesSistema.notificacoes_email || 'true';
 
+                // Carregar configuração de emergência
+                let emergenciaConfig = configuracoesSistema.emergencia_notificacoes || {};
+                
+                // Se o valor veio como string JSON, fazer parse
+                if (typeof emergenciaConfig === 'string') {
+                    try {
+                        emergenciaConfig = JSON.parse(emergenciaConfig);
+                    } catch (e) {
+                        console.warn('⚠️ Erro ao fazer parse da configuração de emergência:', e);
+                        emergenciaConfig = {};
+                    }
+                }
+                
+                const usuariosEmergencia = emergenciaConfig.usuarios || [];
+                console.log('👥 Usuários carregados da configuração:', usuariosEmergencia);
+                
+                // Carregar lista de usuários para emergência
+                await carregarUsuariosEmergencia(usuariosEmergencia);
+
                 console.log('✅ Configurações carregadas');
             } catch (error) {
                 console.error('❌ Erro ao carregar configurações:', error);
@@ -1955,15 +2141,156 @@
                             chave: chave,
                             valor: valor,
                             updated_at: new Date().toISOString()
+                        }, {
+                            onConflict: 'chave'
                         });
 
                     if (error) throw error;
                 }
 
+                // Salvar configuração de emergência
+                const usuariosSelecionados = Array.from(document.querySelectorAll('#listaUsuariosEmergencia input[type="checkbox"]:checked'))
+                    .map(cb => cb.value)
+                    .filter(id => id); // Filtrar valores vazios
+                
+                console.log('👥 Usuários selecionados para emergência:', usuariosSelecionados);
+                
+                const valorConfig = { usuarios: usuariosSelecionados };
+                
+                const { error: emergenciaError } = await window.supabase
+                    .from('configuracoes_sistema')
+                    .upsert({
+                        chave: 'emergencia_notificacoes',
+                        valor: valorConfig,
+                        updated_at: new Date().toISOString()
+                    }, {
+                        onConflict: 'chave'
+                    });
+
+                if (emergenciaError) {
+                    console.error('❌ Erro ao salvar configuração de emergência:', emergenciaError);
+                    throw emergenciaError;
+                }
+                
+                console.log('✅ Configuração de emergência salva com sucesso:', valorConfig);
+
                 mostrarSucesso('Configurações salvas com sucesso!');
             } catch (error) {
                 console.error('❌ Erro ao salvar configurações:', error);
                 mostrarErro('Erro ao salvar configurações: ' + error.message);
+            }
+        }
+
+        async function carregarUsuariosEmergencia(usuariosSelecionados = []) {
+            try {
+                const container = document.getElementById('listaUsuariosEmergencia');
+                if (!container) {
+                    console.error('❌ Container listaUsuariosEmergencia não encontrado!');
+                    return;
+                }
+                
+                // Normalizar IDs selecionados
+                const idsSelecionados = usuariosSelecionados.map(id => String(id));
+                console.log('🔍 Usuários já selecionados:', idsSelecionados);
+                
+                // Buscar usuários
+                const { data: usuarios, error } = await window.supabase
+                    .from('user_profiles')
+                    .select('id, nome, email, telefone, role, active')
+                    .eq('active', true)
+                    .order('nome');
+
+                if (error) throw error;
+
+                if (!usuarios || usuarios.length === 0) {
+                    container.innerHTML = '<p class="text-muted text-center py-3">Nenhum usuário encontrado.</p>';
+                    return;
+                }
+                
+                console.log('👤 Total de usuários:', usuarios.length);
+
+                // LIMPAR E RECRIAR TUDO com estrutura simples e funcional
+                container.innerHTML = '';
+                
+                // Criar div wrapper
+                const wrapper = document.createElement('div');
+                
+                usuarios.forEach(usuario => {
+                    const usuarioId = String(usuario.id);
+                    const estaSelecionado = idsSelecionados.includes(usuarioId);
+                    const temTelefone = !!usuario.telefone;
+                    const checkboxId = `emergencia_${usuario.id.replace(/[^a-zA-Z0-9]/g, '_')}`;
+                    
+                    // Criar label que envolve tudo (permite clicar em qualquer lugar)
+                    const label = document.createElement('label');
+                    label.className = `usuario-emergencia-item ${estaSelecionado ? 'selected' : ''} ${!temTelefone ? 'disabled' : ''}`;
+                    label.style.cursor = temTelefone ? 'pointer' : 'not-allowed';
+                    
+                    // Criar checkbox
+                    const checkbox = document.createElement('input');
+                    checkbox.type = 'checkbox';
+                    checkbox.id = checkboxId;
+                    checkbox.name = 'emergencia_usuario';
+                    checkbox.value = usuario.id;
+                    checkbox.checked = estaSelecionado;
+                    checkbox.disabled = !temTelefone;
+                    
+                    // Info do usuário
+                    const infoDiv = document.createElement('div');
+                    infoDiv.className = 'usuario-emergencia-info';
+                    
+                    const nomeDiv = document.createElement('div');
+                    nomeDiv.style.cssText = 'display: flex; align-items: center; gap: 8px; margin-bottom: 4px;';
+                    
+                    const nomeStrong = document.createElement('strong');
+                    nomeStrong.textContent = usuario.nome || 'Sem nome';
+                    nomeDiv.appendChild(nomeStrong);
+                    
+                    const roleBadge = document.createElement('span');
+                    roleBadge.className = 'badge bg-secondary';
+                    roleBadge.textContent = usuario.role || 'user';
+                    nomeDiv.appendChild(roleBadge);
+                    
+                    if (!temTelefone) {
+                        const telBadge = document.createElement('span');
+                        telBadge.className = 'badge bg-warning text-dark';
+                        telBadge.textContent = 'Sem telefone';
+                        nomeDiv.appendChild(telBadge);
+                    }
+                    
+                    const emailSmall = document.createElement('small');
+                    emailSmall.className = 'text-muted d-block';
+                    emailSmall.textContent = `${usuario.email || 'Sem email'}${usuario.telefone ? ` • ${usuario.telefone}` : ''}`;
+                    
+                    infoDiv.appendChild(nomeDiv);
+                    infoDiv.appendChild(emailSmall);
+                    
+                    // Montar estrutura
+                    label.appendChild(checkbox);
+                    label.appendChild(infoDiv);
+                    wrapper.appendChild(label);
+                    
+                    // Event listener no checkbox para atualizar classe visual
+                    checkbox.addEventListener('change', function() {
+                        if (this.checked) {
+                            label.classList.add('selected');
+                        } else {
+                            label.classList.remove('selected');
+                        }
+                        console.log('✅ Checkbox alterado:', this.value, 'Marcado:', this.checked);
+                    });
+                });
+                
+                container.appendChild(wrapper);
+                
+                console.log(`✅ ${usuarios.length} usuários carregados com checkboxes funcionais`);
+                
+            } catch (error) {
+                console.error('❌ Erro ao carregar usuários para emergência:', error);
+                const container = document.getElementById('listaUsuariosEmergencia');
+                if (container) {
+                    container.innerHTML = '<div class="alert alert-danger">Erro ao carregar usuários: ' + error.message + '</div>';
+                }
             }
         }
 
@@ -2072,14 +2399,28 @@
             document.getElementById('corEtiquetaInput').value = '#667eea';
             document.getElementById('corEtiquetaHex').value = '#667eea';
             
-            // Sincronizar inputs de cor
+            // Sincronizar campos de cor
             document.getElementById('corEtiquetaInput').addEventListener('input', function() {
                 document.getElementById('corEtiquetaHex').value = this.value;
+                document.getElementById('corEtiquetaHex').setCustomValidity('');
             });
+            
             document.getElementById('corEtiquetaHex').addEventListener('input', function() {
-                if (this.value.match(/^#[0-9A-Fa-f]{6}$/)) {
-                    document.getElementById('corEtiquetaInput').value = this.value;
+                const hexValue = this.value.trim();
+                if (hexValue.match(/^#[0-9A-Fa-f]{6}$/i)) {
+                    document.getElementById('corEtiquetaInput').value = hexValue;
+                    this.setCustomValidity('');
+                } else if (hexValue.length > 0) {
+                    this.setCustomValidity('Digite um código hexadecimal válido (ex: #667eea)');
+                } else {
+                    this.setCustomValidity('');
                 }
+            });
+            
+            // Permitir submissão com Enter no formulário
+            document.getElementById('formNovaEtiqueta').addEventListener('submit', function(e) {
+                e.preventDefault();
+                salvarNovaEtiqueta();
             });
             
             new bootstrap.Modal(document.getElementById('modalNovaEtiqueta')).show();
@@ -2088,13 +2429,34 @@
         async function salvarNovaEtiqueta() {
             try {
                 const nome = document.getElementById('nomeEtiquetaInput').value.trim();
-                const cor = document.getElementById('corEtiquetaInput').value;
+                let cor = document.getElementById('corEtiquetaInput').value;
+                const corHex = document.getElementById('corEtiquetaHex').value.trim();
                 const descricao = document.getElementById('descricaoEtiquetaInput').value.trim();
 
+                // Validações
                 if (!nome) {
                     mostrarErro('Nome da etiqueta é obrigatório');
+                    document.getElementById('nomeEtiquetaInput').focus();
                     return;
                 }
+
+                // Validar cor hexadecimal
+                if (corHex && corHex.match(/^#[0-9A-Fa-f]{6}$/i)) {
+                    cor = corHex.toUpperCase();
+                } else if (!corHex || !corHex.match(/^#[0-9A-Fa-f]{6}$/i)) {
+                    mostrarErro('Cor inválida. Use o formato hexadecimal (ex: #667eea)');
+                    document.getElementById('corEtiquetaHex').focus();
+                    return;
+                }
+
+                // Garantir que a cor está no formato correto
+                if (!cor.match(/^#[0-9A-Fa-f]{6}$/i)) {
+                    mostrarErro('Cor inválida. Use o formato hexadecimal (ex: #667eea)');
+                    return;
+                }
+
+                // Normalizar cor para maiúsculas
+                cor = cor.toUpperCase();
 
                 const { data, error } = await window.supabase
                     .from('etiquetas_coletas')
@@ -2111,11 +2473,33 @@
                 if (error) throw error;
 
                 mostrarSucesso('Etiqueta criada com sucesso!');
-                bootstrap.Modal.getInstance(document.getElementById('modalNovaEtiqueta')).hide();
+                
+                // Limpar formulário
+                document.getElementById('formNovaEtiqueta').reset();
+                document.getElementById('corEtiquetaInput').value = '#667eea';
+                document.getElementById('corEtiquetaHex').value = '#667eea';
+                
+                // Fechar modal
+                const modal = bootstrap.Modal.getInstance(document.getElementById('modalNovaEtiqueta'));
+                if (modal) {
+                    modal.hide();
+                }
+                
+                // Recarregar lista de etiquetas
                 await carregarEtiquetas();
             } catch (error) {
                 console.error('❌ Erro ao salvar etiqueta:', error);
-                mostrarErro('Erro ao salvar etiqueta: ' + error.message);
+                
+                let mensagemErro = 'Erro ao salvar etiqueta';
+                if (error.message) {
+                    if (error.message.includes('unique') || error.message.includes('duplicate')) {
+                        mensagemErro = 'Já existe uma etiqueta com este nome. Escolha outro nome.';
+                    } else {
+                        mensagemErro = 'Erro ao salvar etiqueta: ' + error.message;
+                    }
+                }
+                
+                mostrarErro(mensagemErro);
             }
         }
 

@@ -1,0 +1,1221 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Portal do Motorista - Acesso</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    :root {
+      --primary-gradient: linear-gradient(135deg, #00bcd4 0%, #3f51b5 100%);
+      --secondary-gradient: linear-gradient(135deg, #0077b6 0%, #00b4d8 100%);
+      --success-gradient: linear-gradient(135deg, #38ef7d 0%, #11998e 100%);
+      --danger-gradient: linear-gradient(135deg, #ff4b2b 0%, #ff416c 100%);
+      --card-shadow: 0 24px 48px rgba(15, 31, 63, 0.32);
+      --glass-border: rgba(255, 255, 255, 0.24);
+      --text-primary: #102a43;
+      --text-secondary: #486581;
+      --text-light: #ffffff;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      min-height: 100vh;
+      font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: var(--primary-gradient);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 60px 20px;
+      position: relative;
+      overflow-x: hidden;
+      overflow-y: auto;
+      color: var(--text-primary);
+    }
+
+    .bg-animation {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+      z-index: -2;
+      opacity: 0.22;
+    }
+
+    .floating-shape {
+      position: absolute;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.18);
+      animation: float 18s infinite ease-in-out;
+    }
+
+    .floating-shape:nth-child(1) { width: 200px; height: 200px; top: 8%; left: 10%; animation-delay: 0s; }
+    .floating-shape:nth-child(2) { width: 260px; height: 260px; top: 58%; left: -60px; animation-delay: 4s; }
+    .floating-shape:nth-child(3) { width: 180px; height: 180px; bottom: -40px; right: 12%; animation-delay: 8s; }
+    .floating-shape:nth-child(4) { width: 140px; height: 140px; top: 18%; right: 6%; animation-delay: 12s; }
+
+    @keyframes float {
+      0%, 100% {
+        transform: translateY(0) scale(1);
+        opacity: 0.2;
+      }
+      50% {
+        transform: translateY(-35px) scale(1.05);
+        opacity: 0.35;
+      }
+    }
+
+    .particles {
+      position: absolute;
+      inset: 0;
+      z-index: -1;
+    }
+
+    .particle {
+      position: absolute;
+      width: 4px;
+      height: 4px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.5);
+      animation: particle 16s linear infinite;
+    }
+
+    @keyframes particle {
+      0% { transform: translateY(110vh) translateX(0); opacity: 0; }
+      10% { opacity: 0.8; }
+      90% { opacity: 0.8; }
+      100% { transform: translateY(-10vh) translateX(60px); opacity: 0; }
+    }
+
+    .login-wrapper {
+      width: 100%;
+      max-width: 560px;
+    }
+
+    .login-card {
+      background: rgba(255, 255, 255, 0.94);
+      backdrop-filter: blur(22px);
+      border-radius: 28px;
+      box-shadow: var(--card-shadow);
+      border: 1px solid var(--glass-border);
+      overflow: hidden;
+      position: relative;
+      animation: slideUp 0.9s ease;
+    }
+
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(40px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .login-header {
+      background: var(--secondary-gradient);
+      color: var(--text-light);
+      padding: 44px 32px;
+      text-align: center;
+      position: relative;
+    }
+
+    .login-header::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle, rgba(255, 255, 255, 0.18) 0%, transparent 60%);
+      opacity: 0.6;
+    }
+
+    .login-header h1 {
+      font-size: 1.9rem;
+      font-weight: 700;
+      margin-bottom: 6px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .login-header p {
+      margin: 0;
+      font-size: 1rem;
+      opacity: 0.85;
+      position: relative;
+      z-index: 1;
+    }
+
+    .badge-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 18px;
+      padding: 8px 16px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.18);
+      color: #fff;
+      font-weight: 500;
+      font-size: 0.9rem;
+      position: relative;
+      z-index: 1;
+    }
+
+    .login-body {
+      padding: 38px 32px 32px;
+    }
+
+    .mode-toggle {
+      display: flex;
+      gap: 12px;
+      background: rgba(15, 31, 63, 0.06);
+      padding: 6px;
+      border-radius: 18px;
+      margin-bottom: 28px;
+    }
+
+    .mode-btn {
+      flex: 1;
+      border: none;
+      border-radius: 14px;
+      padding: 12px;
+      font-weight: 600;
+      font-size: 0.95rem;
+      background: transparent;
+      color: var(--text-secondary);
+      transition: all 0.2s ease;
+    }
+
+    .mode-btn.active {
+      background: linear-gradient(135deg, rgba(63, 81, 181, 0.15), rgba(0, 188, 212, 0.15));
+      color: var(--text-primary);
+      box-shadow: inset 0 0 0 1px rgba(63, 81, 181, 0.2);
+    }
+
+    .form-label {
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .form-label i {
+      color: var(--text-secondary);
+    }
+
+    .input-group-modern {
+      position: relative;
+    }
+
+    .input-icon {
+      position: absolute;
+      top: 50%;
+      left: 18px;
+      transform: translateY(-50%);
+      color: var(--text-secondary);
+      font-size: 1rem;
+    }
+
+    .form-control-modern {
+      width: 100%;
+      border-radius: 16px;
+      border: 2px solid rgba(15, 31, 63, 0.08);
+      padding: 16px 18px 16px 52px;
+      font-size: 1rem;
+      background: rgba(255, 255, 255, 0.92);
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .select-modern {
+      appearance: none;
+      -webkit-appearance: none;
+      padding-right: 58px;
+      background-image: url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M10.59 0.580078L6 5.17008L1.41 0.580078L0 1.99008L6 7.99008L12 1.99008L10.59 0.580078Z' fill='%233f51b5'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: calc(100% - 18px) center;
+      background-size: 14px 10px;
+      cursor: pointer;
+    }
+
+    .form-control-modern:focus {
+      border-color: #3f51b5;
+      box-shadow: 0 0 0 0.25rem rgba(63, 81, 181, 0.2);
+      outline: none;
+      background: #fff;
+    }
+
+    .btn-action {
+      width: 100%;
+      border: none;
+      border-radius: 16px;
+      padding: 16px;
+      font-size: 1.05rem;
+      font-weight: 600;
+      color: var(--text-light);
+      background: var(--success-gradient);
+      box-shadow: 0 10px 30px rgba(17, 153, 142, 0.35);
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+      position: relative;
+      overflow: hidden;
+      margin-top: 12px;
+    }
+
+    .btn-action:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 16px 36px rgba(17, 153, 142, 0.4);
+    }
+
+    .btn-action:disabled {
+      opacity: 0.7;
+      box-shadow: none;
+    }
+
+    .btn-action .loading-spinner {
+      width: 18px;
+      height: 18px;
+      border: 2px solid rgba(255, 255, 255, 0.6);
+      border-top-color: #fff;
+      border-radius: 50%;
+      margin-right: 10px;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .form-section {
+      display: none;
+    }
+
+    .form-section.active {
+      display: block;
+      animation: fadeIn 0.35s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .alert-modern {
+      border-radius: 16px;
+      padding: 14px 18px;
+      margin-top: 20px;
+      border: none;
+      display: none;
+      font-size: 0.95rem;
+    }
+
+    .alert-modern.success {
+      background: rgba(17, 153, 142, 0.12);
+      color: #0b8e74;
+      border-left: 4px solid #0b8e74;
+    }
+
+    .alert-modern.error {
+      background: rgba(255, 65, 108, 0.12);
+      color: #c62828;
+      border-left: 4px solid #c62828;
+    }
+
+    .state-section {
+      display: none;
+      animation: fadeIn 0.35s ease;
+    }
+
+    .state-section.active {
+      display: block;
+    }
+
+    .loading-card {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 36px 0;
+      color: var(--text-secondary);
+    }
+
+    .btn-google {
+      width: 100%;
+      background: #ffffff;
+      color: #0f172a;
+      border-radius: 16px;
+      padding: 0.85rem 1rem;
+      border: 1.2px solid rgba(15, 31, 63, 0.12);
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.6rem;
+      box-shadow: 0 18px 36px rgba(15, 31, 63, 0.16);
+      transition: all 0.3s ease;
+    }
+
+    .btn-google:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 24px 44px rgba(15, 31, 63, 0.20);
+    }
+
+    .helper-text {
+      font-size: 0.92rem;
+      color: var(--text-secondary);
+    }
+
+    .success-card {
+      background: rgba(255, 255, 255, 0.94);
+      border-radius: 24px;
+      border: 1px solid rgba(15, 31, 63, 0.08);
+      padding: 26px 24px;
+      box-shadow: 0 18px 42px rgba(15, 31, 63, 0.22);
+    }
+
+    .pending-warning {
+      display: none;
+      margin-bottom: 20px;
+      padding: 16px 18px;
+      border-radius: 18px;
+      background: linear-gradient(135deg, rgba(253, 186, 116, 0.18), rgba(253, 213, 141, 0.12));
+      border: 1px solid rgba(249, 115, 22, 0.28);
+      color: #7c2d12;
+      font-size: 0.92rem;
+      line-height: 1.45;
+    }
+
+    .pending-warning i {
+      margin-right: 8px;
+      color: #ea580c;
+    }
+
+    .pending-warning.active {
+      display: block;
+      animation: fadeIn 0.32s ease;
+    }
+
+    .profile-list {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      margin-bottom: 24px;
+    }
+
+    .profile-item {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      background: rgba(15, 31, 63, 0.04);
+      border-radius: 18px;
+      padding: 12px 16px;
+    }
+
+    .profile-item i {
+      font-size: 1.2rem;
+      color: #0ea5e9;
+    }
+
+    .profile-item strong {
+      display: block;
+      font-size: 0.95rem;
+      color: var(--text-primary);
+    }
+
+    .profile-item span {
+      font-size: 0.95rem;
+      color: var(--text-secondary);
+    }
+
+    .button-group {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    @media (min-width: 540px) {
+      .button-group {
+        flex-direction: row;
+      }
+    }
+
+    .btn-secondary {
+      background: rgba(15, 31, 63, 0.08);
+      color: var(--text-primary);
+      border: none;
+      border-radius: 16px;
+      padding: 0.85rem 1rem;
+      font-weight: 600;
+      transition: all 0.3s ease;
+    }
+
+    .btn-secondary:hover {
+      background: rgba(15, 31, 63, 0.12);
+      transform: translateY(-2px);
+    }
+
+    .helper-card {
+      margin-top: 26px;
+      padding: 18px;
+      border-radius: 18px;
+      background: linear-gradient(135deg, rgba(3, 7, 18, 0.08), rgba(14, 116, 144, 0.08));
+      border: 1px solid rgba(63, 81, 181, 0.12);
+      color: var(--text-secondary);
+      font-size: 0.9rem;
+      display: none;
+    }
+
+    .helper-card.active {
+      display: block;
+      animation: fadeIn 0.35s ease;
+    }
+
+    .helper-card h6 {
+      font-weight: 600;
+      margin-bottom: 10px;
+      color: var(--text-primary);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .back-link {
+      position: fixed;
+      top: 24px;
+      left: 24px;
+      color: rgba(255, 255, 255, 0.9);
+      text-decoration: none;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      transition: transform 0.2s ease, opacity 0.2s ease;
+      z-index: 5;
+    }
+
+    .back-link:hover {
+      opacity: 1;
+      transform: translateX(-3px);
+    }
+
+    @media (max-width: 520px) {
+      body { padding: 80px 16px 32px; }
+      .login-card { border-radius: 22px; }
+      .login-header { padding: 34px 22px; }
+      .login-body { padding: 30px 22px 26px; }
+      .mode-toggle { flex-direction: column; }
+      .mode-btn { width: 100%; }
+      .back-link { left: 16px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="bg-animation">
+    <div class="floating-shape"></div>
+    <div class="floating-shape"></div>
+    <div class="floating-shape"></div>
+    <div class="floating-shape"></div>
+  </div>
+  <div class="particles" id="particles"></div>
+
+  <a href="index.html" class="back-link"><i class="fas fa-arrow-left"></i> Voltar ao site</a>
+
+  <div class="login-wrapper">
+    <div class="login-card">
+      <div class="login-header">
+        <h1>Portal do Motorista</h1>
+        <p>Acompanhe viagens, status e documentação com segurança</p>
+        <div class="badge-status">
+          <i class="fas fa-truck"></i>
+          Acesso exclusivo para motoristas cadastrados
+        </div>
+      </div>
+
+      <div class="login-body">
+        <div class="alert-modern" id="alertBox"></div>
+
+        <div class="state-section active" id="stateLoading">
+          <div class="loading-card">
+            <span class="loading-spinner"></span>
+            <p class="mt-3 mb-0">Conectando ao portal, aguarde...</p>
+          </div>
+        </div>
+
+        <div class="state-section" id="stateSignedOut">
+          <h5><i class="fas fa-shield-alt me-2"></i>Acesse com sua conta Google</h5>
+          <p class="text-muted">Utilize o seu e-mail para entrar com segurança. Em seguida vamos vincular seus dados de motorista.</p>
+          <button type="button" class="btn-google" id="btnGoogle">
+            <i class="fab fa-google me-2"></i> Entrar com Google
+          </button>
+          <p class="helper-text mt-3"><i class="fas fa-lock me-2"></i>Seu login é gerenciado via Supabase. Nenhuma senha é armazenada aqui.</p>
+        </div>
+
+        <div class="state-section" id="stateLink">
+          <h5><i class="fas fa-id-card me-2"></i>Confirme seus dados</h5>
+          <p class="text-muted">Informe o telefone que está cadastrado com a equipe para liberar o acesso ao portal.</p>
+          <form id="formVinculo" autocomplete="off">
+            <div class="mb-3">
+              <label for="nomeMotorista" class="form-label"><i class="fas fa-user"></i> Nome completo*</label>
+              <div class="input-group-modern">
+                <i class="fas fa-user input-icon"></i>
+                <input type="text" id="nomeMotorista" class="form-control-modern" placeholder="Digite seu nome completo" required>
+              </div>
+            </div>
+            <div class="mb-3">
+              <label for="telefonePrincipal" class="form-label"><i class="fas fa-phone"></i> Telefone principal*</label>
+              <div class="input-group-modern">
+                <i class="fas fa-mobile-alt input-icon"></i>
+                <input type="tel" id="telefonePrincipal" class="form-control-modern" placeholder="(00) 00000-0000" inputmode="tel" required>
+              </div>
+            </div>
+            <div class="mb-3">
+              <label for="telefoneSecundario" class="form-label"><i class="fas fa-phone-volume"></i> Telefone secundário</label>
+              <div class="input-group-modern">
+                <i class="fas fa-phone-alt input-icon"></i>
+                <input type="tel" id="telefoneSecundario" class="form-control-modern" placeholder="(00) 00000-0000" inputmode="tel">
+              </div>
+            </div>
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label for="placaCavalo" class="form-label"><i class="fas fa-truck"></i> Placa do cavalo</label>
+                <div class="input-group-modern">
+                  <i class="fas fa-truck-monster input-icon"></i>
+                  <input type="text" id="placaCavalo" class="form-control-modern" placeholder="ABC1D23">
+                </div>
+              </div>
+              <div class="col-md-6">
+                <label for="placaCarreta1" class="form-label"><i class="fas fa-trailer"></i> Placa carreta 1</label>
+                <div class="input-group-modern">
+                  <i class="fas fa-warehouse input-icon"></i>
+                  <input type="text" id="placaCarreta1" class="form-control-modern" placeholder="ABC1D23">
+                </div>
+              </div>
+            </div>
+            <div class="row g-3 mt-1">
+              <div class="col-md-6">
+                <label for="placaCarreta2" class="form-label"><i class="fas fa-trailer"></i> Placa carreta 2</label>
+                <div class="input-group-modern">
+                  <i class="fas fa-warehouse input-icon"></i>
+                  <input type="text" id="placaCarreta2" class="form-control-modern" placeholder="ABC1D23">
+                </div>
+              </div>
+              <div class="col-md-6">
+                <label for="placaCarreta3" class="form-label"><i class="fas fa-trailer"></i> Placa carreta 3</label>
+                <div class="input-group-modern">
+                  <i class="fas fa-warehouse input-icon"></i>
+                  <input type="text" id="placaCarreta3" class="form-control-modern" placeholder="ABC1D23">
+                </div>
+              </div>
+            </div>
+            <div class="row g-3 mt-1">
+              <div class="col-md-6">
+                <label for="classeVeiculo" class="form-label"><i class="fas fa-layer-group"></i> Classe do veículo</label>
+                <div class="input-group-modern">
+                  <i class="fas fa-layer-group input-icon"></i>
+                  <input type="text" id="classeVeiculo" class="form-control-modern" placeholder="Ex: Pesado">
+                </div>
+              </div>
+              <div class="col-md-6">
+                <label for="tipoVeiculo" class="form-label"><i class="fas fa-truck-pickup"></i> Tipo de veículo</label>
+                <div class="input-group-modern">
+                  <i class="fas fa-truck-pickup input-icon"></i>
+                  <select id="tipoVeiculo" class="form-control-modern select-modern">
+                    <option value="">Selecione o tipo de veículo</option>
+                    <option value="Cavalo Mecânico">Cavalo Mecânico</option>
+                    <option value="Truck 6x2">Truck 6x2</option>
+                    <option value="Caminhão Toco">Caminhão Toco</option>
+                    <option value="Caminhão 3/4">Caminhão 3/4</option>
+                    <option value="Caminhão VUC">Caminhão VUC</option>
+                    <option value="Bitruck">Bitruck</option>
+                    <option value="Carreta LS">Carreta LS</option>
+                    <option value="Bitrem">Bitrem</option>
+                    <option value="Rodotrem">Rodotrem</option>
+                    <option value="Ônibus">Ônibus</option>
+                    <option value="Van">Van</option>
+                    <option value="Outro">Outro</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+            <div class="mb-3 mt-1">
+              <label for="tipoCarroceria" class="form-label"><i class="fas fa-box-open"></i> Tipo de carroceria</label>
+              <div class="input-group-modern">
+                <i class="fas fa-box input-icon"></i>
+                <select id="tipoCarroceria" class="form-control-modern select-modern">
+                  <option value="">Selecione o tipo de carroceria</option>
+                  <option value="Baú">Baú</option>
+                  <option value="Sider">Sider</option>
+                  <option value="Graneleira">Graneleira</option>
+                  <option value="Frigorífica">Frigorífica</option>
+                  <option value="Plataforma">Plataforma</option>
+                  <option value="Caçamba">Caçamba</option>
+                  <option value="Basculante">Basculante</option>
+                  <option value="Tanque">Tanque</option>
+                  <option value="Porta Contêiner">Porta Contêiner</option>
+                  <option value="Prancha">Prancha</option>
+                  <option value="Munck">Munck</option>
+                  <option value="Carga Seca">Carga Seca</option>
+                  <option value="Outro">Outro</option>
+                </select>
+              </div>
+            </div>
+            <button type="submit" class="btn-action" id="btnSalvarPerfil">
+              <span class="btn-text"><i class="fas fa-save me-2"></i> Salvar e vincular acesso</span>
+            </button>
+            <p class="helper-text mt-3"><i class="fas fa-info-circle me-2"></i>Se o telefone informado não estiver cadastrado, a equipe de suporte será notificada para verificar seu cadastro.</p>
+          </form>
+        </div>
+
+        <div class="state-section" id="stateReady">
+          <div class="success-card">
+            <h5><i class="fas fa-check-circle me-2"></i>Tudo pronto!</h5>
+            <p class="text-muted mb-4">Seu acesso foi validado. Guarde este e-mail para futuras entradas no portal.</p>
+            <div class="profile-list">
+              <div class="profile-item">
+                <i class="fas fa-user-circle"></i>
+                <div>
+                  <strong>Motorista</strong>
+                  <span id="resumoNome">—</span>
+                </div>
+              </div>
+              <div class="profile-item">
+                <i class="fas fa-envelope"></i>
+                <div>
+                  <strong>E-mail</strong>
+                  <span id="resumoEmail">—</span>
+                </div>
+              </div>
+              <div class="profile-item">
+                <i class="fas fa-phone"></i>
+                <div>
+                  <strong>Telefone</strong>
+                  <span id="resumoTelefone">—</span>
+                </div>
+              </div>
+              <div class="profile-item">
+                <i class="fas fa-id-badge"></i>
+                <div>
+                  <strong>Status</strong>
+                  <span id="resumoStatus">—</span>
+                </div>
+              </div>
+              <div class="profile-item">
+                <i class="fas fa-truck-moving"></i>
+                <div>
+                  <strong>Placas</strong>
+                  <span id="resumoPlacas">—</span>
+                </div>
+              </div>
+            </div>
+            <div class="pending-warning" id="readyWarning">
+              <i class="fas fa-circle-exclamation"></i>
+              Seu cadastro ainda não está completo. Complete os dados para assumir viagens e ter acesso total às funcionalidades do portal.
+            </div>
+            <div class="button-group">
+              <button type="button" class="btn-secondary" id="btnCompletarCadastroReady">
+                <i class="fas fa-id-card me-2"></i>Completar cadastro agora
+              </button>
+              <button type="button" class="btn-action" id="btnIrPortal">
+                <span class="btn-text"><i class="fas fa-arrow-right me-2"></i> Ir para o portal</span>
+              </button>
+              <button type="button" class="btn-secondary" id="btnSair">
+                <i class="fas fa-sign-out-alt me-2"></i>Trocar conta
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    const particlesContainer = document.getElementById('particles');
+    const alertBox = document.getElementById('alertBox');
+    const sections = {
+      loading: document.getElementById('stateLoading'),
+      signedOut: document.getElementById('stateSignedOut'),
+      link: document.getElementById('stateLink'),
+      ready: document.getElementById('stateReady')
+    };
+    const btnGoogle = document.getElementById('btnGoogle');
+    const btnSalvarPerfil = document.getElementById('btnSalvarPerfil');
+    const btnIrPortal = document.getElementById('btnIrPortal');
+    const btnSair = document.getElementById('btnSair');
+    const readyWarning = document.getElementById('readyWarning');
+    const btnCompletarCadastroReady = document.getElementById('btnCompletarCadastroReady');
+    const linkForm = document.getElementById('formVinculo');
+
+    const resumoElements = {
+      nome: document.getElementById('resumoNome'),
+      email: document.getElementById('resumoEmail'),
+      telefone: document.getElementById('resumoTelefone'),
+      status: document.getElementById('resumoStatus'),
+      placas: document.getElementById('resumoPlacas')
+    };
+
+    const inputs = {
+      nome: document.getElementById('nomeMotorista'),
+      telefone1: document.getElementById('telefonePrincipal'),
+      telefone2: document.getElementById('telefoneSecundario'),
+      placaCavalo: document.getElementById('placaCavalo'),
+      placaCarreta1: document.getElementById('placaCarreta1'),
+      placaCarreta2: document.getElementById('placaCarreta2'),
+      placaCarreta3: document.getElementById('placaCarreta3'),
+      classeVeiculo: document.getElementById('classeVeiculo'),
+      tipoVeiculo: document.getElementById('tipoVeiculo'),
+      tipoCarroceria: document.getElementById('tipoCarroceria')
+    };
+
+    let supabaseClient = null;
+    let currentSession = null;
+    let currentUser = null;
+    let currentMotorista = null;
+    let loadingConfig = false;
+
+    function createParticles() {
+      const total = 24;
+      for (let i = 0; i < total; i++) {
+        const particle = document.createElement('span');
+        particle.className = 'particle';
+        particle.style.left = Math.random() * 100 + '%';
+        particle.style.animationDelay = (Math.random() * 16) + 's';
+        particle.style.animationDuration = (14 + Math.random() * 8) + 's';
+        particlesContainer.appendChild(particle);
+      }
+    }
+
+    function showAlert(message, type = 'error') {
+      if (!alertBox) return;
+      alertBox.textContent = message;
+      alertBox.className = 'alert-modern ' + type;
+      alertBox.style.display = 'block';
+    }
+
+    function clearAlert() {
+      if (alertBox) {
+        alertBox.style.display = 'none';
+      }
+    }
+
+    function setState(state) {
+      Object.entries(sections).forEach(([key, el]) => {
+        if (!el) return;
+        if (key === state) {
+          el.classList.add('active');
+        } else {
+          el.classList.remove('active');
+        }
+      });
+    }
+
+    function toggleButtonLoading(button, isLoading, loadingLabel) {
+      if (!button) return;
+      if (isLoading) {
+        button.disabled = true;
+        button.dataset.originalText = button.dataset.originalText || button.innerHTML;
+        button.innerHTML = '<span class="loading-spinner"></span> ' + (loadingLabel || 'Carregando...');
+      } else {
+        button.disabled = false;
+        if (button.dataset.originalText) {
+          button.innerHTML = button.dataset.originalText;
+        }
+      }
+    }
+
+    function normalizePhone(value) {
+      if (!value) return '';
+      const digits = value.toString().replace(/\D/g, '');
+      if (!digits) return '';
+      if (digits.length > 11) {
+        return digits.slice(-11);
+      }
+      if (digits.startsWith('55') && digits.length > 11) {
+        return digits.slice(-11);
+      }
+      return digits;
+    }
+
+    function formatPhone(value) {
+      const digits = normalizePhone(value).slice(0, 11);
+      if (!digits) return '';
+      if (digits.length <= 10) {
+        return digits.replace(/(\d{0,2})(\d{0,4})(\d{0,4})/, (match, ddd, parte1, parte2) => {
+          const p1 = parte1 ? ` ${parte1}` : '';
+          const p2 = parte2 ? `-${parte2}` : '';
+          return ddd ? `(${ddd})${p1}${p2}` : parte1 + parte2;
+        }).trim();
+      }
+      return digits.replace(/(\d{0,2})(\d{0,5})(\d{0,4})/, (match, ddd, parte1, parte2) => {
+        const p1 = parte1 ? ` ${parte1}` : '';
+        const p2 = parte2 ? `-${parte2}` : '';
+        return ddd ? `(${ddd})${p1}${p2}` : parte1 + parte2;
+      }).trim();
+    }
+
+    function handlePhoneInput(event) {
+      event.target.value = formatPhone(event.target.value);
+    }
+
+    function normalizePlate(value) {
+      if (!value) return '';
+      return value.toString().toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8);
+    }
+
+    function resumoPlacas(motorista) {
+      if (!motorista || !motorista.placas) return '—';
+      const placas = [motorista.placas.cavalo, motorista.placas.carreta1, motorista.placas.carreta2, motorista.placas.carreta3]
+        .filter(Boolean)
+        .map(p => p.toUpperCase());
+      return placas.length ? placas.join(' • ') : '—';
+    }
+
+    function setSelectValue(select, value) {
+      if (!select) return;
+      const normalized = (value || '').toString().trim();
+      if (!normalized) {
+        select.value = '';
+        return;
+      }
+      const exists = Array.from(select.options).some(option => option.value === normalized);
+      if (!exists) {
+        const option = document.createElement('option');
+        option.value = normalized;
+        option.textContent = normalized;
+        select.appendChild(option);
+      }
+      select.value = normalized;
+    }
+
+    function armazenarMotoristaLocal(motorista, user) {
+      const infoMotorista = {
+        id: motorista.id,
+        nome: motorista.nome || user?.nome || user?.email,
+        authId: user?.id || null,
+        telefone: motorista.telefone1 || null,
+        status: motorista.status || 'ativo',
+        telefone1: motorista.telefone1 || null,
+        telefone2: motorista.telefone2 || null,
+        placas: motorista.placas || {},
+        classeVeiculo: motorista.classeVeiculo || null,
+        tipoVeiculo: motorista.tipoVeiculo || null,
+        tipoCarroceria: motorista.tipoCarroceria || null,
+        loginTimestamp: Date.now()
+      };
+      localStorage.setItem('motoristaLogado', JSON.stringify(infoMotorista));
+      localStorage.setItem('tipoPortal', 'motorista');
+    }
+
+    function limparMotoristaLocal() {
+      localStorage.removeItem('motoristaLogado');
+      localStorage.removeItem('tipoPortal');
+    }
+
+    function preencherResumo(motorista, user) {
+      const dadosMotorista = motorista || {};
+      const dadosUsuario = user || {};
+
+      const nome = dadosMotorista.nome || dadosUsuario.nome || dadosUsuario.email || '—';
+      const email = dadosUsuario.email || '—';
+      const telefone = dadosMotorista.telefone1
+        ? formatPhone(dadosMotorista.telefone1)
+        : 'Informe seu telefone no cadastro';
+      const status = (dadosMotorista.status || 'Cadastro pendente').toUpperCase();
+      const placasResumo = resumoPlacas(dadosMotorista);
+      const placasTexto = motorista ? placasResumo : 'Adicione suas placas ao completar o cadastro.';
+
+      if (resumoElements.nome) resumoElements.nome.textContent = nome;
+      if (resumoElements.email) resumoElements.email.textContent = email;
+      if (resumoElements.telefone) resumoElements.telefone.textContent = telefone;
+      if (resumoElements.status) resumoElements.status.textContent = status;
+      if (resumoElements.placas) resumoElements.placas.textContent = placasTexto;
+    }
+
+    function preencherFormulario(user, motorista) {
+      if (inputs.nome) inputs.nome.value = (motorista?.nome || user?.nome || user?.email || '').trim();
+      if (inputs.telefone1) inputs.telefone1.value = formatPhone(motorista?.telefone1 || '');
+      if (inputs.telefone2) inputs.telefone2.value = formatPhone(motorista?.telefone2 || '');
+      if (inputs.placaCavalo) inputs.placaCavalo.value = motorista?.placas?.cavalo || '';
+      if (inputs.placaCarreta1) inputs.placaCarreta1.value = motorista?.placas?.carreta1 || '';
+      if (inputs.placaCarreta2) inputs.placaCarreta2.value = motorista?.placas?.carreta2 || '';
+      if (inputs.placaCarreta3) inputs.placaCarreta3.value = motorista?.placas?.carreta3 || '';
+      if (inputs.classeVeiculo) inputs.classeVeiculo.value = motorista?.classeVeiculo || '';
+      if (inputs.tipoVeiculo) setSelectValue(inputs.tipoVeiculo, motorista?.tipoVeiculo);
+      if (inputs.tipoCarroceria) setSelectValue(inputs.tipoCarroceria, motorista?.tipoCarroceria);
+      if (inputs.telefone1) {
+        setTimeout(() => inputs.telefone1.focus(), 120);
+      }
+    }
+
+    async function initSupabase() {
+      try {
+        loadingConfig = true;
+        setState('loading');
+        const response = await fetch('/api/supabase-config');
+        if (!response.ok) {
+          throw new Error('Configuração Supabase indisponível.');
+        }
+        const config = await response.json();
+        if (!window.supabase) {
+          throw new Error('Biblioteca do Supabase não carregada.');
+        }
+        supabaseClient = window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey, {
+          auth: { persistSession: true, detectSessionInUrl: true }
+        });
+
+        const { data } = await supabaseClient.auth.getSession();
+        currentSession = data?.session || null;
+
+        supabaseClient.auth.onAuthStateChange((event, session) => {
+          currentSession = session;
+          if (session) {
+            carregarMotorista();
+          } else {
+            currentUser = null;
+            currentMotorista = null;
+            limparMotoristaLocal();
+            setState('signedOut');
+          }
+        });
+
+        if (currentSession) {
+          await carregarMotorista();
+        } else {
+          setState('signedOut');
+        }
+      } catch (error) {
+        console.error('Erro ao inicializar Supabase:', error);
+        showAlert('Não foi possível carregar o login. Atualize a página ou tente novamente mais tarde.');
+        setState('signedOut');
+      } finally {
+        loadingConfig = false;
+      }
+    }
+
+    async function carregarMotorista() {
+      if (!currentSession || !currentSession.access_token) {
+        setState('signedOut');
+        return;
+      }
+      setState('loading');
+      try {
+        const response = await fetch('/api/motoristas/auth/me', {
+          headers: {
+            Authorization: `Bearer ${currentSession.access_token}`,
+            'Content-Type': 'application/json'
+          },
+          credentials: 'include'
+        });
+
+        if (response.status === 401) {
+          await supabaseClient.auth.signOut();
+          limparMotoristaLocal();
+          showAlert('Sessão expirada. Faça login novamente.', 'error');
+          setState('signedOut');
+          return;
+        }
+
+        const result = await response.json();
+        if (!response.ok) {
+          throw new Error(result.error || 'Falha ao validar sessão.');
+        }
+
+        currentUser = result.user || null;
+        currentMotorista = result.motorista || null;
+
+        clearAlert();
+        preencherResumo(currentMotorista, currentUser);
+        preencherFormulario(currentUser, currentMotorista);
+
+        if (currentMotorista) {
+          armazenarMotoristaLocal(currentMotorista, currentUser);
+        } else {
+          limparMotoristaLocal();
+        }
+
+        if (readyWarning) {
+          readyWarning.classList.toggle('active', !currentMotorista);
+        }
+        if (btnCompletarCadastroReady) {
+          btnCompletarCadastroReady.style.display = currentMotorista ? 'none' : 'inline-flex';
+        }
+
+        setState('ready');
+      } catch (error) {
+        console.error('Erro ao carregar dados do motorista:', error);
+        showAlert('Não foi possível validar seus dados agora. Tente novamente em instantes.');
+        setState('signedOut');
+      }
+    }
+
+    async function iniciarLoginGoogle() {
+      if (!supabaseClient) {
+        if (!loadingConfig) {
+          showAlert('Configuração Supabase indisponível. Atualize a página e tente novamente.');
+        }
+        return;
+      }
+      try {
+        clearAlert();
+        toggleButtonLoading(btnGoogle, true, 'Redirecionando...');
+        const redirectTo = `${window.location.origin}/login-motorista.html`;
+        const { error } = await supabaseClient.auth.signInWithOAuth({
+          provider: 'google',
+          options: { redirectTo }
+        });
+        if (error) {
+          throw error;
+        }
+      } catch (error) {
+        console.error('Erro ao iniciar login Google:', error);
+        showAlert('Não foi possível abrir o login do Google. Verifique sua conexão e tente novamente.');
+      } finally {
+        toggleButtonLoading(btnGoogle, false);
+      }
+    }
+
+    async function vincularMotorista(event) {
+      event.preventDefault();
+      clearAlert();
+
+      if (!currentSession || !currentSession.access_token) {
+        showAlert('Sessão não encontrada. Entre novamente com sua conta Google.');
+        setState('signedOut');
+        return;
+      }
+
+      const nome = inputs.nome.value.trim();
+      const telefone1 = normalizePhone(inputs.telefone1.value);
+      const telefone2 = normalizePhone(inputs.telefone2.value);
+
+      if (!nome || nome.length < 3) {
+        showAlert('Informe seu nome completo.');
+        inputs.nome.focus();
+        return;
+      }
+
+      if (!telefone1 || telefone1.length < 10) {
+        showAlert('Informe um telefone válido com DDD.');
+        inputs.telefone1.focus();
+        return;
+      }
+
+      const payload = {
+        nome,
+        telefone: telefone1,
+        telefoneSecundario: telefone2,
+        placaCavalo: normalizePlate(inputs.placaCavalo.value),
+        placaCarreta1: normalizePlate(inputs.placaCarreta1.value),
+        placaCarreta2: normalizePlate(inputs.placaCarreta2.value),
+        placaCarreta3: normalizePlate(inputs.placaCarreta3.value),
+        classeVeiculo: inputs.classeVeiculo.value.trim(),
+        tipoVeiculo: inputs.tipoVeiculo.value.trim(),
+        tipoCarroceria: inputs.tipoCarroceria.value.trim()
+      };
+
+      try {
+        toggleButtonLoading(btnSalvarPerfil, true, 'Vinculando...');
+        const response = await fetch('/api/motoristas/auth/profile', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${currentSession.access_token}`
+          },
+          credentials: 'include',
+          body: JSON.stringify(payload)
+        });
+
+        const result = await response.json();
+
+        if (response.status === 401) {
+          await supabaseClient.auth.signOut();
+          limparMotoristaLocal();
+          showAlert('Sessão expirada. Faça login novamente.', 'error');
+          setState('signedOut');
+          return;
+        }
+
+        if (response.status === 409) {
+          showAlert(result.error || 'Este telefone já está vinculado a outra conta.', 'error');
+          return;
+        }
+
+        if (!response.ok) {
+          throw new Error(result.error || 'Erro ao salvar dados do motorista.');
+        }
+
+        currentUser = result.user;
+        currentMotorista = result.motorista;
+        preencherResumo(currentMotorista, currentUser);
+        armazenarMotoristaLocal(currentMotorista, currentUser);
+        if (readyWarning) {
+          readyWarning.classList.remove('active');
+        }
+        if (btnCompletarCadastroReady) {
+          btnCompletarCadastroReady.style.display = 'none';
+        }
+        showAlert('Acesso vinculado com sucesso! Você já pode acessar o portal.', 'success');
+        setState('ready');
+      } catch (error) {
+        console.error('Erro ao vincular motorista:', error);
+        showAlert(error.message || 'Erro ao salvar seus dados. Tente novamente.');
+      } finally {
+        toggleButtonLoading(btnSalvarPerfil, false);
+      }
+    }
+
+    async function handleSignOut() {
+      try {
+        if (supabaseClient) {
+          await supabaseClient.auth.signOut();
+        }
+      } catch (error) {
+        console.error('Erro ao sair:', error);
+      } finally {
+        currentSession = null;
+        currentUser = null;
+        currentMotorista = null;
+        limparMotoristaLocal();
+        setState('signedOut');
+        showAlert('Você saiu da conta. Faça login novamente quando desejar.', 'success');
+      }
+    }
+
+    function setupMasks() {
+      [inputs.telefone1, inputs.telefone2].forEach(input => {
+        if (!input) return;
+        input.addEventListener('input', handlePhoneInput);
+      });
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      createParticles();
+      setupMasks();
+
+      if (btnGoogle) {
+        btnGoogle.addEventListener('click', iniciarLoginGoogle);
+      }
+      if (linkForm) {
+        linkForm.addEventListener('submit', vincularMotorista);
+      }
+      if (btnCompletarCadastroReady) {
+        btnCompletarCadastroReady.addEventListener('click', () => {
+          setState('link');
+          preencherFormulario(currentUser, currentMotorista);
+        });
+      }
+      if (btnIrPortal) {
+        btnIrPortal.addEventListener('click', () => {
+          window.location.href = 'portal-motorista.html';
+        });
+      }
+      if (btnSair) {
+        btnSair.addEventListener('click', handleSignOut);
+      }
+
+      initSupabase();
+    });
+  </script>
+</body>
+</html>
+

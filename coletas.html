@@ -2369,6 +2369,8 @@
         let currentAnexosColetaId = null;
         let selectedFiles = [];
         let currentChatColetaId = null;
+        let supabaseAccessToken = null;
+        let supabaseTokenExpiry = 0;
 
         // Etapas do processo
         const ETAPAS = [
@@ -2413,6 +2415,42 @@
             } catch (error) {
                 console.error('❌ Erro ao carregar permissões:', error);
                 return [];
+            }
+        }
+
+        async function getSupabaseAuthHeaders() {
+            try {
+                if (!supabase) {
+                    return {};
+                }
+
+                const now = Date.now();
+                if (supabaseAccessToken && supabaseTokenExpiry - now > 60000) {
+                    return {
+                        Authorization: `Bearer ${supabaseAccessToken}`
+                    };
+                }
+
+                const { data, error } = await supabase.auth.getSession();
+
+                if (error) {
+                    console.error('❌ Erro ao obter sessão do Supabase:', error);
+                    return {};
+                }
+
+                const session = data?.session;
+                if (session?.access_token) {
+                    supabaseAccessToken = session.access_token;
+                    supabaseTokenExpiry = session.expires_at ? session.expires_at * 1000 : now + (60 * 60 * 1000);
+                    return {
+                        Authorization: `Bearer ${supabaseAccessToken}`
+                    };
+                }
+
+                return {};
+            } catch (error) {
+                console.error('❌ Erro ao construir headers de autenticação:', error);
+                return {};
             }
         }
 
@@ -2834,6 +2872,102 @@
             } catch (error) {
                 console.error('❌ Erro ao aprovar GR:', error);
                 showNotification('Erro ao aprovar GR: ' + error.message, 'error');
+            }
+        }
+
+        async function solicitarAtualizacaoDocumento(coletaId) {
+            const coleta = coletasData.find(c => c.id === coletaId);
+            if (!coleta || !coleta.motorista_id) {
+                showNotification('⚠️ É necessário ter motorista vinculado para solicitar atualização de documentos.', 'warning');
+                return;
+            }
+
+            // Criar modal para solicitar atualização
+            const modal = document.createElement('div');
+            modal.className = 'modal fade show';
+            modal.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.7); backdrop-filter: blur(10px); display: flex; justify-content: center; align-items: center; z-index: 9999; padding: 2rem;';
+            modal.innerHTML = `
+                <div class="modal-dialog" style="background: white; border-radius: 20px; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3); max-width: 600px; width: 100%;">
+                    <div class="modal-content" style="padding: 0;">
+                        <div class="modal-header" style="background: linear-gradient(135deg, #002776 0%, #0044AA 100%); color: white; border-radius: 20px 20px 0 0; padding: 1.5rem 2rem;">
+                            <h5 class="modal-title"><i class="fas fa-file-upload"></i> Solicitar Atualização de Documento</h5>
+                            <button type="button" class="btn-close" onclick="this.closest('.modal').remove()" style="background: none; border: none; color: white; font-size: 1.5rem; cursor: pointer;">&times;</button>
+                        </div>
+                        <div class="modal-body" style="padding: 2rem;">
+                            <form id="formSolicitarDoc">
+                                <div class="form-group" style="margin-bottom: 1.5rem;">
+                                    <label style="font-weight: 600; margin-bottom: 0.5rem; display: block;">Categoria do Documento *</label>
+                                    <select id="categoriaDocumento" class="form-control" required style="width: 100%; padding: 0.75rem; border: 2px solid #e9ecef; border-radius: 10px;">
+                                        <option value="">Selecione a categoria</option>
+                                        <option value="proprietario">Documentos - Proprietário</option>
+                                        <option value="veiculo">Documentos - Veículo</option>
+                                        <option value="motorista">Documentos - Motorista</option>
+                                    </select>
+                                </div>
+                                <div class="form-group" style="margin-bottom: 1.5rem;">
+                                    <label style="font-weight: 600; margin-bottom: 0.5rem; display: block;">Motivo da Solicitação *</label>
+                                    <textarea id="motivoSolicitacao" class="form-control" required rows="4" placeholder="Ex: CNH vencida, documento ilegível, falta de comprovante de residência..." style="width: 100%; padding: 0.75rem; border: 2px solid #e9ecef; border-radius: 10px; resize: vertical;"></textarea>
+                                </div>
+                            </form>
+                        </div>
+                        <div class="modal-footer" style="padding: 1.5rem 2rem; background: #f8f9fa; border-top: 1px solid #e9ecef; border-radius: 0 0 20px 20px;">
+                            <button type="button" class="btn btn-secondary" onclick="this.closest('.modal').remove()">Cancelar</button>
+                            <button type="button" class="btn btn-primary" onclick="confirmarSolicitacaoDoc('${coletaId}')" style="background: linear-gradient(135deg, #002776 0%, #0044AA 100%); border: none; padding: 0.75rem 2rem; border-radius: 10px; font-weight: 600;">
+                                <i class="fas fa-paper-plane"></i> Enviar Solicitação
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+
+            // Fechar modal ao clicar no backdrop
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    modal.remove();
+                }
+            });
+        }
+
+        async function confirmarSolicitacaoDoc(coletaId) {
+            const categoria = document.getElementById('categoriaDocumento')?.value;
+            const motivo = document.getElementById('motivoSolicitacao')?.value;
+
+            if (!categoria || !motivo) {
+                showNotification('⚠️ Preencha todos os campos obrigatórios.', 'warning');
+                return;
+            }
+
+            try {
+                const headers = await getSupabaseAuthHeaders();
+                headers['Content-Type'] = 'application/json';
+                
+                const response = await fetch(`/api/coletas/${encodeURIComponent(coletaId)}/solicitar-atualizacao-documento`, {
+                    method: 'POST',
+                    headers,
+                    credentials: 'include',
+                    body: JSON.stringify({ categoria, motivo: motivo.trim() })
+                });
+
+                const result = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(result.error || 'Erro ao criar solicitação');
+                }
+
+                showNotification('✅ Solicitação de atualização enviada ao motorista!', 'success');
+                
+                // Fechar modal
+                const modal = document.querySelector('.modal.show');
+                if (modal) {
+                    modal.remove();
+                }
+
+                // Recarregar coletas para atualizar interface
+                await carregarColetas();
+            } catch (error) {
+                console.error('❌ Erro ao solicitar atualização:', error);
+                showNotification('Erro ao enviar solicitação: ' + error.message, 'error');
             }
         }
 
@@ -3785,20 +3919,18 @@
         // ========== FUNÇÕES SUPABASE - ANEXOS ==========
         async function carregarAnexos(coletaId) {
             try {
-                // Verificar se o Supabase está inicializado
-                if (!supabase) {
-                    console.error('❌ Supabase não inicializado');
-                    return [];
-                }
-                
-                const { data, error } = await supabase
-                    .from('anexos')
-                    .select('*')
-                    .eq('coleta_id', coletaId)
-                    .order('data_upload', { ascending: false });
+                const headers = await getSupabaseAuthHeaders();
+                const response = await fetch(`/api/anexos/coleta/${encodeURIComponent(coletaId)}`, {
+                    credentials: 'include',
+                    headers
+                });
+                const result = await response.json();
 
-                if (error) throw error;
-                return data || [];
+                if (!response.ok) {
+                    throw new Error(result.error || 'Erro ao carregar anexos.');
+                }
+
+                return result?.anexos || [];
             } catch (error) {
                 console.error('❌ Erro ao carregar anexos:', error);
                 return [];
@@ -3807,45 +3939,31 @@
 
         async function uploadAnexo(coletaId, file) {
             try {
-                // Verificar se o Supabase está inicializado
-                if (!supabase) {
-                    console.error('❌ Supabase não inicializado');
-                    showNotification('Erro: Supabase não inicializado', 'error');
-                    return { success: false };
+                const formData = new FormData();
+                formData.append('file', file);
+                formData.append('coleta_id', coletaId);
+
+                if (currentUser?.usuario) {
+                    formData.append('usuario', currentUser.usuario);
+                } else if (currentUser?.nome) {
+                    formData.append('usuario', currentUser.nome);
                 }
-                
-                // Upload do arquivo para o storage do Supabase
-                const fileExt = file.name.split('.').pop();
-                const fileName = `${generateId()}.${fileExt}`;
-                const filePath = `${coletaId}/${fileName}`;
 
-                const { error: uploadError } = await supabase.storage
-                    .from('anexos')
-                    .upload(filePath, file);
+                const headers = await getSupabaseAuthHeaders();
+                const response = await fetch('/api/anexos', {
+                    method: 'POST',
+                    body: formData,
+                    credentials: 'include',
+                    headers
+                });
 
-                if (uploadError) throw uploadError;
+                const result = await response.json();
 
-                // Obter URL pública
-                const { data: { publicUrl } } = supabase.storage
-                    .from('anexos')
-                    .getPublicUrl(filePath);
+                if (!response.ok) {
+                    throw new Error(result.error || 'Erro ao enviar arquivo.');
+                }
 
-                // Salvar metadados no banco
-                const { error: dbError } = await supabase
-                    .from('anexos')
-                    .insert([{
-                        id: generateId(),
-                        coleta_id: coletaId,
-                        nome_arquivo: file.name,
-                        tipo_arquivo: file.type,
-                        tamanho: file.size,
-                        url: publicUrl,
-                        data_upload: new Date().toISOString()
-                    }]);
-
-                if (dbError) throw dbError;
-
-                return { success: true };
+                return { success: true, anexo: result.anexo };
             } catch (error) {
                 console.error('❌ Erro no upload:', error);
                 throw error;
@@ -3857,21 +3975,18 @@
         // Função para buscar anexo por ID
         async function buscarAnexoPorId(anexoId) {
             try {
-                // Verificar se o Supabase está inicializado
-                if (!supabase) {
-                    console.error('❌ Supabase não inicializado');
-                    return null;
-                }
-                
-                const { data, error } = await supabase
-                    .from('anexos')
-                    .select('*')
-                    .eq('id', anexoId)
-                    .single();
+                const headers = await getSupabaseAuthHeaders();
+                const response = await fetch(`/api/anexos/${encodeURIComponent(anexoId)}/info`, {
+                    credentials: 'include',
+                    headers
+                });
+                const result = await response.json();
 
-                if (error) throw error;
-                return data;
-                
+                if (!response.ok) {
+                    throw new Error(result.error || 'Erro ao carregar anexo.');
+                }
+
+                return result?.anexo || null;
             } catch (error) {
                 console.error('❌ Erro ao buscar anexo:', error);
                 showNotification('Erro ao carregar anexo', 'error');
@@ -3886,7 +4001,11 @@
                 if (!anexo) return;
 
                 // Abre o arquivo em uma nova aba
-                window.open(anexo.url, '_blank');
+                if (anexo.url) {
+                    window.open(anexo.url, '_blank');
+                } else {
+                    window.open(`/api/anexos/${encodeURIComponent(anexoId)}/download`, '_blank');
+                }
                 
             } catch (error) {
                 console.error('❌ Erro ao visualizar anexo:', error);
@@ -3933,26 +4052,26 @@
                 console.error('❌ Erro no download forçado:', error);
                 
                 // Fallback: abre em nova aba com instrução
-                const novaAba = window.open(anexo.url, '_blank');
+                const fallbackUrl = anexo?.url || `/api/anexos/${encodeURIComponent(anexoId)}/download`;
+                const novaAba = window.open(fallbackUrl, '_blank');
                 showNotification('📂 Arquivo aberto. Use "Salvar como" para baixar.', 'info');
             }
         }
 
         async function excluirAnexo(anexoId) {
             try {
-                // Verificar se o Supabase está inicializado
-                if (!supabase) {
-                    console.error('❌ Supabase não inicializado');
-                    showNotification('Erro: Supabase não inicializado', 'error');
-                    return;
-                }
-                
-                const { error } = await supabase
-                    .from('anexos')
-                    .delete()
-                    .eq('id', anexoId);
+                const headers = await getSupabaseAuthHeaders();
+                const response = await fetch(`/api/anexos/${encodeURIComponent(anexoId)}`, {
+                    method: 'DELETE',
+                    credentials: 'include',
+                    headers
+                });
 
-                if (error) throw error;
+                const result = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(result.error || 'Erro ao excluir anexo.');
+                }
 
                 showNotification('Anexo excluído com sucesso', 'success');
             } catch (error) {
@@ -4474,6 +4593,9 @@
                             </button>
                             <button class="btn-validation danger" onclick="event.stopPropagation(); reprovarGR('${coleta.id}')">
                                 <i class="fas fa-times"></i> Reprovar
+                            </button>
+                            <button class="btn-validation warning" onclick="event.stopPropagation(); solicitarAtualizacaoDocumento('${coleta.id}')" ${!coleta.motorista_id ? 'disabled title="É necessário ter motorista vinculado"' : ''}>
+                                <i class="fas fa-file-upload"></i> Solicitar Atualização de Documento
                             </button>
                             <button class="btn-validation primary" onclick="event.stopPropagation(); voltarEtapa('${coleta.id}', 'contratacao')" ${!temPermissaoEtapa(coleta.etapa_atual) ? 'disabled title="Sem permissão para esta etapa"' : ''}>
                                 <i class="fas fa-arrow-left"></i> Voltar para Contratação

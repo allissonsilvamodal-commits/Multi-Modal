@@ -945,6 +945,27 @@
                 placeholder="Digite sua mensagem aqui... Use as variáveis acima para personalizar."
                                 >Olá {{name}}, temos uma viagem disponível para você na categoria {{classe_veiculo}}.</textarea>
                             </div>
+
+                            <div class="mb-4">
+                                <label class="form-label">Imagem (opcional)</label>
+                                <div id="imageUploadWrapper">
+                                    <input type="file" id="imageInput" class="form-control form-control-modern" accept="image/*">
+                                    <small class="text-muted">Formatos aceitos: jpg, jpeg, png, webp. Tamanho máximo 5MB.</small>
+                                </div>
+                                <div id="imagePreview" class="image-preview mt-3" style="display:none;">
+                                    <div class="preview-info d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <small class="text-muted" id="imageName">imagem.jpg</small>
+                                        </div>
+                                        <button class="btn btn-sm btn-outline-danger" id="btnRemoveImage">
+                                            <i class="fas fa-times"></i> Remover
+                                        </button>
+                                    </div>
+                                    <div class="preview-image mt-2 text-center">
+                                        <img id="previewImg" src="" alt="Pré-visualização" class="img-fluid rounded">
+                                    </div>
+                                </div>
+                            </div>
                             
                             <!-- Test Field -->
                             <div class="mb-4">
@@ -1156,6 +1177,7 @@ const estados = [
             await carregarEstatisticas();
             await carregarFiltros();
             configurarEventos();
+            configurarUploadImagem();
             
             console.log('✅ Painel inicializado com sucesso!');
         });
@@ -1976,6 +1998,63 @@ const estados = [
             atualizarListaMotoristas(motoristasFiltrados);
         }
 
+        let imagemSelecionada = null;
+        let imagemPreviewUrl = null;
+
+        function resetarImagem() {
+            const input = document.getElementById('imageInput');
+            const preview = document.getElementById('imagePreview');
+            if (input) input.value = '';
+            if (preview) preview.style.display = 'none';
+            imagemSelecionada = null;
+            if (imagemPreviewUrl) {
+                URL.revokeObjectURL(imagemPreviewUrl);
+                imagemPreviewUrl = null;
+            }
+        }
+
+        function configurarUploadImagem() {
+            const input = document.getElementById('imageInput');
+            const btnRemove = document.getElementById('btnRemoveImage');
+
+            if (!input || !btnRemove) return;
+
+            const processFile = (file) => {
+                if (!file) return;
+                const maxSize = 5 * 1024 * 1024; // 5MB
+                if (!file.type.startsWith('image/')) {
+                    mostrarAviso('Selecione um arquivo de imagem válido (jpg, png, webp).');
+                    return;
+                }
+                if (file.size > maxSize) {
+                    mostrarAviso('A imagem deve ter no máximo 5MB.');
+                    return;
+                }
+
+                imagemSelecionada = file;
+                if (imagemPreviewUrl) {
+                    URL.revokeObjectURL(imagemPreviewUrl);
+                }
+                imagemPreviewUrl = URL.createObjectURL(file);
+
+                const preview = document.getElementById('imagePreview');
+                const previewImg = document.getElementById('previewImg');
+                const imageName = document.getElementById('imageName');
+                if (preview && previewImg && imageName) {
+                    previewImg.src = imagemPreviewUrl;
+                    imageName.textContent = `${file.name} (${(file.size/1024).toFixed(1)} KB)`;
+                    preview.style.display = 'block';
+                }
+            };
+
+            input.addEventListener('change', (e) => processFile(e.target.files[0]));
+
+            btnRemove.addEventListener('click', (e) => {
+                e.preventDefault();
+                resetarImagem();
+            });
+        }
+
         // ========== TESTAR MENSAGEM ==========
         function testarMensagem() {
             const mensagem = document.getElementById('messageText').value;
@@ -2008,6 +2087,7 @@ const estados = [
         async function testarEnvioReal() {
             const telefone = document.getElementById('telefoneTeste').value.trim();
             const mensagem = document.getElementById('messageText').value.trim();
+            const imageFile = imagemSelecionada;
             
             if (!telefone) {
                 mostrarAviso('Digite um número de telefone para teste');
@@ -2029,6 +2109,9 @@ const estados = [
 
             try {
                 adicionarLog(`🔄 Enviando teste para ${telefone}...`, 'info');
+                if (imageFile) {
+                    adicionarLog(`🖼️ Imagem anexada: ${imageFile.name}`, 'info');
+                }
                 
                 // Buscar credenciais da Evolution API do usuário logado
                 const userData = localStorage.getItem('loggedInUser');
@@ -2047,23 +2130,27 @@ const estados = [
                 }
                 
                 // Enviar via Evolution API usando credenciais do usuário
+                const formData = new FormData();
+                formData.append('number', telefone);
+                formData.append('message', mensagemPersonalizada);
+                formData.append('usuario', userEmail);
+                formData.append('userId', userId);
+                if (imageFile) {
+                    formData.append('media', imageFile);
+                }
+
                 const response = await fetch('/webhook/send-supabase', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        number: telefone,
-                        message: mensagemPersonalizada,
-                        usuario: userEmail,
-                        userId: userId  // ✅ Enviar user_id diretamente
-                    })
+                    body: formData
                 });
 
                 if (response.ok) {
                     const data = await response.json();
                     if (data.success) {
-                        adicionarLog(`✅ Teste enviado com sucesso para ${telefone}`, 'success');
+                    adicionarLog(`✅ Teste enviado com sucesso para ${telefone}`, 'success');
+                    if (imageFile) {
+                        adicionarLog(`🖼️ Imagem enviada: ${imageFile.name}`, 'info');
+                    }
                         adicionarLog(`🏷️ Instância usada: ${data.instancia || 'N/A'}`, 'info');
                         mostrarSucesso(`Mensagem de teste enviada para ${telefone}`);
             } else {
@@ -2209,7 +2296,9 @@ const estados = [
             if (!mensagem) {
                 mostrarAviso('Digite uma mensagem para enviar');
     return;
-  }
+            }
+
+            const imageFile = imagemSelecionada;
 
             isDisparoAtivo = true;
             disparoCancelado = false;
@@ -2225,6 +2314,9 @@ const estados = [
             document.getElementById('delayCounterContainer').style.display = 'none';
 
             adicionarLog(`🚀 Iniciando disparo para ${selectedMotoristas.size} motoristas...`, 'info');
+            if (imageFile) {
+                adicionarLog(`🖼️ Imagem anexada: ${imageFile.name}`, 'info');
+            }
 
             // Converter Set em Array para ter controle de índice
             const motoristasArray = Array.from(selectedMotoristas);
@@ -2280,17 +2372,18 @@ const estados = [
                         continue; // Pula para próximo motorista
                     }
                     
+                    const formData = new FormData();
+                    formData.append('number', motorista.telefone1);
+                    formData.append('message', mensagemPersonalizada);
+                    formData.append('usuario', userEmail);
+                    formData.append('userId', userId);
+                    if (imageFile) {
+                        formData.append('media', imageFile);
+                    }
+
                     const response = await fetch('/webhook/send-supabase', {
                         method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({
-                            number: motorista.telefone1,
-                            message: mensagemPersonalizada,
-                            usuario: userEmail,
-                            userId: userId  // ✅ Enviar user_id diretamente
-                        })
+                        body: formData
                     });
 
                     if (response.ok) {
@@ -2298,6 +2391,9 @@ const estados = [
                         if (data.success) {
                             totalEnviados++;
                             adicionarLog(`✅ Enviado para ${motorista.nome} (${motorista.telefone1})`, 'success');
+                            if (imageFile) {
+                                adicionarLog(`🖼️ Imagem enviada: ${imageFile.name}`, 'info');
+                            }
                             if (data.instancia) {
                                 adicionarLog(`🏷️ Usando instância: ${data.instancia}`, 'info');
                             }

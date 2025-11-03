@@ -1,0 +1,2242 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Portal do Motorista</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" integrity="sha512-SnH5WK+bZxgPHs44uWIX+LLJAJ9/2PkPKZ5QiAj6Ta86w+fsb2TkcmfRyVX3pBnMFcV7oQPJkl9QevSCWr3W6A==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <style>
+    :root {
+      --bg-gradient: linear-gradient(135deg, #0f172a 0%, #1e293b 45%, #0b1120 100%);
+      --card-gradient: linear-gradient(160deg, rgba(148, 163, 184, 0.12), rgba(148, 163, 184, 0.04));
+      --glass: rgba(15, 23, 42, 0.6);
+      --glass-border: rgba(148, 163, 184, 0.25);
+      --primary: #60a5fa;
+      --primary-dark: #1d4ed8;
+      --secondary: #38bdf8;
+      --success: #22c55e;
+      --warning: #facc15;
+      --danger: #ef4444;
+      --text-primary: #f8fafc;
+      --text-secondary: rgba(226, 232, 240, 0.8);
+      --muted: rgba(148, 163, 184, 0.7);
+      --radius-large: 26px;
+      --radius-medium: 18px;
+      --transition: all 0.25s ease;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Poppins', sans-serif;
+      background: var(--bg-gradient);
+      color: var(--text-primary);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      padding: 24px;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      background: radial-gradient(circle at 15% 20%, rgba(96, 165, 250, 0.18), transparent 55%),
+                  radial-gradient(circle at 85% 15%, rgba(56, 189, 248, 0.16), transparent 50%),
+                  radial-gradient(circle at 35% 80%, rgba(16, 185, 129, 0.12), transparent 50%);
+      z-index: -2;
+    }
+
+    body::after {
+      content: "";
+      position: fixed;
+      inset: 0;
+      background: url('https://www.transparenttextures.com/patterns/black-twill.png');
+      opacity: 0.12;
+      z-index: -1;
+    }
+
+    .portal-wrapper {
+      max-width: 1280px;
+      margin: 0 auto;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    .portal-header {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 24px;
+      align-items: stretch;
+    }
+
+    .hero-card {
+      flex: 1 1 380px;
+      background: var(--card-gradient);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius-large);
+      padding: 28px;
+      display: flex;
+      gap: 24px;
+      align-items: center;
+      backdrop-filter: blur(24px);
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 24px 60px rgba(15, 23, 42, 0.45);
+    }
+
+    .hero-card::before {
+      content: "";
+      position: absolute;
+      inset: -60% 65% 35% -30%;
+      background: radial-gradient(circle, rgba(96, 165, 250, 0.25) 0%, transparent 70%);
+      transform: rotate(15deg);
+      pointer-events: none;
+    }
+
+    .driver-avatar {
+      width: 96px;
+      height: 96px;
+      border-radius: 28px;
+      background: linear-gradient(145deg, rgba(96, 165, 250, 0.8), rgba(14, 116, 144, 0.65));
+      display: grid;
+      place-items: center;
+      font-size: 2.4rem;
+      font-weight: 600;
+      color: var(--text-primary);
+      border: 2px solid rgba(148, 163, 184, 0.25);
+      box-shadow: 0 18px 48px rgba(96, 165, 250, 0.35);
+      flex-shrink: 0;
+    }
+
+    .hero-content {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      z-index: 1;
+    }
+
+    .hero-content h1 {
+      font-size: 1.8rem;
+      font-weight: 600;
+      color: var(--text-primary);
+      text-shadow: 0 12px 32px rgba(14, 116, 144, 0.4);
+    }
+
+    .hero-content p {
+      color: var(--text-secondary);
+      font-size: 0.95rem;
+    }
+
+    .badge-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 14px;
+      border-radius: 999px;
+      background: rgba(15, 23, 42, 0.55);
+      border: 1px solid rgba(148, 163, 184, 0.35);
+      font-size: 0.8rem;
+      font-weight: 500;
+      color: var(--text-secondary);
+      letter-spacing: 0.02em;
+    }
+
+    .status-badge.success {
+      border-color: rgba(34, 197, 94, 0.45);
+      background: rgba(34, 197, 94, 0.18);
+      color: #bbf7d0;
+    }
+
+    .status-badge.warning {
+      border-color: rgba(250, 204, 21, 0.45);
+      background: rgba(250, 204, 21, 0.14);
+      color: #fef9c3;
+    }
+
+    .header-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      flex: 0 0 260px;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      border-radius: var(--radius-medium);
+      font-weight: 500;
+      padding: 14px 18px;
+      font-size: 0.95rem;
+      cursor: pointer;
+      border: 1px solid transparent;
+      transition: var(--transition);
+      color: var(--text-primary);
+      background: rgba(15, 23, 42, 0.55);
+      backdrop-filter: blur(18px);
+    }
+
+    .btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 16px 32px rgba(15, 23, 42, 0.35);
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #2563eb, #38bdf8);
+      box-shadow: 0 20px 40px rgba(37, 99, 235, 0.35);
+    }
+
+    .btn-outline {
+      background: transparent;
+      border: 1px solid rgba(148, 163, 184, 0.35);
+      color: var(--text-secondary);
+    }
+
+    .btn-outline:hover {
+      color: var(--text-primary);
+      border-color: rgba(148, 163, 184, 0.55);
+    }
+
+    .btn-warning {
+      background: linear-gradient(135deg, #f97316, #facc15);
+      color: #1f2937;
+      font-weight: 600;
+      box-shadow: 0 18px 36px rgba(249, 115, 22, 0.35);
+    }
+
+    .btn-disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+      pointer-events: none;
+    }
+
+    .portal-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 24px;
+    }
+
+    @media (min-width: 1024px) {
+      .portal-grid {
+        grid-template-columns: 1.1fr 0.9fr;
+      }
+    }
+
+    .card {
+      background: var(--card-gradient);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius-large);
+      padding: 24px 26px;
+      backdrop-filter: blur(22px);
+      box-shadow: 0 18px 48px rgba(15, 23, 42, 0.42);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .card h2 {
+      font-size: 1.3rem;
+      margin-bottom: 18px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: var(--text-primary);
+    }
+
+    .card h2 .icon {
+      width: 38px;
+      height: 38px;
+      border-radius: 12px;
+      background: rgba(96, 165, 250, 0.18);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--primary);
+      font-size: 1.1rem;
+    }
+
+    .inline-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+
+    .chip {
+      padding: 6px 14px;
+      border-radius: 999px;
+      font-size: 0.78rem;
+      letter-spacing: 0.04em;
+      background: rgba(15, 23, 42, 0.55);
+      border: 1px solid rgba(148, 163, 184, 0.35);
+      color: var(--muted);
+      text-transform: uppercase;
+    }
+
+    .chip.success { color: #bbf7d0; border-color: rgba(34, 197, 94, 0.4); background: rgba(34, 197, 94, 0.12); }
+    .chip.warning { color: #fde68a; border-color: rgba(250, 204, 21, 0.4); background: rgba(250, 204, 21, 0.12); }
+    .chip.danger { color: #fecaca; border-color: rgba(239, 68, 68, 0.4); background: rgba(239, 68, 68, 0.12); }
+
+    .opportunities-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 18px;
+    }
+
+    .opportunity-card {
+      border-radius: 20px;
+      border: 1px solid rgba(148, 163, 184, 0.2);
+      background: rgba(15, 23, 42, 0.55);
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      transition: var(--transition);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .opportunity-card::before {
+      content: "";
+      position: absolute;
+      inset: -40% 60% 40% -20%;
+      background: radial-gradient(circle, rgba(96, 165, 250, 0.12), transparent 70%);
+      opacity: 0;
+      transition: var(--transition);
+    }
+
+    .opportunity-card:hover {
+      transform: translateY(-6px);
+      box-shadow: 0 28px 56px rgba(15, 23, 42, 0.55);
+      border-color: rgba(96, 165, 250, 0.35);
+    }
+
+    .opportunity-card:hover::before {
+      opacity: 1;
+    }
+
+    .opportunity-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .opportunity-header h3 {
+      font-size: 1.05rem;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .opportunity-route {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 500;
+      letter-spacing: 0.02em;
+      color: var(--text-secondary);
+    }
+
+    .opportunity-route span {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(15, 23, 42, 0.6);
+      border-radius: 12px;
+      padding: 6px 10px;
+      font-size: 0.82rem;
+    }
+
+    .info-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: 12px;
+      font-size: 0.85rem;
+      color: var(--muted);
+    }
+
+    .info-grid strong {
+      display: block;
+      font-size: 0.78rem;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 2px;
+    }
+
+    .opportunity-actions {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .small-btn {
+      padding: 10px 14px;
+      border-radius: 12px;
+      font-size: 0.82rem;
+      border: 1px solid rgba(148, 163, 184, 0.3);
+      background: rgba(15, 23, 42, 0.55);
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: var(--transition);
+    }
+
+    .small-btn:hover {
+      color: var(--text-primary);
+      border-color: rgba(96, 165, 250, 0.45);
+      box-shadow: 0 12px 24px rgba(15, 23, 42, 0.38);
+    }
+
+    .small-btn.primary {
+      border: none;
+      background: linear-gradient(135deg, #2563eb, #38bdf8);
+      color: #f8fafc;
+      font-weight: 600;
+      box-shadow: 0 16px 32px rgba(37, 99, 235, 0.35);
+    }
+
+    .empty-state {
+      border-radius: 20px;
+      border: 1px dashed rgba(148, 163, 184, 0.35);
+      padding: 40px 24px;
+      text-align: center;
+      color: var(--muted);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .empty-state i {
+      font-size: 2.2rem;
+      color: rgba(148, 163, 184, 0.45);
+    }
+
+    .toast-container {
+      position: fixed;
+      top: 24px;
+      right: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      z-index: 1200;
+    }
+
+    .toast {
+      min-width: 260px;
+      border-radius: 14px;
+      padding: 14px 18px;
+      background: rgba(15, 23, 42, 0.82);
+      border: 1px solid rgba(148, 163, 184, 0.3);
+      color: var(--text-secondary);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      box-shadow: 0 18px 36px rgba(15, 23, 42, 0.4);
+      animation: toast-in 0.35s ease;
+    }
+
+    .toast.success { border-color: rgba(34, 197, 94, 0.45); color: #bbf7d0; }
+    .toast.error { border-color: rgba(239, 68, 68, 0.45); color: #fecaca; }
+
+    @keyframes toast-in {
+      from { transform: translateX(40px); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+
+    .loader {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      color: var(--muted);
+      font-size: 0.86rem;
+    }
+
+    .loader::before {
+      content: "";
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      border: 2px solid rgba(96, 165, 250, 0.35);
+      border-top-color: rgba(96, 165, 250, 0.9);
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(8, 15, 30, 0.82);
+      backdrop-filter: blur(12px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      z-index: 1100;
+    }
+
+    .modal-overlay.active {
+      display: flex;
+    }
+
+    .modal-card {
+      width: min(640px, 100%);
+      background: rgba(15, 23, 42, 0.88);
+      border-radius: var(--radius-large);
+      border: 1px solid rgba(148, 163, 184, 0.25);
+      box-shadow: 0 32px 88px rgba(15, 23, 42, 0.55);
+      padding: 30px;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+
+    .modal-card.docs-modal {
+      width: min(720px, 95%);
+      max-height: 90vh;
+      padding: 28px;
+      gap: 16px;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    
+    .modal-card.docs-modal .docs-modal-header {
+      flex-shrink: 0;
+      margin-bottom: 4px;
+    }
+    
+    .modal-card.docs-modal form {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      overflow-y: auto;
+      flex: 1;
+      min-height: 0;
+      padding-right: 8px;
+      margin-right: -8px;
+    }
+    
+    .modal-card.docs-modal form::-webkit-scrollbar {
+      width: 6px;
+    }
+    
+    .modal-card.docs-modal form::-webkit-scrollbar-track {
+      background: rgba(15, 23, 42, 0.3);
+      border-radius: 10px;
+    }
+    
+    .modal-card.docs-modal form::-webkit-scrollbar-thumb {
+      background: rgba(148, 163, 184, 0.4);
+      border-radius: 10px;
+    }
+    
+    .modal-card.docs-modal form::-webkit-scrollbar-thumb:hover {
+      background: rgba(148, 163, 184, 0.6);
+    }
+    
+    .modal-card.docs-modal > .modal-footer {
+      margin-top: 0;
+      padding-top: 16px;
+      border-top: 1px solid rgba(148, 163, 184, 0.15);
+      flex-shrink: 0;
+    }
+
+    .modal-card h3 {
+      font-size: 1.3rem;
+      font-weight: 600;
+      margin-bottom: 8px;
+      flex-shrink: 0;
+    }
+
+    .modal-card p {
+      font-size: 0.92rem;
+      color: var(--text-secondary);
+    }
+
+    .docs-instructions {
+      font-size: 0.88rem;
+      color: var(--text-secondary);
+      line-height: 1.5;
+      margin-bottom: 4px;
+    }
+
+    .docs-summary {
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid rgba(148, 163, 184, 0.25);
+      border-radius: 14px;
+      padding: 14px 16px;
+      font-size: 0.87rem;
+      color: var(--muted);
+      line-height: 1.5;
+      flex-shrink: 0;
+      max-height: 120px;
+      overflow-y: auto;
+    }
+
+    .docs-section {
+      border: 1px solid rgba(148, 163, 184, 0.22);
+      border-radius: 16px;
+      background: rgba(15, 23, 42, 0.55);
+      padding: 16px 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+
+    .docs-section h4 {
+      font-size: 1.05rem;
+      font-weight: 600;
+      color: var(--text-primary);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .docs-section p {
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+      margin: 0;
+    }
+
+    .docs-section small {
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+
+    .file-input-modern {
+      width: 100%;
+      padding: 14px;
+      border-radius: 14px;
+      border: 1px dashed rgba(148, 163, 184, 0.35);
+      background: rgba(15, 23, 42, 0.4);
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: var(--transition);
+    }
+
+    .file-input-modern:hover {
+      border-color: rgba(96, 165, 250, 0.45);
+      background: rgba(96, 165, 250, 0.12);
+      color: var(--text-primary);
+    }
+
+    .refs-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 12px;
+    }
+
+    .refs-grid input {
+      border-radius: 14px;
+      border: 1px solid rgba(148, 163, 184, 0.3);
+      background: rgba(15, 23, 42, 0.45);
+      color: var(--text-primary);
+      padding: 12px 14px;
+      font-size: 0.95rem;
+      transition: var(--transition);
+    }
+
+    .refs-grid input:focus {
+      outline: none;
+      border-color: rgba(96, 165, 250, 0.65);
+      box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.22);
+    }
+
+    .docs-note {
+      background: rgba(250, 204, 21, 0.1);
+      border: 1px solid rgba(250, 204, 21, 0.35);
+      border-radius: 14px;
+      padding: 14px 16px;
+      color: #fef9c3;
+      font-size: 0.85rem;
+      line-height: 1.4;
+    }
+
+    .modal-close {
+      position: absolute;
+      top: 18px;
+      right: 18px;
+      border: none;
+      background: rgba(15, 23, 42, 0.6);
+      border-radius: 12px;
+      color: var(--text-secondary);
+      width: 40px;
+      height: 40px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: var(--transition);
+    }
+
+    .modal-close:hover {
+      background: rgba(96, 165, 250, 0.22);
+      color: var(--text-primary);
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px 20px;
+    }
+
+    .form-grid label {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      font-size: 0.82rem;
+      color: var(--text-secondary);
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .form-grid input,
+    .form-grid select {
+      background: rgba(15, 23, 42, 0.55);
+      border-radius: 14px;
+      border: 1px solid rgba(148, 163, 184, 0.28);
+      color: var(--text-primary);
+      padding: 12px 14px;
+      font-size: 0.95rem;
+      transition: var(--transition);
+    }
+
+    .form-grid input:focus,
+    .form-grid select:focus {
+      outline: none;
+      border-color: rgba(96, 165, 250, 0.6);
+      box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.2);
+    }
+
+    .modal-footer {
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+      margin-top: 10px;
+    }
+
+    .helper-text {
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin-top: -6px;
+    }
+
+    .danger-alert {
+      border-radius: 18px;
+      border: 1px solid rgba(239, 68, 68, 0.45);
+      background: rgba(239, 68, 68, 0.15);
+      padding: 14px 16px;
+      color: #fee2e2;
+      font-size: 0.85rem;
+      display: none;
+    }
+
+    .danger-alert.active {
+      display: block;
+    }
+
+    .table-list {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .notifications-list {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      margin-top: 20px;
+    }
+
+    .notification-item {
+      display: flex;
+      gap: 16px;
+      padding: 20px;
+      background: rgba(251, 191, 36, 0.1);
+      border: 1px solid rgba(251, 191, 36, 0.3);
+      border-radius: var(--radius-medium);
+      align-items: flex-start;
+      transition: var(--transition);
+    }
+
+    .notification-item:hover {
+      background: rgba(251, 191, 36, 0.15);
+      border-color: rgba(251, 191, 36, 0.5);
+    }
+
+    .notification-icon {
+      flex-shrink: 0;
+      width: 40px;
+      height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(251, 191, 36, 0.2);
+      border-radius: 50%;
+      color: var(--warning);
+    }
+
+    .notification-content {
+      flex: 1;
+    }
+
+    .notification-content h4 {
+      margin: 0 0 8px 0;
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .notification-motive {
+      margin: 0 0 8px 0;
+      color: var(--text-secondary);
+      line-height: 1.5;
+    }
+
+    .notification-coleta {
+      margin: 8px 0;
+      padding: 8px 12px;
+      background: rgba(96, 165, 250, 0.1);
+      border-radius: 8px;
+      font-size: 14px;
+      color: var(--primary);
+    }
+
+    .notification-meta {
+      margin: 8px 0 0 0;
+      font-size: 12px;
+      color: var(--muted);
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .notification-actions {
+      flex-shrink: 0;
+    }
+
+    .btn-sm {
+      padding: 8px 16px;
+      font-size: 14px;
+    }
+
+    .trip-card {
+      border-radius: 18px;
+      border: 1px solid rgba(148, 163, 184, 0.2);
+      padding: 18px 20px;
+      background: rgba(15, 23, 42, 0.55);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .trip-card h3 {
+      font-size: 1rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .trip-card .status-badge {
+      font-size: 0.72rem;
+      padding: 5px 12px;
+    }
+
+    .trip-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px 18px;
+      font-size: 0.82rem;
+      color: var(--muted);
+    }
+
+    .trip-meta span {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .quick-actions {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+      margin-top: 12px;
+    }
+
+    .quick-card {
+      border-radius: 18px;
+      border: 1px solid rgba(148, 163, 184, 0.2);
+      padding: 18px;
+      background: rgba(15, 23, 42, 0.55);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .quick-card strong {
+      font-size: 0.92rem;
+    }
+
+    .quick-card p {
+      font-size: 0.82rem;
+      color: var(--muted);
+    }
+
+    .refresh-btn {
+      border: none;
+      background: rgba(15, 23, 42, 0.6);
+      color: var(--text-secondary);
+      border-radius: 50%;
+      width: 42px;
+      height: 42px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: var(--transition);
+    }
+
+    .refresh-btn:hover {
+      background: rgba(96, 165, 250, 0.2);
+      color: var(--text-primary);
+    }
+
+    .inline-actions .spacer {
+      flex: 1 1 auto;
+    }
+
+    @media (max-width: 768px) {
+      body { padding: 18px; }
+      .hero-card { padding: 22px; flex-direction: column; align-items: flex-start; }
+      .driver-avatar { width: 80px; height: 80px; }
+      .portal-grid { grid-template-columns: 1fr; }
+      .header-actions { flex: 1 1 100%; flex-direction: row; flex-wrap: wrap; }
+      .header-actions .btn { flex: 1 1 calc(50% - 8px); }
+      .modal-card { padding: 22px; border-radius: 20px; }
+      .modal-card.docs-modal { 
+        padding: 20px; 
+        max-height: 95vh;
+        width: min(95%, 680px);
+      }
+      .refs-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="portal-wrapper">
+    <header class="portal-header">
+      <section class="hero-card">
+        <div class="driver-avatar" id="driverAvatar">MM</div>
+        <div class="hero-content">
+          <h1>Bem-vindo, <span id="driverName">Motorista</span></h1>
+          <p id="driverMessage">Carregando seus dados...</p>
+          <div class="badge-row">
+            <span class="status-badge" id="badgeCadastro">Cadastro em validação</span>
+            <span class="status-badge" id="badgeEmail"><i class="fas fa-at"></i><span id="badgeEmailText">—</span></span>
+          </div>
+        </div>
+      </section>
+      <div class="header-actions">
+        <button class="btn btn-primary" id="btnIrOportunidades"><i class="fas fa-route"></i> Ver oportunidades</button>
+        <a class="btn btn-warning" id="btnEmergencia" href="portal-emergencia.html">
+          <i class="fas fa-triangle-exclamation"></i> Emergência
+        </a>
+        <button class="btn btn-outline" id="btnCompletarCadastro"><i class="fas fa-id-card"></i> Completar cadastro</button>
+        <button class="btn" id="btnSairPortal"><i class="fas fa-sign-out-alt"></i> Sair</button>
+      </div>
+    </header>
+
+    <main class="portal-grid">
+      <section class="card" id="notificacoesCard" style="display:none;">
+        <div class="inline-actions">
+          <h2><span class="icon"><i class="fas fa-bell"></i></span> Notificações</h2>
+          <span class="chip warning" id="contadorNotificacoes">0</span>
+          <span class="spacer"></span>
+          <button class="refresh-btn" id="btnAtualizarNotificacoes" title="Atualizar notificações"><i class="fas fa-rotate"></i></button>
+        </div>
+        <div id="notificacoesLista" class="notifications-list"></div>
+        <div id="notificacoesEmpty" class="empty-state" style="display:none;">
+          <i class="fas fa-check-circle"></i>
+          <strong>Nenhuma notificação</strong>
+          <p>Tudo em dia! Você não tem notificações pendentes.</p>
+        </div>
+      </section>
+
+      <section class="card" id="minhasViagensCard">
+        <div class="inline-actions">
+          <h2><span class="icon"><i class="fas fa-truck"></i></span> Minhas viagens</h2>
+          <span class="chip" id="viagensResumo">Carregando...</span>
+          <span class="spacer"></span>
+          <button class="refresh-btn" id="btnAtualizarViagens" title="Atualizar minhas viagens"><i class="fas fa-rotate"></i></button>
+        </div>
+        <div id="minhasViagensLista" class="table-list"></div>
+        <div id="minhasViagensEmpty" class="empty-state" style="display:none;">
+          <i class="fas fa-clipboard-list"></i>
+          <strong>Nenhuma viagem vinculada ainda</strong>
+          <p>Quando você assumir uma oportunidade, ela aparecerá aqui para acompanhamento.</p>
+        </div>
+      </section>
+
+      <section class="card" id="painelResumo">
+        <div class="inline-actions">
+          <h2><span class="icon"><i class="fas fa-gauge-high"></i></span> Seu painel</h2>
+          <span class="chip success" id="chipStatusMotorista" style="display:none;"><i class="fas fa-check-circle"></i> Cadastro aprovado</span>
+          <span class="chip warning" id="chipCadastroPendente" style="display:none;"><i class="fas fa-hourglass-half"></i> Cadastro pendente</span>
+        </div>
+        <div class="quick-actions">
+          <div class="quick-card">
+            <strong><i class="fas fa-phone me-2"></i> Telefone principal</strong>
+            <p id="infoTelefone">—</p>
+          </div>
+          <div class="quick-card">
+            <strong><i class="fas fa-truck-moving me-2"></i> Veículo</strong>
+            <p id="infoVeiculo">Atualize seu cadastro para informar veículo e placas.</p>
+          </div>
+          <div class="quick-card">
+            <strong><i class="fas fa-circle-info me-2"></i> Situação</strong>
+            <p id="infoSituacao">Estamos validando seus dados.</p>
+          </div>
+        </div>
+        <div class="danger-alert" id="alertCadastro">
+          <strong><i class="fas fa-exclamation-triangle me-2"></i> Cadastro necessário</strong>
+          <p>Para assumir viagens e ter acesso completo ao portal, conclua seu cadastro. Clique em "Completar cadastro" ou selecione uma oportunidade.</p>
+        </div>
+      </section>
+    </main>
+
+    <section class="card" id="oportunidadesCard">
+      <div class="inline-actions">
+        <h2><span class="icon"><i class="fas fa-compass"></i></span> Oportunidades de viagem</h2>
+        <span class="chip" id="contadorOportunidades">0 oportunidades</span>
+        <span class="spacer"></span>
+        <button class="refresh-btn" id="btnAtualizarOportunidades" title="Atualizar oportunidades"><i class="fas fa-arrows-rotate"></i></button>
+      </div>
+      <div id="oportunidadesLoader" class="loader" style="display:none;">Buscando oportunidades disponíveis...</div>
+      <div id="oportunidadesLista" class="opportunities-grid"></div>
+      <div id="oportunidadesEmpty" class="empty-state" style="display:none;">
+        <i class="fas fa-handshake-angle"></i>
+        <strong>Sem oportunidades disponíveis</strong>
+        <p>Assim que novas coletas forem lançadas sem motorista vinculado, elas aparecerão aqui automaticamente.</p>
+      </div>
+    </section>
+  </div>
+
+  <div class="modal-overlay" id="cadastroModal">
+    <div class="modal-card">
+      <button class="modal-close" id="btnFecharModal" aria-label="Fechar"><i class="fas fa-xmark"></i></button>
+      <h3><i class="fas fa-id-card-clip me-2"></i> Completar cadastro</h3>
+      <p>Informe seus dados para que possamos validar seu perfil e liberar o aceite de viagens.</p>
+
+      <form id="formCadastroMotorista" autocomplete="off">
+        <div class="form-grid">
+          <label>Nome completo
+            <input type="text" id="campoNome" placeholder="Ex: João da Silva" required>
+          </label>
+          <label>Telefone principal
+            <input type="text" id="campoTelefone1" placeholder="(00) 00000-0000" required>
+          </label>
+          <label>Telefone secundário
+            <input type="text" id="campoTelefone2" placeholder="(00) 00000-0000">
+          </label>
+          <label>Classe do veículo
+            <select id="campoClasse">
+              <option value="">Selecione</option>
+              <option value="leve">Leve</option>
+              <option value="medio">Médio</option>
+              <option value="pesado">Pesado</option>
+            </select>
+          </label>
+          <label>Tipo de veículo
+            <select id="campoTipoVeiculo">
+              <option value="">Selecione o tipo de veículo</option>
+              <option value="Cavalo Mecânico">Cavalo Mecânico</option>
+              <option value="Truck 6x2">Truck 6x2</option>
+              <option value="Caminhão Toco">Caminhão Toco</option>
+              <option value="Caminhão 3/4">Caminhão 3/4</option>
+              <option value="Caminhão VUC">Caminhão VUC</option>
+              <option value="Bitruck">Bitruck</option>
+              <option value="Carreta LS">Carreta LS</option>
+              <option value="Bitrem">Bitrem</option>
+              <option value="Rodotrem">Rodotrem</option>
+              <option value="Ônibus">Ônibus</option>
+              <option value="Van">Van</option>
+              <option value="Outro">Outro</option>
+            </select>
+          </label>
+          <label>Tipo de carroceria
+            <select id="campoTipoCarroceria">
+              <option value="">Selecione o tipo de carroceria</option>
+              <option value="Baú">Baú</option>
+              <option value="Sider">Sider</option>
+              <option value="Graneleira">Graneleira</option>
+              <option value="Frigorífica">Frigorífica</option>
+              <option value="Plataforma">Plataforma</option>
+              <option value="Caçamba">Caçamba</option>
+              <option value="Basculante">Basculante</option>
+              <option value="Tanque">Tanque</option>
+              <option value="Porta Contêiner">Porta Contêiner</option>
+              <option value="Prancha">Prancha</option>
+              <option value="Munck">Munck</option>
+              <option value="Carga Seca">Carga Seca</option>
+              <option value="Outro">Outro</option>
+            </select>
+          </label>
+          <label>Placa cavalo
+            <input type="text" id="campoPlacaCavalo" placeholder="AAA0A00">
+          </label>
+          <label>Placa carreta 1
+            <input type="text" id="campoPlacaCarreta1" placeholder="AAA0A00">
+          </label>
+          <label>Placa carreta 2
+            <input type="text" id="campoPlacaCarreta2" placeholder="AAA0A00">
+          </label>
+          <label>Placa carreta 3
+            <input type="text" id="campoPlacaCarreta3" placeholder="AAA0A00">
+          </label>
+        </div>
+
+        <p class="helper-text"><i class="fas fa-lock me-2"></i> Seus dados são utilizados apenas para operações logísticas e contato rápido.</p>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" id="btnCancelarCadastro">Cancelar</button>
+          <button type="submit" class="btn btn-primary" id="btnSalvarCadastro"><span class="btn-text"><i class="fas fa-save me-2"></i>Salvar cadastro</span></button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="documentosModal">
+    <div class="modal-card docs-modal">
+      <button class="modal-close" id="btnFecharDocumentos" aria-label="Fechar"><i class="fas fa-xmark"></i></button>
+      <div class="docs-modal-header">
+        <h3><i class="fas fa-file-upload me-2"></i> Envio de documentos</h3>
+        <p class="docs-instructions">Antes de avançarmos com a viagem, precisamos validar toda a documentação. Envie arquivos em PDF ou foto nítida. Todos os campos são obrigatórios.</p>
+        <div class="docs-summary" id="docsResumo">Selecione uma oportunidade para visualizar o resumo aqui.</div>
+      </div>
+      <form id="formDocumentos" autocomplete="off">
+        <div class="docs-section">
+          <h4><i class="fas fa-user-shield"></i> 1. Dados do Proprietário</h4>
+          <p>Envie CNH (ou RG + CPF), comprovante de residência, telefone e dados bancários (banco, agência, conta, chave PIX) e ANTT.</p>
+          <small>Formatos aceitos: PDF ou imagem (máx. 10 MB por arquivo).</small>
+          <input type="file" id="docsProprietario" class="file-input-modern" accept=".pdf,image/*" multiple required>
+        </div>
+
+        <div class="docs-section">
+          <h4><i class="fas fa-truck-front"></i> 2. Documentos do Veículo</h4>
+          <p>Envie os CRLVs atualizados (2024 ou 2025) do cavalo e de todas as carretas/implementos.</p>
+          <input type="file" id="docsVeiculo" class="file-input-modern" accept=".pdf,image/*" multiple required>
+        </div>
+
+        <div class="docs-section">
+          <h4><i class="fas fa-id-card"></i> 3. Dados do Motorista</h4>
+          <p>CNH atualizada, comprovante de residência e telefone para contato.</p>
+          <input type="file" id="docsMotorista" class="file-input-modern" accept=".pdf,image/*" multiple required>
+        </div>
+
+        <div class="docs-section">
+          <h4><i class="fas fa-address-book"></i> 4. Referências</h4>
+          <p>Informe no mínimo duas referências pessoais e duas referências comerciais.</p>
+          <div class="refs-grid">
+            <input type="text" id="refPessoal1" placeholder="Referência pessoal 1" required>
+            <input type="text" id="refPessoal2" placeholder="Referência pessoal 2" required>
+            <input type="text" id="refComercial1" placeholder="Referência comercial 1" required>
+            <input type="text" id="refComercial2" placeholder="Referência comercial 2" required>
+          </div>
+          <div class="docs-note">
+            <strong>Atenção:</strong> descreva cada referência com nome completo e telefone/contato. Sem essas informações a liberação pode ser rejeitada.
+          </div>
+        </div>
+      </form>
+      
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline" id="btnCancelarDocumentos">Cancelar</button>
+        <button type="submit" form="formDocumentos" class="btn btn-primary" id="btnEnviarDocumentos"><span class="btn-text"><i class="fas fa-paper-plane me-2"></i>Enviar e assumir viagem</span></button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast-container" id="toastContainer"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    const DOCUMENT_CATEGORY_LABELS = {
+      proprietario: 'Documentos - Proprietário',
+      veiculo: 'Documentos - Veículo',
+      motorista: 'Documentos - Motorista',
+      outro: 'Documentos'
+    };
+    const REQUIRED_DOC_CATEGORIES = ['proprietario', 'veiculo', 'motorista'];
+
+    const state = {
+      supabase: null,
+      session: null,
+      user: null,
+      motorista: null,
+      oportunidades: [],
+      viagens: [],
+      carregandoOportunidades: false,
+      carregandoViagens: false,
+      documentosStatus: null,
+      selectedOpportunity: null,
+      solicitacaoIdParaAtender: null
+    };
+
+    const elements = {
+      driverAvatar: document.getElementById('driverAvatar'),
+      driverName: document.getElementById('driverName'),
+      driverMessage: document.getElementById('driverMessage'),
+      badgeCadastro: document.getElementById('badgeCadastro'),
+      badgeEmail: document.getElementById('badgeEmail'),
+      badgeEmailText: document.getElementById('badgeEmailText'),
+      chipStatusMotorista: document.getElementById('chipStatusMotorista'),
+      chipCadastroPendente: document.getElementById('chipCadastroPendente'),
+      infoTelefone: document.getElementById('infoTelefone'),
+      infoVeiculo: document.getElementById('infoVeiculo'),
+      infoSituacao: document.getElementById('infoSituacao'),
+      alertCadastro: document.getElementById('alertCadastro'),
+      viagensResumo: document.getElementById('viagensResumo'),
+      minhasViagensLista: document.getElementById('minhasViagensLista'),
+      minhasViagensEmpty: document.getElementById('minhasViagensEmpty'),
+      oportunidadesLista: document.getElementById('oportunidadesLista'),
+      oportunidadesEmpty: document.getElementById('oportunidadesEmpty'),
+      oportunidadesLoader: document.getElementById('oportunidadesLoader'),
+      contadorOportunidades: document.getElementById('contadorOportunidades'),
+      btnIrOportunidades: document.getElementById('btnIrOportunidades'),
+      btnSairPortal: document.getElementById('btnSairPortal'),
+      btnCompletarCadastro: document.getElementById('btnCompletarCadastro'),
+      btnAtualizarOportunidades: document.getElementById('btnAtualizarOportunidades'),
+      btnAtualizarViagens: document.getElementById('btnAtualizarViagens'),
+      btnAtualizarNotificacoes: document.getElementById('btnAtualizarNotificacoes'),
+      notificacoesCard: document.getElementById('notificacoesCard'),
+      notificacoesLista: document.getElementById('notificacoesLista'),
+      notificacoesEmpty: document.getElementById('notificacoesEmpty'),
+      contadorNotificacoes: document.getElementById('contadorNotificacoes'),
+      modal: document.getElementById('cadastroModal'),
+      btnFecharModal: document.getElementById('btnFecharModal'),
+      btnCancelarCadastro: document.getElementById('btnCancelarCadastro'),
+      formCadastro: document.getElementById('formCadastroMotorista'),
+      campoNome: document.getElementById('campoNome'),
+      campoTelefone1: document.getElementById('campoTelefone1'),
+      campoTelefone2: document.getElementById('campoTelefone2'),
+      campoClasse: document.getElementById('campoClasse'),
+      campoTipoVeiculo: document.getElementById('campoTipoVeiculo'),
+      campoTipoCarroceria: document.getElementById('campoTipoCarroceria'),
+      campoPlacaCavalo: document.getElementById('campoPlacaCavalo'),
+      campoPlacaCarreta1: document.getElementById('campoPlacaCarreta1'),
+      campoPlacaCarreta2: document.getElementById('campoPlacaCarreta2'),
+      campoPlacaCarreta3: document.getElementById('campoPlacaCarreta3'),
+      btnSalvarCadastro: document.getElementById('btnSalvarCadastro'),
+      documentosModal: document.getElementById('documentosModal'),
+      formDocumentos: document.getElementById('formDocumentos'),
+      btnFecharDocumentos: document.getElementById('btnFecharDocumentos'),
+      btnCancelarDocumentos: document.getElementById('btnCancelarDocumentos'),
+      btnEnviarDocumentos: document.getElementById('btnEnviarDocumentos'),
+      docsResumo: document.getElementById('docsResumo'),
+      docsProprietario: document.getElementById('docsProprietario'),
+      docsVeiculo: document.getElementById('docsVeiculo'),
+      docsMotorista: document.getElementById('docsMotorista'),
+      refPessoal1: document.getElementById('refPessoal1'),
+      refPessoal2: document.getElementById('refPessoal2'),
+      refComercial1: document.getElementById('refComercial1'),
+      refComercial2: document.getElementById('refComercial2'),
+      toastContainer: document.getElementById('toastContainer')
+    };
+
+    const referenciaInputsPessoais = [elements.refPessoal1, elements.refPessoal2].filter(Boolean);
+    const referenciaInputsComerciais = [elements.refComercial1, elements.refComercial2].filter(Boolean);
+
+    function formatCurrency(value) {
+      if (value === null || value === undefined || value === '') return '—';
+      const number = Number(value);
+      if (Number.isNaN(number)) return '—';
+      return number.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    }
+
+    function formatDistance(km) {
+      if (km === null || km === undefined || km === '') return '—';
+      const number = Number(km);
+      if (Number.isNaN(number)) return '—';
+      return number.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 }) + ' km';
+    }
+
+    function formatDate(value) {
+      if (!value) return '—';
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return '—';
+      return date.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' });
+    }
+
+    function escapeHtml(value) {
+      if (value === null || value === undefined) return '';
+      return value.toString()
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function normalizePhone(value) {
+      if (!value) return '';
+      const digits = value.toString().replace(/\D/g, '');
+      if (digits.length > 11) {
+        return digits.slice(-11);
+      }
+      if (digits.startsWith('55') && digits.length > 11) {
+        return digits.slice(-11);
+      }
+      return digits;
+    }
+
+    function formatPhone(value) {
+      const digits = normalizePhone(value).slice(0, 11);
+      if (!digits) return '—';
+      if (digits.length <= 10) {
+        return digits.replace(/(\d{0,2})(\d{0,4})(\d{0,4})/, (match, ddd, parte1, parte2) => {
+          const p1 = parte1 ? ` ${parte1}` : '';
+          const p2 = parte2 ? `-${parte2}` : '';
+          return ddd ? `(${ddd})${p1}${p2}` : parte1 + parte2;
+        }).trim();
+      }
+      return digits.replace(/(\d{0,2})(\d{0,5})(\d{0,4})/, (match, ddd, parte1, parte2) => {
+        const p1 = parte1 ? ` ${parte1}` : '';
+        const p2 = parte2 ? `-${parte2}` : '';
+        return ddd ? `(${ddd})${p1}${p2}` : parte1 + parte2;
+      }).trim();
+    }
+
+    function normalizePlate(value) {
+      if (!value) return '';
+      return value.toString().toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8);
+    }
+
+    function setSelectValue(select, value) {
+      if (!select) return;
+      const normalized = (value || '').toString().trim();
+      if (!normalized) {
+        select.value = '';
+        return;
+      }
+      const exists = Array.from(select.options).some(option => option.value === normalized);
+      if (!exists) {
+        const option = document.createElement('option');
+        option.value = normalized;
+        option.textContent = normalized;
+        select.appendChild(option);
+      }
+      select.value = normalized;
+    }
+
+    function toggleButtonLoading(button, isLoading, loadingLabel) {
+      if (!button) return;
+      if (isLoading) {
+        button.disabled = true;
+        button.dataset.originalText = button.dataset.originalText || button.innerHTML;
+        button.innerHTML = '<span class="loader"></span> ' + (loadingLabel || 'Processando...');
+      } else {
+        button.disabled = false;
+        if (button.dataset.originalText) {
+          button.innerHTML = button.dataset.originalText;
+        }
+      }
+    }
+
+    function showToast(message, type = 'success') {
+      if (!elements.toastContainer) return;
+      const toast = document.createElement('div');
+      toast.className = `toast ${type}`;
+      toast.innerHTML = `<i class="fas ${type === 'success' ? 'fa-circle-check' : 'fa-circle-exclamation'}"></i><span>${escapeHtml(message)}</span>`;
+      elements.toastContainer.appendChild(toast);
+      setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateX(40px)';
+        setTimeout(() => toast.remove(), 220);
+      }, 3200);
+    }
+
+    function toggleModal(open) {
+      if (!elements.modal) return;
+      if (open) {
+        elements.modal.classList.add('active');
+      } else {
+        elements.modal.classList.remove('active');
+      }
+    }
+
+    async function carregarConfigSupabase() {
+      const response = await fetch('/api/supabase-config');
+      if (!response.ok) {
+        throw new Error('Configuração Supabase indisponível');
+      }
+      const config = await response.json();
+      if (!window.supabase) {
+        throw new Error('Biblioteca Supabase não carregada');
+      }
+      state.supabase = window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey, {
+        auth: {
+          persistSession: true,
+          detectSessionInUrl: true
+        }
+      });
+    }
+
+    async function carregarSessao() {
+      const { data } = await state.supabase.auth.getSession();
+      if (!data?.session) {
+        window.location.href = 'login-motorista.html';
+        return false;
+      }
+      state.session = data.session;
+      return true;
+    }
+
+    function atualizarCabecalho() {
+      const motorista = state.motorista;
+      const user = state.user;
+
+      const nome = motorista?.nome || user?.nome || user?.email || 'Motorista';
+      elements.driverName.textContent = nome;
+      elements.driverMessage.textContent = motorista
+        ? 'Você está pronto para acompanhar suas viagens e assumir novas oportunidades.'
+        : 'Complete seu cadastro para poder assumir viagens. Você ainda pode visualizar oportunidades.';
+
+      const email = user?.email || '—';
+      elements.badgeEmailText.textContent = email;
+      elements.driverAvatar.textContent = nome.split(' ').slice(0, 2).map(part => part[0] || '').join('').toUpperCase() || 'MM';
+
+      if (motorista) {
+        elements.badgeCadastro.textContent = motorista.status === 'ativo' ? 'Cadastro aprovado' : `Status: ${motorista.status}`;
+        elements.badgeCadastro.classList.remove('warning');
+        elements.badgeCadastro.classList.add('success');
+        elements.badgeCadastro.innerHTML = `<i class="fas fa-shield-check"></i> ${escapeHtml(elements.badgeCadastro.textContent)}`;
+        elements.chipStatusMotorista.style.display = 'inline-flex';
+        elements.chipCadastroPendente.style.display = 'none';
+        elements.alertCadastro.classList.remove('active');
+      } else {
+        elements.badgeCadastro.textContent = 'Cadastro pendente';
+        elements.badgeCadastro.classList.remove('success');
+        elements.badgeCadastro.classList.add('warning');
+        elements.badgeCadastro.innerHTML = '<i class="fas fa-hourglass-half"></i> Cadastro pendente';
+        elements.chipStatusMotorista.style.display = 'none';
+        elements.chipCadastroPendente.style.display = 'inline-flex';
+        elements.alertCadastro.classList.add('active');
+      }
+
+      elements.infoTelefone.textContent = motorista?.telefone1 ? formatPhone(motorista.telefone1) : 'Informe seu telefone principal para contato rápido.';
+      const placas = motorista?.placas || {};
+      const placaList = [placas.cavalo, placas.carreta1, placas.carreta2, placas.carreta3].filter(Boolean);
+      if (placaList.length || motorista?.classeVeiculo || motorista?.tipoVeiculo) {
+        const placaTexto = placaList.length ? placaList.join(' • ') : 'Atualize suas placas para agilizar o despacho.';
+        elements.infoVeiculo.innerHTML = `${motorista?.classeVeiculo ? escapeHtml(motorista.classeVeiculo) + ' · ' : ''}${motorista?.tipoVeiculo ? escapeHtml(motorista.tipoVeiculo) + ' · ' : ''}${escapeHtml(placaTexto)}`;
+      } else {
+        elements.infoVeiculo.textContent = 'Informe classe, tipo e placas do veículo para facilitar o matching com cargas.';
+      }
+
+      elements.infoSituacao.textContent = motorista
+        ? 'Cadastro validado. Você pode assumir novas viagens.'
+        : 'Complete o cadastro para liberar o aceite de viagens.';
+
+      elements.btnCompletarCadastro.style.display = motorista ? 'none' : 'inline-flex';
+
+      if (motorista) {
+        atualizarStatusDocumentosUI();
+      }
+    }
+
+    async function carregarPerfil() {
+      const response = await fetch('/api/motoristas/auth/me', {
+        headers: {
+          Authorization: `Bearer ${state.session.access_token}`
+        }
+      });
+
+      if (response.status === 401) {
+        await state.supabase.auth.signOut();
+        window.location.href = 'login-motorista.html';
+        return;
+      }
+
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result.error || 'Falha ao carregar perfil');
+      }
+
+      state.user = result.user;
+      state.motorista = result.motorista;
+      atualizarCabecalho();
+    await carregarStatusDocumentos(true);
+    }
+
+    async function carregarOportunidades() {
+      state.carregandoOportunidades = true;
+      elements.oportunidadesLoader.style.display = 'inline-flex';
+      elements.oportunidadesEmpty.style.display = 'none';
+      elements.oportunidadesLista.innerHTML = '';
+
+      try {
+        const response = await fetch('/api/motoristas/oportunidades', {
+          headers: {
+            Authorization: `Bearer ${state.session.access_token}`
+          }
+        });
+
+        if (response.status === 401) {
+          await state.supabase.auth.signOut();
+          window.location.href = 'login-motorista.html';
+          return;
+        }
+
+        const result = await response.json();
+        if (!response.ok) {
+          throw new Error(result.error || 'Não foi possível carregar oportunidades');
+        }
+
+        state.oportunidades = result.oportunidades || [];
+        renderOportunidades();
+      } catch (error) {
+        console.error('Erro ao carregar oportunidades:', error);
+        showToast(error.message || 'Erro ao carregar oportunidades', 'error');
+        elements.oportunidadesEmpty.style.display = 'flex';
+      } finally {
+        state.carregandoOportunidades = false;
+        elements.oportunidadesLoader.style.display = 'none';
+      }
+    }
+
+    function renderOportunidades() {
+      const oportunidades = state.oportunidades;
+      elements.contadorOportunidades.textContent = `${oportunidades.length} oportunidade${oportunidades.length === 1 ? '' : 's'}`;
+
+      if (!oportunidades.length) {
+        elements.oportunidadesLista.innerHTML = '';
+        elements.oportunidadesEmpty.style.display = 'flex';
+        return;
+      }
+
+      elements.oportunidadesEmpty.style.display = 'none';
+      const html = oportunidades.map(op => {
+        return `
+          <article class="opportunity-card" data-coleta-id="${escapeHtml(op.id)}">
+            <div class="opportunity-header">
+              <h3>${escapeHtml(op.cliente || 'Cliente confidencial')}</h3>
+              <span class="chip ${op.prioridade === 'urgente' ? 'danger' : op.prioridade === 'alta' ? 'warning' : 'success'}">${escapeHtml(op.prioridade || 'normal')}</span>
+            </div>
+            <div class="opportunity-route">
+              <span><i class="fas fa-location-dot"></i> ${escapeHtml(op.origem || 'Origem não informada')}</span>
+              <i class="fas fa-arrow-right"></i>
+              <span><i class="fas fa-flag-checkered"></i> ${escapeHtml(op.destino || 'Destino não informado')}</span>
+            </div>
+            <div class="info-grid">
+              <div>
+                <strong>Data</strong>
+                ${formatDate(op.dataRecebimento)}
+              </div>
+              <div>
+                <strong>Valor</strong>
+                ${formatCurrency(op.valor)}
+              </div>
+              <div>
+                <strong>Distância</strong>
+                ${formatDistance(op.km)}
+              </div>
+              <div>
+                <strong>Veículo</strong>
+                ${escapeHtml(op.veiculo || 'Não informado')}
+              </div>
+            </div>
+            ${op.observacoes ? `<p style="font-size:0.82rem;color:${'var(--muted)'};background:rgba(15,23,42,0.45);padding:10px 12px;border-radius:14px;">${escapeHtml(op.observacoes)}</p>` : ''}
+            <div class="opportunity-actions">
+              <span class="chip">Status: ${escapeHtml(op.status || 'pendente')}</span>
+              <button class="small-btn primary" data-action="assumir" data-coleta-id="${escapeHtml(op.id)}"><i class="fas fa-hand-holding"></i> Assumir viagem</button>
+            </div>
+          </article>
+        `;
+      }).join('');
+      elements.oportunidadesLista.innerHTML = html;
+    }
+
+    async function carregarViagens() {
+      state.carregandoViagens = true;
+      elements.minhasViagensEmpty.style.display = 'none';
+      elements.minhasViagensLista.innerHTML = '<div class="loader">Carregando suas viagens...</div>';
+
+      try {
+        const response = await fetch('/api/motoristas/viagens', {
+          headers: {
+            Authorization: `Bearer ${state.session.access_token}`
+          }
+        });
+
+        if (response.status === 401) {
+          await state.supabase.auth.signOut();
+          window.location.href = 'login-motorista.html';
+          return;
+        }
+
+        const result = await response.json();
+        if (!response.ok) {
+          throw new Error(result.error || 'Não foi possível carregar suas viagens');
+        }
+
+        if (result.motorista) {
+          state.motorista = result.motorista;
+          atualizarCabecalho();
+        }
+
+        state.viagens = result.viagens || [];
+        renderViagens();
+      } catch (error) {
+        console.error('Erro ao carregar viagens:', error);
+        showToast(error.message || 'Erro ao carregar suas viagens', 'error');
+        elements.minhasViagensEmpty.style.display = 'flex';
+      } finally {
+        state.carregandoViagens = false;
+      }
+    }
+
+    function renderViagens() {
+      const viagens = state.viagens;
+      const total = viagens.length;
+      if (!total) {
+        elements.minhasViagensLista.innerHTML = '';
+        elements.minhasViagensEmpty.style.display = 'flex';
+        elements.viagensResumo.textContent = 'Nenhuma viagem ainda';
+        return;
+      }
+
+      elements.minhasViagensEmpty.style.display = 'none';
+      elements.viagensResumo.textContent = `${total} viagem${total === 1 ? '' : 's'} em andamento`;
+
+      const html = viagens.map(viagem => {
+        return `
+          <article class="trip-card">
+            <h3>
+              <span>${escapeHtml(viagem.cliente || 'Cliente confidencial')}</span>
+              <span class="status-badge success"><i class="fas fa-circle"></i> ${escapeHtml(viagem.status || 'em andamento')}</span>
+            </h3>
+            <div class="trip-meta">
+              <span><i class="fas fa-location-dot"></i> ${escapeHtml(viagem.origem || 'Origem não informada')}</span>
+              <span><i class="fas fa-flag-checkered"></i> ${escapeHtml(viagem.destino || 'Destino não informado')}</span>
+              <span><i class="fas fa-calendar"></i> ${formatDate(viagem.dataRecebimento)}</span>
+              <span><i class="fas fa-road"></i> ${formatDistance(viagem.km)}</span>
+              <span><i class="fas fa-coins"></i> ${formatCurrency(viagem.valor)}</span>
+              <span><i class="fas fa-diagram-project"></i> Etapa: ${escapeHtml((viagem.etapaAtual || '—').toUpperCase())}</span>
+            </div>
+          </article>
+        `;
+      }).join('');
+
+      elements.minhasViagensLista.innerHTML = html;
+    }
+
+    async function carregarNotificacoes() {
+      if (!state.session || !state.session.access_token) {
+        return;
+      }
+
+      try {
+        const response = await fetch('/api/motoristas/notificacoes', {
+          headers: {
+            Authorization: `Bearer ${state.session.access_token}`
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error('Erro ao carregar notificações');
+        }
+
+        const result = await response.json();
+        const notificacoes = result.notificacoes || [];
+
+        if (notificacoes.length > 0) {
+          elements.notificacoesCard.style.display = 'block';
+          elements.notificacoesEmpty.style.display = 'none';
+          elements.contadorNotificacoes.textContent = notificacoes.length;
+
+          const html = notificacoes.map(notif => {
+            const dataFormatada = notif.solicitadoEm ? new Date(notif.solicitadoEm).toLocaleString('pt-BR') : 'Agora';
+            return `
+              <div class="notification-item">
+                <div class="notification-icon">
+                  <i class="fas fa-exclamation-circle"></i>
+                </div>
+                <div class="notification-content">
+                  <h4>Atualização solicitada: ${escapeHtml(notif.categoriaLabel)}</h4>
+                  <p class="notification-motive">${escapeHtml(notif.motivo)}</p>
+                  ${notif.coleta ? `
+                    <p class="notification-coleta">
+                      <i class="fas fa-truck"></i> 
+                      ${escapeHtml(notif.coleta.cliente)}: ${escapeHtml(notif.coleta.origem)} → ${escapeHtml(notif.coleta.destino)}
+                    </p>
+                  ` : ''}
+                  <p class="notification-meta">
+                    <i class="fas fa-clock"></i> ${dataFormatada} · 
+                    <i class="fas fa-user"></i> ${escapeHtml(notif.solicitadoPor)}
+                  </p>
+                </div>
+                <div class="notification-actions">
+                  <button class="btn btn-primary btn-sm" onclick="window.abrirModalAtualizacaoDocumento('${notif.coletaId}', '${notif.categoria}', '${notif.id}')">
+                    <i class="fas fa-upload"></i> Atualizar
+                  </button>
+                </div>
+              </div>
+            `;
+          }).join('');
+
+          elements.notificacoesLista.innerHTML = html;
+        } else {
+          elements.notificacoesCard.style.display = 'none';
+        }
+      } catch (error) {
+        console.error('Erro ao carregar notificações:', error);
+        elements.notificacoesCard.style.display = 'none';
+      }
+    }
+
+    window.abrirModalAtualizacaoDocumento = async function(coletaId, categoria, solicitacaoId) {
+      if (!coletaId || !categoria) return;
+
+      state.selectedOpportunity = { id: coletaId };
+      const status = await carregarStatusDocumentos(true);
+      
+      // Preencher apenas a categoria solicitada
+      const categoriaMap = {
+        'proprietario': elements.docsProprietario,
+        'veiculo': elements.docsVeiculo,
+        'motorista': elements.docsMotorista
+      };
+
+      const inputCategoria = categoriaMap[categoria.toLowerCase()];
+      if (inputCategoria) {
+        inputCategoria.required = true;
+        // Desmarcar outras categorias
+        Object.values(categoriaMap).forEach(input => {
+          if (input && input !== inputCategoria) {
+            input.required = false;
+          }
+        });
+      }
+
+      // Armazenar ID da solicitação para marcar como atendida depois
+      state.solicitacaoIdParaAtender = solicitacaoId;
+
+      toggleDocumentosModal(true);
+    }
+
+    function atualizarStatusDocumentosUI() {
+      if (!state.motorista) {
+        return;
+      }
+
+      if (!state.documentosStatus || !state.documentosStatus.categorias) {
+        return;
+      }
+
+      const pendentes = REQUIRED_DOC_CATEGORIES.filter(cat => !(state.documentosStatus.categorias[cat]?.possui));
+      const labels = pendentes.map(cat => DOCUMENT_CATEGORY_LABELS[cat] || 'Documentos');
+
+      if (labels.length) {
+        if (elements.infoSituacao) {
+          elements.infoSituacao.textContent = `Documentação pendente: ${labels.join(', ')}.`;
+        }
+        if (elements.alertCadastro) {
+          elements.alertCadastro.classList.add('active');
+          elements.alertCadastro.innerHTML = `<strong><i class="fas fa-exclamation-triangle me-2"></i>Documentos pendentes</strong><p>Envie: ${labels.join(', ')}.</p>`;
+        }
+      } else {
+        if (elements.infoSituacao) {
+          elements.infoSituacao.textContent = 'Documentação enviada. Aguardando validação da central.';
+        }
+        if (elements.alertCadastro) {
+          elements.alertCadastro.classList.remove('active');
+        }
+      }
+    }
+
+    async function carregarStatusDocumentos(force = false) {
+      if (!state.session || !state.session.access_token) {
+        return null;
+      }
+
+      if (!force && state.documentosStatus) {
+        return state.documentosStatus;
+      }
+
+      try {
+        const response = await fetch('/api/motoristas/documentos/status', {
+          headers: {
+            Authorization: `Bearer ${state.session.access_token}`
+          }
+        });
+
+        if (response.status === 401) {
+          await state.supabase.auth.signOut();
+          window.location.href = 'login-motorista.html';
+          return null;
+        }
+
+        const result = await response.json();
+        if (!response.ok) {
+          throw new Error(result.error || 'Não foi possível consultar seus documentos.');
+        }
+
+        state.documentosStatus = result;
+        atualizarStatusDocumentosUI();
+        return state.documentosStatus;
+      } catch (error) {
+        console.error('Erro ao consultar documentos:', error);
+        showToast(error.message || 'Erro ao consultar documentos.', 'error');
+        return null;
+      }
+    }
+
+    function toggleDocumentosModal(open) {
+      if (!elements.documentosModal) return;
+      if (open) {
+        elements.documentosModal.classList.add('active');
+      } else {
+        elements.documentosModal.classList.remove('active');
+      }
+    }
+
+    function resetDocumentosForm() {
+      if (elements.formDocumentos) {
+        elements.formDocumentos.reset();
+      }
+      if (elements.docsProprietario) elements.docsProprietario.value = '';
+      if (elements.docsVeiculo) elements.docsVeiculo.value = '';
+      if (elements.docsMotorista) elements.docsMotorista.value = '';
+      referenciaInputsPessoais.forEach(input => { if (input) input.value = ''; });
+      referenciaInputsComerciais.forEach(input => { if (input) input.value = ''; });
+      if (elements.docsResumo) {
+        elements.docsResumo.textContent = 'Selecione uma oportunidade para visualizar o resumo aqui.';
+      }
+    }
+
+    function fecharDocumentosModal() {
+      toggleDocumentosModal(false);
+      state.selectedOpportunity = null;
+      resetDocumentosForm();
+    }
+
+    async function prepararAssumirOportunidade(coletaId) {
+      if (!coletaId) return;
+
+      if (!state.motorista) {
+        showToast('Antes de assumir uma viagem, complete seu cadastro.', 'error');
+        abrirModalCadastro();
+        return;
+      }
+
+      const oportunidade = state.oportunidades.find(op => op.id === coletaId) || null;
+      state.selectedOpportunity = oportunidade;
+
+      resetDocumentosForm();
+
+      const status = await carregarStatusDocumentos(true);
+      const pendentes = REQUIRED_DOC_CATEGORIES.filter(cat => !(status?.categorias?.[cat]?.possui));
+
+      if (!pendentes.length) {
+        try {
+          showToast('Documentação já enviada. Reservando viagem...', 'success');
+          await confirmarAssumirColeta(coletaId);
+          await Promise.all([carregarOportunidades(), carregarViagens()]);
+        } catch (error) {
+          console.error('Erro ao assumir viagem:', error);
+          showToast(error.message || 'Não foi possível assumir esta viagem agora.', 'error');
+        }
+        return;
+      }
+
+      const labelsPendentes = pendentes.map(cat => DOCUMENT_CATEGORY_LABELS[cat] || 'Documentos');
+
+      if (elements.docsResumo) {
+        const detalhesOportunidade = oportunidade ? `
+            <strong>Cliente:</strong> ${escapeHtml(oportunidade.cliente || '—')}<br>
+            <strong>Origem:</strong> ${escapeHtml(oportunidade.origem || '—')}<br>
+            <strong>Destino:</strong> ${escapeHtml(oportunidade.destino || '—')}<br>
+            <strong>Prioridade:</strong> ${escapeHtml((oportunidade.prioridade || 'normal').toUpperCase())}<br><br>` : '';
+        elements.docsResumo.innerHTML = `${detalhesOportunidade}<strong>Documentos pendentes:</strong><br>${labelsPendentes.map(label => `• ${escapeHtml(label)}`).join('<br>')}<br><br>Envie os arquivos solicitados abaixo.`;
+      }
+
+      if (elements.docsProprietario) {
+        elements.docsProprietario.required = pendentes.includes('proprietario');
+      }
+      if (elements.docsVeiculo) {
+        elements.docsVeiculo.required = pendentes.includes('veiculo');
+      }
+      if (elements.docsMotorista) {
+        elements.docsMotorista.required = pendentes.includes('motorista');
+      }
+
+      referenciaInputsPessoais.forEach(input => { if (input) input.required = true; });
+      referenciaInputsComerciais.forEach(input => { if (input) input.required = true; });
+
+      toggleDocumentosModal(true);
+    }
+
+    async function enviarDocumentos(event) {
+      event.preventDefault();
+
+      if (!state.selectedOpportunity || !state.selectedOpportunity.id) {
+        showToast('Selecione uma oportunidade válida.', 'error');
+        return;
+      }
+
+      const coletaId = state.selectedOpportunity.id;
+
+      const arquivosProprietario = elements.docsProprietario ? Array.from(elements.docsProprietario.files || []) : [];
+      const arquivosVeiculo = elements.docsVeiculo ? Array.from(elements.docsVeiculo.files || []) : [];
+      const arquivosMotorista = elements.docsMotorista ? Array.from(elements.docsMotorista.files || []) : [];
+
+      if (elements.docsProprietario?.required && !arquivosProprietario.length) {
+        showToast('Envie os documentos do proprietário.', 'error');
+        return;
+      }
+
+      if (elements.docsVeiculo?.required && !arquivosVeiculo.length) {
+        showToast('Envie os documentos do veículo.', 'error');
+        return;
+      }
+
+      if (elements.docsMotorista?.required && !arquivosMotorista.length) {
+        showToast('Envie os documentos do motorista.', 'error');
+        return;
+      }
+
+      const referenciasPessoais = referenciaInputsPessoais.map(input => (input?.value || '').trim()).filter(Boolean);
+      const referenciasComerciais = referenciaInputsComerciais.map(input => (input?.value || '').trim()).filter(Boolean);
+
+      if (referenciasPessoais.length < 2) {
+        showToast('Informe ao menos duas referências pessoais.', 'error');
+        return;
+      }
+
+      if (referenciasComerciais.length < 2) {
+        showToast('Informe ao menos duas referências comerciais.', 'error');
+        return;
+      }
+
+      const formData = new FormData();
+      
+      // Adicionar arquivos com suas categorias na ordem correta
+      arquivosProprietario.forEach(file => {
+        formData.append('arquivos', file);
+        formData.append('categorias[]', 'proprietario');
+      });
+      
+      arquivosVeiculo.forEach(file => {
+        formData.append('arquivos', file);
+        formData.append('categorias[]', 'veiculo');
+      });
+      
+      arquivosMotorista.forEach(file => {
+        formData.append('arquivos', file);
+        formData.append('categorias[]', 'motorista');
+      });
+
+      formData.append('referencias_pessoais', JSON.stringify(referenciasPessoais));
+      formData.append('referencias_comerciais', JSON.stringify(referenciasComerciais));
+
+      try {
+        toggleButtonLoading(elements.btnEnviarDocumentos, true, 'Enviando...');
+
+        const response = await fetch(`/api/motoristas/coletas/${encodeURIComponent(coletaId)}/documentos`, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${state.session.access_token}`
+          },
+          body: formData
+        });
+
+        const result = await response.json();
+        if (!response.ok) {
+          throw new Error(result.error || 'Não foi possível enviar os documentos agora.');
+        }
+
+        await confirmarAssumirColeta(coletaId);
+
+        // Marcar solicitação como atendida se houver
+        if (state.solicitacaoIdParaAtender) {
+          try {
+            await fetch(`/api/motoristas/solicitacoes/${state.solicitacaoIdParaAtender}/atender`, {
+              method: 'POST',
+              headers: {
+                Authorization: `Bearer ${state.session.access_token}`
+              }
+            });
+            state.solicitacaoIdParaAtender = null;
+          } catch (error) {
+            console.warn('Não foi possível marcar solicitação como atendida:', error);
+          }
+        }
+
+        showToast('Documentos enviados! A equipe recebeu a viagem para etapa GR.', 'success');
+        fecharDocumentosModal();
+        await Promise.all([carregarOportunidades(), carregarViagens(), carregarStatusDocumentos(true), carregarNotificacoes()]);
+      } catch (error) {
+        console.error('Erro ao enviar documentos:', error);
+        showToast(error.message || 'Erro ao enviar documentos. Tente novamente.', 'error');
+      } finally {
+        toggleButtonLoading(elements.btnEnviarDocumentos, false);
+      }
+    }
+
+    async function confirmarAssumirColeta(coletaId) {
+      const response = await fetch(`/api/motoristas/oportunidades/${encodeURIComponent(coletaId)}/assumir`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${state.session.access_token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      const result = await response.json();
+      if (response.status === 409) {
+        throw new Error(result.error || 'Essa coleta já foi assumida por outro motorista.');
+      }
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Não foi possível assumir esta coleta.');
+      }
+
+      state.motorista = result.motorista || state.motorista;
+    await carregarStatusDocumentos(true);
+    atualizarCabecalho();
+      return result;
+    }
+
+    function abrirModalCadastro() {
+      preencherFormularioCadastro();
+      toggleModal(true);
+    }
+
+    function preencherFormularioCadastro() {
+      const user = state.user || {};
+      const motorista = state.motorista || {};
+      elements.campoNome.value = (motorista.nome || user.nome || user.email || '').trim();
+      elements.campoTelefone1.value = formatPhone(motorista.telefone1 || '');
+      elements.campoTelefone2.value = formatPhone(motorista.telefone2 || '');
+      elements.campoClasse.value = motorista.classeVeiculo || '';
+      setSelectValue(elements.campoTipoVeiculo, motorista.tipoVeiculo);
+      setSelectValue(elements.campoTipoCarroceria, motorista.tipoCarroceria);
+      elements.campoPlacaCavalo.value = motorista.placas?.cavalo || '';
+      elements.campoPlacaCarreta1.value = motorista.placas?.carreta1 || '';
+      elements.campoPlacaCarreta2.value = motorista.placas?.carreta2 || '';
+      elements.campoPlacaCarreta3.value = motorista.placas?.carreta3 || '';
+    }
+
+    async function salvarCadastro(event) {
+      event.preventDefault();
+
+      const nome = elements.campoNome.value.trim();
+      const telefone1 = normalizePhone(elements.campoTelefone1.value);
+      const telefone2 = normalizePhone(elements.campoTelefone2.value);
+
+      if (!nome || nome.length < 3) {
+        showToast('Informe seu nome completo.', 'error');
+        elements.campoNome.focus();
+        return;
+      }
+
+      if (!telefone1 || telefone1.length < 10) {
+        showToast('Informe um telefone válido com DDD.', 'error');
+        elements.campoTelefone1.focus();
+        return;
+      }
+
+      const payload = {
+        nome,
+        telefone: telefone1,
+        telefoneSecundario: telefone2,
+        classeVeiculo: elements.campoClasse.value.trim(),
+        tipoVeiculo: elements.campoTipoVeiculo.value.trim(),
+        tipoCarroceria: elements.campoTipoCarroceria.value.trim(),
+        placaCavalo: normalizePlate(elements.campoPlacaCavalo.value),
+        placaCarreta1: normalizePlate(elements.campoPlacaCarreta1.value),
+        placaCarreta2: normalizePlate(elements.campoPlacaCarreta2.value),
+        placaCarreta3: normalizePlate(elements.campoPlacaCarreta3.value)
+      };
+
+      try {
+        elements.btnSalvarCadastro.disabled = true;
+        elements.btnSalvarCadastro.innerHTML = '<span class="loader">Salvando...</span>';
+
+        const response = await fetch('/api/motoristas/auth/profile', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${state.session.access_token}`
+          },
+          body: JSON.stringify(payload)
+        });
+
+        const result = await response.json();
+        if (response.status === 409) {
+          showToast(result.error || 'Este telefone já está vinculado a outra conta.', 'error');
+          return;
+        }
+
+        if (!response.ok) {
+          throw new Error(result.error || 'Não foi possível salvar seu cadastro');
+        }
+
+        state.motorista = result.motorista;
+        atualizarCabecalho();
+        toggleModal(false);
+        showToast('Cadastro atualizado com sucesso! Você já pode assumir oportunidades.', 'success');
+        await carregarViagens();
+        await carregarOportunidades();
+      } catch (error) {
+        console.error('Erro ao salvar cadastro:', error);
+        showToast(error.message || 'Erro ao salvar seus dados', 'error');
+      } finally {
+        elements.btnSalvarCadastro.disabled = false;
+        elements.btnSalvarCadastro.innerHTML = '<span class="btn-text"><i class="fas fa-save me-2"></i>Salvar cadastro</span>';
+      }
+    }
+
+    function registrarEventos() {
+      elements.btnSairPortal.addEventListener('click', async () => {
+        await state.supabase.auth.signOut();
+        window.location.href = 'login-motorista.html';
+      });
+
+      elements.btnCompletarCadastro.addEventListener('click', () => abrirModalCadastro());
+      elements.btnIrOportunidades.addEventListener('click', () => {
+        document.getElementById('oportunidadesCard').scrollIntoView({ behavior: 'smooth' });
+      });
+
+      elements.btnAtualizarOportunidades.addEventListener('click', () => carregarOportunidades());
+      elements.btnAtualizarViagens.addEventListener('click', () => carregarViagens());
+      if (elements.btnAtualizarNotificacoes) {
+        elements.btnAtualizarNotificacoes.addEventListener('click', () => carregarNotificacoes());
+      }
+
+      [elements.campoTelefone1, elements.campoTelefone2].forEach(input => {
+        if (!input) return;
+        input.addEventListener('input', () => {
+          input.value = formatPhone(input.value);
+        });
+      });
+
+      [elements.campoPlacaCavalo, elements.campoPlacaCarreta1, elements.campoPlacaCarreta2, elements.campoPlacaCarreta3].forEach(input => {
+        if (!input) return;
+        input.addEventListener('input', () => {
+          input.value = normalizePlate(input.value);
+        });
+      });
+
+      elements.btnFecharModal.addEventListener('click', () => toggleModal(false));
+      elements.btnCancelarCadastro.addEventListener('click', () => toggleModal(false));
+      elements.modal.addEventListener('click', (event) => {
+        if (event.target === elements.modal) {
+          toggleModal(false);
+        }
+      });
+
+      if (elements.formCadastro) {
+        elements.formCadastro.addEventListener('submit', salvarCadastro);
+      }
+
+      if (elements.btnFecharDocumentos) {
+        elements.btnFecharDocumentos.addEventListener('click', fecharDocumentosModal);
+      }
+
+      if (elements.btnCancelarDocumentos) {
+        elements.btnCancelarDocumentos.addEventListener('click', fecharDocumentosModal);
+      }
+
+      if (elements.formDocumentos) {
+        elements.formDocumentos.addEventListener('submit', enviarDocumentos);
+      }
+
+      if (elements.documentosModal) {
+        elements.documentosModal.addEventListener('click', (event) => {
+          if (event.target === elements.documentosModal) {
+            fecharDocumentosModal();
+          }
+        });
+      }
+
+      if (elements.oportunidadesLista) {
+        elements.oportunidadesLista.addEventListener('click', async (event) => {
+          const button = event.target.closest('[data-action="assumir"]');
+          if (button) {
+            event.preventDefault();
+            await prepararAssumirOportunidade(button.dataset.coletaId);
+          }
+        });
+      }
+    }
+
+    async function initPortal() {
+      try {
+        await carregarConfigSupabase();
+
+        const sessaoValida = await carregarSessao();
+        if (!sessaoValida) return;
+
+        state.supabase.auth.onAuthStateChange(async (event, session) => {
+          if (session) {
+            state.session = session;
+            await carregarPerfil();
+            await carregarViagens();
+            await carregarOportunidades();
+            await carregarNotificacoes();
+          } else {
+            window.location.href = 'login-motorista.html';
+          }
+        });
+
+        registrarEventos();
+        await carregarPerfil();
+        await Promise.all([
+          carregarViagens(),
+          carregarOportunidades(),
+          carregarStatusDocumentos(true)
+        ]);
+      } catch (error) {
+        console.error('Erro ao inicializar portal:', error);
+        showToast(error.message || 'Não foi possível carregar o portal', 'error');
+        setTimeout(() => window.location.href = 'login-motorista.html', 3500);
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      initPortal();
+    });
+  </script>
+</body>
+</html>
+
