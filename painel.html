@@ -1483,25 +1483,13 @@ const estados = [
                     console.warn('⚠️ Erro ao carregar carrocerias do banco, usando mapeamento estático:', error.message);
                 }
 
-                // Garantir que todas as carrocerias do mapeamento estático estejam disponíveis
-                Object.keys(tiposCarroceriaMap).forEach(key => {
-                    const chaveNormalizada = key.toLowerCase();
-                    if (!valoresNormalizados.has(chaveNormalizada)) {
-                        valoresNormalizados.set(chaveNormalizada, key);
-                    }
-                });
-
-                // Ordenar alfabeticamente pelo nome amigável quando possível
+                // Ordenar alfabeticamente (somente valores presentes no banco)
                 const listaOrdenada = Array.from(valoresNormalizados.values()).sort((a, b) => a.localeCompare(b, 'pt-BR'));
 
                 listaOrdenada.forEach(valorOriginal => {
                     const option = document.createElement('option');
                     option.value = valorOriginal;
-                    const chaveEncontrada = Object.keys(tiposCarroceriaMap).find(k =>
-                        k.toLowerCase() === valorOriginal.toLowerCase() ||
-                        tiposCarroceriaMap[k].toLowerCase() === valorOriginal.toLowerCase()
-                    );
-                    option.textContent = chaveEncontrada ? tiposCarroceriaMap[chaveEncontrada] : valorOriginal;
+                    option.textContent = valorOriginal;
                     filtroCarroceria.appendChild(option);
                 });
 
