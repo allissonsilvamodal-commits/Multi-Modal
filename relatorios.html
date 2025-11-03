@@ -263,22 +263,31 @@
 				</div>
 				<div class="filter-card">
 					<div class="row">
-						<div class="col-md-3 mb-2">
+						<div class="col-md-2 mb-2">
 							<label class="form-label"><i class="fas fa-calendar"></i> Período</label>
-							<select id="filtroPeriodoMot" class="form-select" onchange="carregarMotoristas()">
+							<select id="filtroPeriodoMot" class="form-select" onchange="atualizarVisibilidadeDatasMot(); carregarMotoristas();">
 								<option value="hoje">Hoje</option>
 								<option value="mes" selected>Este Mês</option>
 								<option value="ano">Este Ano</option>
 								<option value="todos">Todos</option>
+								<option value="personalizado">Personalizado</option>
 							</select>
 						</div>
-						<div class="col-md-4 mb-2">
+						<div class="col-md-2 mb-2" id="containerDataInicioMot" style="display:none;">
+							<label class="form-label"><i class="fas fa-calendar-alt"></i> Data Início</label>
+							<input type="date" id="filtroDataInicioMot" class="form-control" onchange="if(document.getElementById('filtroPeriodoMot').value==='personalizado') carregarMotoristas();">
+						</div>
+						<div class="col-md-2 mb-2" id="containerDataFimMot" style="display:none;">
+							<label class="form-label"><i class="fas fa-calendar-check"></i> Data Fim</label>
+							<input type="date" id="filtroDataFimMot" class="form-control" onchange="if(document.getElementById('filtroPeriodoMot').value==='personalizado') carregarMotoristas();">
+						</div>
+						<div class="col-md-3 mb-2">
 							<label class="form-label"><i class="fas fa-user"></i> Usuário</label>
 							<select id="filtroUsuarioMot" class="form-select" onchange="carregarMotoristas()">
 								<option value="">Todos os usuários</option>
 							</select>
 						</div>
-						<div class="col-md-5 mb-2">
+						<div class="col-md-3 mb-2">
 							<label class="form-label"><i class="fas fa-building"></i> Departamento</label>
 							<select id="filtroDepartamentoMot" class="form-select" onchange="carregarMotoristas()">
 								<option value="">Todos os departamentos</option>
@@ -382,6 +391,7 @@
 					const st = await fetch('/api/auth/status', { credentials:'include' });
 					if(handleUnauthorized(st)) return;
                     // Sempre recarregar filtros e dados de motoristas
+					if(typeof atualizarVisibilidadeDatasMot==='function') atualizarVisibilidadeDatasMot();
                     await carregarFiltrosMotoristas();
                     await carregarMotoristas();
 				}catch(e){ console.error('Erro ao carregar Motoristas:', e); }
@@ -459,6 +469,19 @@
 		return { inicio, fim: now };
 	}
 
+	function atualizarVisibilidadeDatasMot(){
+		const periodo = document.getElementById('filtroPeriodoMot')?.value;
+		const containerInicio = document.getElementById('containerDataInicioMot');
+		const containerFim = document.getElementById('containerDataFimMot');
+		if(periodo === 'personalizado'){
+			if(containerInicio) containerInicio.style.display = '';
+			if(containerFim) containerFim.style.display = '';
+		} else {
+			if(containerInicio) containerInicio.style.display = 'none';
+			if(containerFim) containerFim.style.display = 'none';
+		}
+	}
+
 	async function carregarFiltrosMotoristas(){
 		const resp = await fetch('/api/relatorios/motoristas/filtros', { credentials: 'include' });
 		if(handleUnauthorized(resp)) return;
@@ -493,7 +516,17 @@
 			const periodo = document.getElementById('filtroPeriodoMot')?.value || 'mes';
 			const usuarioId = document.getElementById('filtroUsuarioMot')?.value || '';
 			const departamento = document.getElementById('filtroDepartamentoMot')?.value || '';
-			const range = periodoToRange(periodo);
+			let range;
+			if(periodo === 'personalizado'){
+				const dataInicio = document.getElementById('filtroDataInicioMot')?.value;
+				const dataFim = document.getElementById('filtroDataFimMot')?.value;
+				range = {
+					inicio: dataInicio ? new Date(dataInicio + 'T00:00:00') : null,
+					fim: dataFim ? new Date(dataFim + 'T23:59:59') : null
+				};
+			} else {
+				range = periodoToRange(periodo);
+			}
 			const params = new URLSearchParams({
 				inicio: range.inicio ? range.inicio.toISOString() : '',
 				fim: range.fim ? range.fim.toISOString() : '',

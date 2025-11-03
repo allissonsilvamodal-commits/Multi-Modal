@@ -5378,6 +5378,7 @@ app.get('/api/relatorios/motoristas/kpis', async (req, res) => {
     if (inicio) query = query.gte('data_cadastro', inicio);
     if (fim) query = query.lte('data_cadastro', fim);
     if (usuarioId) query = query.eq('created_by', usuarioId);
+    if (departamento) query = query.eq('created_by_departamento', departamento);
     const { data: motoristas, error } = await query;
     if (error) throw error;
     const porUsuario = new Map();
@@ -5413,6 +5414,7 @@ app.get('/api/relatorios/motoristas/series', async (req, res) => {
     if (inicio) query = query.gte('data_cadastro', inicio);
     if (fim) query = query.lte('data_cadastro', fim);
     if (usuarioId) query = query.eq('created_by', usuarioId);
+    if (departamento) query = query.eq('created_by_departamento', departamento);
     const { data: motoristas, error } = await query;
     if (error) throw error;
     const porUsuario = new Map();
