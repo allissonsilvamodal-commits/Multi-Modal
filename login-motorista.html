@@ -1297,8 +1297,13 @@
       try {
         clearAlert();
         toggleButtonLoading(btnGoogle, true, 'Redirecionando...');
+        
+        // Determinar URL de redirecionamento
         const redirectTo = `${window.location.origin}${window.location.pathname}`;
-        console.log('🔐 Iniciando login com Google, redirectTo:', redirectTo);
+        console.log('🔐 Iniciando login com Google');
+        console.log('📍 URL atual:', window.location.href);
+        console.log('📍 RedirectTo:', redirectTo);
+        console.log('📍 Origin:', window.location.origin);
         
         const { data, error } = await supabaseClient.auth.signInWithOAuth({
           provider: 'google',
@@ -1313,28 +1318,36 @@
         
         if (error) {
           console.error('❌ Erro ao iniciar OAuth:', error);
+          console.error('❌ Detalhes do erro:', JSON.stringify(error, null, 2));
+          
           let errorMsg = 'Não foi possível iniciar o login com Google.';
+          let helpMsg = '';
           
           // Mensagens de erro mais específicas
           if (error.message?.includes('provider') || error.message?.includes('not enabled')) {
-            errorMsg = 'Login com Google não está configurado. Entre em contato com o administrador.';
-          } else if (error.message?.includes('redirect') || error.message?.includes('callback')) {
-            errorMsg = 'URL de redirecionamento não configurada. Entre em contato com o administrador.';
+            errorMsg = 'Login com Google não está habilitado no Supabase.';
+            helpMsg = 'Configure o provedor Google OAuth no painel do Supabase (Authentication > Providers > Google).';
+          } else if (error.message?.includes('redirect') || error.message?.includes('callback') || error.message?.includes('redirect_uri_mismatch')) {
+            errorMsg = 'URL de redirecionamento não está configurada corretamente.';
+            helpMsg = `Adicione esta URL nas configurações OAuth do Google e Supabase: ${redirectTo}`;
+          } else if (error.message?.includes('invalid_client')) {
+            errorMsg = 'Credenciais OAuth do Google inválidas.';
+            helpMsg = 'Verifique as credenciais (Client ID e Client Secret) no painel do Supabase.';
           } else if (error.message) {
             errorMsg += ` ${error.message}`;
           } else if (error.error_description) {
             errorMsg += ` ${error.error_description}`;
           }
           
-          showAlert(errorMsg, 'error');
+          console.error('❌ Mensagem de ajuda:', helpMsg);
+          showAlert(errorMsg + (helpMsg ? `\n\n${helpMsg}` : ''), 'error');
           toggleButtonLoading(btnGoogle, false);
           return;
         }
         
-        // Se houver data.url, significa que estamos em um ambiente server-side
-        // No browser, o redirecionamento é automático
+        // Se houver data.url, redirecionar para o Google
         if (data?.url) {
-          console.log('🔗 URL de OAuth recebida, redirecionando...');
+          console.log('🔗 URL de OAuth recebida, redirecionando para:', data.url);
           window.location.href = data.url;
         } else {
           // No browser, o redirecionamento deve ser automático
@@ -1344,13 +1357,17 @@
           setTimeout(() => {
             if (window.location.href.includes('login-motorista.html')) {
               console.warn('⚠️ Redirecionamento não ocorreu automaticamente');
-              showAlert('Não foi possível redirecionar para o Google. Verifique se o login com Google está configurado corretamente.', 'error');
+              const helpText = `Verifique se a URL ${redirectTo} está configurada em:
+1. Google Cloud Console > Credenciais OAuth > Authorized redirect URIs
+2. Supabase > Authentication > URL Configuration > Redirect URLs`;
+              showAlert('Não foi possível redirecionar para o Google.\n\n' + helpText, 'error');
               toggleButtonLoading(btnGoogle, false);
             }
           }, 2000);
         }
       } catch (error) {
         console.error('❌ Erro ao iniciar login Google:', error);
+        console.error('❌ Stack trace:', error.stack);
         let errorMsg = 'Erro inesperado ao tentar fazer login com Google.';
         if (error.message) {
           errorMsg += ` ${error.message}`;
