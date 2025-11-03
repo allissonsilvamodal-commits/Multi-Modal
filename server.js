@@ -1361,6 +1361,7 @@ app.get('/api/motoristas/auth/me', async (req, res) => {
 });
 
 app.post('/api/motoristas/auth/profile', express.json(), async (req, res) => {
+  let payload = null;
   try {
     const { user, error } = await getSupabaseUserFromRequest(req);
     if (error) {
@@ -1378,6 +1379,36 @@ app.post('/api/motoristas/auth/profile', express.json(), async (req, res) => {
     const nome = (body.nome || user.user_metadata?.full_name || user.user_metadata?.name || user.email || '').toString().trim();
     if (!nome) {
       return res.status(400).json({ success: false, error: 'Informe o nome completo.' });
+    }
+
+    // Garantir que o perfil do usuário existe em user_profiles
+    const { data: userProfile, error: profileError } = await supabaseAdmin
+      .from('user_profiles')
+      .select('id')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    if (profileError && profileError.code !== 'PGRST116') {
+      throw profileError;
+    }
+
+    if (!userProfile) {
+      // Criar perfil automaticamente se não existir
+      const { error: createProfileError } = await supabaseAdmin
+        .from('user_profiles')
+        .insert({
+          id: user.id,
+          role: 'user',
+          nome: nome,
+          active: true,
+          email: user.email
+        });
+
+      if (createProfileError) {
+        console.error('❌ Erro ao criar perfil do usuário:', createProfileError);
+        throw createProfileError;
+      }
+      console.log('✅ Perfil do usuário criado automaticamente:', user.id);
     }
 
     const { data: motoristaByAuth, error: motoristaByAuthError } = await supabaseAdmin
@@ -1402,7 +1433,7 @@ app.post('/api/motoristas/auth/profile', express.json(), async (req, res) => {
       motoristaSelecionado = motoristaPorTelefone;
     }
 
-    const payload = {
+    payload = {
       nome,
       telefone1: normalizedPhone,
       auth_user_id: user.id,
@@ -1418,10 +1449,12 @@ app.post('/api/motoristas/auth/profile', express.json(), async (req, res) => {
     }
 
     const optionalFields = {
-      placa_cavalo: body.placaCavalo ? normalizePlate(body.placaCavalo) : null,
-      placa_carreta1: body.placaCarreta1 ? normalizePlate(body.placaCarreta1) : null,
-      placa_carreta2: body.placaCarreta2 ? normalizePlate(body.placaCarreta2) : null,
-      placa_carreta3: body.placaCarreta3 ? normalizePlate(body.placaCarreta3) : null,
+      cnh: body.cnh ? body.cnh.trim() : null,
+      categoria_cnh: body.categoriaCnh ? body.categoriaCnh.trim() : null,
+      placa_cavalo: body.placaCavalo && body.placaCavalo.trim() ? normalizePlate(body.placaCavalo) : null,
+      placa_carreta1: body.placaCarreta1 && body.placaCarreta1.trim() ? normalizePlate(body.placaCarreta1) : null,
+      placa_carreta2: body.placaCarreta2 && body.placaCarreta2.trim() ? normalizePlate(body.placaCarreta2) : null,
+      placa_carreta3: body.placaCarreta3 && body.placaCarreta3.trim() ? normalizePlate(body.placaCarreta3) : null,
       classe_veiculo: body.classeVeiculo ? body.classeVeiculo.trim() : null,
       tipo_veiculo: body.tipoVeiculo ? body.tipoVeiculo.trim() : null,
       tipo_carroceria: body.tipoCarroceria ? body.tipoCarroceria.trim() : null,
@@ -1431,13 +1464,21 @@ app.post('/api/motoristas/auth/profile', express.json(), async (req, res) => {
     };
 
     Object.entries(optionalFields).forEach(([key, value]) => {
-      if (value) {
+      if (value !== null && value !== undefined && value !== '') {
         payload[key] = value;
       }
     });
 
     if (!payload.classe_veiculo) {
       payload.classe_veiculo = motoristaSelecionado?.classe_veiculo || 'Não informado';
+    }
+
+    if (!payload.tipo_veiculo) {
+      payload.tipo_veiculo = motoristaSelecionado?.tipo_veiculo || 'Não informado';
+    }
+
+    if (!payload.tipo_carroceria) {
+      payload.tipo_carroceria = motoristaSelecionado?.tipo_carroceria || 'Não informado';
     }
 
     let resultData = null;
@@ -1481,7 +1522,22 @@ app.post('/api/motoristas/auth/profile', express.json(), async (req, res) => {
     });
   } catch (error) {
     console.error('❌ Erro ao vincular perfil de motorista:', error);
-    res.status(500).json({ success: false, error: 'Erro ao salvar dados do motorista. Tente novamente.' });
+    console.error('❌ Detalhes do erro:', {
+      message: error.message,
+      code: error.code,
+      details: error.details,
+      hint: error.hint,
+      stack: error.stack
+    });
+    if (payload) {
+      console.error('❌ Payload enviado:', JSON.stringify(payload, null, 2));
+    }
+    console.error('❌ Body recebido:', JSON.stringify(req.body, null, 2));
+    res.status(500).json({ 
+      success: false, 
+      error: 'Erro ao salvar dados do motorista. Tente novamente.',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
   }
 });
 

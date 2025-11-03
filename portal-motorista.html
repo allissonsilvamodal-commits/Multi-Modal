@@ -507,6 +507,7 @@
 
     .modal-card {
       width: min(640px, 100%);
+      max-height: 90vh;
       background: rgba(15, 23, 42, 0.88);
       border-radius: var(--radius-large);
       border: 1px solid rgba(148, 163, 184, 0.25);
@@ -516,6 +517,45 @@
       display: flex;
       flex-direction: column;
       gap: 18px;
+      overflow: hidden;
+    }
+
+    .modal-card h3,
+    .modal-card > p {
+      flex-shrink: 0;
+    }
+
+    .modal-card form {
+      overflow-y: auto;
+      flex: 1;
+      min-height: 0;
+      padding-right: 8px;
+      margin-right: -8px;
+    }
+
+    .modal-card form::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .modal-card form::-webkit-scrollbar-track {
+      background: rgba(15, 23, 42, 0.3);
+      border-radius: 10px;
+    }
+
+    .modal-card form::-webkit-scrollbar-thumb {
+      background: rgba(148, 163, 184, 0.4);
+      border-radius: 10px;
+    }
+
+    .modal-card form::-webkit-scrollbar-thumb:hover {
+      background: rgba(148, 163, 184, 0.6);
+    }
+
+    .modal-card > .modal-footer {
+      flex-shrink: 0;
+      margin-top: 0;
+      padding-top: 16px;
+      border-top: 1px solid rgba(148, 163, 184, 0.15);
     }
 
     .modal-card.docs-modal {
@@ -737,11 +777,74 @@
       box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.2);
     }
 
+    .form-grid label.full-width {
+      grid-column: 1 / -1;
+    }
+
+    .vehicle-classes-portal {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-top: 8px;
+    }
+
+    .vehicle-class-portal {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px;
+      background: rgba(15, 23, 42, 0.55);
+      border: 2px solid rgba(148, 163, 184, 0.28);
+      border-radius: 14px;
+      cursor: pointer;
+      transition: var(--transition);
+    }
+
+    .vehicle-class-portal:hover {
+      border-color: rgba(96, 165, 250, 0.5);
+      background: rgba(15, 23, 42, 0.7);
+      transform: translateY(-2px);
+    }
+
+    .vehicle-class-portal.active {
+      border-color: rgba(96, 165, 250, 0.8);
+      background: rgba(96, 165, 250, 0.15);
+      box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.2);
+    }
+
+    .vehicle-class-portal i {
+      font-size: 1.5rem;
+      color: var(--primary);
+      flex-shrink: 0;
+    }
+
+    .vehicle-class-portal.active i {
+      color: var(--secondary);
+    }
+
+    .vehicle-class-portal strong {
+      display: block;
+      font-size: 0.9rem;
+      color: var(--text-primary);
+      margin-bottom: 2px;
+    }
+
+    .vehicle-class-portal small {
+      display: block;
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+    }
+
+    @media (max-width: 640px) {
+      .vehicle-classes-portal {
+        grid-template-columns: 1fr;
+      }
+    }
+
     .modal-footer {
       display: flex;
       justify-content: flex-end;
       gap: 12px;
-      margin-top: 10px;
     }
 
     .helper-text {
@@ -942,7 +1045,11 @@
       .portal-grid { grid-template-columns: 1fr; }
       .header-actions { flex: 1 1 100%; flex-direction: row; flex-wrap: wrap; }
       .header-actions .btn { flex: 1 1 calc(50% - 8px); }
-      .modal-card { padding: 22px; border-radius: 20px; }
+      .modal-card { 
+        padding: 22px; 
+        border-radius: 20px;
+        max-height: 95vh;
+      }
       .modal-card.docs-modal { 
         padding: 20px; 
         max-height: 95vh;
@@ -1059,56 +1166,93 @@
 
       <form id="formCadastroMotorista" autocomplete="off">
         <div class="form-grid">
-          <label>Nome completo
+          <label>Nome completo *
             <input type="text" id="campoNome" placeholder="Ex: João da Silva" required>
           </label>
-          <label>Telefone principal
+          <label>CNH
+            <input type="text" id="campoCnh" placeholder="Número da CNH">
+          </label>
+          <label>Categoria CNH
+            <select id="campoCategoriaCnh">
+              <option value="">Selecione</option>
+              <option value="A">A - Motos</option>
+              <option value="B">B - Carros</option>
+              <option value="C">C - Caminhões</option>
+              <option value="D">D - Ônibus</option>
+              <option value="E">E - Carreta</option>
+            </select>
+          </label>
+          <label>Telefone principal *
             <input type="text" id="campoTelefone1" placeholder="(00) 00000-0000" required>
           </label>
           <label>Telefone secundário
             <input type="text" id="campoTelefone2" placeholder="(00) 00000-0000">
           </label>
-          <label>Classe do veículo
-            <select id="campoClasse">
-              <option value="">Selecione</option>
-              <option value="leve">Leve</option>
-              <option value="medio">Médio</option>
-              <option value="pesado">Pesado</option>
+          <label>Estado (DDD) *
+            <select id="campoEstado" required>
+              <option value="">Selecione o estado</option>
+              <option value="SP">São Paulo</option>
+              <option value="RJ">Rio de Janeiro</option>
+              <option value="MG">Minas Gerais</option>
+              <option value="ES">Espírito Santo</option>
+              <option value="PR">Paraná</option>
+              <option value="SC">Santa Catarina</option>
+              <option value="RS">Rio Grande do Sul</option>
+              <option value="MS">Mato Grosso do Sul</option>
+              <option value="MT">Mato Grosso</option>
+              <option value="GO">Goiás</option>
+              <option value="DF">Distrito Federal</option>
+              <option value="BA">Bahia</option>
+              <option value="SE">Sergipe</option>
+              <option value="AL">Alagoas</option>
+              <option value="PE">Pernambuco</option>
+              <option value="PB">Paraíba</option>
+              <option value="RN">Rio Grande do Norte</option>
+              <option value="CE">Ceará</option>
+              <option value="PI">Piauí</option>
+              <option value="MA">Maranhão</option>
+              <option value="PA">Pará</option>
+              <option value="AP">Amapá</option>
+              <option value="AM">Amazonas</option>
+              <option value="RR">Roraima</option>
+              <option value="AC">Acre</option>
+              <option value="RO">Rondônia</option>
+              <option value="TO">Tocantins</option>
             </select>
           </label>
-          <label>Tipo de veículo
-            <select id="campoTipoVeiculo">
-              <option value="">Selecione o tipo de veículo</option>
-              <option value="Cavalo Mecânico">Cavalo Mecânico</option>
-              <option value="Truck 6x2">Truck 6x2</option>
-              <option value="Caminhão Toco">Caminhão Toco</option>
-              <option value="Caminhão 3/4">Caminhão 3/4</option>
-              <option value="Caminhão VUC">Caminhão VUC</option>
-              <option value="Bitruck">Bitruck</option>
-              <option value="Carreta LS">Carreta LS</option>
-              <option value="Bitrem">Bitrem</option>
-              <option value="Rodotrem">Rodotrem</option>
-              <option value="Ônibus">Ônibus</option>
-              <option value="Van">Van</option>
-              <option value="Outro">Outro</option>
+          <label class="full-width">Classe do veículo *
+            <div class="vehicle-classes-portal" id="vehicleClassesPortal">
+              <div class="vehicle-class-portal" data-class="leve">
+                <i class="fas fa-truck-pickup"></i>
+                <div>
+                  <strong>Leves</strong>
+                  <small>Fiorino, 3/4, Toco, VLC</small>
+                </div>
+              </div>
+              <div class="vehicle-class-portal" data-class="medio">
+                <i class="fas fa-truck"></i>
+                <div>
+                  <strong>Médios</strong>
+                  <small>Bitruck, Truck</small>
+                </div>
+              </div>
+              <div class="vehicle-class-portal" data-class="pesado">
+                <i class="fas fa-truck-moving"></i>
+                <div>
+                  <strong>Pesados</strong>
+                  <small>Bitrem, Carreta, Rodotrem</small>
+                </div>
+              </div>
+            </div>
+          </label>
+          <label>Tipo de veículo *
+            <select id="campoTipoVeiculo" required disabled>
+              <option value="">Selecione a classe do veículo primeiro</option>
             </select>
           </label>
-          <label>Tipo de carroceria
-            <select id="campoTipoCarroceria">
-              <option value="">Selecione o tipo de carroceria</option>
-              <option value="Baú">Baú</option>
-              <option value="Sider">Sider</option>
-              <option value="Graneleira">Graneleira</option>
-              <option value="Frigorífica">Frigorífica</option>
-              <option value="Plataforma">Plataforma</option>
-              <option value="Caçamba">Caçamba</option>
-              <option value="Basculante">Basculante</option>
-              <option value="Tanque">Tanque</option>
-              <option value="Porta Contêiner">Porta Contêiner</option>
-              <option value="Prancha">Prancha</option>
-              <option value="Munck">Munck</option>
-              <option value="Carga Seca">Carga Seca</option>
-              <option value="Outro">Outro</option>
+          <label>Tipo de carroceria *
+            <select id="campoTipoCarroceria" required disabled>
+              <option value="">Selecione a classe do veículo primeiro</option>
             </select>
           </label>
           <label>Placa cavalo
@@ -1126,12 +1270,12 @@
         </div>
 
         <p class="helper-text"><i class="fas fa-lock me-2"></i> Seus dados são utilizados apenas para operações logísticas e contato rápido.</p>
-
-        <div class="modal-footer">
-          <button type="button" class="btn btn-outline" id="btnCancelarCadastro">Cancelar</button>
-          <button type="submit" class="btn btn-primary" id="btnSalvarCadastro"><span class="btn-text"><i class="fas fa-save me-2"></i>Salvar cadastro</span></button>
-        </div>
       </form>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline" id="btnCancelarCadastro">Cancelar</button>
+        <button type="submit" form="formCadastroMotorista" class="btn btn-primary" id="btnSalvarCadastro"><span class="btn-text"><i class="fas fa-save me-2"></i>Salvar cadastro</span></button>
+      </div>
     </div>
   </div>
 
@@ -1246,9 +1390,11 @@
       btnCancelarCadastro: document.getElementById('btnCancelarCadastro'),
       formCadastro: document.getElementById('formCadastroMotorista'),
       campoNome: document.getElementById('campoNome'),
+      campoCnh: document.getElementById('campoCnh'),
+      campoCategoriaCnh: document.getElementById('campoCategoriaCnh'),
       campoTelefone1: document.getElementById('campoTelefone1'),
       campoTelefone2: document.getElementById('campoTelefone2'),
-      campoClasse: document.getElementById('campoClasse'),
+      campoEstado: document.getElementById('campoEstado'),
       campoTipoVeiculo: document.getElementById('campoTipoVeiculo'),
       campoTipoCarroceria: document.getElementById('campoTipoCarroceria'),
       campoPlacaCavalo: document.getElementById('campoPlacaCavalo'),
@@ -1355,6 +1501,87 @@
         select.appendChild(option);
       }
       select.value = normalized;
+    }
+
+    // Configurações de tipos de veículos e carrocerias (mesmas de cadastro.html)
+    const tiposVeiculo = {
+      leve: ['3/4', 'Fiorino', 'Toco', 'VLC'],
+      medio: ['Bitruck', 'Truck'],
+      pesado: ['Bitrem', 'Carreta', 'Carreta LS', 'Rodotrem', 'Vanderleia']
+    };
+
+    const bodyworkByClass = {
+      leve: ['bau', 'bau_frigorifico', 'bau_refrigerado', 'cacamba', 'prancha'],
+      medio: ['bau', 'bau_frigorifico', 'sider', 'graneleiro', 'plataforma', 'basculante'],
+      pesado: ['bau', 'sider', 'graneleiro', 'grade_baixa', 'bitrem', 'carreta', 'carreta_ls', 'rodotrem', 'vanderleia', 'apenas_cavalo', 'cegonheiro', 'gaiola', 'tanque', 'porta_container_20', 'porta_container_40', 'basculante']
+    };
+
+    const tiposCarroceriaMap = {
+      bau: 'Baú',
+      bau_frigorifico: 'Baú Frigorífico',
+      bau_refrigerado: 'Baú Refrigerado',
+      sider: 'Sider',
+      cacamba: 'Caçamba',
+      graneleiro: 'Graneleiro',
+      plataforma: 'Plataforma',
+      prancha: 'Prancha',
+      bitrem: 'Bitrem',
+      carreta: 'Carreta',
+      carreta_ls: 'Carreta LS',
+      rodotrem: 'Rodotrem',
+      vanderleia: 'Vanderleia',
+      apenas_cavalo: 'Apenas Cavalo',
+      cegonheiro: 'Cegonheiro',
+      gaiola: 'Gaiola',
+      tanque: 'Tanque',
+      grade_baixa: 'GRADE BAIXA',
+      basculante: 'BASCULANTE',
+      porta_container_20: 'PORTA CONTAINER 20',
+      porta_container_40: 'PORTA CONTAINER 40'
+    };
+
+    let classeVeiculoSelecionada = null;
+
+    function selecionarClasseVeiculoPortal(classe) {
+      classeVeiculoSelecionada = classe;
+      document.querySelectorAll('.vehicle-class-portal').forEach(el => el.classList.remove('active'));
+      document.querySelector(`.vehicle-class-portal[data-class="${classe}"]`)?.classList.add('active');
+      
+      atualizarTiposVeiculoPortal(classe);
+      atualizarTiposCarroceriaPortal(classe);
+      
+      if (elements.campoTipoVeiculo) elements.campoTipoVeiculo.disabled = false;
+      if (elements.campoTipoCarroceria) elements.campoTipoCarroceria.disabled = false;
+    }
+
+    function atualizarTiposVeiculoPortal(classe) {
+      if (!elements.campoTipoVeiculo) return;
+      elements.campoTipoVeiculo.innerHTML = '<option value="">Selecione o tipo</option>';
+      
+      if (classe && tiposVeiculo[classe]) {
+        tiposVeiculo[classe].forEach(tipo => {
+          const option = document.createElement('option');
+          option.value = tipo.toLowerCase().replace(/ /g, '_');
+          option.textContent = tipo;
+          elements.campoTipoVeiculo.appendChild(option);
+        });
+      }
+    }
+
+    function atualizarTiposCarroceriaPortal(classe) {
+      if (!elements.campoTipoCarroceria) return;
+      elements.campoTipoCarroceria.innerHTML = '<option value="">Selecione o tipo</option>';
+      
+      if (classe && bodyworkByClass[classe]) {
+        bodyworkByClass[classe].forEach(tipo => {
+          if (tiposCarroceriaMap[tipo]) {
+            const option = document.createElement('option');
+            option.value = tipo;
+            option.textContent = tiposCarroceriaMap[tipo];
+            elements.campoTipoCarroceria.appendChild(option);
+          }
+        });
+      }
     }
 
     function toggleButtonLoading(button, isLoading, loadingLabel) {
@@ -2044,16 +2271,39 @@
     function preencherFormularioCadastro() {
       const user = state.user || {};
       const motorista = state.motorista || {};
-      elements.campoNome.value = (motorista.nome || user.nome || user.email || '').trim();
-      elements.campoTelefone1.value = formatPhone(motorista.telefone1 || '');
-      elements.campoTelefone2.value = formatPhone(motorista.telefone2 || '');
-      elements.campoClasse.value = motorista.classeVeiculo || '';
-      setSelectValue(elements.campoTipoVeiculo, motorista.tipoVeiculo);
-      setSelectValue(elements.campoTipoCarroceria, motorista.tipoCarroceria);
-      elements.campoPlacaCavalo.value = motorista.placas?.cavalo || '';
-      elements.campoPlacaCarreta1.value = motorista.placas?.carreta1 || '';
-      elements.campoPlacaCarreta2.value = motorista.placas?.carreta2 || '';
-      elements.campoPlacaCarreta3.value = motorista.placas?.carreta3 || '';
+      
+      // Limpar seleção de classe
+      classeVeiculoSelecionada = null;
+      document.querySelectorAll('.vehicle-class-portal').forEach(el => el.classList.remove('active'));
+      
+      if (elements.campoNome) elements.campoNome.value = (motorista.nome || user.nome || user.email || '').trim();
+      if (elements.campoCnh) elements.campoCnh.value = motorista.cnh || '';
+      if (elements.campoCategoriaCnh) elements.campoCategoriaCnh.value = motorista.categoria_cnh || '';
+      if (elements.campoTelefone1) elements.campoTelefone1.value = formatPhone(motorista.telefone1 || '');
+      if (elements.campoTelefone2) elements.campoTelefone2.value = formatPhone(motorista.telefone2 || '');
+      if (elements.campoEstado) elements.campoEstado.value = motorista.estado || '';
+      
+      // Selecionar classe de veículo e atualizar opções
+      const classe = (motorista.classeVeiculo || motorista.classe_veiculo || '').toLowerCase();
+      if (classe && (classe === 'leve' || classe === 'medio' || classe === 'pesado')) {
+        selecionarClasseVeiculoPortal(classe);
+        if (elements.campoTipoVeiculo) setSelectValue(elements.campoTipoVeiculo, motorista.tipoVeiculo || motorista.tipo_veiculo);
+        if (elements.campoTipoCarroceria) setSelectValue(elements.campoTipoCarroceria, motorista.tipoCarroceria || motorista.tipo_carroceria);
+      } else {
+        if (elements.campoTipoVeiculo) {
+          elements.campoTipoVeiculo.innerHTML = '<option value="">Selecione a classe do veículo primeiro</option>';
+          elements.campoTipoVeiculo.disabled = true;
+        }
+        if (elements.campoTipoCarroceria) {
+          elements.campoTipoCarroceria.innerHTML = '<option value="">Selecione a classe do veículo primeiro</option>';
+          elements.campoTipoCarroceria.disabled = true;
+        }
+      }
+      
+      if (elements.campoPlacaCavalo) elements.campoPlacaCavalo.value = motorista.placas?.cavalo || '';
+      if (elements.campoPlacaCarreta1) elements.campoPlacaCarreta1.value = motorista.placas?.carreta1 || '';
+      if (elements.campoPlacaCarreta2) elements.campoPlacaCarreta2.value = motorista.placas?.carreta2 || '';
+      if (elements.campoPlacaCarreta3) elements.campoPlacaCarreta3.value = motorista.placas?.carreta3 || '';
     }
 
     async function salvarCadastro(event) {
@@ -2075,17 +2325,40 @@
         return;
       }
 
+      if (!classeVeiculoSelecionada) {
+        showToast('Selecione a classe do veículo.', 'error');
+        return;
+      }
+
+      const tipoVeiculo = elements.campoTipoVeiculo?.value.trim();
+      const tipoCarroceria = elements.campoTipoCarroceria?.value.trim();
+      const estado = elements.campoEstado?.value.trim();
+
+      if (!tipoVeiculo || !tipoCarroceria) {
+        showToast('Selecione o tipo de veículo e a carroceria.', 'error');
+        return;
+      }
+
+      if (!estado) {
+        showToast('Selecione o estado.', 'error');
+        elements.campoEstado?.focus();
+        return;
+      }
+
       const payload = {
         nome,
+        cnh: elements.campoCnh?.value.trim() || null,
+        categoriaCnh: elements.campoCategoriaCnh?.value || null,
         telefone: telefone1,
         telefoneSecundario: telefone2,
-        classeVeiculo: elements.campoClasse.value.trim(),
-        tipoVeiculo: elements.campoTipoVeiculo.value.trim(),
-        tipoCarroceria: elements.campoTipoCarroceria.value.trim(),
-        placaCavalo: normalizePlate(elements.campoPlacaCavalo.value),
-        placaCarreta1: normalizePlate(elements.campoPlacaCarreta1.value),
-        placaCarreta2: normalizePlate(elements.campoPlacaCarreta2.value),
-        placaCarreta3: normalizePlate(elements.campoPlacaCarreta3.value)
+        estado: estado,
+        classeVeiculo: classeVeiculoSelecionada,
+        tipoVeiculo: tipoVeiculo,
+        tipoCarroceria: tipoCarroceria,
+        placaCavalo: normalizePlate(elements.campoPlacaCavalo?.value || ''),
+        placaCarreta1: normalizePlate(elements.campoPlacaCarreta1?.value || ''),
+        placaCarreta2: normalizePlate(elements.campoPlacaCarreta2?.value || ''),
+        placaCarreta3: normalizePlate(elements.campoPlacaCarreta3?.value || '')
       };
 
       try {
@@ -2143,10 +2416,34 @@
         elements.btnAtualizarNotificacoes.addEventListener('click', () => carregarNotificacoes());
       }
 
+      // Inicializar seleção de classes de veículo
+      document.querySelectorAll('.vehicle-class-portal').forEach(item => {
+        item.addEventListener('click', function() {
+          selecionarClasseVeiculoPortal(this.dataset.class);
+        });
+      });
+
       [elements.campoTelefone1, elements.campoTelefone2].forEach(input => {
         if (!input) return;
-        input.addEventListener('input', () => {
-          input.value = formatPhone(input.value);
+        input.addEventListener('input', (e) => {
+          const digits = normalizePhone(e.target.value).slice(0, 11);
+          if (!digits) {
+            e.target.value = '';
+            return;
+          }
+          if (digits.length <= 10) {
+            e.target.value = digits.replace(/(\d{0,2})(\d{0,4})(\d{0,4})/, (match, ddd, parte1, parte2) => {
+              const p1 = parte1 ? ` ${parte1}` : '';
+              const p2 = parte2 ? `-${parte2}` : '';
+              return ddd ? `(${ddd})${p1}${p2}` : parte1 + parte2;
+            }).trim();
+          } else {
+            e.target.value = digits.replace(/(\d{0,2})(\d{0,5})(\d{0,4})/, (match, ddd, parte1, parte2) => {
+              const p1 = parte1 ? ` ${parte1}` : '';
+              const p2 = parte2 ? `-${parte2}` : '';
+              return ddd ? `(${ddd})${p1}${p2}` : parte1 + parte2;
+            }).trim();
+          }
         });
       });
 
