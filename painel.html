@@ -592,6 +592,39 @@
             color: var(--text-color);
         }
 
+        body[data-theme="dark"] .page-btn {
+            background: rgba(255, 255, 255, 0.1) !important;
+            color: var(--text-color) !important;
+            border-color: rgba(255, 255, 255, 0.2) !important;
+        }
+
+        body[data-theme="dark"] .page-btn:hover {
+            background: var(--primary) !important;
+            color: white !important;
+            border-color: var(--primary) !important;
+        }
+
+        body[data-theme="dark"] .page-btn.active {
+            background: var(--primary) !important;
+            color: white !important;
+            border-color: var(--primary) !important;
+        }
+
+        body[data-theme="dark"] .page-btn.disabled {
+            background: rgba(255, 255, 255, 0.05) !important;
+            color: rgba(255, 255, 255, 0.3) !important;
+            border-color: rgba(255, 255, 255, 0.1) !important;
+            cursor: not-allowed !important;
+        }
+
+        body[data-theme="dark"] .text-muted {
+            color: rgba(255, 255, 255, 0.6) !important;
+        }
+
+        body[data-theme="dark"] #infoPagina {
+            color: rgba(255, 255, 255, 0.7) !important;
+        }
+
         body[data-theme="dark"] .vehicle-class {
             border-color: var(--border-color);
         }
@@ -1153,6 +1186,16 @@ const estados = [
             gaiola: 'Gaiola',
             tanque: 'Tanque'
         };
+
+        // Função para normalizar strings (remover acentos e converter para minúsculas)
+        function normalizarTexto(texto) {
+            if (!texto) return '';
+            return texto
+                .toLowerCase()
+                .normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, '') // Remove acentos
+                .trim();
+        }
 
         // ========== INICIALIZAÇÃO ==========
         document.addEventListener('DOMContentLoaded', async () => {
@@ -1727,15 +1770,10 @@ const estados = [
                     }
                     // Se não houver filtro de status especificado, não filtrar por status
 
-                    // Aplicar filtros adicionais
-                    if (filtroTipoVeiculo) {
-                        query = query.eq('tipo_veiculo', filtroTipoVeiculo);
-                    }
-                    
-                    if (filtroCarroceria) {
-                        // Tolerar variações (usa ilike com contém)
-                        query = query.ilike('tipo_carroceria', `%${filtroCarroceria}%`);
-                    }
+                    // NÃO aplicar filtros de tipo_veiculo e carroceria no Supabase
+                    // Faremos isso client-side para garantir normalização de maiúsculas/minúsculas e acentos
+                    // Se aplicarmos aqui, pode não funcionar quando banco tem "carreta" e filtro tem "Carreta"
+                    // ou "bau" e filtro tem "Baú"
                     
                     if (filtroEstado) {
                         query = query.eq('estado', filtroEstado);
@@ -1773,6 +1811,74 @@ const estados = [
                         }
                     }
                     
+                    // Aplicar filtros de tipo de veículo e carroceria client-side para garantir normalização
+                    // Isso garante que funcione mesmo se o banco tiver "carreta" e o filtro "Carreta"
+                    // ou "bau" e o filtro "Baú"
+                    if (filtroTipoVeiculo) {
+                        const filtroNormalizado = normalizarTexto(filtroTipoVeiculo);
+                        console.log('🔍 Filtrando tipo de veículo:', {
+                            filtroOriginal: filtroTipoVeiculo,
+                            filtroNormalizado: filtroNormalizado,
+                            totalAntes: todosMotoristas.length
+                        });
+                        
+                        const antes = todosMotoristas.length;
+                        todosMotoristas = todosMotoristas.filter(motorista => {
+                            const tipoVeiculoMotorista = normalizarTexto(motorista.tipo_veiculo || '');
+                            const match = tipoVeiculoMotorista.includes(filtroNormalizado) || 
+                                         filtroNormalizado.includes(tipoVeiculoMotorista) ||
+                                         tipoVeiculoMotorista === filtroNormalizado;
+                            
+                            if (!match && motorista.tipo_veiculo && filtroNormalizado) {
+                                console.log('❌ Tipo veículo não match:', {
+                                    original: motorista.tipo_veiculo,
+                                    normalizado: tipoVeiculoMotorista,
+                                    filtro: filtroNormalizado
+                                });
+                            }
+                            
+                            return match;
+                        });
+                        
+                        console.log(`✅ Filtro de tipo de veículo: ${antes} → ${todosMotoristas.length} motoristas`);
+                    }
+                    
+                    if (filtroCarroceria) {
+                        const filtroNormalizado = normalizarTexto(filtroCarroceria);
+                        console.log('🔍 Filtrando carroceria:', {
+                            filtroOriginal: filtroCarroceria,
+                            filtroNormalizado: filtroNormalizado,
+                            totalAntes: todosMotoristas.length
+                        });
+                        
+                        const antes = todosMotoristas.length;
+                        todosMotoristas = todosMotoristas.filter(motorista => {
+                            const carroceriaMotorista = normalizarTexto(motorista.tipo_carroceria || '');
+                            
+                            // Verificar se carroceria contém o filtro OU se o filtro contém a carroceria
+                            // Isso garante que funcione para casos como:
+                            // - Banco: "bau", Filtro: "Baú" → carroceria.includes("bau") = true
+                            // - Banco: "Baú Frigorífico", Filtro: "bau" → carroceria.includes("bau") = true
+                            const match = carroceriaMotorista.includes(filtroNormalizado) || 
+                                         filtroNormalizado.includes(carroceriaMotorista) ||
+                                         carroceriaMotorista === filtroNormalizado;
+                            
+                            if (!match && motorista.tipo_carroceria && filtroNormalizado) {
+                                console.log('❌ Não match:', {
+                                    original: motorista.tipo_carroceria,
+                                    normalizado: carroceriaMotorista,
+                                    filtro: filtroNormalizado,
+                                    inclui: carroceriaMotorista.includes(filtroNormalizado),
+                                    filtroIncluiCarroceria: filtroNormalizado.includes(carroceriaMotorista)
+                                });
+                            }
+                            
+                            return match;
+                        });
+                        
+                        console.log(`✅ Filtro de carroceria: ${antes} → ${todosMotoristas.length} motoristas`);
+                    }
+                    
                     console.log(`🔍 ${todosMotoristas.length.toLocaleString('pt-BR')} motoristas encontrados com filtros aplicados`);
                 } else {
                     // Usar dados mockados com filtros locais
@@ -1783,11 +1889,31 @@ const estados = [
                         // Filtro de classe (usar filtroClasse se existir, senão currentClass)
                         if (classeParaFiltro && motorista.classe_veiculo !== classeParaFiltro) return false;
                         
-                        // Filtro de tipo de veículo
-                        if (filtroTipoVeiculo && motorista.tipo_veiculo !== filtroTipoVeiculo) return false;
+                        // Filtro de tipo de veículo (tolerante, case-insensitive, sem acentos)
+                        if (filtroTipoVeiculo) {
+                            const tipoVeiculoMotorista = normalizarTexto(motorista.tipo_veiculo || '');
+                            const filtroNormalizado = normalizarTexto(filtroTipoVeiculo);
+                            
+                            // Verificar se tipo contém o filtro OU se o filtro contém o tipo
+                            const match = tipoVeiculoMotorista.includes(filtroNormalizado) || 
+                                         filtroNormalizado.includes(tipoVeiculoMotorista) ||
+                                         tipoVeiculoMotorista === filtroNormalizado;
+                            
+                            if (!match) return false;
+                        }
                         
-                        // Filtro de carroceria (tolerante, contém, case-insensitive)
-                        if (filtroCarroceria && !String(motorista.tipo_carroceria||'').toLowerCase().includes(filtroCarroceria.toLowerCase())) return false;
+                        // Filtro de carroceria (tolerante, contém, case-insensitive, sem acentos)
+                        if (filtroCarroceria) {
+                            const carroceriaMotorista = normalizarTexto(motorista.tipo_carroceria || '');
+                            const filtroNormalizado = normalizarTexto(filtroCarroceria);
+                            
+                            // Verificar se carroceria contém o filtro OU se o filtro contém a carroceria
+                            const match = carroceriaMotorista.includes(filtroNormalizado) || 
+                                         filtroNormalizado.includes(carroceriaMotorista) ||
+                                         carroceriaMotorista === filtroNormalizado;
+                            
+                            if (!match) return false;
+                        }
                         
                         // Filtro de estado
                         if (filtroEstado && motorista.estado !== filtroEstado) return false;
@@ -1865,7 +1991,8 @@ const estados = [
 
             // Botão Anterior
             const btnAnterior = document.createElement('li');
-            btnAnterior.innerHTML = `<a class="page-btn ${currentPage === 1 ? 'disabled' : ''}" href="#" onclick="mudarPagina(${currentPage - 1})" ${currentPage === 1 ? 'onclick="return false;"' : ''}><i class="fas fa-chevron-left me-1"></i>Anterior</a>`;
+            const isAnteriorDisabled = currentPage === 1;
+            btnAnterior.innerHTML = `<a class="page-btn ${isAnteriorDisabled ? 'disabled' : ''}" href="#" onclick="return ${isAnteriorDisabled ? 'false' : `mudarPagina(${currentPage - 1})`};"><i class="fas fa-chevron-left me-1"></i>Anterior</a>`;
             paginacao.appendChild(btnAnterior);
 
             // Páginas numeradas (otimizado para muitas páginas)
@@ -1907,7 +2034,8 @@ const estados = [
 
             // Botão Próximo
             const btnProximo = document.createElement('li');
-            btnProximo.innerHTML = `<a class="page-btn ${currentPage === totalPages ? 'disabled' : ''}" href="#" onclick="mudarPagina(${currentPage + 1})" ${currentPage === totalPages ? 'onclick="return false;"' : ''}>Próximo<i class="fas fa-chevron-right ms-1"></i></a>`;
+            const isProximoDisabled = currentPage === totalPages;
+            btnProximo.innerHTML = `<a class="page-btn ${isProximoDisabled ? 'disabled' : ''}" href="#" onclick="return ${isProximoDisabled ? 'false' : `mudarPagina(${currentPage + 1})`};"><i class="fas fa-chevron-right ms-1"></i>Próximo</a>`;
             paginacao.appendChild(btnProximo);
 
             // Adicionar informações extras se houver muitos resultados

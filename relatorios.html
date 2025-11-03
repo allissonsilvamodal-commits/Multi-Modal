@@ -545,18 +545,155 @@
 			}
 			if(seriesResp.ok){
 				const s = await seriesResp.json();
-				chartUsuarioMot = ensureChart('chartUsuarioMot','bar',{
-					labels: (s.byUser||[]).map(u=>u.nome),
-					datasets:[{ label:'Motoristas', data: (s.byUser||[]).map(u=>u.count), backgroundColor:'#667eea' }]
-				},{ responsive:true, plugins:{ legend:{ display:false }}});
-				chartDepartamentoMot = ensureChart('chartDepartamentoMot','bar',{
-					labels: (s.byDepartment||[]).map(d=>d.departamento),
-					datasets:[{ label:'Motoristas', data: (s.byDepartment||[]).map(d=>d.count), backgroundColor:'#22c55e' }]
-				},{ responsive:true, plugins:{ legend:{ display:false }}});
-				chartTemporalMot = ensureChart('chartTemporalMot','line',{
-					labels: (s.byDay||[]).map(d=>d.date),
-					datasets:[{ label:'Cadastros', data: (s.byDay||[]).map(d=>d.count), borderColor:'#f59e0b', backgroundColor:'rgba(245,158,11,0.25)', fill:true, tension:0.3 }]
-				},{ responsive:true });
+				const ctxUserMot = document.getElementById('chartUsuarioMot');
+				const ctxDeptMot = document.getElementById('chartDepartamentoMot');
+				const ctxDayMot = document.getElementById('chartTemporalMot');
+				
+				if(ctxUserMot){
+					if(ctxUserMot._chart) ctxUserMot._chart.destroy();
+					ctxUserMot._chart = new Chart(ctxUserMot, {
+						type:'bar',
+						data:{ 
+							labels: (s.byUser||[]).map(u=>u.nome),
+							datasets:[{ label:'Motoristas', data: (s.byUser||[]).map(u=>u.count), backgroundColor:'#667eea' }]
+						},
+						options:{ 
+							responsive:true, 
+							plugins:{ legend:{ display:false }},
+							scales: {
+								y: {
+									beginAtZero: true,
+									ticks: { color: 'rgba(255,255,255,0.7)' },
+									grid: { color: 'rgba(255,255,255,0.1)' }
+								},
+								x: {
+									ticks: { color: 'rgba(255,255,255,0.7)' },
+									grid: { color: 'rgba(255,255,255,0.1)' }
+								}
+							}
+						},
+						plugins: [{
+							id: 'datalabels',
+							afterDatasetsDraw: (chart) => {
+								const ctx = chart.ctx;
+								chart.data.datasets.forEach((dataset, i) => {
+									const meta = chart.getDatasetMeta(i);
+									meta.data.forEach((element, index) => {
+										const value = dataset.data[index];
+										if (value !== null && value !== undefined) {
+											ctx.save();
+											ctx.fillStyle = '#fff';
+											ctx.font = 'bold 12px Arial';
+											ctx.textAlign = 'center';
+											ctx.textBaseline = 'bottom';
+											const position = element.tooltipPosition();
+											ctx.fillText(value, position.x, position.y - 5);
+											ctx.restore();
+										}
+									});
+								});
+							}
+						}]
+					});
+				}
+				
+				if(ctxDeptMot){
+					if(ctxDeptMot._chart) ctxDeptMot._chart.destroy();
+					ctxDeptMot._chart = new Chart(ctxDeptMot, {
+						type:'bar',
+						data:{ 
+							labels: (s.byDepartment||[]).map(d=>d.departamento),
+							datasets:[{ label:'Motoristas', data: (s.byDepartment||[]).map(d=>d.count), backgroundColor:'#22c55e' }]
+						},
+						options:{ 
+							responsive:true, 
+							plugins:{ legend:{ display:false }},
+							scales: {
+								y: {
+									beginAtZero: true,
+									ticks: { color: 'rgba(255,255,255,0.7)' },
+									grid: { color: 'rgba(255,255,255,0.1)' }
+								},
+								x: {
+									ticks: { color: 'rgba(255,255,255,0.7)' },
+									grid: { color: 'rgba(255,255,255,0.1)' }
+								}
+							}
+						},
+						plugins: [{
+							id: 'datalabels',
+							afterDatasetsDraw: (chart) => {
+								const ctx = chart.ctx;
+								chart.data.datasets.forEach((dataset, i) => {
+									const meta = chart.getDatasetMeta(i);
+									meta.data.forEach((element, index) => {
+										const value = dataset.data[index];
+										if (value !== null && value !== undefined) {
+											ctx.save();
+											ctx.fillStyle = '#fff';
+											ctx.font = 'bold 12px Arial';
+											ctx.textAlign = 'center';
+											ctx.textBaseline = 'bottom';
+											const position = element.tooltipPosition();
+											ctx.fillText(value, position.x, position.y - 5);
+											ctx.restore();
+										}
+									});
+								});
+							}
+						}]
+					});
+				}
+				
+				if(ctxDayMot){
+					if(ctxDayMot._chart) ctxDayMot._chart.destroy();
+					ctxDayMot._chart = new Chart(ctxDayMot, {
+						type:'line',
+						data:{ 
+							labels: (s.byDay||[]).map(d=>d.date),
+							datasets:[{ label:'Cadastros', data: (s.byDay||[]).map(d=>d.count), borderColor:'#f59e0b', backgroundColor:'rgba(245,158,11,0.25)', fill:true, tension:0.3, pointRadius: 5, pointHoverRadius: 7 }]
+						},
+						options:{ 
+							responsive:true,
+							plugins: {
+								legend: { display: true, labels: { color: 'rgba(255,255,255,0.9)' } }
+							},
+							scales: {
+								y: {
+									beginAtZero: true,
+									ticks: { color: 'rgba(255,255,255,0.7)' },
+									grid: { color: 'rgba(255,255,255,0.1)' }
+								},
+								x: {
+									ticks: { color: 'rgba(255,255,255,0.7)' },
+									grid: { color: 'rgba(255,255,255,0.1)' }
+								}
+							}
+						},
+						plugins: [{
+							id: 'datalabels',
+							afterDatasetsDraw: (chart) => {
+								const ctx = chart.ctx;
+								chart.data.datasets.forEach((dataset, i) => {
+									const meta = chart.getDatasetMeta(i);
+									meta.data.forEach((element, index) => {
+										const value = dataset.data[index];
+										if (value !== null && value !== undefined && value > 0) {
+											ctx.save();
+											ctx.fillStyle = '#fff';
+											ctx.font = 'bold 11px Arial';
+											ctx.textAlign = 'center';
+											ctx.textBaseline = 'bottom';
+											const position = element.tooltipPosition();
+											ctx.fillText(value, position.x, position.y - 8);
+											ctx.restore();
+										}
+									});
+								});
+							}
+						}]
+					});
+				}
 			}
 		} finally {
 			if(overlay) overlay.style.display = 'none';
@@ -644,7 +781,81 @@
                     ctxUser._chart = new Chart(ctxUser, {
                         type:'bar',
                         data:{ labels:(s.byUser||[]).map(u=>u.nome), datasets:[{ label:'Disparos', data:(s.byUser||[]).map(u=>u.count), backgroundColor:'#4f46e5' }] },
-                        options:{ responsive:true, plugins:{ legend:{ display:false }}}
+                        options:{ 
+                            responsive:true, 
+                            plugins:{ 
+                                legend:{ display:false },
+                                datalabels: {
+                                    anchor: 'end',
+                                    align: 'top',
+                                    color: '#fff',
+                                    font: { weight: 'bold', size: 12 },
+                                    formatter: (value) => value || ''
+                                }
+                            },
+                            scales: {
+                                y: {
+                                    beginAtZero: true,
+                                    ticks: { color: 'rgba(255,255,255,0.7)' },
+                                    grid: { color: 'rgba(255,255,255,0.1)' }
+                                },
+                                x: {
+                                    ticks: { color: 'rgba(255,255,255,0.7)' },
+                                    grid: { color: 'rgba(255,255,255,0.1)' }
+                                }
+                            }
+                        },
+                        plugins: [{
+                            id: 'datalabels',
+                            afterDatasetsDraw: (chart) => {
+                                const ctx = chart.ctx;
+                                const chartArea = chart.chartArea;
+                                chart.data.datasets.forEach((dataset, i) => {
+                                    const meta = chart.getDatasetMeta(i);
+                                    meta.data.forEach((element, index) => {
+                                        const value = dataset.data[index];
+                                        if (value !== null && value !== undefined) {
+                                            ctx.save();
+                                            ctx.fillStyle = '#fff';
+                                            ctx.font = 'bold 12px Arial';
+                                            ctx.textAlign = 'center';
+                                            ctx.textBaseline = 'middle';
+                                            
+                                            // Para gráficos de barras, centralizar no topo da barra
+                                            const barTop = element.y;
+                                            const barCenter = element.x;
+                                            const barBottom = chartArea.bottom;
+                                            
+                                            // Calcular altura da barra
+                                            const barHeight = barBottom - barTop;
+                                            
+                                            // Verificar se o texto cabe dentro da área do gráfico
+                                            const textHeight = 12;
+                                            const textWidth = ctx.measureText(value).width;
+                                            const padding = 5;
+                                            
+                                            // Posicionar o texto no topo da barra, mas garantir que não saia dos limites
+                                            let textY = barTop - padding;
+                                            
+                                            // Se a barra é muito baixa ou o texto sairia pela parte superior, colocar dentro da barra
+                                            if (textY < chartArea.top + textHeight || barHeight < textHeight + padding * 2) {
+                                                textY = barTop + (barHeight / 2); // Centralizar verticalmente na barra
+                                            }
+                                            
+                                            // Garantir que o texto não saia dos limites horizontais
+                                            const textX = Math.max(chartArea.left + textWidth / 2, 
+                                                Math.min(barCenter, chartArea.right - textWidth / 2));
+                                            
+                                            // Garantir que o texto não saia dos limites verticais
+                                            if (textY >= chartArea.top + textHeight && textY <= chartArea.bottom - textHeight) {
+                                                ctx.fillText(value, textX, textY);
+                                            }
+                                            ctx.restore();
+                                        }
+                                    });
+                                });
+                            }
+                        }]
                     });
                 }
                 if(ctxDept){
@@ -652,15 +863,138 @@
                     ctxDept._chart = new Chart(ctxDept, {
                         type:'bar',
                         data:{ labels:(s.byDepartment||[]).map(d=>d.departamento), datasets:[{ label:'Disparos', data:(s.byDepartment||[]).map(d=>d.count), backgroundColor:'#10b981' }] },
-                        options:{ responsive:true, plugins:{ legend:{ display:false }}}
+                        options:{ 
+                            responsive:true, 
+                            plugins:{ 
+                                legend:{ display:false },
+                                datalabels: {
+                                    anchor: 'end',
+                                    align: 'top',
+                                    color: '#fff',
+                                    font: { weight: 'bold', size: 12 },
+                                    formatter: (value) => value || ''
+                                }
+                            },
+                            scales: {
+                                y: {
+                                    beginAtZero: true,
+                                    ticks: { color: 'rgba(255,255,255,0.7)' },
+                                    grid: { color: 'rgba(255,255,255,0.1)' }
+                                },
+                                x: {
+                                    ticks: { color: 'rgba(255,255,255,0.7)' },
+                                    grid: { color: 'rgba(255,255,255,0.1)' }
+                                }
+                            }
+                        },
+                        plugins: [{
+                            id: 'datalabels',
+                            afterDatasetsDraw: (chart) => {
+                                const ctx = chart.ctx;
+                                const chartArea = chart.chartArea;
+                                chart.data.datasets.forEach((dataset, i) => {
+                                    const meta = chart.getDatasetMeta(i);
+                                    meta.data.forEach((element, index) => {
+                                        const value = dataset.data[index];
+                                        if (value !== null && value !== undefined) {
+                                            ctx.save();
+                                            ctx.fillStyle = '#fff';
+                                            ctx.font = 'bold 12px Arial';
+                                            ctx.textAlign = 'center';
+                                            ctx.textBaseline = 'middle';
+                                            
+                                            // Para gráficos de barras, centralizar no topo da barra
+                                            const barTop = element.y;
+                                            const barCenter = element.x;
+                                            const barBottom = chartArea.bottom;
+                                            
+                                            // Calcular altura da barra
+                                            const barHeight = barBottom - barTop;
+                                            
+                                            // Verificar se o texto cabe dentro da área do gráfico
+                                            const textHeight = 12;
+                                            const textWidth = ctx.measureText(value).width;
+                                            const padding = 5;
+                                            
+                                            // Posicionar o texto no topo da barra, mas garantir que não saia dos limites
+                                            let textY = barTop - padding;
+                                            
+                                            // Se a barra é muito baixa ou o texto sairia pela parte superior, colocar dentro da barra
+                                            if (textY < chartArea.top + textHeight || barHeight < textHeight + padding * 2) {
+                                                textY = barTop + (barHeight / 2); // Centralizar verticalmente na barra
+                                            }
+                                            
+                                            // Garantir que o texto não saia dos limites horizontais
+                                            const textX = Math.max(chartArea.left + textWidth / 2, 
+                                                Math.min(barCenter, chartArea.right - textWidth / 2));
+                                            
+                                            // Garantir que o texto não saia dos limites verticais
+                                            if (textY >= chartArea.top + textHeight && textY <= chartArea.bottom - textHeight) {
+                                                ctx.fillText(value, textX, textY);
+                                            }
+                                            ctx.restore();
+                                        }
+                                    });
+                                });
+                            }
+                        }]
                     });
                 }
                 if(ctxDay){
                     if(ctxDay._chart) ctxDay._chart.destroy();
                     ctxDay._chart = new Chart(ctxDay, {
                         type:'line',
-                        data:{ labels:(s.byDay||[]).map(d=>d.date), datasets:[{ label:'Disparos', data:(s.byDay||[]).map(d=>d.count), borderColor:'#f59e0b', backgroundColor:'rgba(245,158,11,0.25)', fill:true, tension:0.3 }] },
-                        options:{ responsive:true }
+                        data:{ labels:(s.byDay||[]).map(d=>d.date), datasets:[{ label:'Disparos', data:(s.byDay||[]).map(d=>d.count), borderColor:'#f59e0b', backgroundColor:'rgba(245,158,11,0.25)', fill:true, tension:0.3, pointRadius: 5, pointHoverRadius: 7 }] },
+                        options:{ 
+                            responsive:true,
+                            plugins: {
+                                legend: { display: true, labels: { color: 'rgba(255,255,255,0.9)' } }
+                            },
+                            scales: {
+                                y: {
+                                    beginAtZero: true,
+                                    ticks: { color: 'rgba(255,255,255,0.7)' },
+                                    grid: { color: 'rgba(255,255,255,0.1)' }
+                                },
+                                x: {
+                                    ticks: { color: 'rgba(255,255,255,0.7)' },
+                                    grid: { color: 'rgba(255,255,255,0.1)' }
+                                }
+                            }
+                        },
+                        plugins: [{
+                            id: 'datalabels',
+                            afterDatasetsDraw: (chart) => {
+                                const ctx = chart.ctx;
+                                const chartArea = chart.chartArea;
+                                chart.data.datasets.forEach((dataset, i) => {
+                                    const meta = chart.getDatasetMeta(i);
+                                    meta.data.forEach((element, index) => {
+                                        const value = dataset.data[index];
+                                        if (value !== null && value !== undefined && value > 0) {
+                                            ctx.save();
+                                            ctx.fillStyle = '#fff';
+                                            ctx.font = 'bold 11px Arial';
+                                            ctx.textAlign = 'center';
+                                            ctx.textBaseline = 'middle';
+                                            
+                                            // Para gráficos de linha, centralizar acima do ponto
+                                            const pointX = element.x;
+                                            const pointY = element.y;
+                                            const textHeight = 11;
+                                            const textY = Math.max(pointY - textHeight - 8, chartArea.top + textHeight);
+                                            
+                                            // Garantir que o texto não saia dos limites
+                                            if (textY >= chartArea.top && textY <= chartArea.bottom && 
+                                                pointX >= chartArea.left && pointX <= chartArea.right) {
+                                                ctx.fillText(value, pointX, textY);
+                                            }
+                                            ctx.restore();
+                                        }
+                                    });
+                                });
+                            }
+                        }]
                     });
                 }
             } else {
