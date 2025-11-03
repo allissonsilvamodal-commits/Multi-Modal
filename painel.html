@@ -1393,107 +1393,52 @@ const estados = [
                 console.log('✅ Filtro de estados carregado');
             }
 
-            // Carregar tipos de veículo do banco de dados
+            // Carregar tipos de veículo do backend (distinct via service role)
             const filtroTipoVeiculo = document.getElementById('filtroTipoVeiculo');
             if (filtroTipoVeiculo) {
                 try {
-                    if (supabase) {
-                        // Buscar tipos de veículo reais do banco (com limite para performance)
-                        const { data: tipos, error } = await supabase
-                            .from('motoristas')
-                            .select('tipo_veiculo')
-                            .not('tipo_veiculo', 'is', null)
-                            .limit(5000); // Limite para evitar timeout em grandes volumes
-                        
-                        if (!error && tipos && tipos.length > 0) {
-                            // Extrair valores únicos
-                            const tiposUnicos = [...new Set(tipos.map(t => t.tipo_veiculo))].sort();
-                            
-                            tiposUnicos.forEach(tipo => {
-                                const option = document.createElement('option');
-                                option.value = tipo; // Usar valor exato do banco
-                                option.textContent = tipo;
-                                filtroTipoVeiculo.appendChild(option);
-                            });
-                            
-                            console.log('✅ Filtro de tipos de veículo carregado do banco:', tiposUnicos.length, 'tipos únicos');
-                        } else {
-                            // Fallback: usar mapeamento estático
-                            if (error) {
-                                console.log('ℹ️ Não foi possível carregar tipos do banco, usando mapeamento estático');
-                            }
-                            const todosTipos = [...new Set(Object.values(tiposVeiculo).flat())];
-                            todosTipos.forEach(tipo => {
-                                const option = document.createElement('option');
-                                option.value = tipo;
-                                option.textContent = tipo;
-                                filtroTipoVeiculo.appendChild(option);
-                            });
-                        }
-                    } else {
-                        // Fallback: usar mapeamento estático
-                        const todosTipos = [...new Set(Object.values(tiposVeiculo).flat())];
-                        todosTipos.forEach(tipo => {
+                    const resp = await fetch('/api/filtros/motoristas/tipos');
+                    if (resp.ok) {
+                        const json = await resp.json();
+                        (json.tipos || []).forEach(tipo => {
                             const option = document.createElement('option');
                             option.value = tipo;
                             option.textContent = tipo;
                             filtroTipoVeiculo.appendChild(option);
                         });
+                        console.log('✅ Filtro de tipos de veículo carregado:', (json.tipos||[]).length);
                     }
                 } catch (error) {
-                    // Fallback silencioso: usar mapeamento estático
-                    const todosTipos = [...new Set(Object.values(tiposVeiculo).flat())];
-                    todosTipos.forEach(tipo => {
-                        const option = document.createElement('option');
-                        option.value = tipo;
-                        option.textContent = tipo;
-                        filtroTipoVeiculo.appendChild(option);
-                    });
+                    console.warn('⚠️ Erro ao carregar tipos de veículo:', error.message);
                 }
                 
                 console.log('✅ Filtro de tipos de veículo carregado');
             }
 
-            // Carregar carrocerias do banco de dados (normalizando valores e combinando com mapa estático)
+            // Carregar carrocerias do backend (distinct via service role)
             const filtroCarroceria = document.getElementById('filtroCarroceria');
             if (filtroCarroceria) {
-                const valoresNormalizados = new Map();
                 try {
-                    if (supabase) {
-                        const { data: carrocerias, error } = await supabase
-                            .from('motoristas')
-                            .select('tipo_carroceria')
-                            .not('tipo_carroceria', 'is', null)
-                            .limit(5000);
-                        if (!error && carrocerias) {
-                            carrocerias.forEach(item => {
-                                const valorBruto = (item.tipo_carroceria || '').trim();
-                                if (!valorBruto) return;
-                                const chaveNormalizada = valorBruto.toLowerCase();
-                                if (!valoresNormalizados.has(chaveNormalizada)) {
-                                    valoresNormalizados.set(chaveNormalizada, valorBruto);
-                                }
-                            });
-                            console.log('✅ Carrocerias carregadas do banco:', valoresNormalizados.size);
-                        } else if (error) {
-                            console.log('ℹ️ Não foi possível carregar carrocerias do banco, usando mapeamento estático');
-                        }
+                    const resp = await fetch('/api/filtros/motoristas/carrocerias');
+                    if (resp.ok) {
+                        const json = await resp.json();
+                        const valores = new Set((json.carrocerias||[]).map(v => (v||'').trim()).filter(Boolean));
+                        // Unir com lista padronizada do cadastro (mesma "máscara")
+                        Object.values(tiposCarroceriaMap||{}).forEach(lbl => { if(lbl) valores.add(lbl); });
+                        // Garantir presença explícita dessas opções
+                        ['BASCULANTE','PORTA CONTAINER 20','PORTA CONTAINER 40','PORTA CONTAINER20/40'].forEach(v=>valores.add(v));
+                        const listaOrdenada = Array.from(valores).sort((a,b)=> a.localeCompare(b,'pt-BR'));
+                        listaOrdenada.forEach(valorOriginal => {
+                            const option = document.createElement('option');
+                            option.value = valorOriginal;
+                            option.textContent = valorOriginal;
+                            filtroCarroceria.appendChild(option);
+                        });
+                        console.log('✅ Filtro de carrocerias carregado com', listaOrdenada.length, 'opções');
                     }
                 } catch (error) {
-                    console.warn('⚠️ Erro ao carregar carrocerias do banco, usando mapeamento estático:', error.message);
+                    console.warn('⚠️ Erro ao carregar carrocerias:', error.message);
                 }
-
-                // Ordenar alfabeticamente (somente valores presentes no banco)
-                const listaOrdenada = Array.from(valoresNormalizados.values()).sort((a, b) => a.localeCompare(b, 'pt-BR'));
-
-                listaOrdenada.forEach(valorOriginal => {
-                    const option = document.createElement('option');
-                    option.value = valorOriginal;
-                    option.textContent = valorOriginal;
-                    filtroCarroceria.appendChild(option);
-                });
-
-                console.log('✅ Filtro de carrocerias carregado com', listaOrdenada.length, 'opções');
             }
         }
 
@@ -1788,8 +1733,8 @@ const estados = [
                     }
                     
                     if (filtroCarroceria) {
-                        // Filtro de carroceria - usar valor exato do banco (já vem correto do dropdown)
-                        query = query.eq('tipo_carroceria', filtroCarroceria);
+                        // Tolerar variações (usa ilike com contém)
+                        query = query.ilike('tipo_carroceria', `%${filtroCarroceria}%`);
                     }
                     
                     if (filtroEstado) {
@@ -1841,8 +1786,8 @@ const estados = [
                         // Filtro de tipo de veículo
                         if (filtroTipoVeiculo && motorista.tipo_veiculo !== filtroTipoVeiculo) return false;
                         
-                        // Filtro de carroceria
-                        if (filtroCarroceria && motorista.tipo_carroceria !== filtroCarroceria) return false;
+                        // Filtro de carroceria (tolerante, contém, case-insensitive)
+                        if (filtroCarroceria && !String(motorista.tipo_carroceria||'').toLowerCase().includes(filtroCarroceria.toLowerCase())) return false;
                         
                         // Filtro de estado
                         if (filtroEstado && motorista.estado !== filtroEstado) return false;

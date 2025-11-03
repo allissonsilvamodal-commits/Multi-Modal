@@ -5507,6 +5507,43 @@ app.get('/api/relatorios/disparos/series', async (req, res) => {
   }
 });
 
+// ========== FILTROS: TIPOS DE VEÍCULO E CARROCERIA (DISTINCT VIA SERVICE ROLE) ==========
+app.get('/api/filtros/motoristas/tipos', async (req, res) => {
+  try {
+    const { data, error } = await supabaseAdmin
+      .from('motoristas')
+      .select('tipo_veiculo', { count: 'exact', head: false })
+      .not('tipo_veiculo', 'is', null)
+      .neq('tipo_veiculo', '')
+      .limit(10000);
+    if (error) throw error;
+    const uniq = Array.from(new Set((data || []).map(r => (r.tipo_veiculo || '').trim()).filter(Boolean)))
+      .sort((a, b) => a.localeCompare(b, 'pt-BR'));
+    res.json({ success: true, tipos: uniq });
+  } catch (e) {
+    console.error('❌ Erro filtros tipos:', e);
+    res.status(500).json({ success: false, error: 'Erro ao carregar tipos de veículo' });
+  }
+});
+
+app.get('/api/filtros/motoristas/carrocerias', async (req, res) => {
+  try {
+    const { data, error } = await supabaseAdmin
+      .from('motoristas')
+      .select('tipo_carroceria', { count: 'exact', head: false })
+      .not('tipo_carroceria', 'is', null)
+      .neq('tipo_carroceria', '')
+      .limit(10000);
+    if (error) throw error;
+    const uniq = Array.from(new Set((data || []).map(r => (r.tipo_carroceria || '').trim()).filter(Boolean)))
+      .sort((a, b) => a.localeCompare(b, 'pt-BR'));
+    res.json({ success: true, carrocerias: uniq });
+  } catch (e) {
+    console.error('❌ Erro filtros carrocerias:', e);
+    res.status(500).json({ success: false, error: 'Erro ao carregar carrocerias' });
+  }
+});
+
 // Obter estatísticas gerais
 app.get('/api/estatisticas-gerais', requireAuth, async (req, res) => {
     try {
