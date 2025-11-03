@@ -3067,16 +3067,16 @@ app.post('/webhook/send', async (req, res) => {
       
       // Registrar disparo anônimo (sem auth) no Supabase
       try {
-        const { supabase } = require('./supabase-secure');
-        await supabase.from('disparos_log').insert([{
+        await supabaseAdmin.from('disparos_log').insert([{
           user_id: null,
           departamento: null,
           numero: number,
           mensagem_tamanho: (text || '').length,
           status: 'success'
         }]);
+        console.log('✅ Disparo registrado no BI (send anônimo)');
       } catch (logErr) {
-        console.warn('⚠️ Falha ao registrar disparo (send):', logErr.message);
+        console.error('❌ Falha ao registrar disparo (send):', logErr.message, logErr);
       }
       
       res.json({
@@ -3166,16 +3166,16 @@ app.post('/webhook/send-auth', requireAuth, async (req, res) => {
       
       // Registrar disparo autenticado no Supabase
       try {
-        const { supabase } = require('./supabase-secure');
-        await supabase.from('disparos_log').insert([{
+        await supabaseAdmin.from('disparos_log').insert([{
           user_id: usuario,
           departamento: req.session?.userData?.departamento || null,
           numero: formattedNumber,
           mensagem_tamanho: (message || '').length,
           status: 'success'
         }]);
+        console.log('✅ Disparo registrado no BI com sucesso (send-auth)');
       } catch (logErr) {
-        console.warn('⚠️ Falha ao registrar disparo (send-auth):', logErr.message);
+        console.error('❌ Falha ao registrar disparo (send-auth):', logErr.message, logErr);
       }
       
       res.json({ 
@@ -3444,8 +3444,7 @@ app.post('/webhook/send-supabase', upload.single('media'), async (req, res) => {
 
         // Registrar disparo no BI
         try {
-          const { supabase } = require('./supabase-secure');
-          await supabase.from('disparos_log').insert([
+          await supabaseAdmin.from('disparos_log').insert([
             {
               user_id: userCreds.user_id || userIdentity || null,
               departamento: req.session?.userData?.departamento || null,
@@ -3454,8 +3453,9 @@ app.post('/webhook/send-supabase', upload.single('media'), async (req, res) => {
               status: 'success'
             }
           ]);
+          console.log('✅ Disparo registrado no BI com sucesso');
         } catch (logErr) {
-          console.warn('⚠️ Falha ao registrar disparo (send-supabase texto):', logErr.message);
+          console.error('❌ Falha ao registrar disparo (send-supabase texto):', logErr.message, logErr);
         }
 
         res.json({
@@ -3473,8 +3473,7 @@ app.post('/webhook/send-supabase', upload.single('media'), async (req, res) => {
       console.log('❌ Erro da Evolution (texto):', errorText);
       // Registrar falha no BI
       try {
-        const { supabase } = require('./supabase-secure');
-        await supabase.from('disparos_log').insert([
+        await supabaseAdmin.from('disparos_log').insert([
           {
             user_id: userCreds.user_id || userIdentity || null,
             departamento: req.session?.userData?.departamento || null,
@@ -3483,8 +3482,9 @@ app.post('/webhook/send-supabase', upload.single('media'), async (req, res) => {
             status: 'error'
           }
         ]);
+        console.log('✅ Falha de disparo registrada no BI');
       } catch (logErr) {
-        console.warn('⚠️ Falha ao registrar disparo (erro texto):', logErr.message);
+        console.error('❌ Falha ao registrar disparo (erro texto):', logErr.message, logErr);
       }
       cleanupFile();
       return res.status(500).json({
@@ -3638,8 +3638,7 @@ app.post('/webhook/send-supabase', upload.single('media'), async (req, res) => {
     if (evolutionResult) {
       // Registrar disparo no BI
       try {
-        const { supabase } = require('./supabase-secure');
-        await supabase.from('disparos_log').insert([
+        await supabaseAdmin.from('disparos_log').insert([
           {
             user_id: userCreds.user_id || userIdentity || null,
             departamento: req.session?.userData?.departamento || null,
@@ -3648,8 +3647,9 @@ app.post('/webhook/send-supabase', upload.single('media'), async (req, res) => {
             status: 'success'
           }
         ]);
+        console.log('✅ Disparo registrado no BI (mídia)');
       } catch (logErr) {
-        console.warn('⚠️ Falha ao registrar disparo (send-supabase mídia):', logErr.message);
+        console.error('❌ Falha ao registrar disparo (send-supabase mídia):', logErr.message, logErr);
       }
 
       return res.json({
@@ -3665,8 +3665,7 @@ app.post('/webhook/send-supabase', upload.single('media'), async (req, res) => {
 
     // Registrar falha no BI
     try {
-      const { supabase } = require('./supabase-secure');
-      await supabase.from('disparos_log').insert([
+      await supabaseAdmin.from('disparos_log').insert([
         {
           user_id: userCreds.user_id || userIdentity || null,
           departamento: req.session?.userData?.departamento || null,
@@ -3675,8 +3674,9 @@ app.post('/webhook/send-supabase', upload.single('media'), async (req, res) => {
           status: 'error'
         }
       ]);
+      console.log('✅ Falha de disparo registrada no BI (mídia)');
     } catch (logErr) {
-      console.warn('⚠️ Falha ao registrar disparo (erro mídia):', logErr.message);
+      console.error('❌ Falha ao registrar disparo (erro mídia):', logErr.message, logErr);
     }
 
     return res.status(500).json({
@@ -3690,8 +3690,7 @@ app.post('/webhook/send-supabase', upload.single('media'), async (req, res) => {
     console.log('❌ Erro:', error.message);
     // Registrar falha inesperada no BI
     try {
-      const { supabase } = require('./supabase-secure');
-      await supabase.from('disparos_log').insert([
+      await supabaseAdmin.from('disparos_log').insert([
         {
           user_id: userIdentity || null,
           departamento: req.session?.userData?.departamento || null,
@@ -3700,8 +3699,9 @@ app.post('/webhook/send-supabase', upload.single('media'), async (req, res) => {
           status: 'error'
         }
       ]);
+      console.log('✅ Falha inesperada de disparo registrada no BI');
     } catch (logErr) {
-      console.warn('⚠️ Falha ao registrar disparo (erro catch):', logErr.message);
+      console.error('❌ Falha ao registrar disparo (erro catch):', logErr.message, logErr);
     }
     cleanupFile();
     res.status(500).json({

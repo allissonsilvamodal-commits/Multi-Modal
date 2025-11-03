@@ -94,6 +94,12 @@
         body.light-mode .table-tech thead th { background: #eef2ff; color: #0f172a; }
         body.light-mode .table-tech td, body.light-mode .table-tech th { color: #0f172a; }
         body.light-mode .form-select, body.light-mode .form-control { background: rgba(255,255,255,0.95); color: #0f172a; border: 1px solid rgba(0,0,0,0.12); }
+        /* Corrigir selects no modo escuro */
+        .form-select option, .form-control option { background: #1a1a2e; color: #fff; }
+        body.light-mode .form-select option, body.light-mode .form-control option { background: #fff; color: #0f172a; }
+        /* Input date no modo escuro */
+        input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1); cursor: pointer; }
+        body.light-mode input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0); }
         body.light-mode .nav-tabs .nav-link { color: #334155; background: rgba(0,0,0,0.04); }
         body.light-mode .nav-tabs .nav-link.active { color: #4f46e5; border-bottom-color: #a855f7; background: linear-gradient(90deg, #e0e7ff, #f3e8ff, #fdf4ff); }
         body.light-mode .theme-toggle { color: #0f172a; background: rgba(255,255,255,0.8); border: 1px solid rgba(0,0,0,0.08); }
@@ -299,22 +305,31 @@
                     </div>
                 <div class="filter-card">
                     <div class="row">
-                        <div class="col-md-3 mb-2">
+                        <div class="col-md-2 mb-2">
                             <label class="form-label"><i class="fas fa-calendar"></i> Período</label>
                             <select id="filtroPeriodoDisp" class="form-select" onchange="carregarDisparos()">
                                 <option value="hoje">Hoje</option>
                                 <option value="mes" selected>Este Mês</option>
                                 <option value="ano">Este Ano</option>
                                 <option value="todos">Todos</option>
+                                <option value="personalizado">Personalizado</option>
                             </select>
                     </div>
-                        <div class="col-md-4 mb-2">
+                        <div class="col-md-2 mb-2">
+                            <label class="form-label"><i class="fas fa-calendar-alt"></i> Data Início</label>
+                            <input type="date" id="filtroDataInicioDisp" class="form-control" onchange="if(document.getElementById('filtroPeriodoDisp').value==='personalizado') carregarDisparos();">
+                        </div>
+                        <div class="col-md-2 mb-2">
+                            <label class="form-label"><i class="fas fa-calendar-check"></i> Data Fim</label>
+                            <input type="date" id="filtroDataFimDisp" class="form-control" onchange="if(document.getElementById('filtroPeriodoDisp').value==='personalizado') carregarDisparos();">
+                        </div>
+                        <div class="col-md-3 mb-2">
                             <label class="form-label"><i class="fas fa-user"></i> Usuário</label>
                             <select id="filtroUsuarioDisp" class="form-select" onchange="carregarDisparos()">
                                 <option value="">Todos os usuários</option>
                             </select>
                 </div>
-                        <div class="col-md-5 mb-2">
+                        <div class="col-md-3 mb-2">
                             <label class="form-label"><i class="fas fa-building"></i> Departamento</label>
                             <select id="filtroDepartamentoDisp" class="form-select" onchange="carregarDisparos()">
                                 <option value="">Todos os departamentos</option>
@@ -357,23 +372,17 @@
 		const abaMot = document.getElementById('abaMotoristas');
 		if(abaMot) abaMot.style.display = aba==='motoristas' ? '' : 'none';
         if(aba==='bi' && typeof carregarDisparos==='function' && typeof carregarFiltrosDisparos==='function') {
-            if(!window._rel_bi_inited){
-                carregarFiltrosDisparos().then(() => carregarDisparos());
-                window._rel_bi_inited=true;
-            }
+            // Sempre recarregar filtros e dados para refletir novos logs
+            carregarFiltrosDisparos().then(() => carregarDisparos());
         }
 		if(aba==='motoristas'){
 			(async ()=>{
 				try{
 					const st = await fetch('/api/auth/status', { credentials:'include' });
 					if(handleUnauthorized(st)) return;
-					if(!window._rel_mot_inited){
-						await carregarFiltrosMotoristas();
-						await carregarMotoristas();
-						window._rel_mot_inited=true;
-					}else{
-						await carregarMotoristas();
-					}
+                    // Sempre recarregar filtros e dados de motoristas
+                    await carregarFiltrosMotoristas();
+                    await carregarMotoristas();
 				}catch(e){ console.error('Erro ao carregar Motoristas:', e); }
 			})();
 		}
@@ -548,7 +557,17 @@
             const periodo = document.getElementById('filtroPeriodoDisp')?.value || 'mes';
             const usuarioId = document.getElementById('filtroUsuarioDisp')?.value || '';
             const departamento = document.getElementById('filtroDepartamentoDisp')?.value || '';
-            const range = periodoToRange(periodo);
+            let range;
+            if(periodo === 'personalizado'){
+                const dataInicio = document.getElementById('filtroDataInicioDisp')?.value;
+                const dataFim = document.getElementById('filtroDataFimDisp')?.value;
+                range = {
+                    inicio: dataInicio ? new Date(dataInicio + 'T00:00:00') : null,
+                    fim: dataFim ? new Date(dataFim + 'T23:59:59') : null
+                };
+            } else {
+                range = periodoToRange(periodo);
+            }
             const params = new URLSearchParams({
                 inicio: range.inicio ? range.inicio.toISOString() : '',
                 fim: range.fim ? range.fim.toISOString() : '',
@@ -565,6 +584,9 @@
                 document.getElementById('kpiTotalDisp').innerText = (k.total||0).toString();
                 document.getElementById('kpiUsuariosDisp').innerText = (k.usuarios||0).toString();
                 document.getElementById('kpiDepartamentosDisp').innerText = (k.departamentos||0).toString();
+                if((k.total||0)===0){ console.warn('BI Disparos: nenhum registro no período/filtros atuais'); }
+            } else {
+                console.error('Erro KPIs disparos:', await kpiResp.text());
             }
             if(seriesResp.ok){
                 const s = await seriesResp.json();
@@ -595,6 +617,8 @@
                         options:{ responsive:true }
                     });
                 }
+            } else {
+                console.error('Erro séries disparos:', await seriesResp.text());
             }
         } finally {
             if(overlay) overlay.style.display = 'none';
