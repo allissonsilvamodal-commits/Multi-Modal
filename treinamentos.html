@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portal de Treinamentos - Qualidade</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/permissions.js"></script>
+    <style>
+        :root {
+            --primary: #667eea;
+            --secondary: #764ba2;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            min-height: 100vh;
+        }
+        
+        .header-section {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            padding: 2.5rem 0;
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+        
+        .header-section h1 {
+            margin: 0;
+            font-size: 2.5rem;
+            font-weight: 700;
+        }
+        
+        .header-section p {
+            margin: 0.5rem 0 0 0;
+            opacity: 0.9;
+            font-size: 1.1rem;
+        }
+        
+        .container-custom {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 1.5rem;
+        }
+        
+        .training-card {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            padding: 2rem;
+            margin-bottom: 2rem;
+            transition: all 0.3s ease;
+            border: 1px solid #e5e7eb;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .training-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 30px rgba(0,0,0,0.15);
+            border-color: var(--primary);
+        }
+        
+        .training-card-icon {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 2rem;
+            margin-bottom: 1.5rem;
+        }
+        
+        .training-card h3 {
+            color: #1f2937;
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 0.75rem;
+        }
+        
+        .training-card p {
+            color: #6b7280;
+            line-height: 1.6;
+            flex-grow: 1;
+            margin-bottom: 1.5rem;
+        }
+        
+        .training-card-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: auto;
+            padding-top: 1rem;
+            border-top: 1px solid #e5e7eb;
+        }
+        
+        .training-card-tags {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+        
+        .tag {
+            background: #e0e7ff;
+            color: var(--primary);
+            padding: 0.25rem 0.75rem;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+        
+        .btn-training {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            padding: 0.75rem 1.5rem;
+            font-weight: 600;
+            transition: all 0.3s;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .btn-training:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+            color: white;
+        }
+        
+        .btn-back {
+            background: #6b7280;
+            color: white;
+            border: none;
+            border-radius: 12px;
+            padding: 0.75rem 1.5rem;
+            font-weight: 600;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 2rem;
+            transition: all 0.3s;
+        }
+        
+        .btn-back:hover {
+            background: #4b5563;
+            color: white;
+            transform: translateY(-2px);
+        }
+        
+        .stats-section {
+            background: white;
+            border-radius: 16px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+        
+        .stat-card {
+            text-align: center;
+            padding: 1.5rem;
+        }
+        
+        .stat-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--primary);
+            margin-bottom: 0.5rem;
+        }
+        
+        .stat-label {
+            color: #6b7280;
+            font-size: 0.95rem;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 4rem 2rem;
+            color: #6b7280;
+        }
+        
+        .empty-state i {
+            font-size: 4rem;
+            color: #d1d5db;
+            margin-bottom: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="header-section">
+        <div class="container-custom">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+                <div>
+                    <h1><i class="fas fa-graduation-cap me-2"></i>Portal de Treinamentos</h1>
+                    <p>Instruções de trabalho e procedimentos operacionais</p>
+                </div>
+                <a href="portal.html" class="btn-back">
+                    <i class="fas fa-arrow-left"></i> Voltar ao Portal
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="container-custom">
+        <!-- Estatísticas -->
+        <div class="stats-section">
+            <div class="row">
+                <div class="col-md-3 col-6">
+                    <div class="stat-card">
+                        <div class="stat-value" id="totalTreinamentos">0</div>
+                        <div class="stat-label">Treinamentos Disponíveis</div>
+                    </div>
+                </div>
+                <div class="col-md-3 col-6">
+                    <div class="stat-card">
+                        <div class="stat-value" id="totalConcluidos">0</div>
+                        <div class="stat-label">Treinamentos Concluídos</div>
+                    </div>
+                </div>
+                <div class="col-md-3 col-6">
+                    <div class="stat-card">
+                        <div class="stat-value" id="totalPendentes">0</div>
+                        <div class="stat-label">Treinamentos Pendentes</div>
+                    </div>
+                </div>
+                <div class="col-md-3 col-6">
+                    <div class="stat-card">
+                        <div class="stat-value" id="porcentagemConclusao">0%</div>
+                        <div class="stat-label">Taxa de Conclusão</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Lista de Treinamentos -->
+        <div class="row" id="treinamentosContainer">
+            <!-- Os treinamentos serão carregados aqui via JavaScript -->
+        </div>
+        
+        <!-- Estado vazio -->
+        <div class="empty-state" id="emptyState" style="display: none;">
+            <i class="fas fa-book-open"></i>
+            <h3>Nenhum treinamento disponível</h3>
+            <p>Os treinamentos serão exibidos aqui quando estiverem disponíveis.</p>
+        </div>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Configuração de treinamentos disponíveis
+        const TREINAMENTOS_CONFIG = [
+            {
+                id: 'cadastro_motoristas',
+                titulo: 'Cadastro de Motoristas',
+                descricao: 'Aprenda a cadastrar novos motoristas no sistema de forma correta e completa. Inclui todas as etapas do processo e boas práticas.',
+                icon: 'fas fa-truck',
+                tags: ['Obrigatório', 'Cadastro'],
+                url: 'treinamento-cadastro-motoristas.html',
+                categoria: 'Operacional',
+                duracao: '15 min',
+                nivel: 'Básico'
+            }
+            // Adicione mais treinamentos aqui no futuro
+        ];
+        
+        let currentUser = null;
+        let userAssinaturas = [];
+        
+        async function inicializar() {
+            // Verificar autenticação
+            try {
+                const response = await fetch('/api/auth/status', { credentials: 'include' });
+                if (!response.ok) {
+                    window.location.href = 'index.html';
+                    return;
+                }
+                currentUser = await response.json();
+                
+                // Verificar permissão
+                if (typeof verificarEAplicarPermissao === 'function') {
+                    const temPermissao = await verificarEAplicarPermissao('qualidade');
+                    if (!temPermissao) {
+                        alert('Você não tem permissão para acessar esta página.');
+                        window.location.href = 'portal.html';
+                        return;
+                    }
+                }
+            } catch (error) {
+                console.error('Erro ao verificar autenticação:', error);
+                window.location.href = 'index.html';
+                return;
+            }
+            
+            // Carregar assinaturas do usuário
+            await carregarAssinaturas();
+            
+            // Renderizar treinamentos
+            renderizarTreinamentos();
+            
+            // Atualizar estatísticas
+            atualizarEstatisticas();
+        }
+        
+        async function carregarAssinaturas() {
+            try {
+                let sbClient = window.supabase;
+                if (!sbClient) {
+                    const configResp = await fetch('/api/supabase-config');
+                    if (!configResp.ok) return;
+                    const config = await configResp.json();
+                    if (typeof window.supabase !== 'undefined') {
+                        sbClient = window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey);
+                    } else {
+                        return;
+                    }
+                }
+                
+                if (sbClient) {
+                    const { data: session } = await sbClient.auth.getSession();
+                    if (session?.session?.user) {
+                        const { data, error } = await sbClient
+                            .from('treinamentos_assinaturas')
+                            .select('treinamento_slug, data_assinatura')
+                            .eq('user_id', session.session.user.id);
+                        
+                        if (!error && data) {
+                            userAssinaturas = data;
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error('Erro ao carregar assinaturas:', error);
+            }
+        }
+        
+        function renderizarTreinamentos() {
+            const container = document.getElementById('treinamentosContainer');
+            const emptyState = document.getElementById('emptyState');
+            
+            if (!TREINAMENTOS_CONFIG || TREINAMENTOS_CONFIG.length === 0) {
+                container.innerHTML = '';
+                emptyState.style.display = 'block';
+                return;
+            }
+            
+            emptyState.style.display = 'none';
+            container.innerHTML = '';
+            
+            TREINAMENTOS_CONFIG.forEach(treinamento => {
+                const concluido = userAssinaturas.some(a => a.treinamento_slug === treinamento.id);
+                const dataConclusao = userAssinaturas.find(a => a.treinamento_slug === treinamento.id)?.data_assinatura;
+                
+                const card = document.createElement('div');
+                card.className = 'col-md-6 col-lg-4';
+                card.innerHTML = `
+                    <div class="training-card">
+                        <div class="training-card-icon">
+                            <i class="${treinamento.icon}"></i>
+                        </div>
+                        <h3>${treinamento.titulo}</h3>
+                        <p>${treinamento.descricao}</p>
+                        <div class="training-card-meta">
+                            <div class="training-card-tags">
+                                ${treinamento.tags.map(tag => `<span class="tag">${tag}</span>`).join('')}
+                                ${concluido ? '<span class="tag" style="background: #d1fae5; color: var(--success);"><i class="fas fa-check"></i> Concluído</span>' : ''}
+                            </div>
+                            <a href="${treinamento.url}" class="btn-training">
+                                ${concluido ? '<i class="fas fa-redo"></i> Revisar' : '<i class="fas fa-play"></i> Iniciar'}
+                            </a>
+                        </div>
+                        ${concluido && dataConclusao ? `<div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #e5e7eb; font-size: 0.85rem; color: #6b7280;"><i class="fas fa-check-circle me-1"></i> Concluído em ${new Date(dataConclusao).toLocaleDateString('pt-BR')}</div>` : ''}
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+        
+        function atualizarEstatisticas() {
+            const total = TREINAMENTOS_CONFIG.length;
+            const concluidos = userAssinaturas.length;
+            const pendentes = total - concluidos;
+            const porcentagem = total > 0 ? Math.round((concluidos / total) * 100) : 0;
+            
+            document.getElementById('totalTreinamentos').textContent = total;
+            document.getElementById('totalConcluidos').textContent = concluidos;
+            document.getElementById('totalPendentes').textContent = pendentes;
+            document.getElementById('porcentagemConclusao').textContent = porcentagem + '%';
+        }
+        
+        // Inicializar quando a página carregar
+        document.addEventListener('DOMContentLoaded', inicializar);
+    </script>
+</body>
+</html>

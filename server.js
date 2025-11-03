@@ -5555,6 +5555,67 @@ app.get('/api/relatorios/disparos/series', async (req, res) => {
   }
 });
 
+// ========== QUALIDADE / TREINAMENTOS ==========
+app.post('/api/treinamentos/assinaturas', express.json(), async (req, res) => {
+  try {
+    const { treinamento_slug, nome, cpf, assinatura_texto } = req.body || {};
+    if (!treinamento_slug || !nome || !assinatura_texto) {
+      return res.status(400).json({ success: false, error: 'Campos obrigatórios: treinamento_slug, nome, assinatura_texto' });
+    }
+
+    let userId = null;
+    try {
+      const { user, error: authError } = await getSupabaseUserFromRequest(req);
+      if (user && !authError) {
+        userId = user.id;
+        console.log('✅ User ID capturado para assinatura:', userId);
+      } else {
+        console.warn('⚠️ Não foi possível capturar user_id da requisição:', authError?.message || 'Token não fornecido');
+      }
+    } catch (err) {
+      console.warn('⚠️ Erro ao obter usuário da requisição:', err.message);
+    }
+
+    const ip = (req.headers['x-forwarded-for'] || req.socket?.remoteAddress || '').toString();
+    const ua = req.headers['user-agent'] || '';
+
+    const dadosInsercao = {
+      treinamento_slug,
+      user_id: userId,
+      nome,
+      cpf: cpf || null,
+      assinatura_texto,
+      ip_address: ip,
+      user_agent: ua
+    };
+
+    console.log('📝 Salvando assinatura:', {
+      treinamento_slug,
+      user_id: userId || 'null',
+      nome: nome.substring(0, 20) + '...'
+    });
+
+    const { data, error } = await supabaseAdmin
+      .from('treinamentos_assinaturas')
+      .insert([dadosInsercao])
+      .select();
+    
+    if (error) throw error;
+    
+    console.log('✅ Assinatura salva com sucesso. ID:', data?.[0]?.id, 'User ID:', data?.[0]?.user_id);
+    
+    return res.json({
+      success: true,
+      id: data?.[0]?.id,
+      user_id: data?.[0]?.user_id,
+      data_assinatura: data?.[0]?.data_assinatura
+    });
+  } catch (e) {
+    console.error('❌ Erro ao salvar assinatura de treinamento:', e);
+    return res.status(500).json({ success: false, error: 'Erro ao salvar assinatura: ' + (e.message || 'Erro desconhecido') });
+  }
+});
+
 // ========== FILTROS: TIPOS DE VEÍCULO E CARROCERIA (DISTINCT VIA SERVICE ROLE) ==========
 app.get('/api/filtros/motoristas/tipos', async (req, res) => {
   try {
