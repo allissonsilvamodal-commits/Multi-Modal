@@ -3471,6 +3471,21 @@ app.post('/webhook/send-supabase', upload.single('media'), async (req, res) => {
 
       const errorText = await response.text();
       console.log('❌ Erro da Evolution (texto):', errorText);
+      // Registrar falha no BI
+      try {
+        const { supabase } = require('./supabase-secure');
+        await supabase.from('disparos_log').insert([
+          {
+            user_id: userCreds.user_id || userIdentity || null,
+            departamento: req.session?.userData?.departamento || null,
+            numero: formattedNumber,
+            mensagem_tamanho: (message || '').length,
+            status: 'error'
+          }
+        ]);
+      } catch (logErr) {
+        console.warn('⚠️ Falha ao registrar disparo (erro texto):', logErr.message);
+      }
       cleanupFile();
       return res.status(500).json({
         success: false,
@@ -3648,6 +3663,22 @@ app.post('/webhook/send-supabase', upload.single('media'), async (req, res) => {
       });
     }
 
+    // Registrar falha no BI
+    try {
+      const { supabase } = require('./supabase-secure');
+      await supabase.from('disparos_log').insert([
+        {
+          user_id: userCreds.user_id || userIdentity || null,
+          departamento: req.session?.userData?.departamento || null,
+          numero: formattedNumber,
+          mensagem_tamanho: (message || '').length,
+          status: 'error'
+        }
+      ]);
+    } catch (logErr) {
+      console.warn('⚠️ Falha ao registrar disparo (erro mídia):', logErr.message);
+    }
+
     return res.status(500).json({
       success: false,
       error: lastStatus ? `❌ Erro ${lastStatus} do Evolution` : '❌ Evolution não respondeu',
@@ -3657,6 +3688,21 @@ app.post('/webhook/send-supabase', upload.single('media'), async (req, res) => {
 
   } catch (error) {
     console.log('❌ Erro:', error.message);
+    // Registrar falha inesperada no BI
+    try {
+      const { supabase } = require('./supabase-secure');
+      await supabase.from('disparos_log').insert([
+        {
+          user_id: userIdentity || null,
+          departamento: req.session?.userData?.departamento || null,
+          numero: (typeof number !== 'undefined') ? String(number) : null,
+          mensagem_tamanho: (message || '').length,
+          status: 'error'
+        }
+      ]);
+    } catch (logErr) {
+      console.warn('⚠️ Falha ao registrar disparo (erro catch):', logErr.message);
+    }
     cleanupFile();
     res.status(500).json({
       success: false,
