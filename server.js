@@ -3442,6 +3442,22 @@ app.post('/webhook/send-supabase', upload.single('media'), async (req, res) => {
         console.log('✅ Mensagem enviada com sucesso:', result);
         cleanupFile();
 
+        // Registrar disparo no BI
+        try {
+          const { supabase } = require('./supabase-secure');
+          await supabase.from('disparos_log').insert([
+            {
+              user_id: userCreds.user_id || userIdentity || null,
+              departamento: req.session?.userData?.departamento || null,
+              numero: formattedNumber,
+              mensagem_tamanho: (message || '').length,
+              status: 'success'
+            }
+          ]);
+        } catch (logErr) {
+          console.warn('⚠️ Falha ao registrar disparo (send-supabase texto):', logErr.message);
+        }
+
         res.json({
           success: true,
           message: '✅ Mensagem enviada com sucesso!',
@@ -3605,6 +3621,22 @@ app.post('/webhook/send-supabase', upload.single('media'), async (req, res) => {
     cleanupFile();
 
     if (evolutionResult) {
+      // Registrar disparo no BI
+      try {
+        const { supabase } = require('./supabase-secure');
+        await supabase.from('disparos_log').insert([
+          {
+            user_id: userCreds.user_id || userIdentity || null,
+            departamento: req.session?.userData?.departamento || null,
+            numero: formattedNumber,
+            mensagem_tamanho: (message || '').length,
+            status: 'success'
+          }
+        ]);
+      } catch (logErr) {
+        console.warn('⚠️ Falha ao registrar disparo (send-supabase mídia):', logErr.message);
+      }
+
       return res.json({
         success: true,
         message: '✅ Mensagem enviada com sucesso!',
