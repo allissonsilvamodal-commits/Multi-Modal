@@ -307,7 +307,7 @@
                     <div class="row">
                         <div class="col-md-2 mb-2">
                             <label class="form-label"><i class="fas fa-calendar"></i> Período</label>
-                            <select id="filtroPeriodoDisp" class="form-select" onchange="carregarDisparos()">
+                            <select id="filtroPeriodoDisp" class="form-select" onchange="atualizarVisibilidadeDatasDisp(); carregarDisparos();">
                                 <option value="hoje">Hoje</option>
                                 <option value="mes" selected>Este Mês</option>
                                 <option value="ano">Este Ano</option>
@@ -315,21 +315,21 @@
                                 <option value="personalizado">Personalizado</option>
                             </select>
                     </div>
-                        <div class="col-md-2 mb-2">
+                        <div class="col-md-2 mb-2" id="containerDataInicioDisp" style="display:none;">
                             <label class="form-label"><i class="fas fa-calendar-alt"></i> Data Início</label>
                             <input type="date" id="filtroDataInicioDisp" class="form-control" onchange="if(document.getElementById('filtroPeriodoDisp').value==='personalizado') carregarDisparos();">
                         </div>
-                        <div class="col-md-2 mb-2">
+                        <div class="col-md-2 mb-2" id="containerDataFimDisp" style="display:none;">
                             <label class="form-label"><i class="fas fa-calendar-check"></i> Data Fim</label>
                             <input type="date" id="filtroDataFimDisp" class="form-control" onchange="if(document.getElementById('filtroPeriodoDisp').value==='personalizado') carregarDisparos();">
                         </div>
-                        <div class="col-md-3 mb-2">
+                        <div class="col-md-3 mb-2" id="containerUsuarioDisp">
                             <label class="form-label"><i class="fas fa-user"></i> Usuário</label>
                             <select id="filtroUsuarioDisp" class="form-select" onchange="carregarDisparos()">
                                 <option value="">Todos os usuários</option>
                             </select>
                 </div>
-                        <div class="col-md-3 mb-2">
+                        <div class="col-md-3 mb-2" id="containerDepartamentoDisp">
                             <label class="form-label"><i class="fas fa-building"></i> Departamento</label>
                             <select id="filtroDepartamentoDisp" class="form-select" onchange="carregarDisparos()">
                                 <option value="">Todos os departamentos</option>
@@ -373,6 +373,7 @@
 		if(abaMot) abaMot.style.display = aba==='motoristas' ? '' : 'none';
         if(aba==='bi' && typeof carregarDisparos==='function' && typeof carregarFiltrosDisparos==='function') {
             // Sempre recarregar filtros e dados para refletir novos logs
+            if(typeof atualizarVisibilidadeDatasDisp==='function') atualizarVisibilidadeDatasDisp();
             carregarFiltrosDisparos().then(() => carregarDisparos());
         }
 		if(aba==='motoristas'){
@@ -531,6 +532,19 @@
 	}
 
     // ====== DISPAROS - FILTROS E CARGA ======
+    function atualizarVisibilidadeDatasDisp(){
+        const periodo = document.getElementById('filtroPeriodoDisp')?.value;
+        const containerInicio = document.getElementById('containerDataInicioDisp');
+        const containerFim = document.getElementById('containerDataFimDisp');
+        if(periodo === 'personalizado'){
+            if(containerInicio) containerInicio.style.display = '';
+            if(containerFim) containerFim.style.display = '';
+        } else {
+            if(containerInicio) containerInicio.style.display = 'none';
+            if(containerFim) containerFim.style.display = 'none';
+        }
+    }
+
     async function carregarFiltrosDisparos(){
         const resp = await fetch('/api/relatorios/disparos/filtros', { credentials:'include' });
         if(handleUnauthorized(resp)) return;
