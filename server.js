@@ -5995,9 +5995,42 @@ app.get('/api/test-supabase', async (req, res) => {
 
 // 🔒 ROTA SEGURA PARA CONFIGURAÇÕES
 app.get('/api/supabase-config', (req, res) => {
+    const baseUrl = process.env.PUBLIC_BASE_URL || req.protocol + '://' + req.get('host');
     res.json({
         supabaseUrl: process.env.SUPABASE_URL,
-        supabaseAnonKey: process.env.SUPABASE_ANON_KEY
+        supabaseAnonKey: process.env.SUPABASE_ANON_KEY,
+        baseUrl: baseUrl
+    });
+});
+
+// Endpoint de diagnóstico OAuth
+app.get('/api/diagnostico-oauth', (req, res) => {
+    const baseUrl = process.env.PUBLIC_BASE_URL || req.protocol + '://' + req.get('host');
+    const redirectUrl = `${baseUrl}/login-motorista.html`;
+    const supabaseUrl = process.env.SUPABASE_URL || '';
+    const supabaseCallbackUrl = supabaseUrl ? `${supabaseUrl}/auth/v1/callback` : '';
+    
+    res.json({
+        sucesso: true,
+        informacoes: {
+            urlAplicacao: baseUrl,
+            urlRedirect: redirectUrl,
+            urlCallbackSupabase: supabaseCallbackUrl,
+            supabaseConfigurado: !!(process.env.SUPABASE_URL && process.env.SUPABASE_ANON_KEY),
+            instrucoes: {
+                googleCloud: `1. Acesse o Google Cloud Console (https://console.cloud.google.com/)
+2. Vá em APIs & Services > Credentials
+3. Encontre seu OAuth 2.0 Client ID (usado pelo Supabase)
+4. Em "Authorized redirect URIs", adicione: ${supabaseCallbackUrl}`,
+                supabase: `1. Acesse o painel do Supabase (https://app.supabase.com/)
+2. Selecione seu projeto
+3. Vá em Authentication > URL Configuration
+4. Em "Redirect URLs", adicione: ${redirectUrl}
+5. Vá em Authentication > Providers > Google
+6. Certifique-se de que está "Enabled"
+7. Verifique se Client ID e Client Secret estão corretos`
+            }
+        }
     });
 });
 

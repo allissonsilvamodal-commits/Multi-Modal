@@ -929,6 +929,7 @@
     let currentUser = null;
     let currentMotorista = null;
     let loadingConfig = false;
+    let appBaseUrl = null;
 
     function createParticles() {
       const total = 24;
@@ -1125,6 +1126,10 @@
         if (!window.supabase) {
           throw new Error('Biblioteca do Supabase não carregada.');
         }
+        
+        // Salvar a URL base do servidor
+        appBaseUrl = config.baseUrl || window.location.origin;
+        
         supabaseClient = window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey, {
           auth: { persistSession: true, detectSessionInUrl: true }
         });
@@ -1298,12 +1303,14 @@
         clearAlert();
         toggleButtonLoading(btnGoogle, true, 'Redirecionando...');
         
-        // Determinar URL de redirecionamento
-        const redirectTo = `${window.location.origin}${window.location.pathname}`;
+        // Determinar URL de redirecionamento usando a URL base do servidor ou fallback
+        const baseUrl = appBaseUrl || window.location.origin;
+        const redirectTo = `${baseUrl}/login-motorista.html`;
         console.log('🔐 Iniciando login com Google');
         console.log('📍 URL atual:', window.location.href);
+        console.log('📍 Base URL (do servidor):', baseUrl);
         console.log('📍 RedirectTo:', redirectTo);
-        console.log('📍 Origin:', window.location.origin);
+        console.log('📍 Origin (browser):', window.location.origin);
         
         const { data, error } = await supabaseClient.auth.signInWithOAuth({
           provider: 'google',
@@ -1359,8 +1366,22 @@
               console.warn('⚠️ Redirecionamento não ocorreu automaticamente');
               const helpText = `Verifique se a URL ${redirectTo} está configurada em:
 1. Google Cloud Console > Credenciais OAuth > Authorized redirect URIs
-2. Supabase > Authentication > URL Configuration > Redirect URLs`;
+2. Supabase > Authentication > URL Configuration > Redirect URLs
+
+Para mais detalhes e instruções, acesse a página de diagnóstico:
+diagnostico-oauth.html`;
               showAlert('Não foi possível redirecionar para o Google.\n\n' + helpText, 'error');
+              
+              // Adicionar botão para diagnóstico após 1 segundo
+              setTimeout(() => {
+                const btnDiagnostico = document.createElement('button');
+                btnDiagnostico.className = 'btn btn-outline-light mt-3';
+                btnDiagnostico.innerHTML = '<i class="fas fa-stethoscope me-2"></i>Ver Diagnóstico OAuth';
+                btnDiagnostico.onclick = () => window.location.href = 'diagnostico-oauth.html';
+                if (alertBox && alertBox.parentElement) {
+                  alertBox.parentElement.appendChild(btnDiagnostico);
+                }
+              }, 1000);
               toggleButtonLoading(btnGoogle, false);
             }
           }, 2000);
