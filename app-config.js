@@ -1,5 +1,6 @@
 // 📁 MELHORIA: Configurações centralizadas da aplicação
-require('dotenv').config();
+// NOTA: dotenv já foi carregado no server.js, não precisa carregar novamente aqui
+// require('dotenv').config(); // REMOVIDO - já carregado no server.js
 
 const config = {
   // Configurações do servidor

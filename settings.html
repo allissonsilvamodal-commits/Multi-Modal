@@ -1149,6 +1149,12 @@
                 window.supabase = supabase;
                 
                 console.log('✅ Supabase inicializado');
+                
+                // Inicializar chat IA após Supabase estar pronto
+                if (window.inicializarChatIA) {
+                    window.inicializarChatIA();
+                }
+                
                 return true;
             } catch (error) {
                 console.error('❌ Erro ao inicializar Supabase:', error);
@@ -1553,13 +1559,20 @@
         function renderizarPermissoesPortal(permissoes) {
             const container = document.getElementById('containerPermissoesPortal');
             container.innerHTML = `
+                <div class="alert alert-info mb-3">
+                    <i class="fas fa-info-circle me-2"></i>
+                    <strong>Como usar:</strong> Selecione um usuário acima e depois habilite/desabilite as permissões desejadas. As alterações são salvas automaticamente.
+                </div>
                 <div class="row mb-2">
+                    <div class="col-12">
+                        <h6 class="text-muted mb-2"><i class="fas fa-rocket"></i> Operações</h6>
+                    </div>
                     <div class="col-md-3">
                         <div class="form-check form-switch">
-                            <input class="form-check-input" type="checkbox" id="permPortalOperacoes" 
-                                ${permissoes.some(p => p.permissao_id === 'operacoes') ? 'checked' : ''}
-                                onchange="salvarPermissaoPortal('operacoes', this.checked)">
-                            <label class="form-check-label" for="permPortalOperacoes">Sistema de Disparo</label>
+                            <input class="form-check-input" type="checkbox" id="permPortalPainel" 
+                                ${permissoes.some(p => p.permissao_id === 'painel') ? 'checked' : ''}
+                                onchange="salvarPermissaoPortal('painel', this.checked)">
+                            <label class="form-check-label" for="permPortalPainel">Painel de Disparos</label>
                         </div>
                     </div>
                     <div class="col-md-3">
@@ -1572,22 +1585,12 @@
                     </div>
                     <div class="col-md-3">
                         <div class="form-check form-switch">
-                            <input class="form-check-input" type="checkbox" id="permPortalCadastro" 
-                                ${permissoes.some(p => p.permissao_id === 'cadastro') ? 'checked' : ''}
-                                onchange="salvarPermissaoPortal('cadastro', this.checked)">
-                            <label class="form-check-label" for="permPortalCadastro">Cadastro</label>
+                            <input class="form-check-input" type="checkbox" id="permPortalHistoricoColetas" 
+                                ${permissoes.some(p => p.permissao_id === 'historico-coletas') ? 'checked' : ''}
+                                onchange="salvarPermissaoPortal('historico-coletas', this.checked)">
+                            <label class="form-check-label" for="permPortalHistoricoColetas">Histórico de Coletas</label>
                         </div>
                     </div>
-                    <div class="col-md-3">
-                        <div class="form-check form-switch">
-                            <input class="form-check-input" type="checkbox" id="permPortalRelatorios" 
-                                ${permissoes.some(p => p.permissao_id === 'relatorios') ? 'checked' : ''}
-                                onchange="salvarPermissaoPortal('relatorios', this.checked)">
-                            <label class="form-check-label" for="permPortalRelatorios">Relatórios</label>
-                        </div>
-                    </div>
-                </div>
-                <div class="row mb-2">
                     <div class="col-md-3">
                         <div class="form-check form-switch">
                             <input class="form-check-input" type="checkbox" id="permPortalMonitoramento" 
@@ -1596,8 +1599,32 @@
                             <label class="form-check-label" for="permPortalMonitoramento">Monitoramento</label>
                         </div>
                     </div>
-                    </div>
+                </div>
                 <div class="row mb-2">
+                    <div class="col-12">
+                        <h6 class="text-muted mb-2"><i class="fas fa-users"></i> Gestão</h6>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="permPortalCadastro" 
+                                ${permissoes.some(p => p.permissao_id === 'cadastro') ? 'checked' : ''}
+                                onchange="salvarPermissaoPortal('cadastro', this.checked)">
+                            <label class="form-check-label" for="permPortalCadastro">Cadastro de Motoristas</label>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="permPortalRelatorios" 
+                                ${permissoes.some(p => p.permissao_id === 'relatorios') ? 'checked' : ''}
+                                onchange="salvarPermissaoPortal('relatorios', this.checked)">
+                            <label class="form-check-label" for="permPortalRelatorios">Relatórios e BI</label>
+                        </div>
+                    </div>
+                </div>
+                <div class="row mb-2">
+                    <div class="col-12">
+                        <h6 class="text-muted mb-2"><i class="fas fa-handshake"></i> Comercial</h6>
+                    </div>
                     <div class="col-md-3">
                         <div class="form-check form-switch">
                             <input class="form-check-input" type="checkbox" id="permPortalComercial" 
@@ -1644,7 +1671,7 @@
                         </div>
                     </div>
                 </div>
-                <div class="row">
+                <div class="row mb-2">
                     <div class="col-12">
                         <h6 class="text-muted mb-2"><i class="fas fa-users"></i> Recursos Humanos</h6>
                     </div>
@@ -1662,6 +1689,19 @@
                                 ${permissoes.some(p => p.permissao_id === 'recrutamento') ? 'checked' : ''}
                                 onchange="salvarPermissaoPortal('recrutamento', this.checked)">
                             <label class="form-check-label" for="permPortalRecrutamento">Recrutamento</label>
+                        </div>
+                    </div>
+                </div>
+                <div class="row mb-2">
+                    <div class="col-12">
+                        <h6 class="text-muted mb-2"><i class="fas fa-award"></i> Qualidade</h6>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="permPortalQualidade" 
+                                ${permissoes.some(p => p.permissao_id === 'qualidade') ? 'checked' : ''}
+                                onchange="salvarPermissaoPortal('qualidade', this.checked)">
+                            <label class="form-check-label" for="permPortalQualidade">Treinamentos e Documentos</label>
                         </div>
                     </div>
                 </div>
@@ -2535,6 +2575,9 @@
             });
         }
     </script>
+<!-- Chat IA -->
+<link rel="stylesheet" href="css/chat-ia.css">
+<script src="js/chat-ia.js"></script>
 </body>
 </html>
 

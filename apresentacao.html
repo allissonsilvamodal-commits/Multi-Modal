@@ -1,0 +1,764 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Apresentação Interativa - Sistema Multimodal Intranet</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #667eea;
+            --secondary: #764ba2;
+            --accent: #f093fb;
+            --success: #11998e;
+            --warning: #ffc107;
+            --danger: #dc3545;
+            --info: #17a2b8;
+            --dark: #0f0f23;
+            --light: #f8f9fa;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 50%, #16213e 100%);
+            color: #fff;
+            overflow-x: hidden;
+        }
+
+        /* Navegação Fixa */
+        .navbar-fixed {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            background: rgba(15, 15, 35, 0.95);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 1rem 0;
+            transition: all 0.3s ease;
+        }
+
+        .navbar-fixed.scrolled {
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+        }
+
+        .nav-link {
+            color: rgba(255, 255, 255, 0.8) !important;
+            margin: 0 0.5rem;
+            padding: 0.5rem 1rem !important;
+            border-radius: 10px;
+            transition: all 0.3s ease;
+        }
+
+        .nav-link:hover {
+            background: rgba(102, 126, 234, 0.2);
+            color: #fff !important;
+            transform: translateY(-2px);
+        }
+
+        /* Hero Section */
+        .hero-section {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+            padding-top: 80px;
+        }
+
+        .hero-content {
+            text-align: center;
+            z-index: 10;
+            animation: fadeInUp 1s ease;
+        }
+
+        .hero-title {
+            font-size: 4rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .hero-subtitle {
+            font-size: 1.5rem;
+            color: rgba(255, 255, 255, 0.8);
+            margin-bottom: 2rem;
+        }
+
+        .btn-hero {
+            padding: 1rem 2.5rem;
+            font-size: 1.1rem;
+            border-radius: 50px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            color: #fff;
+            transition: all 0.3s ease;
+            box-shadow: 0 8px 30px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-hero:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 40px rgba(102, 126, 234, 0.4);
+        }
+
+        /* Seções */
+        .section {
+            padding: 100px 0;
+            position: relative;
+        }
+
+        .section-title {
+            font-size: 3rem;
+            font-weight: 700;
+            margin-bottom: 3rem;
+            text-align: center;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        /* Cards de Módulos */
+        .module-card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(20px);
+            border-radius: 20px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+            height: 100%;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .module-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            transform: scaleX(0);
+            transition: transform 0.3s ease;
+        }
+
+        .module-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+            border-color: rgba(102, 126, 234, 0.5);
+        }
+
+        .module-card:hover::before {
+            transform: scaleX(1);
+        }
+
+        .module-icon {
+            font-size: 3rem;
+            color: #667eea;
+            margin-bottom: 1rem;
+            display: inline-block;
+            animation: pulse 2s infinite;
+        }
+
+        .module-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: #fff;
+        }
+
+        .module-description {
+            color: rgba(255, 255, 255, 0.7);
+            line-height: 1.6;
+            margin-bottom: 1rem;
+        }
+
+        .module-features {
+            list-style: none;
+            padding: 0;
+            margin-top: 1rem;
+        }
+
+        .module-features li {
+            color: rgba(255, 255, 255, 0.6);
+            padding: 0.5rem 0;
+            padding-left: 1.5rem;
+            position: relative;
+        }
+
+        .module-features li::before {
+            content: '✓';
+            position: absolute;
+            left: 0;
+            color: #11998e;
+            font-weight: bold;
+        }
+
+        /* Grid de Módulos */
+        .modules-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            margin-top: 3rem;
+        }
+
+        /* Animações */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                transform: scale(1);
+            }
+            50% {
+                transform: scale(1.1);
+            }
+        }
+
+        .fade-in {
+            animation: fadeInUp 0.8s ease;
+        }
+
+        /* Seção de Destaques */
+        .highlight-section {
+            background: rgba(102, 126, 234, 0.1);
+            border-radius: 30px;
+            padding: 4rem 2rem;
+            margin: 4rem 0;
+            text-align: center;
+        }
+
+        .highlight-number {
+            font-size: 4rem;
+            font-weight: 700;
+            color: #667eea;
+            margin-bottom: 1rem;
+        }
+
+        .highlight-label {
+            font-size: 1.2rem;
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+        /* Footer */
+        .footer {
+            background: rgba(15, 15, 35, 0.95);
+            padding: 3rem 0;
+            text-align: center;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            margin-top: 100px;
+        }
+
+        /* Scroll suave */
+        html {
+            scroll-behavior: smooth;
+        }
+
+        /* Responsivo */
+        @media (max-width: 768px) {
+            .hero-title {
+                font-size: 2.5rem;
+            }
+
+            .section-title {
+                font-size: 2rem;
+            }
+
+            .modules-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Efeitos de partículas */
+        .particles-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            opacity: 0.3;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navbar Fixa -->
+    <nav class="navbar navbar-expand-lg navbar-fixed">
+        <div class="container">
+            <a class="navbar-brand" href="#home">
+                <i class="fas fa-truck-moving me-2"></i>
+                <strong>Multimodal Intranet</strong>
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="#home">Início</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#modulos">Módulos</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#destaques">Destaques</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#tecnologias">Tecnologias</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link btn btn-hero ms-2" href="portal.html">
+                            <i class="fas fa-sign-in-alt me-2"></i>Acessar Sistema
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section id="home" class="hero-section">
+        <div class="container">
+            <div class="hero-content">
+                <h1 class="hero-title">Sistema Multimodal Intranet</h1>
+                <p class="hero-subtitle">Solução completa para gestão logística e operacional</p>
+                <div class="mt-4">
+                    <a href="#modulos" class="btn btn-hero me-3">
+                        <i class="fas fa-arrow-down me-2"></i>Explorar Módulos
+                    </a>
+                    <a href="portal.html" class="btn btn-hero">
+                        <i class="fas fa-rocket me-2"></i>Acessar Agora
+                    </a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Seção de Módulos -->
+    <section id="modulos" class="section">
+        <div class="container">
+            <h2 class="section-title">Módulos do Sistema</h2>
+            <div class="modules-grid">
+                <!-- Portal Dashboard -->
+                <div class="module-card fade-in">
+                    <div class="module-icon">
+                        <i class="fas fa-tachometer-alt"></i>
+                    </div>
+                    <h3 class="module-title">Portal Dashboard</h3>
+                    <p class="module-description">
+                        Dashboard centralizado com visão geral de todas as operações, métricas em tempo real e análises estratégicas.
+                    </p>
+                    <ul class="module-features">
+                        <li>Métricas em tempo real</li>
+                        <li>Visualizações interativas</li>
+                        <li>Análises estratégicas</li>
+                        <li>Notificações personalizadas</li>
+                    </ul>
+                </div>
+
+                <!-- Cadastro de Motoristas -->
+                <div class="module-card fade-in">
+                    <div class="module-icon">
+                        <i class="fas fa-users"></i>
+                    </div>
+                    <h3 class="module-title">Cadastro de Motoristas</h3>
+                    <p class="module-description">
+                        Sistema completo de cadastro e gestão de motoristas com validação de documentos, CNH e informações veiculares.
+                    </p>
+                    <ul class="module-features">
+                        <li>Cadastro completo de motoristas</li>
+                        <li>Validação de CNH e documentos</li>
+                        <li>Importação em lote (CSV)</li>
+                        <li>Filtros avançados</li>
+                    </ul>
+                </div>
+
+                <!-- Painel de Disparos -->
+                <div class="module-card fade-in">
+                    <div class="module-icon">
+                        <i class="fas fa-paper-plane"></i>
+                    </div>
+                    <h3 class="module-title">Painel de Disparos WhatsApp</h3>
+                    <p class="module-description">
+                        Disparo em massa de mensagens via WhatsApp com filtros avançados, templates personalizados e log completo.
+                    </p>
+                    <ul class="module-features">
+                        <li>Disparo em massa</li>
+                        <li>Filtros por categoria/tipo</li>
+                        <li>Templates personalizados</li>
+                        <li>Log de todos os disparos</li>
+                    </ul>
+                </div>
+
+                <!-- Coletas Logísticas -->
+                <div class="module-card fade-in">
+                    <div class="module-icon">
+                        <i class="fas fa-shipping-fast"></i>
+                    </div>
+                    <h3 class="module-title">Gestão de Coletas</h3>
+                    <p class="module-description">
+                        Controle completo do ciclo de vida das coletas logísticas, desde a criação até a finalização.
+                    </p>
+                    <ul class="module-features">
+                        <li>Controle de etapas</li>
+                        <li>Etiquetas personalizadas</li>
+                        <li>Histórico completo</li>
+                        <li>Vinculação de motoristas</li>
+                    </ul>
+                </div>
+
+                <!-- Relatórios e BI -->
+                <div class="module-card fade-in">
+                    <div class="module-icon">
+                        <i class="fas fa-chart-bar"></i>
+                    </div>
+                    <h3 class="module-title">Relatórios e Business Intelligence</h3>
+                    <p class="module-description">
+                        Dashboards interativos com análises de disparos, cadastros, performance por usuário e departamento.
+                    </p>
+                    <ul class="module-features">
+                        <li>BI de Disparos</li>
+                        <li>BI de Cadastros</li>
+                        <li>Análises por período</li>
+                        <li>Visualizações interativas</li>
+                    </ul>
+                </div>
+
+                <!-- CRM -->
+                <div class="module-card fade-in">
+                    <div class="module-icon">
+                        <i class="fas fa-handshake"></i>
+                    </div>
+                    <h3 class="module-title">CRM - Gestão de Relacionamento</h3>
+                    <p class="module-description">
+                        Sistema completo de gestão de leads, oportunidades e relacionamento com clientes.
+                    </p>
+                    <ul class="module-features">
+                        <li>Gestão de leads</li>
+                        <li>Pipeline de vendas</li>
+                        <li>Histórico de interações</li>
+                        <li>Análises de conversão</li>
+                    </ul>
+                </div>
+
+                <!-- Vendas -->
+                <div class="module-card fade-in">
+                    <div class="module-icon">
+                        <i class="fas fa-dollar-sign"></i>
+                    </div>
+                    <h3 class="module-title">Gestão de Vendas</h3>
+                    <p class="module-description">
+                        Controle de vendas, comissões, metas e performance da equipe comercial.
+                    </p>
+                    <ul class="module-features">
+                        <li>Dashboard de vendas</li>
+                        <li>Gestão de comissões</li>
+                        <li>Acompanhamento de metas</li>
+                        <li>Relatórios gerenciais</li>
+                    </ul>
+                </div>
+
+                <!-- Treinamentos -->
+                <div class="module-card fade-in">
+                    <div class="module-icon">
+                        <i class="fas fa-graduation-cap"></i>
+                    </div>
+                    <h3 class="module-title">Sistema de Treinamentos</h3>
+                    <p class="module-description">
+                        Portal completo de treinamentos com materiais, assinaturas digitais e controle de conclusão.
+                    </p>
+                    <ul class="module-features">
+                        <li>Treinamentos interativos</li>
+                        <li>Assinatura digital</li>
+                        <li>Controle de conclusão</li>
+                        <li>Documentos de treinamento</li>
+                    </ul>
+                </div>
+
+                <!-- Configurações -->
+                <div class="module-card fade-in">
+                    <div class="module-icon">
+                        <i class="fas fa-cog"></i>
+                    </div>
+                    <h3 class="module-title">Configurações</h3>
+                    <p class="module-description">
+                        Painel centralizado de configurações do sistema, usuários, permissões e integrações.
+                    </p>
+                    <ul class="module-features">
+                        <li>Gestão de usuários</li>
+                        <li>Controle de permissões</li>
+                        <li>Configurações de APIs</li>
+                        <li>Notificações de emergência</li>
+                    </ul>
+                </div>
+
+                <!-- Portal do Motorista -->
+                <div class="module-card fade-in">
+                    <div class="module-icon">
+                        <i class="fas fa-id-card"></i>
+                    </div>
+                    <h3 class="module-title">Portal do Motorista</h3>
+                    <p class="module-description">
+                        Área exclusiva para motoristas visualizarem coletas, completar cadastro e acionar emergências.
+                    </p>
+                    <ul class="module-features">
+                        <li>Visualização de coletas</li>
+                        <li>Completar cadastro</li>
+                        <li>Sistema de emergência</li>
+                        <li>Upload de documentos</li>
+                    </ul>
+                </div>
+
+                <!-- Sistema de Emergência -->
+                <div class="module-card fade-in">
+                    <div class="module-icon">
+                        <i class="fas fa-exclamation-triangle"></i>
+                    </div>
+                    <h3 class="module-title">Alerta de Emergência</h3>
+                    <p class="module-description">
+                        Sistema de alertas de emergência com notificações instantâneas via WhatsApp para equipes selecionadas.
+                    </p>
+                    <ul class="module-features">
+                        <li>Acionamento rápido</li>
+                        <li>Notificações WhatsApp</li>
+                        <li>Usuários configuráveis</li>
+                        <li>Dados completos do motorista</li>
+                    </ul>
+                </div>
+
+                <!-- Chat com IA -->
+                <div class="module-card fade-in">
+                    <div class="module-icon">
+                        <i class="fas fa-robot"></i>
+                    </div>
+                    <h3 class="module-title">Assistente Virtual com IA</h3>
+                    <p class="module-description">
+                        Chat inteligente com IA para tirar dúvidas sobre o sistema, funcionalidades e processos.
+                    </p>
+                    <ul class="module-features">
+                        <li>Suporte inteligente</li>
+                        <li>Histórico de conversas</li>
+                        <li>Contexto do sistema</li>
+                        <li>Disponível em todas as páginas</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Seção de Destaques -->
+    <section id="destaques" class="section">
+        <div class="container">
+            <h2 class="section-title">Destaques do Sistema</h2>
+            <div class="row mt-5">
+                <div class="col-md-3 col-sm-6 mb-4">
+                    <div class="highlight-section">
+                        <div class="highlight-number">12+</div>
+                        <div class="highlight-label">Módulos Integrados</div>
+                    </div>
+                </div>
+                <div class="col-md-3 col-sm-6 mb-4">
+                    <div class="highlight-section">
+                        <div class="highlight-number">100%</div>
+                        <div class="highlight-label">Segurança</div>
+                    </div>
+                </div>
+                <div class="col-md-3 col-sm-6 mb-4">
+                    <div class="highlight-section">
+                        <div class="highlight-number">24/7</div>
+                        <div class="highlight-label">Disponibilidade</div>
+                    </div>
+                </div>
+                <div class="col-md-3 col-sm-6 mb-4">
+                    <div class="highlight-section">
+                        <div class="highlight-number">IA</div>
+                        <div class="highlight-label">Assistente Inteligente</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Seção de Tecnologias -->
+    <section id="tecnologias" class="section">
+        <div class="container">
+            <h2 class="section-title">Tecnologias Utilizadas</h2>
+            <div class="modules-grid">
+                <div class="module-card fade-in">
+                    <div class="module-icon">
+                        <i class="fab fa-node-js"></i>
+                    </div>
+                    <h3 class="module-title">Node.js + Express</h3>
+                    <p class="module-description">Backend robusto e escalável</p>
+                </div>
+                <div class="module-card fade-in">
+                    <div class="module-icon">
+                        <i class="fas fa-database"></i>
+                    </div>
+                    <h3 class="module-title">Supabase (PostgreSQL)</h3>
+                    <p class="module-description">Banco de dados relacional em nuvem</p>
+                </div>
+                <div class="module-card fade-in">
+                    <div class="module-icon">
+                        <i class="fab fa-whatsapp"></i>
+                    </div>
+                    <h3 class="module-title">Evolution API</h3>
+                    <p class="module-description">Integração WhatsApp profissional</p>
+                </div>
+                <div class="module-card fade-in">
+                    <div class="module-icon">
+                        <i class="fas fa-brain"></i>
+                    </div>
+                    <h3 class="module-title">OpenAI GPT</h3>
+                    <p class="module-description">Inteligência artificial integrada</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="row">
+                <div class="col-md-6">
+                    <h5><i class="fas fa-truck-moving me-2"></i>Multimodal Intranet</h5>
+                    <p class="text-muted">Sistema completo de gestão logística e operacional</p>
+                </div>
+                <div class="col-md-6 text-end">
+                    <p class="text-muted">© 2025 - Todos os direitos reservados</p>
+                    <a href="portal.html" class="btn btn-hero mt-3">
+                        <i class="fas fa-sign-in-alt me-2"></i>Acessar Sistema
+                    </a>
+                </div>
+            </div>
+            <hr style="border-color: rgba(255, 255, 255, 0.1); margin: 3rem 0 2rem 0;">
+            <div class="row">
+                <div class="col-12 text-center">
+                    <div class="signature-section" style="padding: 2rem; background: rgba(255, 255, 255, 0.05); border-radius: 20px; border: 1px solid rgba(255, 255, 255, 0.1);">
+                        <h6 style="color: rgba(255, 255, 255, 0.6); margin-bottom: 1rem; font-weight: 400; text-transform: uppercase; letter-spacing: 2px; font-size: 0.85rem;">
+                            <i class="fas fa-lightbulb me-2"></i>Idealizador do Projeto
+                        </h6>
+                        <h4 style="color: #fff; margin-bottom: 0.5rem; font-weight: 600;">
+                            Allisson Silva
+                        </h4>
+                        <p style="color: rgba(255, 255, 255, 0.8); margin-bottom: 0.5rem; font-size: 1.1rem;">
+                            <i class="fas fa-briefcase me-2"></i>Supervisor de Projetos
+                        </p>
+                        <p style="color: rgba(255, 255, 255, 0.7); margin: 0;">
+                            <i class="fas fa-phone me-2"></i>
+                            <a href="tel:+5581997600051" style="color: rgba(255, 255, 255, 0.7); text-decoration: none;">
+                                (81) 99760-0051
+                            </a>
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Navbar scroll effect
+        window.addEventListener('scroll', function() {
+            const navbar = document.querySelector('.navbar-fixed');
+            if (window.scrollY > 50) {
+                navbar.classList.add('scrolled');
+            } else {
+                navbar.classList.remove('scrolled');
+            }
+        });
+
+        // Smooth scroll para links internos
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            });
+        });
+
+        // Animação de entrada dos cards
+        const observerOptions = {
+            threshold: 0.1,
+            rootMargin: '0px 0px -50px 0px'
+        };
+
+        const observer = new IntersectionObserver(function(entries) {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.style.opacity = '1';
+                    entry.target.style.transform = 'translateY(0)';
+                }
+            });
+        }, observerOptions);
+
+        document.querySelectorAll('.module-card').forEach(card => {
+            card.style.opacity = '0';
+            card.style.transform = 'translateY(30px)';
+            card.style.transition = 'all 0.6s ease';
+            observer.observe(card);
+        });
+
+        // Animação de números
+        function animateValue(element, start, end, duration) {
+            let startTimestamp = null;
+            const step = (timestamp) => {
+                if (!startTimestamp) startTimestamp = timestamp;
+                const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+                element.textContent = Math.floor(progress * (end - start) + start);
+                if (progress < 1) {
+                    window.requestAnimationFrame(step);
+                }
+            };
+            window.requestAnimationFrame(step);
+        }
+
+        // Animar números quando visíveis
+        const numberObserver = new IntersectionObserver(function(entries) {
+            entries.forEach(entry => {
+                if (entry.isIntersecting && !entry.target.classList.contains('animated')) {
+                    entry.target.classList.add('animated');
+                    const text = entry.target.textContent;
+                    if (text.includes('+')) {
+                        const num = parseInt(text.replace('+', ''));
+                        animateValue(entry.target, 0, num, 2000);
+                        entry.target.textContent += '+';
+                    }
+                }
+            });
+        }, observerOptions);
+
+        document.querySelectorAll('.highlight-number').forEach(num => {
+            numberObserver.observe(num);
+        });
+    </script>
+</body>
+</html>
+

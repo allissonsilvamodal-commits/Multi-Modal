@@ -139,8 +139,10 @@ async function verificarPermissaoPagina(pageName) {
         // Mapear nomes de páginas para IDs de permissão
         const pagePermissionsMap = {
             // Operações
-            'painel': 'operacoes',
+            'painel': 'painel',
+            'operacoes': 'operacoes', // Alias para compatibilidade
             'coletas': 'coletas',
+            'historico-coletas': 'historico-coletas',
             'monitoramento': 'monitoramento',
             
             // Comercial
@@ -159,6 +161,11 @@ async function verificarPermissaoPagina(pageName) {
             // Recursos Humanos
             'folha': 'folha',
             'recrutamento': 'recrutamento',
+            
+            // Qualidade
+            'qualidade': 'qualidade',
+            'treinamentos': 'qualidade',
+            'treinamentos-documentos': 'qualidade',
             
             // Configurações
             'settings': 'configuracoes'

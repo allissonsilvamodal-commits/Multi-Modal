@@ -331,6 +331,34 @@
         
         <!-- Lista de Treinamentos -->
         <div class="row" id="treinamentosContainer">
+            <!-- Card de Apresentação do Sistema -->
+            <div class="col-12 mb-4">
+                <div class="training-card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none;">
+                    <div class="d-flex align-items-center justify-content-between flex-wrap">
+                        <div class="flex-grow-1">
+                            <div class="training-card-icon" style="background: rgba(255, 255, 255, 0.2); margin-bottom: 1rem;">
+                                <i class="fas fa-presentation"></i>
+                            </div>
+                            <h3 style="color: white; margin-bottom: 0.75rem;">
+                                <i class="fas fa-rocket me-2"></i>Apresentação Interativa do Sistema
+                            </h3>
+                            <p style="color: rgba(255, 255, 255, 0.9); margin-bottom: 1rem;">
+                                Conheça todos os módulos e funcionalidades do Sistema Multimodal Intranet em uma apresentação interativa e completa. Explore os recursos disponíveis e entenda como cada módulo funciona.
+                            </p>
+                            <div class="training-card-tags">
+                                <span class="tag" style="background: rgba(255, 255, 255, 0.2); color: white;">Informacional</span>
+                                <span class="tag" style="background: rgba(255, 255, 255, 0.2); color: white;">Geral</span>
+                                <span class="tag" style="background: rgba(255, 255, 255, 0.2); color: white;">Todos os Usuários</span>
+                            </div>
+                        </div>
+                        <div class="ms-3">
+                            <a href="apresentacao.html" target="_blank" class="btn-training" style="background: white; color: #667eea; border: none; padding: 0.75rem 2rem; font-weight: 600;">
+                                <i class="fas fa-external-link-alt me-2"></i>Abrir Apresentação
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
             <!-- Os treinamentos serão carregados aqui via JavaScript -->
         </div>
         
@@ -588,15 +616,61 @@
             const container = document.getElementById('treinamentosContainer');
             const emptyState = document.getElementById('emptyState');
             
+            // Preservar o card de apresentação
+            const apresentacaoCard = container.querySelector('.col-12');
+            
             if (!TREINAMENTOS_CONFIG || TREINAMENTOS_CONFIG.length === 0) {
-                container.innerHTML = '';
+                // Se não houver treinamentos, manter apenas o card de apresentação
                 emptyState.style.display = 'block';
                 return;
             }
             
             emptyState.style.display = 'none';
-            container.innerHTML = '';
             
+            // Limpar apenas os cards de treinamentos, preservando o card de apresentação
+            const treinamentosCards = container.querySelectorAll('.col-md-6, .col-lg-4');
+            treinamentosCards.forEach(card => {
+                // Não remover o card de apresentação (col-12)
+                if (!card.classList.contains('col-12')) {
+                    card.remove();
+                }
+            });
+            
+            // Se não tinha card de apresentação, criar um
+            if (!apresentacaoCard || !apresentacaoCard.querySelector('a[href="apresentacao.html"]')) {
+                const apresentacaoDiv = document.createElement('div');
+                apresentacaoDiv.className = 'col-12 mb-4';
+                apresentacaoDiv.innerHTML = `
+                    <div class="training-card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none;">
+                        <div class="d-flex align-items-center justify-content-between flex-wrap">
+                            <div class="flex-grow-1">
+                                <div class="training-card-icon" style="background: rgba(255, 255, 255, 0.2); margin-bottom: 1rem;">
+                                    <i class="fas fa-presentation"></i>
+                                </div>
+                                <h3 style="color: white; margin-bottom: 0.75rem;">
+                                    <i class="fas fa-rocket me-2"></i>Apresentação Interativa do Sistema
+                                </h3>
+                                <p style="color: rgba(255, 255, 255, 0.9); margin-bottom: 1rem;">
+                                    Conheça todos os módulos e funcionalidades do Sistema Multimodal Intranet em uma apresentação interativa e completa. Explore os recursos disponíveis e entenda como cada módulo funciona.
+                                </p>
+                                <div class="training-card-tags">
+                                    <span class="tag" style="background: rgba(255, 255, 255, 0.2); color: white;">Informacional</span>
+                                    <span class="tag" style="background: rgba(255, 255, 255, 0.2); color: white;">Geral</span>
+                                    <span class="tag" style="background: rgba(255, 255, 255, 0.2); color: white;">Todos os Usuários</span>
+                                </div>
+                            </div>
+                            <div class="ms-3">
+                                <a href="apresentacao.html" target="_blank" class="btn-training" style="background: white; color: #667eea; border: none; padding: 0.75rem 2rem; font-weight: 600;">
+                                    <i class="fas fa-external-link-alt me-2"></i>Abrir Apresentação
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                container.insertBefore(apresentacaoDiv, container.firstChild);
+            }
+            
+            // Adicionar os treinamentos após o card de apresentação
             TREINAMENTOS_CONFIG.forEach(treinamento => {
                 const concluido = userAssinaturas.some(a => a.treinamento_slug === treinamento.id);
                 const dataConclusao = userAssinaturas.find(a => a.treinamento_slug === treinamento.id)?.data_assinatura;
@@ -641,5 +715,8 @@
         // Inicializar quando a página carregar
         document.addEventListener('DOMContentLoaded', inicializar);
     </script>
+<!-- Chat IA -->
+<link rel="stylesheet" href="css/chat-ia.css">
+<script src="js/chat-ia.js"></script>
 </body>
 </html>

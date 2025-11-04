@@ -1,9 +1,23 @@
-require('dotenv').config();
+require('dotenv').config({ path: require('path').resolve(__dirname, '.env'), override: false });
+console.log('📁 Diretório atual:', __dirname);
+console.log('📁 Arquivo .env esperado em:', require('path').resolve(__dirname, '.env'));
+
+// Verificar se o arquivo .env existe e ler diretamente para debug
+const fs = require('fs');
+const envPath = require('path').resolve(__dirname, '.env');
+if (fs.existsSync(envPath)) {
+  const envContent = fs.readFileSync(envPath, 'utf8');
+  const openaiLines = envContent.split('\n').filter(line => line.includes('OPENAI_API_KEY') && !line.trim().startsWith('#'));
+  console.log('🔍 Linhas OPENAI_API_KEY encontradas no .env:', openaiLines.length);
+  openaiLines.forEach((line, index) => {
+    console.log(`  Linha ${index + 1}: ${line.substring(0, 80)}...`);
+  });
+}
+
 const express = require('express');
 const sqlite3 = require('sqlite3').verbose();
 const cors = require('cors');
 const path = require('path');
-const fs = require('fs');
 const session = require('express-session');
 const multer = require('multer');
 const bcrypt = require('bcryptjs');
@@ -12,6 +26,7 @@ const rateLimit = require('express-rate-limit');
 const crypto = require('crypto');
 const { validate } = require('./validation');
 const { logger } = require('./logger');
+const OpenAI = require('openai');
 
 const app = express();
 const PORT = process.env.PORT || 5680;
@@ -6181,10 +6196,607 @@ async function getUserFromRequest(req) {
     }
   }
   
+  // Tentar autenticação via email do localStorage (header X-User-Email)
+  const userEmailHeader = req.headers['x-user-email'];
+  if (userEmailHeader) {
+    console.log('🔍 Tentando autenticação via email do localStorage:', userEmailHeader);
+    try {
+      // Buscar o user_id através do user_profiles pelo email
+      const { data: userProfile, error: profileError } = await supabaseAdmin
+        .from('user_profiles')
+        .select('id, email')
+        .eq('email', userEmailHeader)
+        .maybeSingle();
+      
+      if (profileError) {
+        console.warn('⚠️ Erro ao buscar user_profile:', profileError);
+      }
+      
+      if (userProfile && userProfile.id) {
+        try {
+          const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.getUserById(userProfile.id);
+          if (!authError && authUser && authUser.user) {
+            console.log('✅ Usuário encontrado via email do localStorage:', authUser.user.id);
+            
+            // Buscar perfil completo
+            const { data: fullProfile } = await supabaseAdmin
+              .from('user_profiles')
+              .select('departamento')
+              .eq('id', userProfile.id)
+              .maybeSingle();
+            
+            const user = {
+              ...authUser.user,
+              departamento: fullProfile?.departamento || null
+            };
+            
+            return { user, error: null };
+          }
+        } catch (err) {
+          console.warn('⚠️ Erro ao buscar usuário por user_profile.id:', err);
+        }
+      }
+      
+      // Tentar buscar pelo email diretamente no auth (fallback)
+      try {
+        const { data: authUsers } = await supabaseAdmin.auth.admin.listUsers();
+        const authUser = authUsers?.users?.find(u => u.email === userEmailHeader);
+        if (authUser) {
+          console.log('✅ Usuário encontrado via listUsers (email):', authUser.id);
+          
+          // Buscar perfil para obter departamento
+          const { data: userProfile } = await supabaseAdmin
+            .from('user_profiles')
+            .select('departamento')
+            .eq('id', authUser.id)
+            .maybeSingle();
+          
+          const user = {
+            ...authUser,
+            departamento: userProfile?.departamento || null
+          };
+          
+          return { user, error: null };
+        }
+      } catch (err) {
+        console.warn('⚠️ Erro ao listar usuários:', err);
+      }
+    } catch (err) {
+      console.warn('⚠️ Erro ao autenticar via email:', err);
+    }
+  }
+  
   // Se não encontrou, retornar erro
   console.error('❌ Usuário não encontrado no sistema');
+  console.error('   - Sessão presente?', !!req.session);
+  console.error('   - Sessão usuario?', req.session?.usuario);
+  console.error('   - Token presente?', !!authHeader);
+  console.error('   - Email header presente?', !!userEmailHeader);
   return { error: { status: 401, message: 'Não autenticado. Faça login novamente.' } };
 }
+
+// ========== INICIALIZAÇÃO DO OPENAI ==========
+// A chave da OpenAI DEVE estar no arquivo .env
+// Verificar todas as variáveis relacionadas
+let openaiApiKey = process.env.OPENAI_API_KEY || process.env.OPENAI_KEY;
+
+// Se a chave não foi carregada corretamente, tentar ler diretamente do arquivo .env
+if (!openaiApiKey || openaiApiKey.includes('sua_chav') || openaiApiKey.length < 50) {
+  console.warn('⚠️ Chave não encontrada em process.env, tentando ler diretamente do arquivo .env...');
+  try {
+    const envPath = require('path').resolve(__dirname, '.env');
+    if (fs.existsSync(envPath)) {
+      const envContent = fs.readFileSync(envPath, 'utf8');
+      const lines = envContent.split('\n');
+      
+      // Procurar pela linha OPENAI_API_KEY
+      for (const line of lines) {
+        const trimmedLine = line.trim();
+        if (trimmedLine.startsWith('OPENAI_API_KEY=') && !trimmedLine.startsWith('#')) {
+          const keyValue = trimmedLine.split('=')[1];
+          if (keyValue && keyValue.length > 50 && keyValue.startsWith('sk-')) {
+            openaiApiKey = keyValue.trim();
+            console.log('✅ Chave encontrada diretamente no arquivo .env');
+            break;
+          }
+        }
+      }
+    }
+  } catch (error) {
+    console.error('❌ Erro ao ler arquivo .env diretamente:', error.message);
+  }
+}
+
+// Logs de diagnóstico detalhados
+console.log('🔍 Diagnóstico OpenAI:');
+console.log('  - OPENAI_API_KEY existe?', !!process.env.OPENAI_API_KEY);
+console.log('  - OPENAI_KEY existe?', !!process.env.OPENAI_KEY);
+console.log('  - Valor OPENAI_API_KEY (process.env):', process.env.OPENAI_API_KEY);
+console.log('  - Valor OPENAI_KEY (process.env):', process.env.OPENAI_KEY);
+console.log('  - Chave selecionada (final):', openaiApiKey ? openaiApiKey.substring(0, 20) + '...' : 'N/A');
+console.log('  - Tamanho da chave selecionada:', openaiApiKey ? openaiApiKey.length : 0);
+console.log('  - Primeiros 20 caracteres:', openaiApiKey ? openaiApiKey.substring(0, 20) + '...' : 'N/A');
+
+if (!openaiApiKey || openaiApiKey.trim().length === 0) {
+  console.error('❌ ERRO CRÍTICO: OPENAI_API_KEY não configurada no arquivo .env');
+  console.error('⚠️ O chat com IA não funcionará até que a chave seja configurada.');
+  console.error('📝 Adicione OPENAI_API_KEY=sua_chave_aqui no arquivo .env');
+  console.error('💡 Certifique-se de que o servidor foi reiniciado após adicionar a chave');
+  console.error('💡 Verifique se não há espaços ao redor do sinal de igual (=)');
+  console.error('💡 Verifique se a linha não está quebrada ou comentada');
+} else if (openaiApiKey.includes('sua_chav') || openaiApiKey.includes('your_api_key') || openaiApiKey.length < 50) {
+  console.error('❌ ERRO: OPENAI_API_KEY no .env parece ser um placeholder ou está incompleta');
+  console.error('⚠️ Valor encontrado:', openaiApiKey);
+  console.error('⚠️ Por favor, configure uma chave válida da OpenAI no arquivo .env');
+  console.error('💡 A chave deve começar com "sk-" e ter mais de 50 caracteres');
+} else {
+  console.log('✅ Chave da OpenAI encontrada e válida');
+}
+
+// Inicializar OpenAI apenas se a chave for válida
+let openai = null;
+if (openaiApiKey && 
+    !openaiApiKey.includes('sua_chav') && 
+    !openaiApiKey.includes('your_api_key') && 
+    openaiApiKey.length > 50 &&
+    openaiApiKey.startsWith('sk-')) {
+  try {
+    openai = new OpenAI({
+      apiKey: openaiApiKey.trim()
+    });
+    console.log('✅ OpenAI inicializado com sucesso');
+  } catch (error) {
+    console.error('❌ Erro ao inicializar OpenAI:', error.message);
+  }
+} else {
+  console.warn('⚠️ OpenAI não inicializado - chave inválida ou não configurada');
+  if (openaiApiKey) {
+    console.warn('   Detalhes da chave:');
+    console.warn('   - Começa com sk-?', openaiApiKey.startsWith('sk-'));
+    console.warn('   - Tamanho:', openaiApiKey.length);
+    console.warn('   - Contém placeholder?', openaiApiKey.includes('sua_chav') || openaiApiKey.includes('your_api_key'));
+  }
+}
+
+// ========== FUNÇÃO PARA DETECTAR CATEGORIA DA CONVERSA ==========
+function detectarCategoriaConversa(mensagem, referer = '') {
+  const msgLower = mensagem.toLowerCase();
+  
+  // Palavras-chave para cada categoria
+  const categorias = {
+    'cadastro': ['cadastrar', 'cadastro', 'motorista', 'novo motorista', 'adicionar motorista', 'importar', 'csv', 'placa', 'cnh', 'carroceria', 'veículo'],
+    'disparos': ['disparar', 'disparo', 'mensagem', 'whatsapp', 'enviar mensagem', 'painel', 'filtro', 'destinatário'],
+    'coletas': ['coleta', 'coletas', 'etapa', 'gr', 'comercial', 'preço', 'documentação', 'controladoria', 'vincular', 'motorista'],
+    'relatorios': ['relatório', 'relatórios', 'bi', 'gráfico', 'métrica', 'dashboard', 'estatística', 'dados'],
+    'treinamentos': ['treinamento', 'treinamentos', 'assinatura', 'declaração', 'documento', 'ata'],
+    'configuracoes': ['configuração', 'configurações', 'usuário', 'permissão', 'senha', 'admin', 'settings'],
+    'emergencia': ['emergência', 'emergencia', 'alerta', 'socorro', 'urgente'],
+    'autenticacao': ['login', 'logout', 'entrar', 'sair', 'autenticação', 'senha', 'conta'],
+    'duvida_geral': [] // Fallback
+  };
+  
+  // Verificar referer (página de origem)
+  const refererLower = referer.toLowerCase();
+  if (refererLower.includes('cadastro')) return 'cadastro';
+  if (refererLower.includes('painel')) return 'disparos';
+  if (refererLower.includes('coletas')) return 'coletas';
+  if (refererLower.includes('relatorios')) return 'relatorios';
+  if (refererLower.includes('treinamentos')) return 'treinamentos';
+  if (refererLower.includes('settings')) return 'configuracoes';
+  if (refererLower.includes('emergencia')) return 'emergencia';
+  
+  // Verificar palavras-chave na mensagem
+  for (const [cat, keywords] of Object.entries(categorias)) {
+    if (keywords.length > 0 && keywords.some(keyword => msgLower.includes(keyword))) {
+      return cat;
+    }
+  }
+  
+  return 'duvida_geral';
+}
+
+// ========== ENDPOINT PARA CHAT COM IA ==========
+app.post('/api/chat/ia', express.json(), async (req, res) => {
+  try {
+    console.log('📨 Requisição de chat recebida');
+    console.log('🔍 Headers:', {
+      authorization: req.headers.authorization ? 'Presente' : 'Ausente',
+      cookie: req.headers.cookie ? 'Presente' : 'Ausente',
+      xUserEmail: req.headers['x-user-email'] || 'Ausente'
+    });
+    console.log('🔍 Session:', {
+      hasSession: !!req.session,
+      usuario: req.session?.usuario,
+      userData: req.session?.userData
+    });
+    
+    // Verificar se OpenAI está inicializado
+    if (!openai) {
+      return res.status(503).json({ 
+        success: false, 
+        error: 'Serviço de IA não disponível. A chave da OpenAI não está configurada no arquivo .env' 
+      });
+    }
+
+    const { user, error: authError } = await getUserFromRequest(req);
+    if (authError || !user) {
+      console.error('❌ Erro de autenticação:', authError?.message || 'Usuário não encontrado');
+      return res.status(401).json({ success: false, error: 'Não autenticado' });
+    }
+
+    console.log('✅ Usuário autenticado:', user.email || user.id);
+
+    const { mensagem, historico = [] } = req.body;
+
+    if (!mensagem || mensagem.trim().length === 0) {
+      return res.status(400).json({ success: false, error: 'Mensagem não pode estar vazia' });
+    }
+
+    // Construir contexto do sistema com informações detalhadas sobre o portal
+    const sistemaPrompt = `Você é um assistente virtual inteligente da plataforma Multimodal Intranet.
+
+## SUA FUNÇÃO
+Você ajuda os usuários a entender e utilizar todas as funcionalidades da plataforma de forma eficiente e segura.
+
+## MÓDULOS E FUNCIONALIDADES DISPONÍVEIS
+
+### 📋 Operações
+- **Coletas**: Gestão completa de coletas logísticas
+  - Criar e gerenciar coletas
+  - Acompanhar etapas (Comercial, Preço, CS, Contratação, GR, Documentação, Controladoria, Contas a Pagar, Contas a Receber, Monitoramento, Finalizar Operação)
+  - Vincular motoristas às coletas
+  - Etiquetas personalizadas para categorização
+  - Histórico completo de movimentações
+
+### 🚛 Cadastro de Motoristas
+- Cadastro completo com dados pessoais e veículos
+- CNH, categoria e estado
+- Classes de veículo: Leve, Médio, Pesado
+- Tipos de veículo: Carreta, Truck, VUC, etc.
+- Carrocerias: Baú, Sider, Grade Baixa, Truck, Basculante, Porta Container, Caçamba, etc.
+- Múltiplas placas (cavalo, carretas)
+- Importação em lote via CSV
+- Filtros avançados por tipo, carroceria, estado, status
+
+### 📱 Disparo de Mensagens (Painel)
+- Envio de mensagens WhatsApp via Evolution API
+- Filtros por categoria, tipo de veículo, carroceria, estado
+- Seleção múltipla de destinatários
+- Templates de mensagens
+- Log de todos os disparos
+- Relatórios de uso por usuário e departamento
+
+### 📊 Relatórios e BI
+- **BI de Disparos**: Análise de mensagens enviadas
+  - Por usuário e departamento
+  - Por período (diário, semanal, mensal, personalizado)
+  - Gráficos e métricas visuais
+- **BI de Cadastros**: Análise de cadastros de motoristas
+  - Por usuário e departamento
+  - Por período
+  - Estatísticas de cadastros realizados
+
+### 🎓 Treinamentos
+- Treinamentos disponíveis:
+  - Cadastro de Motoristas
+  - Disparador de Mensagens
+  - Trocar Senha
+- Assinatura digital com canvas
+- Documentos de treinamentos (upload de PDFs, imagens)
+- Acompanhamento de treinamentos concluídos por usuário
+
+### ⚙️ Configurações
+- Gestão de usuários e permissões
+- Configurações de sistema
+- Notificações de emergência
+- Tags e etiquetas personalizadas
+
+### 🚨 Emergência
+- Portal do motorista pode acionar alerta de emergência
+- Notificações via WhatsApp para usuários configurados
+- Apenas disponível quando motorista está vinculado a uma coleta ativa
+
+### 🔐 Autenticação
+- Login com email/senha ou Google OAuth
+- Portal do motorista separado
+- Sistema de permissões por módulo
+- Troca de senha disponível
+
+## RESTRIÇÕES IMPORTANTES DE SEGURANÇA
+
+⚠️ **VOCÊ NÃO PODE E NÃO DEVE:**
+- Revelar dados sensíveis de usuários (CPF, telefones completos, emails específicos)
+- Expor informações financeiras (valores de coletas, salários, etc.)
+- Compartilhar credenciais de acesso ou tokens
+- Modificar ou executar comandos SQL diretamente
+- Acessar ou modificar dados do banco de dados
+- Revelar informações de segurança interna
+- Fornecer instruções para bypass de permissões ou segurança
+- Compartilhar informações sobre estrutura de banco de dados ou schemas específicos
+
+✅ **VOCÊ PODE:**
+- Explicar como usar as funcionalidades do sistema
+- Orientar sobre navegação e interface
+- Dar dicas de melhor uso das ferramentas
+- Explicar o que cada módulo faz
+- Ajudar com dúvidas sobre fluxos de trabalho
+- Sugerir melhorias de uso (sem expor dados)
+- Explicar conceitos gerais do sistema
+
+## DIRETRIZES DE RESPOSTA
+
+1. **Seja específico e útil**: Quando explicar funcionalidades, seja detalhado sobre os passos
+2. **Mantenha contexto**: Use o histórico da conversa para dar respostas mais relevantes
+3. **Seja educado e profissional**: Use linguagem corporativa apropriada
+4. **Se não souber**: Seja honesto e sugira consultar a documentação ou contatar o administrador
+5. **Foque em instruções**: Sempre que possível, forneça passos claros de como fazer algo
+6. **Evite dados específicos**: Não cite dados reais de usuários ou operações, apenas explique processos gerais
+
+## EXEMPLOS DE RESPOSTAS ÚTEIS
+
+Usuário: "Como cadastrar um motorista?"
+Você deve explicar:
+- Onde encontrar o módulo de cadastro
+- Quais campos são obrigatórios
+- Como selecionar classe, tipo e carroceria
+- Como usar importação em lote se necessário
+
+Usuário: "Como disparar mensagens?"
+Você deve explicar:
+- Onde encontrar o painel de disparos
+- Como usar os filtros
+- Como selecionar destinatários
+- Como compor e enviar mensagens
+
+Lembre-se: Você é um assistente útil e seguro. Sua prioridade é ajudar os usuários a utilizar o sistema de forma eficiente, sempre respeitando a segurança e privacidade dos dados.`;
+
+
+    // Preparar mensagens para o OpenAI
+    const messages = [
+      { role: 'system', content: sistemaPrompt }
+    ];
+
+    // Adicionar histórico (últimas 10 mensagens para manter contexto)
+    if (historico && historico.length > 0) {
+      const historicoLimitado = historico.slice(-10);
+      historicoLimitado.forEach(msg => {
+        messages.push({
+          role: msg.role === 'user' ? 'user' : 'assistant',
+          content: msg.content
+        });
+      });
+    }
+
+    // Adicionar mensagem atual
+    messages.push({ role: 'user', content: mensagem.trim() });
+
+    console.log('🤖 Enviando mensagem para OpenAI...');
+
+    // Chamar API da OpenAI com configurações otimizadas
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-3.5-turbo',
+      messages: messages,
+      temperature: 0.7, // Criatividade balanceada
+      max_tokens: 800, // Aumentado para respostas mais completas
+      top_p: 1,
+      frequency_penalty: 0.3, // Evitar repetições
+      presence_penalty: 0.3 // Encorajar variedade
+    });
+
+    const respostaIA = completion.choices[0]?.message?.content || 'Desculpe, não consegui processar sua mensagem.';
+
+    console.log('✅ Resposta recebida da OpenAI');
+
+    // Detectar categoria da conversa automaticamente
+    const categoria = detectarCategoriaConversa(mensagem.trim(), req.headers.referer || '');
+
+    // Salvar conversa no banco de dados
+    try {
+      const paginaOrigem = req.headers.referer ? new URL(req.headers.referer).pathname.replace('/', '') : 'desconhecida';
+      
+      const { error: saveError } = await supabaseAdmin
+        .from('chat_ia_conversas')
+        .insert({
+          user_id: user.id,
+          mensagem: mensagem.trim(),
+          resposta: respostaIA,
+          categoria: categoria,
+          pagina_origem: paginaOrigem,
+          tokens_usados: completion.usage?.total_tokens || 0
+        });
+
+      if (saveError) {
+        console.warn('⚠️ Erro ao salvar conversa no banco:', saveError);
+        // Não bloquear a resposta se houver erro ao salvar
+      } else {
+        console.log('✅ Conversa salva no banco de dados');
+      }
+    } catch (saveError) {
+      console.warn('⚠️ Erro ao salvar conversa:', saveError);
+    }
+
+    res.json({
+      success: true,
+      resposta: respostaIA,
+      tokens_usados: completion.usage?.total_tokens || 0,
+      categoria: categoria
+    });
+
+  } catch (error) {
+    console.error('❌ Erro ao processar chat com IA:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Erro ao processar mensagem. Tente novamente.'
+    });
+  }
+});
+
+// ========== ENDPOINT PARA LISTAR CONVERSAS DO USUÁRIO ==========
+app.get('/api/chat/ia/historico', async (req, res) => {
+  try {
+    const { user, error: authError } = await getUserFromRequest(req);
+    if (authError || !user) {
+      return res.status(401).json({ success: false, error: 'Não autenticado' });
+    }
+
+    const { limite = 50 } = req.query;
+
+    const { data: conversas, error } = await supabaseAdmin
+      .from('chat_ia_conversas')
+      .select('id, mensagem, resposta, categoria, pagina_origem, tokens_usados, satisfacao, created_at')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+      .limit(parseInt(limite));
+
+    if (error) {
+      throw error;
+    }
+
+    res.json({
+      success: true,
+      conversas: conversas || [],
+      total: conversas?.length || 0
+    });
+
+  } catch (error) {
+    console.error('❌ Erro ao buscar histórico:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Erro ao buscar histórico de conversas'
+    });
+  }
+});
+
+// ========== ENDPOINT PARA AVALIAR RESPOSTA ==========
+app.post('/api/chat/ia/avaliar', express.json(), async (req, res) => {
+  try {
+    const { user, error: authError } = await getUserFromRequest(req);
+    if (authError || !user) {
+      return res.status(401).json({ success: false, error: 'Não autenticado' });
+    }
+
+    const { conversa_id, satisfacao } = req.body;
+
+    if (!conversa_id || !satisfacao || satisfacao < 1 || satisfacao > 5) {
+      return res.status(400).json({
+        success: false,
+        error: 'ID da conversa e satisfação (1-5) são obrigatórios'
+      });
+    }
+
+    const { error } = await supabaseAdmin
+      .from('chat_ia_conversas')
+      .update({ satisfacao: parseInt(satisfacao) })
+      .eq('id', conversa_id)
+      .eq('user_id', user.id); // Garantir que o usuário só avalia suas próprias conversas
+
+    if (error) {
+      throw error;
+    }
+
+    res.json({
+      success: true,
+      message: 'Avaliação salva com sucesso'
+    });
+
+  } catch (error) {
+    console.error('❌ Erro ao salvar avaliação:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Erro ao salvar avaliação'
+    });
+  }
+});
+
+// ========== ENDPOINT PARA ANÁLISE DE CONVERSAS (ADMIN) ==========
+app.get('/api/chat/ia/analise', requireAuth, async (req, res) => {
+  try {
+    const { user, error: authError } = await getUserFromRequest(req);
+    if (authError || !user) {
+      return res.status(401).json({ success: false, error: 'Não autenticado' });
+    }
+
+    // Verificar se é admin
+    const { data: userProfile } = await supabaseAdmin
+      .from('user_profiles')
+      .select('role')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    if (userProfile?.role !== 'admin') {
+      return res.status(403).json({ success: false, error: 'Acesso negado. Apenas administradores.' });
+    }
+
+    const { dataInicio, dataFim, categoria } = req.query;
+
+    let query = supabaseAdmin
+      .from('chat_ia_conversas')
+      .select('id, categoria, pagina_origem, tokens_usados, satisfacao, created_at, user_id');
+
+    if (dataInicio) {
+      query = query.gte('created_at', dataInicio);
+    }
+    if (dataFim) {
+      query = query.lte('created_at', dataFim);
+    }
+    if (categoria) {
+      query = query.eq('categoria', categoria);
+    }
+
+    const { data: conversas, error } = await query.order('created_at', { ascending: false });
+
+    if (error) {
+      throw error;
+    }
+
+    // Estatísticas
+    const stats = {
+      total: conversas?.length || 0,
+      por_categoria: {},
+      por_pagina: {},
+      satisfacao_media: 0,
+      total_tokens: 0
+    };
+
+    if (conversas && conversas.length > 0) {
+      const satisfacoes = [];
+      
+      conversas.forEach(conv => {
+        // Por categoria
+        stats.por_categoria[conv.categoria] = (stats.por_categoria[conv.categoria] || 0) + 1;
+        
+        // Por página
+        stats.por_pagina[conv.pagina_origem] = (stats.por_pagina[conv.pagina_origem] || 0) + 1;
+        
+        // Tokens
+        stats.total_tokens += conv.tokens_usados || 0;
+        
+        // Satisfação
+        if (conv.satisfacao) {
+          satisfacoes.push(conv.satisfacao);
+        }
+      });
+      
+      // Calcular média de satisfação
+      if (satisfacoes.length > 0) {
+        stats.satisfacao_media = satisfacoes.reduce((a, b) => a + b, 0) / satisfacoes.length;
+      }
+    }
+
+    res.json({
+      success: true,
+      conversas: conversas || [],
+      estatisticas: stats
+    });
+
+  } catch (error) {
+    console.error('❌ Erro ao buscar análise:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Erro ao buscar análise de conversas'
+    });
+  }
+});
 
 // ========== ENDPOINT PARA LISTAR USUÁRIOS E SEUS TREINAMENTOS ==========
 app.get('/api/treinamentos/usuarios', requireAuth, async (req, res) => {
