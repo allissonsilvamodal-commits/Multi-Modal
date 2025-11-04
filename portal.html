@@ -686,6 +686,8 @@
                             <li><a class="dropdown-item" href="vendas.html"><i class="fas fa-chart-line me-2"></i>Vendas</a></li>
                             <li><a class="dropdown-item" href="monitoramento.html"><i class="fas fa-monitor me-2"></i>Monitoramento</a></li>
                             <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="#" onclick="abrirModalTrocarSenha()"><i class="fas fa-key me-2"></i>Trocar Senha</a></li>
+                            <li><hr class="dropdown-divider"></li>
                             <li><a class="dropdown-item" href="#" onclick="logout()"><i class="fas fa-sign-out-alt me-2"></i>Sair</a></li>
                         </ul>
             </div>
@@ -696,6 +698,59 @@
             </div>
         </div>
     </nav>
+
+    <!-- Modal Trocar Senha -->
+    <div class="modal fade" id="modalTrocarSenha" tabindex="-1" aria-labelledby="modalTrocarSenhaLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content" style="background: rgba(15, 23, 42, 0.95); border: 1px solid rgba(148, 163, 184, 0.25); border-radius: 16px;">
+                <div class="modal-header" style="border-bottom: 1px solid rgba(148, 163, 184, 0.15);">
+                    <h5 class="modal-title" id="modalTrocarSenhaLabel" style="color: var(--text-primary);">
+                        <i class="fas fa-key me-2"></i>Trocar Senha
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="formTrocarSenha">
+                        <div class="mb-3">
+                            <label for="senhaAtual" class="form-label" style="color: var(--text-secondary);">Senha Atual *</label>
+                            <div class="input-group">
+                                <input type="password" class="form-control" id="senhaAtual" required style="background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(148, 163, 184, 0.25); color: var(--text-primary);">
+                                <button class="btn btn-outline-secondary" type="button" onclick="togglePasswordVisibility('senhaAtual')" style="border-color: rgba(148, 163, 184, 0.25); color: var(--text-secondary);">
+                                    <i class="fas fa-eye" id="iconSenhaAtual"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="novaSenha" class="form-label" style="color: var(--text-secondary);">Nova Senha *</label>
+                            <div class="input-group">
+                                <input type="password" class="form-control" id="novaSenha" required minlength="6" style="background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(148, 163, 184, 0.25); color: var(--text-primary);">
+                                <button class="btn btn-outline-secondary" type="button" onclick="togglePasswordVisibility('novaSenha')" style="border-color: rgba(148, 163, 184, 0.25); color: var(--text-secondary);">
+                                    <i class="fas fa-eye" id="iconNovaSenha"></i>
+                                </button>
+                            </div>
+                            <small class="text-muted">Mínimo de 6 caracteres</small>
+                        </div>
+                        <div class="mb-3">
+                            <label for="confirmarSenha" class="form-label" style="color: var(--text-secondary);">Confirmar Nova Senha *</label>
+                            <div class="input-group">
+                                <input type="password" class="form-control" id="confirmarSenha" required minlength="6" style="background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(148, 163, 184, 0.25); color: var(--text-primary);">
+                                <button class="btn btn-outline-secondary" type="button" onclick="togglePasswordVisibility('confirmarSenha')" style="border-color: rgba(148, 163, 184, 0.25); color: var(--text-secondary);">
+                                    <i class="fas fa-eye" id="iconConfirmarSenha"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div id="mensagemErroSenha" class="alert alert-danger" style="display: none; background: rgba(220, 53, 69, 0.2); border-color: rgba(220, 53, 69, 0.5); color: #ff6b6b;"></div>
+                    </form>
+                </div>
+                <div class="modal-footer" style="border-top: 1px solid rgba(148, 163, 184, 0.15);">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" style="background: rgba(148, 163, 184, 0.2); border: 1px solid rgba(148, 163, 184, 0.25); color: var(--text-primary);">Cancelar</button>
+                    <button type="button" class="btn btn-primary" onclick="trocarSenha()" style="background: linear-gradient(135deg, var(--primary), var(--secondary)); border: none;">
+                        <i class="fas fa-save me-2"></i>Salvar Nova Senha
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <!-- Container Principal -->
     <div class="main-container">
@@ -1378,6 +1433,14 @@
                         url: 'treinamentos.html',
                         permission: 'qualidade',
                         adminOnly: false
+                    },
+                    {
+                        name: 'Documentos',
+                        description: 'Gerenciar atas e documentos de treinamentos',
+                        icon: 'fas fa-file-alt',
+                        url: 'treinamentos-documentos.html',
+                        permission: 'qualidade',
+                        adminOnly: false
                     }
                 ]
             }
@@ -1725,6 +1788,130 @@
                 body.classList.add('light-mode');
                 themeIcon.className = 'fas fa-sun';
                 localStorage.setItem('theme', 'light');
+            }
+        }
+
+        function abrirModalTrocarSenha() {
+            const modal = new bootstrap.Modal(document.getElementById('modalTrocarSenha'));
+            document.getElementById('formTrocarSenha').reset();
+            document.getElementById('mensagemErroSenha').style.display = 'none';
+            modal.show();
+        }
+
+        function togglePasswordVisibility(inputId) {
+            const input = document.getElementById(inputId);
+            let iconId = 'iconSenhaAtual';
+            if (inputId === 'novaSenha') iconId = 'iconNovaSenha';
+            if (inputId === 'confirmarSenha') iconId = 'iconConfirmarSenha';
+            
+            const icon = document.getElementById(iconId);
+            
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.classList.remove('fa-eye');
+                icon.classList.add('fa-eye-slash');
+            } else {
+                input.type = 'password';
+                icon.classList.remove('fa-eye-slash');
+                icon.classList.add('fa-eye');
+            }
+        }
+
+        async function trocarSenha() {
+            const senhaAtual = document.getElementById('senhaAtual').value;
+            const novaSenha = document.getElementById('novaSenha').value;
+            const confirmarSenha = document.getElementById('confirmarSenha').value;
+            const mensagemErro = document.getElementById('mensagemErroSenha');
+
+            // Validações
+            mensagemErro.style.display = 'none';
+            mensagemErro.textContent = '';
+
+            if (!senhaAtual || !novaSenha || !confirmarSenha) {
+                mensagemErro.textContent = 'Por favor, preencha todos os campos.';
+                mensagemErro.style.display = 'block';
+                return;
+            }
+
+            if (novaSenha.length < 6) {
+                mensagemErro.textContent = 'A nova senha deve ter no mínimo 6 caracteres.';
+                mensagemErro.style.display = 'block';
+                return;
+            }
+
+            if (novaSenha !== confirmarSenha) {
+                mensagemErro.textContent = 'As senhas não coincidem.';
+                mensagemErro.style.display = 'block';
+                return;
+            }
+
+            if (senhaAtual === novaSenha) {
+                mensagemErro.textContent = 'A nova senha deve ser diferente da senha atual.';
+                mensagemErro.style.display = 'block';
+                return;
+            }
+
+            try {
+                const btnSalvar = event.target;
+                const textoOriginal = btnSalvar.innerHTML;
+                btnSalvar.disabled = true;
+                btnSalvar.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Alterando...';
+
+                // Obter ID do usuário atual
+                let usuarioId = null;
+                const loggedInUserData = localStorage.getItem('loggedInUser');
+                if (loggedInUserData) {
+                    const userData = JSON.parse(loggedInUserData);
+                    usuarioId = userData.id || userData.username;
+                }
+
+                // Se não encontrou no localStorage, tentar buscar do currentUser
+                if (!usuarioId && currentUser) {
+                    usuarioId = currentUser.id || currentUser.username;
+                }
+
+                if (!usuarioId) {
+                    mensagemErro.textContent = 'Não foi possível identificar o usuário. Faça login novamente.';
+                    mensagemErro.style.display = 'block';
+                    btnSalvar.disabled = false;
+                    btnSalvar.innerHTML = textoOriginal;
+                    return;
+                }
+
+                const response = await fetch('/api/auth/trocar-senha', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify({
+                        senhaAtual,
+                        novaSenha,
+                        usuarioId: usuarioId // Enviar o ID do usuário explicitamente
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.success) {
+                    mostrarAlerta('Senha alterada com sucesso!', 'success');
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('modalTrocarSenha'));
+                    modal.hide();
+                    document.getElementById('formTrocarSenha').reset();
+                } else {
+                    mensagemErro.textContent = data.error || 'Erro ao alterar senha. Verifique a senha atual e tente novamente.';
+                    mensagemErro.style.display = 'block';
+                }
+            } catch (error) {
+                console.error('Erro ao trocar senha:', error);
+                mensagemErro.textContent = 'Erro ao comunicar com o servidor. Tente novamente.';
+                mensagemErro.style.display = 'block';
+            } finally {
+                const btnSalvar = document.querySelector('#modalTrocarSenha .btn-primary');
+                if (btnSalvar) {
+                    btnSalvar.disabled = false;
+                    btnSalvar.innerHTML = '<i class="fas fa-save me-2"></i>Salvar Nova Senha';
+                }
             }
         }
 

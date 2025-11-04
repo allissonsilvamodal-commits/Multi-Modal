@@ -984,6 +984,7 @@ const STORAGE_URL_PREFIX = 'storage://';
 const STORAGE_SIGNED_URL_TTL = parseInt(process.env.STORAGE_SIGNED_URL_TTL || '3600', 10);
 const ANEXOS_BUCKET = process.env.SUPABASE_ANEXOS_BUCKET || 'anexos';
 const MOTORISTA_DOCS_BUCKET = process.env.SUPABASE_MOTORISTA_DOCS_BUCKET || 'motoristas-docs';
+const TREINAMENTOS_DOCS_BUCKET = process.env.SUPABASE_TREINAMENTOS_DOCS_BUCKET || 'treinamentos-docs';
 
 function sanitizeFilename(filename) {
   if (!filename) {
@@ -2478,11 +2479,113 @@ CREATE TABLE IF NOT EXISTS solicitacoes_documentos (
   }
 });
 
+// Trocar senha
+app.post('/api/auth/trocar-senha', express.json(), async (req, res) => {
+  try {
+    console.log('🔍 POST /api/auth/trocar-senha - Verificando autenticação...');
+    console.log('📋 req.session:', req.session ? {
+      usuario: req.session.usuario,
+      userData: req.session.userData,
+      isAdmin: req.session.isAdmin
+    } : 'Nenhuma sessão');
+    console.log('📋 req.body:', req.body);
+    
+    const { senhaAtual, novaSenha, usuarioId } = req.body || {};
+    
+    // Tentar obter o ID do usuário: primeiro da sessão, depois do body
+    let usuarioIdFinal = req.session?.usuario || usuarioId;
+    
+    if (!usuarioIdFinal) {
+      console.error('❌ Nenhum ID de usuário encontrado');
+      return res.status(401).json({ success: false, error: 'Não autenticado. Faça login novamente.' });
+    }
+
+    if (!senhaAtual || !novaSenha) {
+      return res.status(400).json({ success: false, error: 'Senha atual e nova senha são obrigatórias' });
+    }
+
+    if (novaSenha.length < 6) {
+      return res.status(400).json({ success: false, error: 'A nova senha deve ter no mínimo 6 caracteres' });
+    }
+
+    console.log('🔍 Buscando usuário com ID:', usuarioIdFinal);
+
+    // Buscar usuário no Supabase Auth
+    const { data: authUserData, error: getUserError } = await supabaseAdmin.auth.admin.getUserById(usuarioIdFinal);
+    
+    if (getUserError || !authUserData || !authUserData.user) {
+      console.error('❌ Erro ao buscar usuário:', getUserError);
+      return res.status(404).json({ success: false, error: 'Usuário não encontrado' });
+    }
+
+    const user = authUserData.user;
+    console.log('✅ Usuário encontrado:', user.email);
+
+    // Verificar senha atual usando a API do Supabase Auth
+    // Como não temos acesso direto à senha hash, vamos tentar autenticar o usuário
+    // Para verificar a senha atual, vamos tentar fazer login com as credenciais
+    try {
+      // Criar um cliente temporário para testar a senha
+      const { createClient } = require('@supabase/supabase-js');
+      const tempClient = createClient(
+        process.env.SUPABASE_URL,
+        process.env.SUPABASE_ANON_KEY
+      );
+      
+      // Tentar fazer sign in com email e senha atual
+      const { data: signInData, error: signInError } = await tempClient.auth.signInWithPassword({
+        email: user.email,
+        password: senhaAtual
+      });
+
+      if (signInError || !signInData) {
+        console.warn('⚠️ Senha atual incorreta para usuário:', user.email);
+        return res.status(401).json({ success: false, error: 'Senha atual incorreta' });
+      }
+
+      console.log('✅ Senha atual verificada com sucesso');
+    } catch (authError) {
+      console.error('❌ Erro ao verificar senha atual:', authError);
+      // Se falhar a verificação, ainda assim tentar atualizar (pode ser que o usuário não tenha senha definida)
+      console.warn('⚠️ Continuando mesmo com erro na verificação...');
+    }
+
+    // Atualizar senha usando a API Admin do Supabase
+    const { data: updateData, error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
+      usuarioIdFinal,
+      { password: novaSenha }
+    );
+
+    if (updateError) {
+      console.error('❌ Erro ao atualizar senha:', updateError);
+      return res.status(500).json({ 
+        success: false, 
+        error: 'Erro ao atualizar senha. Tente novamente ou contate o administrador.' 
+      });
+    }
+
+    console.log('✅ Senha alterada com sucesso para usuário:', user.email);
+
+    return res.json({
+      success: true,
+      message: 'Senha alterada com sucesso'
+    });
+  } catch (error) {
+    console.error('❌ Erro ao trocar senha:', error);
+    return res.status(500).json({ success: false, error: 'Erro interno ao alterar senha' });
+  }
+});
+
 app.get('/api/auth/status', async (req, res) => {
   const autenticado = !!(req.session && req.session.usuario);
   
   console.log('🔍 Verificando status de autenticação...');
-  console.log('📋 Sessão completa:', req.session);
+  console.log('📋 req.session:', req.session ? {
+    usuario: req.session.usuario,
+    userData: req.session.userData,
+    isAdmin: req.session.isAdmin,
+    permissoes: req.session.permissoes
+  } : 'Nenhuma sessão');
   
   if (!autenticado) {
     console.log('❌ Usuário NÃO autenticado');
@@ -2500,7 +2603,8 @@ app.get('/api/auth/status', async (req, res) => {
     console.log('✅ Usuário autenticado:', {
       usuario: req.session.usuario,
       isAdmin: req.session.isAdmin,
-      permissoes: req.session.permissoes
+      permissoes: req.session.permissoes,
+      userData: req.session.userData
     });
     
     res.json({ 
@@ -2508,6 +2612,7 @@ app.get('/api/auth/status', async (req, res) => {
       usuario: req.session.usuario,
       permissoes: req.session.permissoes || [],
       isAdmin: req.session.isAdmin || false,
+      userData: req.session.userData || null,
       config: userConfig
     });
   } catch (error) {
@@ -5669,6 +5774,352 @@ app.post('/api/treinamentos/assinaturas', express.json(), async (req, res) => {
   } catch (e) {
     console.error('❌ Erro ao salvar assinatura de treinamento:', e);
     return res.status(500).json({ success: false, error: 'Erro ao salvar assinatura: ' + (e.message || 'Erro desconhecido') });
+  }
+});
+
+// Função auxiliar para obter usuário autenticado (sessão ou Supabase)
+async function getUserFromRequest(req) {
+  // Tentar autenticação via sessão primeiro
+  if (req.session && req.session.usuario) {
+    const sessionUsuario = req.session.usuario;
+    console.log('🔍 Verificando sessão - req.session.usuario:', sessionUsuario);
+    console.log('🔍 req.session.userData:', req.session.userData);
+    
+    // req.session.usuario pode ser email ou user_id, vamos tentar ambos
+    let userEmail = null;
+    let userId = null;
+    
+    // Se tem userData na sessão, usar o email de lá
+    if (req.session.userData && req.session.userData.email) {
+      userEmail = req.session.userData.email;
+      userId = req.session.userData.id || sessionUsuario;
+    } else {
+      // Tentar como email primeiro
+      if (typeof sessionUsuario === 'string' && sessionUsuario.includes('@')) {
+        userEmail = sessionUsuario;
+      } else {
+        // Pode ser um ID
+        userId = sessionUsuario;
+      }
+    }
+    
+    console.log('🔍 userEmail:', userEmail, 'userId:', userId);
+    
+    // Se temos userId, buscar diretamente
+    if (userId) {
+      try {
+        const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.getUserById(userId);
+        if (!authError && authUser && authUser.user) {
+          console.log('✅ Usuário encontrado via userId:', authUser.user.id);
+          return { user: authUser.user, error: null };
+        }
+      } catch (err) {
+        console.warn('⚠️ Erro ao buscar usuário por ID:', err);
+      }
+    }
+    
+    // Se temos email, buscar pelo email
+    if (userEmail) {
+      // Buscar o user_id através do user_profiles pelo email
+      const { data: userProfile, error: profileError } = await supabaseAdmin
+        .from('user_profiles')
+        .select('id, email')
+        .eq('email', userEmail)
+        .maybeSingle();
+      
+      if (profileError) {
+        console.warn('⚠️ Erro ao buscar perfil do usuário:', profileError);
+      }
+      
+      if (userProfile && userProfile.id) {
+        // Buscar dados completos do usuário no auth.users usando admin API
+        try {
+          const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.getUserById(userProfile.id);
+          if (!authError && authUser && authUser.user) {
+            console.log('✅ Usuário encontrado via user_profiles:', authUser.user.id);
+            return { user: authUser.user, error: null };
+          }
+        } catch (err) {
+          console.warn('⚠️ Erro ao buscar usuário no auth:', err);
+        }
+        
+        // Fallback: criar objeto user básico se não conseguir buscar do auth
+        console.log('✅ Usando fallback com userProfile.id:', userProfile.id);
+        return {
+          user: {
+            id: userProfile.id,
+            email: userProfile.email || userEmail,
+            user_metadata: {}
+          },
+          error: null
+        };
+      }
+      
+      // Tentar buscar pelo email diretamente no auth (fallback)
+      try {
+        const { data: authUsers } = await supabaseAdmin.auth.admin.listUsers();
+        const authUser = authUsers?.users?.find(u => u.email === userEmail);
+        if (authUser) {
+          console.log('✅ Usuário encontrado via listUsers:', authUser.id);
+          return { user: authUser, error: null };
+        }
+      } catch (err) {
+        console.warn('⚠️ Erro ao listar usuários:', err);
+      }
+    }
+    
+    // Se não encontrou, retornar erro
+    console.error('❌ Usuário não encontrado no sistema. sessionUsuario:', sessionUsuario);
+    return { error: { status: 401, message: 'Usuário não encontrado no sistema' } };
+  }
+  
+  // Tentar autenticação via token Supabase
+  return await getSupabaseUserFromRequest(req);
+}
+
+// ========== DOCUMENTOS DE TREINAMENTOS ==========
+// Upload de documento de treinamento
+app.post('/api/treinamentos/documentos/upload', upload.single('arquivo'), async (req, res) => {
+  try {
+    console.log('🔍 POST /api/treinamentos/documentos/upload - Verificando autenticação...');
+    console.log('📋 req.session:', req.session ? {
+      usuario: req.session.usuario,
+      userData: req.session.userData,
+      isAdmin: req.session.isAdmin
+    } : 'Nenhuma sessão');
+    
+    const { user, error: authError } = await getUserFromRequest(req);
+    if (authError || !user) {
+      console.error('❌ Erro de autenticação:', authError?.message || 'Usuário não encontrado');
+      return res.status(authError?.status || 401).json({ success: false, error: authError?.message || 'Não autenticado' });
+    }
+    
+    console.log('✅ Usuário autenticado:', user.email || user.id);
+
+    // Verificar permissão de qualidade
+    const { data: userProfile } = await supabaseAdmin
+      .from('user_profiles')
+      .select('role, nome')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    const isAdmin = userProfile?.role === 'admin';
+    const { data: permissao } = await supabaseAdmin
+      .from('permissoes_portal')
+      .select('permissao_id')
+      .eq('usuario_id', user.id)
+      .eq('permissao_id', 'qualidade')
+      .maybeSingle();
+
+    if (!isAdmin && !permissao) {
+      return res.status(403).json({ success: false, error: 'Você não tem permissão para enviar documentos de treinamento' });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({ success: false, error: 'Nenhum arquivo enviado' });
+    }
+
+    const { treinamento_slug, descricao } = req.body || {};
+    if (!treinamento_slug) {
+      return res.status(400).json({ success: false, error: 'treinamento_slug é obrigatório' });
+    }
+
+    const file = req.file;
+    const sanitizedName = sanitizeFilename(file.originalname);
+    const fileExt = path.extname(sanitizedName) || '';
+    const uniqueName = `${Date.now()}-${generateId()}`;
+    const storagePath = `treinamentos/${treinamento_slug}/${uniqueName}${fileExt}`;
+
+    const uploadOptions = {
+      contentType: file.mimetype || 'application/octet-stream',
+      cacheControl: '3600',
+      upsert: false
+    };
+
+    const fileBuffer = file.buffer;
+
+    // Upload para Supabase Storage
+    const { error: uploadError } = await supabaseAdmin.storage
+      .from(TREINAMENTOS_DOCS_BUCKET)
+      .upload(storagePath, fileBuffer, uploadOptions);
+
+    if (uploadError) {
+      console.error('❌ Erro ao fazer upload:', uploadError);
+      throw uploadError;
+    }
+
+    const storageUrl = buildStorageUrl(TREINAMENTOS_DOCS_BUCKET, storagePath);
+
+    // Buscar departamento do usuário
+    const { data: userDept } = await supabaseAdmin
+      .from('user_profiles')
+      .select('departamento')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    // Salvar metadados no banco
+    const { data, error: dbError } = await supabaseAdmin
+      .from('treinamentos_documentos')
+      .insert([{
+        treinamento_slug,
+        nome_arquivo: sanitizedName,
+        tipo_arquivo: file.mimetype || 'application/octet-stream',
+        tamanho: file.size,
+        url: storageUrl,
+        uploaded_by: user.id,
+        uploaded_by_nome: userProfile?.nome || user.email || 'Usuário',
+        uploaded_by_departamento: userDept?.departamento || 'Qualidade',
+        descricao: descricao || null
+      }])
+      .select()
+      .single();
+
+    if (dbError) {
+      // Se falhar ao salvar no banco, remover arquivo do storage
+      await supabaseAdmin.storage
+        .from(TREINAMENTOS_DOCS_BUCKET)
+        .remove([storagePath])
+        .catch(() => {});
+      throw dbError;
+    }
+
+    console.log('✅ Documento de treinamento enviado com sucesso:', data.id);
+
+    return res.json({
+      success: true,
+      documento: data
+    });
+  } catch (e) {
+    console.error('❌ Erro ao enviar documento de treinamento:', e);
+    return res.status(500).json({ 
+      success: false, 
+      error: 'Erro ao enviar documento: ' + (e.message || 'Erro desconhecido') 
+    });
+  }
+});
+
+// Listar documentos de treinamentos
+app.get('/api/treinamentos/documentos', async (req, res) => {
+  try {
+    console.log('🔍 GET /api/treinamentos/documentos - Verificando autenticação...');
+    console.log('📋 req.session:', req.session ? {
+      usuario: req.session.usuario,
+      userData: req.session.userData,
+      isAdmin: req.session.isAdmin
+    } : 'Nenhuma sessão');
+    
+    const { user, error: authError } = await getUserFromRequest(req);
+    if (authError || !user) {
+      console.error('❌ Erro de autenticação:', authError?.message || 'Usuário não encontrado');
+      return res.status(authError?.status || 401).json({ success: false, error: authError?.message || 'Não autenticado' });
+    }
+    
+    console.log('✅ Usuário autenticado:', user.email || user.id);
+
+    const { treinamento_slug } = req.query;
+
+    let query = supabaseAdmin
+      .from('treinamentos_documentos')
+      .select('*')
+      .order('data_upload', { ascending: false });
+
+    if (treinamento_slug) {
+      query = query.eq('treinamento_slug', treinamento_slug);
+    }
+
+    const { data, error } = await query;
+
+    if (error) throw error;
+
+    // Gerar URLs assinadas para cada documento
+    const documentosComUrl = await Promise.all(
+      (data || []).map(async (doc) => {
+        const urlInfo = await createSignedUrlFromStorage(doc.url, 3600);
+        return {
+          ...doc,
+          url: urlInfo.signedUrl || doc.url
+        };
+      })
+    );
+
+    return res.json({
+      success: true,
+      documentos: documentosComUrl
+    });
+  } catch (e) {
+    console.error('❌ Erro ao listar documentos de treinamento:', e);
+    return res.status(500).json({ 
+      success: false, 
+      error: 'Erro ao listar documentos: ' + (e.message || 'Erro desconhecido') 
+    });
+  }
+});
+
+// Excluir documento de treinamento
+app.delete('/api/treinamentos/documentos/:id', async (req, res) => {
+  try {
+    const { user, error: authError } = await getUserFromRequest(req);
+    if (authError || !user) {
+      return res.status(authError?.status || 401).json({ success: false, error: authError?.message || 'Não autenticado' });
+    }
+
+    const { id } = req.params;
+
+    // Buscar documento
+    const { data: documento, error: fetchError } = await supabaseAdmin
+      .from('treinamentos_documentos')
+      .select('*')
+      .eq('id', id)
+      .maybeSingle();
+
+    if (fetchError) throw fetchError;
+    if (!documento) {
+      return res.status(404).json({ success: false, error: 'Documento não encontrado' });
+    }
+
+    // Verificar permissão (apenas quem enviou ou admin pode excluir)
+    const { data: userProfile } = await supabaseAdmin
+      .from('user_profiles')
+      .select('role')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    const isAdmin = userProfile?.role === 'admin';
+    const canDelete = isAdmin || documento.uploaded_by === user.id;
+
+    if (!canDelete) {
+      return res.status(403).json({ success: false, error: 'Você não tem permissão para excluir este documento' });
+    }
+
+    // Remover arquivo do storage
+    const parsed = parseStorageUrl(documento.url);
+    if (parsed) {
+      await supabaseAdmin.storage
+        .from(parsed.bucket)
+        .remove([parsed.path])
+        .catch(err => console.warn('⚠️ Erro ao remover arquivo do storage:', err));
+    }
+
+    // Remover registro do banco
+    const { error: deleteError } = await supabaseAdmin
+      .from('treinamentos_documentos')
+      .delete()
+      .eq('id', id);
+
+    if (deleteError) throw deleteError;
+
+    console.log('✅ Documento excluído com sucesso:', id);
+
+    return res.json({
+      success: true,
+      message: 'Documento excluído com sucesso'
+    });
+  } catch (e) {
+    console.error('❌ Erro ao excluir documento de treinamento:', e);
+    return res.status(500).json({ 
+      success: false, 
+      error: 'Erro ao excluir documento: ' + (e.message || 'Erro desconhecido') 
+    });
   }
 });
 

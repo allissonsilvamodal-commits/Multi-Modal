@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Documentos de Treinamentos - Qualidade</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/permissions.js"></script>
+    <style>
+        :root {
+            --primary: #667eea;
+            --secondary: #764ba2;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            min-height: 100vh;
+            padding-bottom: 2rem;
+        }
+        
+        .header-section {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            padding: 2.5rem 0;
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+        
+        .header-section h1 {
+            margin: 0;
+            font-size: 2.5rem;
+            font-weight: 700;
+        }
+        
+        .header-section p {
+            margin: 0.5rem 0 0 0;
+            opacity: 0.9;
+            font-size: 1.1rem;
+        }
+        
+        .container-custom {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 1.5rem;
+        }
+        
+        .card-modern {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            padding: 2rem;
+            margin-bottom: 2rem;
+            border: 1px solid #e5e7eb;
+        }
+        
+        .btn-primary-custom {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            border: none;
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 12px;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+        
+        .btn-primary-custom:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+            color: white;
+        }
+        
+        .btn-back {
+            background: #6b7280;
+            color: white;
+            border: none;
+            border-radius: 12px;
+            padding: 0.75rem 1.5rem;
+            font-weight: 600;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: all 0.3s;
+        }
+        
+        .btn-back:hover {
+            background: #4b5563;
+            color: white;
+            transform: translateY(-2px);
+        }
+        
+        .document-card {
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+            transition: all 0.3s;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .document-card:hover {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            border-color: var(--primary);
+        }
+        
+        .document-info {
+            flex: 1;
+        }
+        
+        .document-name {
+            font-weight: 600;
+            font-size: 1.1rem;
+            color: #1f2937;
+            margin-bottom: 0.5rem;
+        }
+        
+        .document-meta {
+            display: flex;
+            gap: 1.5rem;
+            flex-wrap: wrap;
+            color: #6b7280;
+            font-size: 0.9rem;
+        }
+        
+        .document-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+        
+        .btn-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .btn-download {
+            background: #e0e7ff;
+            color: var(--primary);
+        }
+        
+        .btn-download:hover {
+            background: var(--primary);
+            color: white;
+        }
+        
+        .btn-delete {
+            background: #fee2e2;
+            color: var(--danger);
+        }
+        
+        .btn-delete:hover {
+            background: var(--danger);
+            color: white;
+        }
+        
+        .upload-area {
+            border: 2px dashed #cbd5e1;
+            border-radius: 12px;
+            padding: 3rem;
+            text-align: center;
+            background: #f8fafc;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+        
+        .upload-area:hover {
+            border-color: var(--primary);
+            background: #f1f5f9;
+        }
+        
+        .upload-area.dragover {
+            border-color: var(--primary);
+            background: #e0e7ff;
+        }
+        
+        .file-icon {
+            font-size: 3rem;
+            color: var(--primary);
+            margin-bottom: 1rem;
+        }
+        
+        .filter-tabs {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+        }
+        
+        .filter-tab {
+            padding: 0.75rem 1.5rem;
+            background: white;
+            border: 2px solid #e5e7eb;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: 600;
+            color: #6b7280;
+        }
+        
+        .filter-tab:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+        
+        .filter-tab.active {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            border-color: transparent;
+            color: white;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 4rem 2rem;
+            color: #6b7280;
+        }
+        
+        .empty-state i {
+            font-size: 4rem;
+            color: #d1d5db;
+            margin-bottom: 1rem;
+        }
+        
+        .badge-training {
+            background: #e0e7ff;
+            color: var(--primary);
+            padding: 0.25rem 0.75rem;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <div class="header-section">
+        <div class="container-custom">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+                <div>
+                    <h1><i class="fas fa-file-alt me-2"></i>Documentos de Treinamentos</h1>
+                    <p>Gerencie atas e documentos dos treinamentos realizados</p>
+                </div>
+                <div class="d-flex gap-2">
+                    <a href="treinamentos.html" class="btn-back">
+                        <i class="fas fa-arrow-left"></i> Voltar aos Treinamentos
+                    </a>
+                    <a href="portal.html" class="btn-back">
+                        <i class="fas fa-home"></i> Portal
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="container-custom">
+        <!-- Filtros por Treinamento -->
+        <div class="card-modern">
+            <h3 class="mb-3"><i class="fas fa-filter me-2"></i>Filtrar por Treinamento</h3>
+            <div class="filter-tabs" id="filterTabs">
+                <div class="filter-tab active" data-treinamento="todos">
+                    <i class="fas fa-list me-1"></i> Todos
+                </div>
+                <!-- Os filtros serão adicionados dinamicamente -->
+            </div>
+        </div>
+        
+        <!-- Área de Upload -->
+        <div class="card-modern" id="uploadCard">
+            <h3 class="mb-3"><i class="fas fa-cloud-upload-alt me-2"></i>Enviar Documento</h3>
+            <form id="uploadForm">
+                <div class="mb-3">
+                    <label class="form-label">Treinamento *</label>
+                    <select id="treinamentoSelect" class="form-select" required>
+                        <option value="">Selecione o treinamento</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Descrição (opcional)</label>
+                    <input type="text" id="descricaoInput" class="form-control" placeholder="Ex: Ata de treinamento - 15/01/2024">
+                </div>
+                <div class="upload-area" id="uploadArea">
+                    <input type="file" id="fileInput" accept=".pdf,.png,.jpg,.jpeg,.doc,.docx" style="display: none;" multiple>
+                    <div class="file-icon">
+                        <i class="fas fa-cloud-upload-alt"></i>
+                    </div>
+                    <h4>Arraste arquivos aqui ou clique para selecionar</h4>
+                    <p class="text-muted">Formatos aceitos: PDF, PNG, JPG, JPEG, DOC, DOCX</p>
+                    <p class="text-muted">Tamanho máximo: 10MB por arquivo</p>
+                </div>
+                <div id="selectedFiles" class="mt-3"></div>
+                <div class="mt-3 text-end">
+                    <button type="button" class="btn btn-secondary" id="btnCancelarUpload" style="display: none;">Cancelar</button>
+                    <button type="submit" class="btn-primary-custom" id="btnEnviar" disabled>
+                        <i class="fas fa-upload me-2"></i>Enviar Documentos
+                    </button>
+                </div>
+            </form>
+        </div>
+        
+        <!-- Lista de Documentos -->
+        <div class="card-modern">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h3 class="mb-0"><i class="fas fa-folder-open me-2"></i>Documentos Enviados</h3>
+                <span class="badge bg-primary" id="totalDocumentos">0 documentos</span>
+            </div>
+            <div id="documentosList">
+                <div class="empty-state">
+                    <i class="fas fa-file-alt"></i>
+                    <h4>Nenhum documento encontrado</h4>
+                    <p>Envie documentos usando o formulário acima</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        const TREINAMENTOS_CONFIG = [
+            { id: 'cadastro_motoristas', nome: 'Cadastro de Motoristas' },
+            { id: 'disparador_mensagens', nome: 'Disparador de Mensagens' }
+        ];
+        
+        let currentUser = null;
+        let selectedFiles = [];
+        let filtroTreinamento = 'todos';
+        
+        async function inicializar() {
+            // Verificar autenticação
+            try {
+                const response = await fetch('/api/auth/status', { credentials: 'include' });
+                if (!response.ok) {
+                    window.location.href = 'index.html';
+                    return;
+                }
+                currentUser = await response.json();
+                
+                // Verificar permissão
+                if (typeof verificarEAplicarPermissao === 'function') {
+                    const temPermissao = await verificarEAplicarPermissao('qualidade');
+                    if (!temPermissao) {
+                        alert('Você não tem permissão para acessar esta página.');
+                        window.location.href = 'portal.html';
+                        return;
+                    }
+                }
+            } catch (error) {
+                console.error('Erro ao verificar autenticação:', error);
+                window.location.href = 'index.html';
+                return;
+            }
+            
+            // Carregar treinamentos no select e filtros
+            carregarTreinamentos();
+            
+            // Carregar documentos
+            await carregarDocumentos();
+            
+            // Configurar eventos
+            configurarEventos();
+        }
+        
+        function carregarTreinamentos() {
+            const select = document.getElementById('treinamentoSelect');
+            const filterTabs = document.getElementById('filterTabs');
+            
+            TREINAMENTOS_CONFIG.forEach(treinamento => {
+                // Adicionar ao select
+                const option = document.createElement('option');
+                option.value = treinamento.id;
+                option.textContent = treinamento.nome;
+                select.appendChild(option);
+                
+                // Adicionar aos filtros
+                const tab = document.createElement('div');
+                tab.className = 'filter-tab';
+                tab.dataset.treinamento = treinamento.id;
+                tab.innerHTML = `<i class="fas fa-book me-1"></i> ${treinamento.nome}`;
+                tab.addEventListener('click', () => {
+                    document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
+                    tab.classList.add('active');
+                    filtroTreinamento = treinamento.id;
+                    carregarDocumentos();
+                });
+                filterTabs.appendChild(tab);
+            });
+        }
+        
+        function configurarEventos() {
+            const uploadArea = document.getElementById('uploadArea');
+            const fileInput = document.getElementById('fileInput');
+            const uploadForm = document.getElementById('uploadForm');
+            
+            // Clique na área de upload
+            uploadArea.addEventListener('click', () => fileInput.click());
+            
+            // Drag and drop
+            uploadArea.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                uploadArea.classList.add('dragover');
+            });
+            
+            uploadArea.addEventListener('dragleave', () => {
+                uploadArea.classList.remove('dragover');
+            });
+            
+            uploadArea.addEventListener('drop', (e) => {
+                e.preventDefault();
+                uploadArea.classList.remove('dragover');
+                const files = Array.from(e.dataTransfer.files);
+                handleFiles(files);
+            });
+            
+            // Seleção de arquivos
+            fileInput.addEventListener('change', (e) => {
+                handleFiles(Array.from(e.target.files));
+            });
+            
+            // Submit do formulário
+            uploadForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                await enviarDocumentos();
+            });
+            
+            // Cancelar upload
+            document.getElementById('btnCancelarUpload').addEventListener('click', () => {
+                selectedFiles = [];
+                fileInput.value = '';
+                atualizarInterfaceUpload();
+            });
+            
+            // Filtro "Todos"
+            document.querySelector('.filter-tab[data-treinamento="todos"]').addEventListener('click', (e) => {
+                document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
+                e.target.closest('.filter-tab').classList.add('active');
+                filtroTreinamento = 'todos';
+                carregarDocumentos();
+            });
+        }
+        
+        function handleFiles(files) {
+            const validFiles = files.filter(file => {
+                const validTypes = ['application/pdf', 'image/png', 'image/jpeg', 'image/jpg', 
+                                   'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+                const maxSize = 10 * 1024 * 1024; // 10MB
+                
+                if (!validTypes.includes(file.type)) {
+                    alert(`Arquivo ${file.name} não é um formato válido.`);
+                    return false;
+                }
+                
+                if (file.size > maxSize) {
+                    alert(`Arquivo ${file.name} excede 10MB.`);
+                    return false;
+                }
+                
+                return true;
+            });
+            
+            selectedFiles = selectedFiles.concat(validFiles);
+            atualizarInterfaceUpload();
+        }
+        
+        function atualizarInterfaceUpload() {
+            const selectedFilesDiv = document.getElementById('selectedFiles');
+            const btnEnviar = document.getElementById('btnEnviar');
+            const btnCancelar = document.getElementById('btnCancelarUpload');
+            
+            if (selectedFiles.length === 0) {
+                selectedFilesDiv.innerHTML = '';
+                btnEnviar.disabled = true;
+                btnCancelar.style.display = 'none';
+                return;
+            }
+            
+            btnEnviar.disabled = false;
+            btnCancelar.style.display = 'inline-block';
+            
+            selectedFilesDiv.innerHTML = `
+                <div class="alert alert-info">
+                    <strong>${selectedFiles.length} arquivo(s) selecionado(s):</strong>
+                    <ul class="mb-0 mt-2">
+                        ${selectedFiles.map((file, index) => `
+                            <li>
+                                ${file.name} (${formatFileSize(file.size)})
+                                <button type="button" class="btn btn-sm btn-link text-danger p-0 ms-2" onclick="removerArquivo(${index})">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </li>
+                        `).join('')}
+                    </ul>
+                </div>
+            `;
+        }
+        
+        function removerArquivo(index) {
+            selectedFiles.splice(index, 1);
+            atualizarInterfaceUpload();
+        }
+        
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+        }
+        
+        async function enviarDocumentos() {
+            const treinamentoSlug = document.getElementById('treinamentoSelect').value;
+            const descricao = document.getElementById('descricaoInput').value;
+            
+            if (!treinamentoSlug) {
+                alert('Selecione um treinamento');
+                return;
+            }
+            
+            if (selectedFiles.length === 0) {
+                alert('Selecione pelo menos um arquivo');
+                return;
+            }
+            
+            const btnEnviar = document.getElementById('btnEnviar');
+            btnEnviar.disabled = true;
+            btnEnviar.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Enviando...';
+            
+            try {
+                let sucesso = 0;
+                let erros = 0;
+                
+                for (const file of selectedFiles) {
+                    try {
+                        const formData = new FormData();
+                        formData.append('arquivo', file);
+                        formData.append('treinamento_slug', treinamentoSlug);
+                        formData.append('descricao', descricao || '');
+                        
+                        const response = await fetch('/api/treinamentos/documentos/upload', {
+                            method: 'POST',
+                            body: formData,
+                            credentials: 'include'
+                        });
+                        
+                        if (!response.ok) {
+                            throw new Error('Erro ao enviar arquivo');
+                        }
+                        
+                        sucesso++;
+                    } catch (error) {
+                        console.error('Erro ao enviar arquivo:', error);
+                        erros++;
+                    }
+                }
+                
+                if (sucesso > 0) {
+                    alert(`✅ ${sucesso} arquivo(s) enviado(s) com sucesso!${erros > 0 ? `\n❌ ${erros} arquivo(s) falharam.` : ''}`);
+                    selectedFiles = [];
+                    document.getElementById('fileInput').value = '';
+                    document.getElementById('uploadForm').reset();
+                    atualizarInterfaceUpload();
+                    await carregarDocumentos();
+                } else {
+                    alert('❌ Erro ao enviar arquivos. Tente novamente.');
+                }
+            } catch (error) {
+                console.error('Erro:', error);
+                alert('❌ Erro ao enviar documentos. Tente novamente.');
+            } finally {
+                btnEnviar.disabled = false;
+                btnEnviar.innerHTML = '<i class="fas fa-upload me-2"></i>Enviar Documentos';
+            }
+        }
+        
+        async function carregarDocumentos() {
+            const container = document.getElementById('documentosList');
+            container.innerHTML = '<div class="text-center py-4"><div class="spinner-border text-primary"></div><p class="mt-2">Carregando documentos...</p></div>';
+            
+            try {
+                const params = new URLSearchParams();
+                if (filtroTreinamento !== 'todos') {
+                    params.append('treinamento_slug', filtroTreinamento);
+                }
+                
+                const response = await fetch(`/api/treinamentos/documentos?${params}`, {
+                    credentials: 'include'
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Erro ao carregar documentos');
+                }
+                
+                const data = await response.json();
+                const documentos = data.documentos || [];
+                
+                document.getElementById('totalDocumentos').textContent = `${documentos.length} documento(s)`;
+                
+                if (documentos.length === 0) {
+                    container.innerHTML = `
+                        <div class="empty-state">
+                            <i class="fas fa-file-alt"></i>
+                            <h4>Nenhum documento encontrado</h4>
+                            <p>${filtroTreinamento === 'todos' ? 'Envie documentos usando o formulário acima' : 'Nenhum documento encontrado para este treinamento'}</p>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                container.innerHTML = documentos.map(doc => {
+                    const treinamentoNome = TREINAMENTOS_CONFIG.find(t => t.id === doc.treinamento_slug)?.nome || doc.treinamento_slug;
+                    const dataUpload = new Date(doc.data_upload).toLocaleDateString('pt-BR');
+                    const horaUpload = new Date(doc.data_upload).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+                    
+                    return `
+                        <div class="document-card">
+                            <div class="document-info">
+                                <div class="document-name">
+                                    <i class="fas fa-file-${getFileIcon(doc.tipo_arquivo)} me-2"></i>
+                                    ${doc.nome_arquivo}
+                                </div>
+                                <div class="document-meta">
+                                    <span><i class="fas fa-book me-1"></i> ${treinamentoNome}</span>
+                                    <span><i class="fas fa-user me-1"></i> ${doc.uploaded_by_nome || 'Usuário'}</span>
+                                    <span><i class="fas fa-calendar me-1"></i> ${dataUpload} às ${horaUpload}</span>
+                                    <span><i class="fas fa-weight me-1"></i> ${formatFileSize(doc.tamanho)}</span>
+                                    ${doc.descricao ? `<span><i class="fas fa-comment me-1"></i> ${doc.descricao}</span>` : ''}
+                                </div>
+                            </div>
+                            <div class="document-actions">
+                                <a href="${doc.url}" target="_blank" class="btn-icon btn-download" title="Visualizar/Download">
+                                    <i class="fas fa-download"></i>
+                                </a>
+                                <button class="btn-icon btn-delete" onclick="excluirDocumento('${doc.id}')" title="Excluir">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            } catch (error) {
+                console.error('Erro ao carregar documentos:', error);
+                container.innerHTML = `
+                    <div class="alert alert-danger">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        Erro ao carregar documentos. Tente novamente.
+                    </div>
+                `;
+            }
+        }
+        
+        function getFileIcon(tipoArquivo) {
+            if (tipoArquivo.includes('pdf')) return 'pdf';
+            if (tipoArquivo.includes('image')) return 'image';
+            if (tipoArquivo.includes('word') || tipoArquivo.includes('document')) return 'word';
+            return 'alt';
+        }
+        
+        async function excluirDocumento(id) {
+            if (!confirm('Tem certeza que deseja excluir este documento?')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/treinamentos/documentos/${id}`, {
+                    method: 'DELETE',
+                    credentials: 'include'
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Erro ao excluir documento');
+                }
+                
+                alert('✅ Documento excluído com sucesso!');
+                await carregarDocumentos();
+            } catch (error) {
+                console.error('Erro ao excluir documento:', error);
+                alert('❌ Erro ao excluir documento. Tente novamente.');
+            }
+        }
+        
+        // Inicializar quando a página carregar
+        document.addEventListener('DOMContentLoaded', inicializar);
+    </script>
+</body>
+</html>
+
