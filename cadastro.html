@@ -1387,6 +1387,91 @@ function inicializarEventListeners() {
     if (btnBuscar) {
       btnBuscar.addEventListener('click', aplicarFiltros);
   }
+  
+  // Event listeners para importação CSV
+  const btnSelecionarArquivo = document.getElementById('btnSelecionarArquivo');
+  const csvFile = document.getElementById('csvFile');
+  const btnImportarCSV = document.getElementById('btnImportarCSV');
+  const btnTemplateCSV = document.getElementById('btnTemplateCSV');
+  const uploadArea = document.getElementById('uploadArea');
+  
+  if (btnSelecionarArquivo && csvFile) {
+    btnSelecionarArquivo.addEventListener('click', () => csvFile.click());
+    
+    csvFile.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        const fileName = file.name;
+        uploadArea.innerHTML = `
+          <div class="upload-icon text-success">
+            <i class="fas fa-check-circle"></i>
+          </div>
+          <h5 class="fw-bold mb-2">${fileName}</h5>
+          <p class="text-muted mb-3">Arquivo selecionado com sucesso</p>
+          <button class="btn btn-modern btn-modern-secondary btn-sm" onclick="document.getElementById('csvFile').value=''; location.reload();">
+            <i class="fas fa-times me-2"></i>Remover
+          </button>
+        `;
+      }
+    });
+  }
+  
+  if (uploadArea && csvFile) {
+    // Drag and drop
+    uploadArea.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      uploadArea.style.borderColor = '#667eea';
+      uploadArea.style.backgroundColor = '#f0f4ff';
+    });
+    
+    uploadArea.addEventListener('dragleave', () => {
+      uploadArea.style.borderColor = '';
+      uploadArea.style.backgroundColor = '';
+    });
+    
+    uploadArea.addEventListener('drop', (e) => {
+      e.preventDefault();
+      uploadArea.style.borderColor = '';
+      uploadArea.style.backgroundColor = '';
+      
+      const file = e.dataTransfer.files[0];
+      if (file && file.name.endsWith('.csv')) {
+        csvFile.files = e.dataTransfer.files;
+        const fileName = file.name;
+        uploadArea.innerHTML = `
+          <div class="upload-icon text-success">
+            <i class="fas fa-check-circle"></i>
+          </div>
+          <h5 class="fw-bold mb-2">${fileName}</h5>
+          <p class="text-muted mb-3">Arquivo selecionado com sucesso</p>
+          <button class="btn btn-modern btn-modern-secondary btn-sm" onclick="document.getElementById('csvFile').value=''; location.reload();">
+            <i class="fas fa-times me-2"></i>Remover
+          </button>
+        `;
+      } else {
+        mostrarErro('Por favor, selecione um arquivo CSV válido');
+      }
+    });
+  }
+  
+  if (btnImportarCSV) {
+    btnImportarCSV.addEventListener('click', async () => {
+      const file = csvFile?.files[0];
+      if (!file) {
+        mostrarErro('Por favor, selecione um arquivo CSV primeiro');
+        return;
+      }
+      
+      await importarCSV(file);
+    });
+  }
+  
+  if (btnTemplateCSV) {
+    btnTemplateCSV.addEventListener('click', (e) => {
+      e.preventDefault();
+      baixarTemplateCSV();
+    });
+  }
 }
 
 // ========== CADASTRO DE MOTORISTAS (SUPABASE) ==========
@@ -1941,6 +2026,149 @@ function adicionarCSSPersonalizado() {
 }
 
 async function carregarEstatisticasSistema() { /* removido */ }
+
+// ========== IMPORTAÇÃO CSV ==========
+async function importarCSV(file) {
+  const btnImportar = document.getElementById('btnImportarCSV');
+  const sobrescrever = document.getElementById('sobrescrever')?.checked || false;
+  const manterInativos = document.getElementById('manter_inativos')?.checked || false;
+  
+  if (!file) {
+    mostrarErro('Nenhum arquivo selecionado');
+    return;
+  }
+  
+  try {
+    btnImportar.disabled = true;
+    btnImportar.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Importando...';
+    
+    const formData = new FormData();
+    formData.append('csv', file);
+    formData.append('sobrescrever', sobrescrever);
+    formData.append('manter_inativos', manterInativos);
+    
+    const response = await fetch('/api/motoristas/importar-csv', {
+      method: 'POST',
+      body: formData,
+      credentials: 'include'
+    });
+    
+    const result = await response.json();
+    
+    if (!response.ok) {
+      throw new Error(result.error || 'Erro ao importar CSV');
+    }
+    
+    mostrarSucesso(`✅ Importação concluída! ${result.inseridos || 0} inseridos, ${result.atualizados || 0} atualizados, ${result.erros || 0} erros`);
+    
+    // Limpar arquivo
+    const csvFileInput = document.getElementById('csvFile');
+    if (csvFileInput) csvFileInput.value = '';
+    
+    // Restaurar área de upload
+    const uploadArea = document.getElementById('uploadArea');
+    if (uploadArea) {
+      uploadArea.innerHTML = `
+        <div class="upload-icon">
+          <i class="fas fa-cloud-upload-alt"></i>
+        </div>
+        <h5 class="fw-bold mb-2">Arraste ou clique para upload</h5>
+        <p class="text-muted mb-3">Suporte para arquivos CSV</p>
+        <input type="file" id="csvFile" class="d-none" accept=".csv">
+        <button class="btn btn-modern btn-modern-primary" id="btnSelecionarArquivo">
+          <i class="fas fa-folder-open me-2"></i>Selecionar Arquivo
+        </button>
+      `;
+      
+      // Reatribuir event listeners
+      const novoBtnSelecionar = document.getElementById('btnSelecionarArquivo');
+      const novoCsvFile = document.getElementById('csvFile');
+      if (novoBtnSelecionar && novoCsvFile) {
+        novoBtnSelecionar.addEventListener('click', () => novoCsvFile.click());
+        novoCsvFile.addEventListener('change', (e) => {
+          const file = e.target.files[0];
+          if (file) {
+            const fileName = file.name;
+            uploadArea.innerHTML = `
+              <div class="upload-icon text-success">
+                <i class="fas fa-check-circle"></i>
+              </div>
+              <h5 class="fw-bold mb-2">${fileName}</h5>
+              <p class="text-muted mb-3">Arquivo selecionado com sucesso</p>
+              <button class="btn btn-modern btn-modern-secondary btn-sm" onclick="document.getElementById('csvFile').value=''; location.reload();">
+                <i class="fas fa-times me-2"></i>Remover
+              </button>
+            `;
+          }
+        });
+      }
+    }
+    
+    // Recarregar contatos
+    await carregarContatos();
+    
+  } catch (error) {
+    console.error('Erro ao importar CSV:', error);
+    mostrarErro('❌ Erro ao importar CSV: ' + error.message);
+  } finally {
+    btnImportar.disabled = false;
+    btnImportar.innerHTML = '<i class="fas fa-upload me-2"></i>Importar CSV';
+  }
+}
+
+function baixarTemplateCSV() {
+  const headers = [
+    'nome',
+    'telefone1',
+    'telefone2',
+    'cnh',
+    'categoria_cnh',
+    'estado',
+    'classe_veiculo',
+    'tipo_veiculo',
+    'tipo_carroceria',
+    'placa_cavalo',
+    'placa_carreta1',
+    'placa_carreta2',
+    'placa_carreta3',
+    'status'
+  ];
+  
+  const exemplo = [
+    'João Silva',
+    '11987654321',
+    '11912345678',
+    '12345678901',
+    'C',
+    'SP',
+    'pesado',
+    'caminhao',
+    'bau',
+    'ABC1234',
+    '',
+    '',
+    '',
+    'ativo'
+  ];
+  
+  const csvContent = [
+    headers.join(','),
+    exemplo.join(','),
+    'Maria Santos,11987654322,,98765432101,D,MG,medio,van,sider,DEF5678,,,,'.split(',').join(',')
+  ].join('\n');
+  
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  const url = URL.createObjectURL(blob);
+  
+  link.setAttribute('href', url);
+  link.setAttribute('download', 'template_motoristas.csv');
+  link.style.visibility = 'hidden';
+  
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
 
 // ========== INICIALIZAÇÃO FINAL ==========
 document.addEventListener('DOMContentLoaded', inicializarAplicacao);

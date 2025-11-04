@@ -1361,6 +1361,225 @@ app.get('/api/motoristas/auth/me', async (req, res) => {
   }
 });
 
+// ========== ENDPOINT PARA IMPORTAÇÃO CSV DE MOTORISTAS ==========
+app.post('/api/motoristas/importar-csv', upload.single('csv'), requireAuth, async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ success: false, error: 'Nenhum arquivo CSV enviado' });
+    }
+
+    const sobrescrever = req.body.sobrescrever === 'true';
+    const manterInativos = req.body.manter_inativos === 'true';
+
+    // Obter usuário atual
+    const { user, error: userError } = await getUserFromRequest(req);
+    if (userError) {
+      return res.status(userError.status || 401).json({ success: false, error: userError.message });
+    }
+
+    const userId = user.id || user.user_id || 'sistema';
+    const userDepartment = user.departamento || null;
+
+    // Ler e processar CSV
+    const csvContent = req.file.buffer.toString('utf8');
+    const lines = csvContent.split('\n').filter(line => line.trim());
+    
+    if (lines.length === 0) {
+      return res.status(400).json({ success: false, error: 'Arquivo CSV vazio' });
+    }
+
+    // Verificar se tem cabeçalho
+    const header = lines[0].toLowerCase();
+    const hasHeader = header.includes('nome') || header.includes('name') || header.includes('telefone');
+    const startLine = hasHeader ? 1 : 0;
+
+    if (lines.length <= startLine) {
+      return res.status(400).json({ success: false, error: 'Nenhum dado encontrado no CSV' });
+    }
+
+    const motoristas = [];
+    const erros = [];
+    let inseridos = 0;
+    let atualizados = 0;
+
+    // Mapeamento de colunas esperadas
+    const columnMap = {
+      nome: ['nome', 'name', 'nome_completo'],
+      telefone1: ['telefone1', 'telefone', 'telefone_1', 'phone', 'phone1'],
+      telefone2: ['telefone2', 'telefone_2', 'phone2'],
+      cnh: ['cnh', 'numero_cnh'],
+      categoria_cnh: ['categoria_cnh', 'categoria', 'categoria_cnh'],
+      estado: ['estado', 'uf', 'estado_uf'],
+      classe_veiculo: ['classe_veiculo', 'classe', 'classe_veiculo'],
+      tipo_veiculo: ['tipo_veiculo', 'tipo', 'tipo_veiculo'],
+      tipo_carroceria: ['tipo_carroceria', 'carroceria', 'tipo_carroceria'],
+      placa_cavalo: ['placa_cavalo', 'placa', 'placa_cavalo'],
+      placa_carreta1: ['placa_carreta1', 'carreta1', 'placa_carreta_1'],
+      placa_carreta2: ['placa_carreta2', 'carreta2', 'placa_carreta_2'],
+      placa_carreta3: ['placa_carreta3', 'carreta3', 'placa_carreta_3'],
+      status: ['status', 'situacao']
+    };
+
+    // Encontrar índices das colunas
+    let columnIndexes = {};
+    if (hasHeader) {
+      const headerColumns = lines[0].split(',').map(c => c.trim().toLowerCase().replace(/["']/g, ''));
+      Object.keys(columnMap).forEach(key => {
+        const possibleNames = columnMap[key];
+        for (let name of possibleNames) {
+          const index = headerColumns.indexOf(name);
+          if (index !== -1) {
+            columnIndexes[key] = index;
+            break;
+          }
+        }
+      });
+    } else {
+      // Se não tem cabeçalho, assumir ordem padrão
+      columnIndexes = {
+        nome: 0,
+        telefone1: 1,
+        telefone2: 2,
+        cnh: 3,
+        categoria_cnh: 4,
+        estado: 5,
+        classe_veiculo: 6,
+        tipo_veiculo: 7,
+        tipo_carroceria: 8,
+        placa_cavalo: 9,
+        placa_carreta1: 10,
+        placa_carreta2: 11,
+        placa_carreta3: 12,
+        status: 13
+      };
+    }
+
+    // Processar cada linha
+    for (let i = startLine; i < lines.length; i++) {
+      const line = lines[i].trim();
+      if (!line) continue;
+
+      try {
+        // Parse CSV (considerando aspas e vírgulas dentro de campos)
+        const values = [];
+        let current = '';
+        let insideQuotes = false;
+        
+        for (let j = 0; j < line.length; j++) {
+          const char = line[j];
+          if (char === '"') {
+            insideQuotes = !insideQuotes;
+          } else if (char === ',' && !insideQuotes) {
+            values.push(current.trim());
+            current = '';
+          } else {
+            current += char;
+          }
+        }
+        values.push(current.trim());
+
+        // Extrair valores
+        const getValue = (key) => {
+          const index = columnIndexes[key];
+          return index !== undefined && index < values.length ? values[index].replace(/^["']|["']$/g, '').trim() : '';
+        };
+
+        const nome = getValue('nome');
+        const telefone1 = normalizePhone(getValue('telefone1'));
+        
+        if (!nome || !telefone1) {
+          erros.push({ linha: i + 1, erro: 'Nome e telefone1 são obrigatórios' });
+          continue;
+        }
+
+        const motoristaData = {
+          nome: nome,
+          telefone1: telefone1,
+          telefone2: normalizePhone(getValue('telefone2')) || null,
+          cnh: getValue('cnh') || null,
+          categoria_cnh: getValue('categoria_cnh')?.toUpperCase() || null,
+          estado: getValue('estado')?.toUpperCase() || null,
+          classe_veiculo: getValue('classe_veiculo')?.toLowerCase() || 'pesado',
+          tipo_veiculo: getValue('tipo_veiculo')?.toLowerCase().replace(/ /g, '_') || 'nao_informado',
+          tipo_carroceria: getValue('tipo_carroceria')?.toLowerCase().replace(/ /g, '_') || 'nao_informado',
+          placa_cavalo: (getValue('placa_cavalo') ? normalizePlate(getValue('placa_cavalo')) : null) || null,
+          placa_carreta1: (getValue('placa_carreta1') ? normalizePlate(getValue('placa_carreta1')) : null) || null,
+          placa_carreta2: (getValue('placa_carreta2') ? normalizePlate(getValue('placa_carreta2')) : null) || null,
+          placa_carreta3: (getValue('placa_carreta3') ? normalizePlate(getValue('placa_carreta3')) : null) || null,
+          status: getValue('status')?.toLowerCase() || 'ativo',
+          data_cadastro: new Date().toISOString(),
+          data_atualizacao: new Date().toISOString(),
+          created_by: userId,
+          created_by_departamento: userDepartment
+        };
+
+        // Validar campos obrigatórios
+        if (!motoristaData.tipo_veiculo || motoristaData.tipo_veiculo === 'nao_informado') {
+          motoristaData.tipo_veiculo = 'nao_informado';
+        }
+        if (!motoristaData.tipo_carroceria || motoristaData.tipo_carroceria === 'nao_informado') {
+          motoristaData.tipo_carroceria = 'nao_informado';
+        }
+
+        // Verificar se já existe (por telefone)
+        const { data: existente } = await supabaseAdmin
+          .from('motoristas')
+          .select('id, status')
+          .eq('telefone1', motoristaData.telefone1)
+          .maybeSingle();
+
+        if (existente) {
+          if (!sobrescrever) {
+            erros.push({ linha: i + 1, erro: 'Motorista já existe e sobrescrever está desabilitado' });
+            continue;
+          }
+
+          // Atualizar existente
+          if (manterInativos && existente.status === 'inativo') {
+            motoristaData.status = 'inativo';
+          }
+
+          const { error: updateError } = await supabaseAdmin
+            .from('motoristas')
+            .update(motoristaData)
+            .eq('id', existente.id);
+
+          if (updateError) {
+            erros.push({ linha: i + 1, erro: updateError.message });
+          } else {
+            atualizados++;
+          }
+        } else {
+          // Inserir novo
+          const { error: insertError } = await supabaseAdmin
+            .from('motoristas')
+            .insert([motoristaData]);
+
+          if (insertError) {
+            erros.push({ linha: i + 1, erro: insertError.message });
+          } else {
+            inseridos++;
+          }
+        }
+      } catch (error) {
+        erros.push({ linha: i + 1, erro: error.message || 'Erro ao processar linha' });
+      }
+    }
+
+    res.json({
+      success: true,
+      inseridos,
+      atualizados,
+      erros: erros.length,
+      detalhesErros: erros.slice(0, 10) // Retornar apenas os primeiros 10 erros
+    });
+
+  } catch (error) {
+    console.error('❌ Erro ao importar CSV:', error);
+    res.status(500).json({ success: false, error: 'Erro ao processar arquivo CSV: ' + error.message });
+  }
+});
+
 app.post('/api/motoristas/auth/profile', express.json(), async (req, res) => {
   let payload = null;
   try {

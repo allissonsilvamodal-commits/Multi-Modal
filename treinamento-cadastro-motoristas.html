@@ -205,6 +205,18 @@
             border-color: var(--primary);
         }
         
+        .signature-canvas {
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            cursor: crosshair;
+            background: white;
+            width: 100%;
+            max-width: 600px;
+            margin: 0 auto;
+            display: block;
+            touch-action: none;
+        }
+        
         .print-btn {
             position: fixed;
             bottom: 2rem;
@@ -484,8 +496,13 @@
                     </div>
                     
                     <div class="signature-field">
-                        <label>Assinatura :</label>
-                        <input type="text" id="sigAssinatura" placeholder="Digite seu nome para assinatura" required>
+                        <label>Assinatura Digital *</label>
+                        <canvas id="signatureCanvas" class="signature-canvas" width="600" height="200"></canvas>
+                        <div style="margin-top: 0.5rem; text-align: center;">
+                            <button type="button" class="btn btn-secondary btn-sm" onclick="limparAssinatura()">
+                                <i class="fas fa-eraser me-2"></i>Limpar Assinatura
+                            </button>
+                        </div>
                     </div>
                     <button class="btn btn-primary" id="btnAssinar" type="button">
                         <i class="fas fa-file-signature me-2"></i>Salvar Declaração
@@ -534,18 +551,115 @@
             console.warn('Não foi possível inicializar Supabase:', e);
         }
         
-        const btn = document.getElementById('btnAssinar');
-        if(!btn) return;
+        // Inicializar canvas de assinatura
+        const canvas = document.getElementById('signatureCanvas');
+        const ctx = canvas.getContext('2d');
+        let isDrawing = false;
+        let lastX = 0;
+        let lastY = 0;
+        
+        // Ajustar tamanho do canvas para dispositivos móveis
+        function resizeCanvas() {
+            const rect = canvas.getBoundingClientRect();
+            canvas.width = rect.width;
+            canvas.height = rect.height;
+            ctx.strokeStyle = '#333';
+            ctx.lineWidth = 2;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+        }
+        
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+        
+        // Eventos de desenho
+        canvas.addEventListener('mousedown', startDrawing);
+        canvas.addEventListener('mousemove', draw);
+        canvas.addEventListener('mouseup', stopDrawing);
+        canvas.addEventListener('mouseout', stopDrawing);
+        
+        // Touch events para dispositivos móveis
+        canvas.addEventListener('touchstart', handleTouch);
+        canvas.addEventListener('touchmove', handleTouch);
+        canvas.addEventListener('touchend', stopDrawing);
+        
+        function startDrawing(e) {
+            isDrawing = true;
+            const rect = canvas.getBoundingClientRect();
+            lastX = e.clientX - rect.left;
+            lastY = e.clientY - rect.top;
+        }
+        
+        function draw(e) {
+            if (!isDrawing) return;
+            
+            const rect = canvas.getBoundingClientRect();
+            const currentX = e.clientX - rect.left;
+            const currentY = e.clientY - rect.top;
+            
+            ctx.beginPath();
+            ctx.moveTo(lastX, lastY);
+            ctx.lineTo(currentX, currentY);
+            ctx.stroke();
+            
+            lastX = currentX;
+            lastY = currentY;
+        }
+        
+        function stopDrawing() {
+            isDrawing = false;
+        }
+        
+        function handleTouch(e) {
+            e.preventDefault();
+            const touch = e.touches[0];
+            const mouseEvent = new MouseEvent(e.type === 'touchstart' ? 'mousedown' : 
+                                             e.type === 'touchmove' ? 'mousemove' : 'mouseup', {
+                clientX: touch.clientX,
+                clientY: touch.clientY
+            });
+            canvas.dispatchEvent(mouseEvent);
+        }
+        
+        function limparAssinatura() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+        
+        // Configurar data atual
         const today = new Date().toISOString().slice(0,10);
         const dataField = document.getElementById('sigData');
         if(dataField && !dataField.value) dataField.value = today;
         
+        // Máscara para CPF
+        document.getElementById('sigCPF')?.addEventListener('input', function(e) {
+            let value = e.target.value.replace(/\D/g, '');
+            if (value.length <= 11) {
+                value = value.replace(/(\d{3})(\d)/, '$1.$2');
+                value = value.replace(/(\d{3})(\d)/, '$1.$2');
+                value = value.replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+                e.target.value = value;
+            }
+        });
+        
+        const btn = document.getElementById('btnAssinar');
+        if(!btn) return;
+        
         btn.addEventListener('click', async ()=>{
             const nome = document.getElementById('sigNome')?.value.trim();
             const cpf = document.getElementById('sigCPF')?.value.trim();
-            const assinatura = document.getElementById('sigAssinatura')?.value.trim();
+            const assinatura = canvas.toDataURL();
+            
             if(!nome || !assinatura){
-                alert('Preencha o Nome e a Assinatura.');
+                alert('Preencha o Nome e faça sua Assinatura Digital.');
+                return;
+            }
+            
+            // Verificar se há algo desenhado no canvas
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const hasContent = imageData.data.some(channel => channel !== 0);
+            
+            if (!hasContent) {
+                alert('Por favor, faça sua assinatura digital no campo apropriado.');
                 return;
             }
             btn.disabled = true; 
@@ -584,15 +698,32 @@
                     console.warn('⚠️ Enviando requisição sem token (user_id será null)');
                 }
                 
+                // Obter user_id se autenticado
+                let userId = null;
+                if (supabaseClient && authToken) {
+                    try {
+                        const { data: { user } } = await supabaseClient.auth.getUser();
+                        if (user) {
+                            userId = user.id;
+                        }
+                    } catch (e) {
+                        console.warn('⚠️ Não foi possível obter user_id:', e);
+                    }
+                }
+                
                 const resp = await fetch('/api/treinamentos/assinaturas',{
                     method:'POST',
                     headers: headers,
                     credentials:'include',
                     body: JSON.stringify({
                         treinamento_slug: 'cadastro_motoristas',
+                        user_id: userId,
                         nome,
                         cpf,
-                        assinatura_texto: assinatura
+                        assinatura_texto: assinatura,
+                        data_assinatura: new Date().toISOString(),
+                        ip_address: null,
+                        user_agent: navigator.userAgent
                     })
                 });
                 
@@ -607,7 +738,8 @@
                 // Limpar campos após sucesso
                 document.getElementById('sigNome').value = '';
                 document.getElementById('sigCPF').value = '';
-                document.getElementById('sigAssinatura').value = '';
+                document.getElementById('sigData').value = today;
+                limparAssinatura();
                 
             }catch(e){
                 console.error('❌ Erro ao salvar assinatura:', e);
