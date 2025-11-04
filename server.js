@@ -1362,23 +1362,23 @@ app.get('/api/motoristas/auth/me', async (req, res) => {
 });
 
 // ========== ENDPOINT PARA IMPORTAÇÃO CSV DE MOTORISTAS ==========
-app.post('/api/motoristas/importar-csv', upload.single('csv'), requireAuth, async (req, res) => {
+app.post('/api/motoristas/importar-csv', upload.single('csv'), async (req, res) => {
   try {
+    // Verificar autenticação
+    const { user, error: userError } = await getUserFromRequest(req);
+    if (userError) {
+      return res.status(userError.status || 401).json({ success: false, error: userError.message || 'Não autenticado' });
+    }
+    
     if (!req.file) {
       return res.status(400).json({ success: false, error: 'Nenhum arquivo CSV enviado' });
     }
 
-    const sobrescrever = req.body.sobrescrever === 'true';
-    const manterInativos = req.body.manter_inativos === 'true';
-
-    // Obter usuário atual
-    const { user, error: userError } = await getUserFromRequest(req);
-    if (userError) {
-      return res.status(userError.status || 401).json({ success: false, error: userError.message });
-    }
-
     const userId = user.id || user.user_id || 'sistema';
     const userDepartment = user.departamento || null;
+
+    const sobrescrever = req.body.sobrescrever === 'true';
+    const manterInativos = req.body.manter_inativos === 'true';
 
     // Ler e processar CSV
     const csvContent = req.file.buffer.toString('utf8');
@@ -6086,15 +6086,104 @@ async function getUserFromRequest(req) {
         console.warn('⚠️ Erro ao listar usuários:', err);
       }
     }
-    
-    // Se não encontrou, retornar erro
-    console.error('❌ Usuário não encontrado no sistema. sessionUsuario:', sessionUsuario);
-    return { error: { status: 401, message: 'Usuário não encontrado no sistema' } };
   }
   
-  // Tentar autenticação via token Supabase
-  return await getSupabaseUserFromRequest(req);
+  // Tentar autenticação via token Supabase (verificar header Authorization)
+  console.log('🔍 Tentando autenticação via token Supabase...');
+  const authHeader = req.headers.authorization || '';
+  if (authHeader.toLowerCase().startsWith('bearer ')) {
+    const token = authHeader.slice(7).trim();
+    if (token) {
+      console.log('🔐 Token encontrado no header, validando...');
+      try {
+        const { data, error } = await supabaseAdmin.auth.getUser(token);
+        if (!error && data && data.user) {
+          console.log('✅ Token válido via supabaseAdmin.auth.getUser');
+          // Buscar perfil do usuário para obter departamento
+          const { data: userProfile } = await supabaseAdmin
+            .from('user_profiles')
+            .select('departamento')
+            .eq('id', data.user.id)
+            .maybeSingle();
+          
+          const user = {
+            ...data.user,
+            departamento: userProfile?.departamento || null
+          };
+          
+          return { user, error: null };
+        }
+      } catch (err) {
+        console.warn('⚠️ Erro ao validar token:', err);
+      }
+    }
+  }
+  
+  // Se não encontrou, retornar erro
+  console.error('❌ Usuário não encontrado no sistema');
+  return { error: { status: 401, message: 'Não autenticado. Faça login novamente.' } };
 }
+
+// ========== ENDPOINT PARA LISTAR USUÁRIOS E SEUS TREINAMENTOS ==========
+app.get('/api/treinamentos/usuarios', requireAuth, async (req, res) => {
+  try {
+    // Buscar todos os usuários ativos do sistema
+    const { data: usuarios, error: usuariosError } = await supabaseAdmin
+      .from('user_profiles')
+      .select('id, nome, email, departamento, role, active')
+      .eq('active', true)
+      .order('nome', { ascending: true });
+
+    if (usuariosError) {
+      throw usuariosError;
+    }
+
+    // Buscar todas as assinaturas de treinamentos
+    const { data: assinaturas, error: assinaturasError } = await supabaseAdmin
+      .from('treinamentos_assinaturas')
+      .select('user_id, treinamento_slug, nome, data_assinatura')
+      .order('data_assinatura', { ascending: false });
+
+    if (assinaturasError) {
+      throw assinaturasError;
+    }
+
+    // Organizar assinaturas por usuário
+    const assinaturasPorUsuario = {};
+    (assinaturas || []).forEach(assinatura => {
+      const userId = assinatura.user_id;
+      if (!assinaturasPorUsuario[userId]) {
+        assinaturasPorUsuario[userId] = [];
+      }
+      assinaturasPorUsuario[userId].push({
+        treinamento_slug: assinatura.treinamento_slug,
+        nome: assinatura.nome,
+        data_assinatura: assinatura.data_assinatura
+      });
+    });
+
+    // Combinar dados de usuários com suas assinaturas
+    const usuariosComTreinamentos = (usuarios || []).map(usuario => ({
+      id: usuario.id,
+      nome: usuario.nome || usuario.email || 'Usuário sem nome',
+      email: usuario.email,
+      departamento: usuario.departamento,
+      role: usuario.role,
+      treinamentos: assinaturasPorUsuario[usuario.id] || []
+    }));
+
+    res.json({
+      success: true,
+      usuarios: usuariosComTreinamentos,
+      totalUsuarios: usuariosComTreinamentos.length,
+      totalAssinaturas: assinaturas?.length || 0
+    });
+
+  } catch (error) {
+    console.error('❌ Erro ao buscar usuários e treinamentos:', error);
+    res.status(500).json({ success: false, error: 'Erro ao buscar dados: ' + error.message });
+  }
+});
 
 // ========== DOCUMENTOS DE TREINAMENTOS ==========
 // Upload de documento de treinamento

@@ -196,6 +196,91 @@
             color: #d1d5db;
             margin-bottom: 1rem;
         }
+        
+        .modern-card {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            padding: 0;
+            margin-bottom: 2rem;
+            border: 1px solid #e5e7eb;
+        }
+        
+        .modern-card .card-header {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            padding: 1.5rem;
+            border-radius: 16px 16px 0 0;
+            font-weight: 600;
+            font-size: 1.1rem;
+        }
+        
+        .modern-card .card-body {
+            padding: 1.5rem;
+        }
+        
+        .table-modern {
+            width: 100%;
+            margin-bottom: 0;
+        }
+        
+        .table-modern thead th {
+            background: #f8f9fa;
+            color: #374151;
+            font-weight: 600;
+            border-bottom: 2px solid #e5e7eb;
+            padding: 1rem;
+        }
+        
+        .table-modern tbody td {
+            padding: 1rem;
+            border-bottom: 1px solid #e5e7eb;
+            vertical-align: middle;
+        }
+        
+        .table-modern tbody tr:hover {
+            background: #f8f9fa;
+        }
+        
+        .badge-treinamento {
+            display: inline-block;
+            background: #e0e7ff;
+            color: var(--primary);
+            padding: 0.25rem 0.75rem;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin: 0.25rem 0.25rem 0.25rem 0;
+        }
+        
+        .badge-treinamento.completo {
+            background: #d1fae5;
+            color: var(--success);
+        }
+        
+        .btn-modern {
+            border: none;
+            border-radius: 8px;
+            padding: 0.5rem 1rem;
+            font-weight: 600;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+        
+        .btn-modern-primary {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+        }
+        
+        .btn-modern-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+        
+        .btn-modern-sm {
+            padding: 0.375rem 0.75rem;
+            font-size: 0.875rem;
+        }
     </style>
 </head>
 <body>
@@ -247,6 +332,38 @@
         <!-- Lista de Treinamentos -->
         <div class="row" id="treinamentosContainer">
             <!-- Os treinamentos serão carregados aqui via JavaScript -->
+        </div>
+        
+        <!-- Aba de Usuários e Treinamentos -->
+        <div class="modern-card mt-4" id="usuariosTreinamentosSection" style="display: none;">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="fas fa-users me-2"></i>Usuários e Treinamentos Concluídos</span>
+                <button class="btn btn-modern btn-modern-primary btn-sm" onclick="carregarUsuariosTreinamentos()">
+                    <i class="fas fa-sync me-1"></i>Atualizar
+                </button>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-modern">
+                        <thead>
+                            <tr>
+                                <th>Usuário</th>
+                                <th>Email</th>
+                                <th>Departamento</th>
+                                <th>Treinamentos Concluídos</th>
+                                <th>Última Conclusão</th>
+                            </tr>
+                        </thead>
+                        <tbody id="usuariosTreinamentosTable">
+                            <tr>
+                                <td colspan="5" class="text-center text-muted py-4">
+                                    <i class="fas fa-spinner fa-spin me-2"></i>Carregando...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </div>
         
         <!-- Estado vazio -->
@@ -333,6 +450,106 @@
             
             // Atualizar estatísticas
             atualizarEstatisticas();
+            
+            // Carregar usuários e treinamentos
+            await carregarUsuariosTreinamentos();
+        }
+        
+        async function carregarUsuariosTreinamentos() {
+            try {
+                const response = await fetch('/api/treinamentos/usuarios', { credentials: 'include' });
+                if (!response.ok) {
+                    throw new Error('Erro ao carregar usuários');
+                }
+                
+                const data = await response.json();
+                if (data.success && data.usuarios) {
+                    renderizarUsuariosTreinamentos(data.usuarios);
+                    document.getElementById('usuariosTreinamentosSection').style.display = 'block';
+                }
+            } catch (error) {
+                console.error('Erro ao carregar usuários e treinamentos:', error);
+                document.getElementById('usuariosTreinamentosTable').innerHTML = `
+                    <tr>
+                        <td colspan="5" class="text-center text-danger py-4">
+                            <i class="fas fa-exclamation-triangle me-2"></i>Erro ao carregar dados
+                        </td>
+                    </tr>
+                `;
+            }
+        }
+        
+        function renderizarUsuariosTreinamentos(usuarios) {
+            const tbody = document.getElementById('usuariosTreinamentosTable');
+            if (!tbody) return;
+            
+            if (!usuarios || usuarios.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="5" class="text-center text-muted py-4">
+                            <i class="fas fa-users fa-2x mb-3 d-block"></i>
+                            Nenhum usuário encontrado
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+            
+            // Mapear slugs de treinamentos para títulos
+            const treinamentosMap = {};
+            TREINAMENTOS_CONFIG.forEach(t => {
+                treinamentosMap[t.id] = t.titulo;
+            });
+            
+            let html = '';
+            usuarios.forEach(usuario => {
+                const treinamentosConcluidos = usuario.treinamentos || [];
+                const treinamentosSlugs = treinamentosConcluidos.map(t => t.treinamento_slug);
+                const ultimaConclusao = treinamentosConcluidos.length > 0 
+                    ? new Date(treinamentosConcluidos[0].data_assinatura).toLocaleDateString('pt-BR')
+                    : '-';
+                
+                // Badges de treinamentos concluídos
+                let badgesHtml = '';
+                if (treinamentosConcluidos.length > 0) {
+                    treinamentosSlugs.forEach(slug => {
+                        const titulo = treinamentosMap[slug] || slug;
+                        const dataAssinatura = treinamentosConcluidos.find(t => t.treinamento_slug === slug)?.data_assinatura;
+                        badgesHtml += `<span class="badge-treinamento completo" title="Concluído em ${dataAssinatura ? new Date(dataAssinatura).toLocaleString('pt-BR') : ''}">${titulo}</span>`;
+                    });
+                }
+                
+                // Badges de treinamentos pendentes (apenas os que o usuário ainda não fez)
+                const treinamentosPendentes = TREINAMENTOS_CONFIG.filter(t => !treinamentosSlugs.includes(t.id));
+                if (treinamentosPendentes.length > 0) {
+                    treinamentosPendentes.forEach(treinamento => {
+                        badgesHtml += `<span class="badge-treinamento" title="Pendente">${treinamento.titulo}</span>`;
+                    });
+                }
+                
+                if (!badgesHtml) {
+                    badgesHtml = '<span class="text-muted">Nenhum treinamento disponível</span>';
+                }
+                
+                html += `
+                    <tr>
+                        <td>
+                            <strong>${usuario.nome}</strong>
+                            ${usuario.role === 'admin' ? '<span class="badge bg-danger ms-2">Admin</span>' : ''}
+                        </td>
+                        <td>${usuario.email || '-'}</td>
+                        <td>${usuario.departamento || '-'}</td>
+                        <td>
+                            <div style="max-width: 400px;">
+                                ${badgesHtml}
+                            </div>
+                        </td>
+                        <td>${ultimaConclusao}</td>
+                    </tr>
+                `;
+            });
+            
+            tbody.innerHTML = html;
         }
         
         async function carregarAssinaturas() {

@@ -2042,13 +2042,41 @@ async function importarCSV(file) {
     btnImportar.disabled = true;
     btnImportar.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Importando...';
     
+    // Obter token de autenticação do Supabase
+    let authToken = null;
+    if (supabase) {
+      try {
+        const { data: session, error: sessionError } = await supabase.auth.getSession();
+        if (sessionError) {
+          console.warn('⚠️ Erro ao obter sessão:', sessionError);
+        } else if (session?.session?.access_token) {
+          authToken = session.session.access_token;
+          console.log('✅ Token de autenticação obtido');
+        } else {
+          console.warn('⚠️ Sessão não encontrada ou sem token');
+          throw new Error('Sessão não encontrada. Faça login novamente.');
+        }
+      } catch (e) {
+        console.warn('⚠️ Não foi possível obter sessão:', e);
+        throw new Error('Sessão não encontrada. Faça login novamente.');
+      }
+    } else {
+      throw new Error('Supabase não inicializado. Recarregue a página.');
+    }
+    
     const formData = new FormData();
     formData.append('csv', file);
     formData.append('sobrescrever', sobrescrever);
     formData.append('manter_inativos', manterInativos);
     
+    const headers = {};
+    if (authToken) {
+      headers['Authorization'] = `Bearer ${authToken}`;
+    }
+    
     const response = await fetch('/api/motoristas/importar-csv', {
       method: 'POST',
+      headers: headers,
       body: formData,
       credentials: 'include'
     });
