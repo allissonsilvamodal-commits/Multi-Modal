@@ -1510,7 +1510,8 @@ app.post('/api/motoristas/importar-csv', upload.single('csv'), async (req, res) 
           data_cadastro: new Date().toISOString(),
           data_atualizacao: new Date().toISOString(),
           created_by: userId,
-          created_by_departamento: userDepartment
+          created_by_departamento: userDepartment,
+          usuario_id: userId // Campo obrigatório na tabela motoristas
         };
 
         // Validar campos obrigatórios
@@ -1527,6 +1528,50 @@ app.post('/api/motoristas/importar-csv', upload.single('csv'), async (req, res) 
           .select('id, status')
           .eq('telefone1', motoristaData.telefone1)
           .maybeSingle();
+
+        // Garantir que created_by existe em user_profiles (necessário para foreign key)
+        if (motoristaData.created_by) {
+          const { data: createdByProfile } = await supabaseAdmin
+            .from('user_profiles')
+            .select('id')
+            .eq('id', motoristaData.created_by)
+            .maybeSingle();
+          
+          if (!createdByProfile) {
+            // Criar perfil automaticamente se não existir
+            try {
+              const { data: authUser } = await supabaseAdmin.auth.admin.getUserById(motoristaData.created_by);
+              if (authUser && authUser.user) {
+                await supabaseAdmin
+                  .from('user_profiles')
+                  .insert({
+                    id: motoristaData.created_by,
+                    role: 'user',
+                    nome: authUser.user.email || 'Usuário',
+                    active: true,
+                    email: authUser.user.email
+                  });
+                console.log('✅ Perfil criado automaticamente para created_by:', motoristaData.created_by);
+              } else {
+                // Se não conseguir buscar do auth, criar perfil básico
+                await supabaseAdmin
+                  .from('user_profiles')
+                  .insert({
+                    id: motoristaData.created_by,
+                    role: 'user',
+                    nome: 'Usuário Importação',
+                    active: true,
+                    email: null
+                  });
+                console.log('✅ Perfil básico criado para created_by:', motoristaData.created_by);
+              }
+            } catch (profileError) {
+              console.warn('⚠️ Não foi possível criar perfil para created_by:', profileError);
+              // Tentar continuar sem created_by ou usar null
+              motoristaData.created_by = null;
+            }
+          }
+        }
 
         if (existente) {
           if (!sobrescrever) {
@@ -1545,20 +1590,34 @@ app.post('/api/motoristas/importar-csv', upload.single('csv'), async (req, res) 
             .eq('id', existente.id);
 
           if (updateError) {
-            erros.push({ linha: i + 1, erro: updateError.message });
+            console.error(`❌ Erro ao atualizar linha ${i + 1}:`, updateError);
+            erros.push({ linha: i + 1, erro: updateError.message || JSON.stringify(updateError) });
           } else {
             atualizados++;
+            console.log(`✅ Linha ${i + 1} atualizada com sucesso`);
           }
         } else {
           // Inserir novo
-          const { error: insertError } = await supabaseAdmin
+          console.log(`📝 Tentando inserir linha ${i + 1}:`, {
+            nome: motoristaData.nome,
+            telefone1: motoristaData.telefone1,
+            created_by: motoristaData.created_by,
+            tipo_veiculo: motoristaData.tipo_veiculo,
+            tipo_carroceria: motoristaData.tipo_carroceria
+          });
+          
+          const { error: insertError, data: insertedData } = await supabaseAdmin
             .from('motoristas')
-            .insert([motoristaData]);
+            .insert([motoristaData])
+            .select();
 
           if (insertError) {
-            erros.push({ linha: i + 1, erro: insertError.message });
+            console.error(`❌ Erro ao inserir linha ${i + 1}:`, insertError);
+            console.error(`❌ Dados tentados:`, JSON.stringify(motoristaData, null, 2));
+            erros.push({ linha: i + 1, erro: insertError.message || JSON.stringify(insertError) });
           } else {
             inseridos++;
+            console.log(`✅ Linha ${i + 1} inserida com sucesso. ID:`, insertedData?.[0]?.id);
           }
         }
       } catch (error) {
@@ -1571,7 +1630,10 @@ app.post('/api/motoristas/importar-csv', upload.single('csv'), async (req, res) 
       inseridos,
       atualizados,
       erros: erros.length,
-      detalhesErros: erros.slice(0, 10) // Retornar apenas os primeiros 10 erros
+      detalhesErros: erros.slice(0, 20), // Retornar mais erros para debug
+      mensagem: erros.length > 0 
+        ? `Processamento concluído com ${erros.length} erro(s). Verifique os detalhes dos erros abaixo.`
+        : `Importação concluída com sucesso! ${inseridos} inseridos, ${atualizados} atualizados.`
     });
 
   } catch (error) {

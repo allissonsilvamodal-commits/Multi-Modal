@@ -2089,6 +2089,13 @@ async function importarCSV(file) {
     
     mostrarSucesso(`✅ Importação concluída! ${result.inseridos || 0} inseridos, ${result.atualizados || 0} atualizados, ${result.erros || 0} erros`);
     
+    // Mostrar detalhes dos erros se houver
+    if (result.erros > 0 && result.detalhesErros && result.detalhesErros.length > 0) {
+      console.error('❌ Erros na importação:', result.detalhesErros);
+      const errosTexto = result.detalhesErros.map(e => `Linha ${e.linha}: ${e.erro}`).join('\n');
+      alert(`Atenção: ${result.erros} erro(s) encontrado(s):\n\n${errosTexto}\n\nVerifique o console para mais detalhes.`);
+    }
+    
     // Limpar arquivo
     const csvFileInput = document.getElementById('csvFile');
     if (csvFileInput) csvFileInput.value = '';
