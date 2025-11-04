@@ -2925,68 +2925,104 @@ app.get('/api/auth/status', async (req, res) => {
 // ========== ENDPOINT PARA CONTAR USUÁRIOS LOGADOS ==========
 app.get('/api/active-sessions', async (req, res) => {
   try {
-    const db = new sqlite3.Database('./sessions.db');
-
-    // Buscar sem filtro de data; filtramos em JS por segurança
-    const query = `SELECT sid, sess, expire, expired, expires FROM sessions`;
-
-    db.all(query, [], (err, rows) => {
-      db.close();
-
-      if (err) {
-        console.error('❌ Erro ao buscar sessões ativas:', err);
-        return res.json({
-          success: true,
-          count: 0,
-          error: 'Erro ao buscar sessões'
-        });
-      }
-
-      let count = 0;
-      const now = Date.now();
-
-      if (rows && rows.length) {
-        rows.forEach(row => {
-          try {
-            // Colunas possíveis de expiração (stores variam): expire/expired em ms epoch, ou expires como ISO
-            const expireMs = typeof row.expire === 'number' ? row.expire
-              : (typeof row.expired === 'number' ? row.expired : null);
-
-            let notExpired = true;
-            if (expireMs !== null) {
-              notExpired = expireMs > now;
-            } else if (row.expires) {
-              // Tentar tratar como string/ISO
-              const expParsed = new Date(row.expires).getTime();
-              if (!Number.isNaN(expParsed)) {
-                notExpired = expParsed > now;
+    const usuariosUnicos = new Set();
+    
+    // 1. Contar sessões ativas do SQLite (express-session)
+    try {
+      const db = new sqlite3.Database('./sessions.db');
+      const query = `SELECT sid, sess, expire, expired, expires FROM sessions`;
+      
+      await new Promise((resolve, reject) => {
+        db.all(query, [], (err, rows) => {
+          db.close();
+          
+          if (err) {
+            console.warn('⚠️ Erro ao buscar sessões SQLite:', err);
+            resolve();
+            return;
+          }
+          
+          const now = Date.now();
+          
+          if (rows && rows.length) {
+            rows.forEach(row => {
+              try {
+                const expireMs = typeof row.expire === 'number' ? row.expire
+                  : (typeof row.expired === 'number' ? row.expired : null);
+                
+                let notExpired = true;
+                if (expireMs !== null) {
+                  notExpired = expireMs > now;
+                } else if (row.expires) {
+                  const expParsed = new Date(row.expires).getTime();
+                  if (!Number.isNaN(expParsed)) {
+                    notExpired = expParsed > now;
+                  }
+                }
+                
+                if (notExpired) {
+                  const sessData = typeof row.sess === 'string' ? JSON.parse(row.sess) : row.sess;
+                  if (sessData && sessData.usuario) {
+                    // Adicionar ID do usuário ou email como identificador único
+                    const userId = sessData.userData?.id || sessData.userData?.email || sessData.usuario?.id || sessData.usuario?.email || sessData.usuario;
+                    if (userId) {
+                      usuariosUnicos.add(userId);
+                    }
+                  }
+                }
+              } catch (parseError) {
+                // Ignorar erros de parsing
               }
+            });
+          }
+          
+          resolve();
+        });
+      });
+    } catch (error) {
+      console.warn('⚠️ Erro ao processar sessões SQLite:', error.message);
+    }
+    
+    // 2. Contar tokens ativos do Supabase Auth (últimas 24 horas)
+    try {
+      const { data: authUsers, error: authError } = await supabaseAdmin.auth.admin.listUsers();
+      
+      if (!authError && authUsers && authUsers.users) {
+        const agora = Date.now();
+        const vinteQuatroHoras = 24 * 60 * 60 * 1000; // 24 horas em ms
+        
+        authUsers.users.forEach(user => {
+          // Verificar se o usuário tem última sessão recente (últimas 24h)
+          if (user.last_sign_in_at) {
+            const lastSignIn = new Date(user.last_sign_in_at).getTime();
+            const diff = agora - lastSignIn;
+            
+            // Se fez login nas últimas 24 horas, considerar como ativo
+            if (diff < vinteQuatroHoras) {
+              usuariosUnicos.add(user.id);
             }
-
-            // Tentar extrair dados da sessão
-            const sessData = typeof row.sess === 'string' ? JSON.parse(row.sess) : row.sess;
-            if (notExpired && sessData && sessData.usuario) {
-              count++;
-            }
-          } catch (parseError) {
-            console.warn('⚠️ Erro ao processar sessão:', parseError.message);
           }
         });
       }
-
-      console.log(`📊 Sessões ativas encontradas: ${count}`);
-
-      res.json({
-        success: true,
-        count
-      });
+    } catch (error) {
+      console.warn('⚠️ Erro ao buscar usuários do Supabase Auth:', error.message);
+    }
+    
+    const totalUsuariosLogados = usuariosUnicos.size;
+    
+    console.log(`👥 Usuários únicos logados: ${totalUsuariosLogados}`);
+    
+    res.json({
+      success: true,
+      count: totalUsuariosLogados,
+      usuarios: Array.from(usuariosUnicos).length
     });
   } catch (error) {
     console.error('❌ Erro ao contar sessões ativas:', error);
     res.json({
       success: true,
       count: 0,
-      error: error.message
+      error: 'Erro ao contar sessões'
     });
   }
 });
