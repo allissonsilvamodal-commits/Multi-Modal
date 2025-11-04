@@ -636,28 +636,14 @@
             padding: 0.35rem 0.65rem;
         }
         
-        /* Estilos para histórico expandido */
-        .historico-container {
-            background-color: #f8f9fa;
-            max-height: 600px;
-            overflow-y: auto;
-        }
-        
-        .historico-content {
-            padding: 0.5rem 0;
-        }
-        
-        .historico-content .table {
-            font-size: 0.875rem;
-        }
-        
         .expand-history-btn {
             transition: all 0.3s ease;
+            border-radius: 8px;
         }
         
         .expand-history-btn:hover {
             transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
         }
         
         .usuario-logado-card:hover {
@@ -729,6 +715,11 @@
                     <li class="nav-item" role="presentation">
                         <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabSistema" type="button">
                             <i class="fas fa-cogs me-2"></i>Configurações
+                        </button>
+                </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabManutencao" type="button">
+                            <i class="fas fa-tools me-2"></i>Manutenção
                         </button>
                 </li>
             </ul>
@@ -990,6 +981,75 @@
                             </div>
                         </div>
                     </div>
+                    
+                    <!-- Tab Manutenção -->
+                    <div class="tab-pane fade" id="tabManutencao" role="tabpanel">
+                        <div class="card fade-in">
+                            <div class="card-header">
+                                <h5 class="mb-0">
+                                    <i class="fas fa-tools me-2"></i>
+                                    Manutenção do Sistema
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="alert alert-info">
+                                    <i class="fas fa-info-circle me-2"></i>
+                                    <strong>Ferramentas de Manutenção:</strong> Use estas ferramentas para corrigir problemas de dados e normalizar informações no banco de dados.
+                                </div>
+                                
+                                <div class="card mb-4" style="background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1)); border: 2px solid rgba(102, 126, 234, 0.3);">
+                                    <div class="card-header bg-transparent border-0">
+                                        <h6 class="mb-0">
+                                            <i class="fas fa-sync-alt me-2 text-primary"></i>
+                                            Normalização de Tipos de Veículo e Carroceria
+                                        </h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <p class="mb-3">
+                                            Esta ferramenta normaliza todos os tipos de veículo e carroceria no banco de dados, 
+                                            corrigindo variações de escrita como "caamba" para "cacamba", "CAÇAMBA" para "cacamba", etc.
+                                        </p>
+                                        <p class="text-muted small mb-3">
+                                            <i class="fas fa-exclamation-triangle me-1"></i>
+                                            <strong>Atenção:</strong> Esta operação atualizará todos os registros de motoristas. 
+                                            Certifique-se de que há um backup antes de executar.
+                                        </p>
+                                        <button class="btn btn-primary" onclick="executarMigracaoTipos()" id="btnMigracaoTipos">
+                                            <i class="fas fa-play me-2"></i>Executar Migração
+                                        </button>
+                                        <div id="resultadoMigracao" class="mt-3" style="display: none;"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Histórico do Usuário -->
+    <div class="modal fade" id="modalHistoricoUsuario" tabindex="-1">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="fas fa-history me-2"></i>Histórico do Usuário
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
+                    <div id="modalHistoricoContent">
+                        <div class="text-center py-5">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Carregando...</span>
+                            </div>
+                            <p class="text-muted mt-3">Carregando histórico...</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
                 </div>
             </div>
         </div>
@@ -1331,286 +1391,447 @@
 
         // ========== FUNÇÃO PARA EXPANDIR/RECOLHER HISTÓRICO ==========
         async function toggleHistoricoUsuario(userId, container, btn) {
-            const isExpanded = container.classList.contains('show');
+            // Abrir modal ao invés de expandir o card
+            const modal = new bootstrap.Modal(document.getElementById('modalHistoricoUsuario'));
+            const modalContent = document.getElementById('modalHistoricoContent');
             
-            if (isExpanded) {
-                // Recolher
-                const bsCollapse = bootstrap.Collapse.getInstance(container);
-                if (bsCollapse) {
-                    bsCollapse.hide();
-                } else {
-                    container.classList.remove('show');
-                }
-                btn.innerHTML = '<i class="fas fa-chevron-down me-1"></i>Ver Histórico';
-            } else {
-                // Expandir
-                btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Carregando...';
+            // Resetar conteúdo
+            modalContent.innerHTML = `
+                <div class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Carregando...</span>
+                    </div>
+                    <p class="text-muted mt-3">Carregando histórico...</p>
+                </div>
+            `;
+            
+            // Abrir modal
+            modal.show();
+            
+            try {
+                // Obter token Supabase se disponível
+                let authHeaders = {
+                    'Content-Type': 'application/json'
+                };
                 
-                try {
-                    // Obter token Supabase se disponível
-                    let authHeaders = {
-                        'Content-Type': 'application/json'
-                    };
-                    
-                    // Tentar obter token do Supabase
-                    if (window.supabase) {
-                        try {
-                            const { data: { session } } = await window.supabase.auth.getSession();
-                            if (session && session.access_token) {
-                                authHeaders['Authorization'] = `Bearer ${session.access_token}`;
-                            }
-                        } catch (e) {
-                            console.warn('⚠️ Não foi possível obter token Supabase:', e);
+                // Tentar obter token do Supabase
+                if (window.supabase) {
+                    try {
+                        const { data: { session } } = await window.supabase.auth.getSession();
+                        if (session && session.access_token) {
+                            authHeaders['Authorization'] = `Bearer ${session.access_token}`;
                         }
+                    } catch (e) {
+                        console.warn('⚠️ Não foi possível obter token Supabase:', e);
                     }
-                    
-                    // Adicionar email do usuário logado do localStorage
-                    const loggedInUserData = localStorage.getItem('loggedInUser');
-                    if (loggedInUserData) {
-                        try {
-                            const userData = JSON.parse(loggedInUserData);
-                            if (userData.email) {
-                                authHeaders['X-User-Email'] = userData.email;
-                            }
-                        } catch (e) {
-                            console.warn('⚠️ Erro ao parsear loggedInUser:', e);
-                        }
-                    }
-                    
-                    const response = await fetch(`/api/user-activity/${userId}`, {
-                        credentials: 'include',
-                        headers: authHeaders
-                    });
-                    
-                    if (!response.ok) {
-                        const errorData = await response.json().catch(() => ({}));
-                        throw new Error(errorData.error || `Erro ${response.status}: ${response.statusText}`);
-                    }
-                    
-                    const result = await response.json();
-                    
-                    if (!result.success) {
-                        throw new Error(result.error || 'Erro ao buscar histórico');
-                    }
-                    
-                    renderizarHistoricoUsuario(container, result.data);
-                    
-                    // Expandir usando Bootstrap Collapse
-                    const bsCollapse = new bootstrap.Collapse(container, {
-                        toggle: false
-                    });
-                    bsCollapse.show();
-                    
-                    btn.innerHTML = '<i class="fas fa-chevron-up me-1"></i>Ocultar Histórico';
-                } catch (error) {
-                    console.error('❌ Erro ao carregar histórico:', error);
-                    container.innerHTML = `
-                        <div class="alert alert-danger mb-0">
-                            <i class="fas fa-exclamation-triangle me-2"></i>
-                            Erro ao carregar histórico: ${error.message}
-                        </div>
-                    `;
-                    btn.innerHTML = '<i class="fas fa-chevron-down me-1"></i>Ver Histórico';
                 }
+                
+                // Adicionar email do usuário logado do localStorage
+                const loggedInUserData = localStorage.getItem('loggedInUser');
+                if (loggedInUserData) {
+                    try {
+                        const userData = JSON.parse(loggedInUserData);
+                        if (userData.email) {
+                            authHeaders['X-User-Email'] = userData.email;
+                        }
+                    } catch (e) {
+                        console.warn('⚠️ Erro ao parsear loggedInUser:', e);
+                    }
+                }
+                
+                const response = await fetch(`/api/user-activity/${userId}`, {
+                    credentials: 'include',
+                    headers: authHeaders
+                });
+                
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(errorData.error || `Erro ${response.status}: ${response.statusText}`);
+                }
+                
+                const result = await response.json();
+                
+                if (!result.success) {
+                    throw new Error(result.error || 'Erro ao carregar histórico');
+                }
+                
+                // Renderizar histórico no modal
+                renderizarHistoricoUsuario(modalContent, result.data);
+                
+            } catch (error) {
+                console.error('❌ Erro ao carregar histórico:', error);
+                modalContent.innerHTML = `
+                    <div class="alert alert-danger mb-0">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        Erro ao carregar histórico: ${error.message}
+                    </div>
+                `;
             }
         }
         
         // ========== FUNÇÃO PARA RENDERIZAR HISTÓRICO ==========
         function renderizarHistoricoUsuario(container, data) {
-            const { lastLogin, accountCreated, activityLogs, coletasHistory, disparos, chatIA, movimentacoes } = data;
+            const { lastLogin, accountCreated, activityLogs, coletasHistory, disparos, chatIA, movimentacoes, cadastros } = data;
             
-            let html = '<div class="historico-content">';
+            let html = '';
             
-            // Informações gerais
+            // Informações gerais da conta
             html += `
-                <div class="mb-3">
-                    <h6 class="text-primary mb-3"><i class="fas fa-info-circle me-2"></i>Informações da Conta</h6>
-                    <div class="row g-2">
-                        <div class="col-md-6">
-                            <small class="text-muted d-block">Conta criada em:</small>
-                            <strong>${accountCreated ? new Date(accountCreated).toLocaleString('pt-BR') : 'Não informado'}</strong>
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <div class="card border-0 shadow-sm h-100">
+                            <div class="card-body">
+                                <h6 class="text-muted mb-3">
+                                    <i class="fas fa-user-circle me-2 text-primary"></i>
+                                    Informações da Conta
+                                </h6>
+                                <div class="mb-3">
+                                    <small class="text-muted d-block mb-1">
+                                        <i class="fas fa-calendar-plus me-1"></i>Conta criada em:
+                                    </small>
+                                    <strong>${accountCreated ? new Date(accountCreated).toLocaleDateString('pt-BR', { 
+                                        day: '2-digit', 
+                                        month: '2-digit', 
+                                        year: 'numeric',
+                                        hour: '2-digit',
+                                        minute: '2-digit'
+                                    }) : 'Não informado'}</strong>
+                                </div>
+                                <div>
+                                    <small class="text-muted d-block mb-1">
+                                        <i class="fas fa-sign-in-alt me-1"></i>Último login:
+                                    </small>
+                                    <strong class="${lastLogin ? 'text-success' : ''}">${lastLogin ? new Date(lastLogin).toLocaleDateString('pt-BR', { 
+                                        day: '2-digit', 
+                                        month: '2-digit', 
+                                        year: 'numeric',
+                                        hour: '2-digit',
+                                        minute: '2-digit'
+                                    }) : 'Não informado'}</strong>
+                                </div>
+                            </div>
                         </div>
-                        <div class="col-md-6">
-                            <small class="text-muted d-block">Último login:</small>
-                            <strong>${lastLogin ? new Date(lastLogin).toLocaleString('pt-BR') : 'Não informado'}</strong>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card border-0 shadow-sm h-100">
+                            <div class="card-body">
+                                <h6 class="text-muted mb-3">
+                                    <i class="fas fa-chart-line me-2 text-primary"></i>
+                                    Estatísticas Gerais
+                                </h6>
+                                <div class="row g-2">
+                                    <div class="col-6">
+                                        <div class="text-center p-2 bg-light rounded">
+                                            <div class="h4 mb-0 text-primary">${disparos.length}</div>
+                                            <small class="text-muted">Disparos</small>
+                                        </div>
+                                    </div>
+                                    <div class="col-6">
+                                        <div class="text-center p-2 bg-light rounded">
+                                            <div class="h4 mb-0 text-success">${coletasHistory.length}</div>
+                                            <small class="text-muted">Coletas</small>
+                                        </div>
+                                    </div>
+                                    <div class="col-6">
+                                        <div class="text-center p-2 bg-light rounded">
+                                            <div class="h4 mb-0 text-info">${chatIA.length}</div>
+                                            <small class="text-muted">Chat IA</small>
+                                        </div>
+                                    </div>
+                                    <div class="col-6">
+                                        <div class="text-center p-2 bg-light rounded">
+                                            <div class="h4 mb-0 text-warning">${activityLogs.length}</div>
+                                            <small class="text-muted">Logs</small>
+                                        </div>
+                                    </div>
+                                    <div class="col-6">
+                                        <div class="text-center p-2 bg-light rounded">
+                                            <div class="h4 mb-0 text-secondary">${cadastros ? cadastros.length : 0}</div>
+                                            <small class="text-muted">Cadastros</small>
+                                        </div>
+                                    </div>
+                                    <div class="col-6">
+                                        <div class="text-center p-2 bg-light rounded">
+                                            <div class="h4 mb-0 text-dark">${movimentacoes.length}</div>
+                                            <small class="text-muted">Movimentações</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
             `;
             
-            // Estatísticas rápidas
+            // Tabs para diferentes tipos de histórico
+            const timestamp = Date.now();
+            
             html += `
-                <div class="mb-3">
-                    <h6 class="text-primary mb-3"><i class="fas fa-chart-bar me-2"></i>Estatísticas</h6>
-                    <div class="row g-2">
-                        <div class="col-md-3">
-                            <div class="card bg-light">
-                                <div class="card-body text-center p-2">
-                                    <strong class="d-block text-primary">${disparos.length}</strong>
-                                    <small class="text-muted">Disparos</small>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-3">
-                            <div class="card bg-light">
-                                <div class="card-body text-center p-2">
-                                    <strong class="d-block text-success">${coletasHistory.length}</strong>
-                                    <small class="text-muted">Ações em Coletas</small>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-3">
-                            <div class="card bg-light">
-                                <div class="card-body text-center p-2">
-                                    <strong class="d-block text-info">${chatIA.length}</strong>
-                                    <small class="text-muted">Chats com IA</small>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-3">
-                            <div class="card bg-light">
-                                <div class="card-body text-center p-2">
-                                    <strong class="d-block text-warning">${movimentacoes.length}</strong>
-                                    <small class="text-muted">Movimentações</small>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                <ul class="nav nav-tabs mb-3" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#modal-tab-disparos-${timestamp}" type="button">
+                            <i class="fas fa-paper-plane me-1"></i>Disparos (${disparos.length})
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#modal-tab-cadastros-${timestamp}" type="button">
+                            <i class="fas fa-user-plus me-1"></i>Cadastros (${cadastros ? cadastros.length : 0})
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#modal-tab-coletas-${timestamp}" type="button">
+                            <i class="fas fa-clipboard-list me-1"></i>Coletas (${coletasHistory.length})
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#modal-tab-chat-${timestamp}" type="button">
+                            <i class="fas fa-robot me-1"></i>Chat IA (${chatIA.length})
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#modal-tab-logs-${timestamp}" type="button">
+                            <i class="fas fa-history me-1"></i>Logs (${activityLogs.length})
+                        </button>
+                    </li>
+                </ul>
+                
+                <div class="tab-content" style="max-height: 400px; overflow-y: auto;">
             `;
             
-            // Disparos de mensagens
+            // Tab Disparos
+            html += `
+                <div class="tab-pane fade show active" id="modal-tab-disparos-${timestamp}" role="tabpanel">
+            `;
             if (disparos.length > 0) {
-                html += `
-                    <div class="mb-3">
-                        <h6 class="text-primary mb-2"><i class="fas fa-paper-plane me-2"></i>Disparos de Mensagens (${disparos.length})</h6>
-                        <div class="table-responsive" style="max-height: 200px; overflow-y: auto;">
-                            <table class="table table-sm table-hover">
-                                <thead>
-                                    <tr>
-                                        <th>Data</th>
-                                        <th>Número</th>
-                                        <th>Status</th>
-                                        <th>Tamanho</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    ${disparos.slice(0, 10).map(disp => `
-                                        <tr>
-                                            <td><small>${new Date(disp.created_at).toLocaleString('pt-BR')}</small></td>
-                                            <td><small>${disp.numero}</small></td>
-                                            <td><span class="badge bg-${disp.status === 'success' ? 'success' : 'danger'}">${disp.status}</span></td>
-                                            <td><small>${disp.mensagem_tamanho || 0} chars</small></td>
-                                        </tr>
-                                    `).join('')}
-                                </tbody>
-                            </table>
+                disparos.slice(0, 30).forEach(disp => {
+                    html += `
+                        <div class="card mb-2 border-start border-3 border-${disp.status === 'success' ? 'success' : 'danger'}">
+                            <div class="card-body py-2">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div class="flex-grow-1">
+                                        <div class="fw-bold mb-1">
+                                            <i class="fas fa-paper-plane me-1 text-primary"></i>
+                                            Disparo para ${disp.numero || 'N/A'}
+                                        </div>
+                                        <small class="text-muted">
+                                            <i class="fas fa-clock me-1"></i>
+                                            ${new Date(disp.created_at).toLocaleString('pt-BR')}
+                                        </small>
+                                        ${disp.mensagem_tamanho ? `
+                                            <div class="mt-1">
+                                                <small class="text-muted">
+                                                    <i class="fas fa-file-alt me-1"></i>
+                                                    ${disp.mensagem_tamanho} caracteres
+                                                </small>
+                                            </div>
+                                        ` : ''}
+                                    </div>
+                                    <span class="badge bg-${disp.status === 'success' ? 'success' : 'danger'}">
+                                        ${disp.status === 'success' ? 'Sucesso' : 'Erro'}
+                                    </span>
+                                </div>
+                            </div>
                         </div>
-                    </div>
-                `;
+                    `;
+                });
+                if (disparos.length > 30) {
+                    html += `<div class="text-center mt-2"><small class="text-muted">... e mais ${disparos.length - 30} registro(s)</small></div>`;
+                }
+            } else {
+                html += `<div class="text-center py-4 text-muted"><i class="fas fa-inbox fa-2x mb-2"></i><p class="mb-0">Nenhum disparo registrado</p></div>`;
             }
+            html += `</div>`;
             
-            // Chat com IA
-            if (chatIA.length > 0) {
-                html += `
-                    <div class="mb-3">
-                        <h6 class="text-primary mb-2"><i class="fas fa-robot me-2"></i>Chat com IA (${chatIA.length})</h6>
-                        <div class="table-responsive" style="max-height: 200px; overflow-y: auto;">
-                            <table class="table table-sm table-hover">
-                                <thead>
-                                    <tr>
-                                        <th>Data</th>
-                                        <th>Página</th>
-                                        <th>Categoria</th>
-                                        <th>Tokens</th>
-                                        <th>Avaliação</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    ${chatIA.slice(0, 10).map(chat => `
-                                        <tr>
-                                            <td><small>${new Date(chat.created_at).toLocaleString('pt-BR')}</small></td>
-                                            <td><small>${chat.pagina_origem || '-'}</small></td>
-                                            <td><small>${chat.categoria || '-'}</small></td>
-                                            <td><small>${chat.tokens_usados || 0}</small></td>
-                                            <td>${chat.satisfacao ? '<span class="badge bg-warning">⭐'.repeat(chat.satisfacao) + '</span>' : '-'}</td>
-                                        </tr>
-                                    `).join('')}
-                                </tbody>
-                            </table>
+            // Tab Cadastros
+            html += `
+                <div class="tab-pane fade" id="modal-tab-cadastros-${timestamp}" role="tabpanel">
+            `;
+            if (cadastros && cadastros.length > 0) {
+                cadastros.slice(0, 30).forEach(cad => {
+                    const statusBadge = cad.status === 'ativo' ? 'success' : (cad.status === 'inativo' ? 'secondary' : 'warning');
+                    html += `
+                        <div class="card mb-2 border-start border-3 border-secondary">
+                            <div class="card-body py-2">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div class="flex-grow-1">
+                                        <div class="fw-bold mb-1">
+                                            <i class="fas fa-user-plus me-1 text-secondary"></i>
+                                            ${cad.nome || 'Sem nome'}
+                                        </div>
+                                        <small class="text-muted d-block mb-1">
+                                            <i class="fas fa-clock me-1"></i>
+                                            ${new Date(cad.data_cadastro).toLocaleString('pt-BR')}
+                                        </small>
+                                        <div class="d-flex flex-wrap gap-2 mt-1">
+                                            ${cad.telefone1 ? `
+                                                <small class="text-muted">
+                                                    <i class="fas fa-phone me-1"></i>${cad.telefone1}
+                                                </small>
+                                            ` : ''}
+                                            ${cad.cnh ? `
+                                                <small class="text-muted">
+                                                    <i class="fas fa-id-card me-1"></i>CNH: ${cad.cnh}
+                                                </small>
+                                            ` : ''}
+                                            ${cad.tipo_veiculo ? `
+                                                <small class="text-muted">
+                                                    <i class="fas fa-truck me-1"></i>${cad.tipo_veiculo}
+                                                </small>
+                                            ` : ''}
+                                            ${cad.tipo_carroceria ? `
+                                                <small class="text-muted">
+                                                    <i class="fas fa-box me-1"></i>${cad.tipo_carroceria}
+                                                </small>
+                                            ` : ''}
+                                            ${cad.placa_cavalo ? `
+                                                <small class="text-muted">
+                                                    <i class="fas fa-car me-1"></i>${cad.placa_cavalo}
+                                                </small>
+                                            ` : ''}
+                                        </div>
+                                    </div>
+                                    ${cad.status ? `
+                                        <span class="badge bg-${statusBadge}">${cad.status || 'N/A'}</span>
+                                    ` : ''}
+                                </div>
+                            </div>
                         </div>
-                    </div>
-                `;
+                    `;
+                });
+                if (cadastros.length > 30) {
+                    html += `<div class="text-center mt-2"><small class="text-muted">... e mais ${cadastros.length - 30} registro(s)</small></div>`;
+                }
+            } else {
+                html += `<div class="text-center py-4 text-muted"><i class="fas fa-user-plus fa-2x mb-2"></i><p class="mb-0">Nenhum cadastro de motorista registrado</p></div>`;
             }
+            html += `</div>`;
             
-            // Histórico de coletas
+            // Tab Coletas
+            html += `
+                <div class="tab-pane fade" id="modal-tab-coletas-${timestamp}" role="tabpanel">
+            `;
             if (coletasHistory.length > 0) {
-                html += `
-                    <div class="mb-3">
-                        <h6 class="text-primary mb-2"><i class="fas fa-clipboard-list me-2"></i>Ações em Coletas (${coletasHistory.length})</h6>
-                        <div class="table-responsive" style="max-height: 200px; overflow-y: auto;">
-                            <table class="table table-sm table-hover">
-                                <thead>
-                                    <tr>
-                                        <th>Data</th>
-                                        <th>Ação</th>
-                                        <th>Detalhes</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    ${coletasHistory.slice(0, 10).map(hist => `
-                                        <tr>
-                                            <td><small>${new Date(hist.created_at).toLocaleString('pt-BR')}</small></td>
-                                            <td><small>${hist.acao}</small></td>
-                                            <td><small>${hist.detalhes || '-'}</small></td>
-                                        </tr>
-                                    `).join('')}
-                                </tbody>
-                            </table>
+                coletasHistory.slice(0, 30).forEach(hist => {
+                    html += `
+                        <div class="card mb-2 border-start border-3 border-success">
+                            <div class="card-body py-2">
+                                <div class="fw-bold mb-1">
+                                    <i class="fas fa-clipboard-list me-1 text-success"></i>
+                                    ${hist.acao || 'Ação'}
+                                </div>
+                                <small class="text-muted d-block mb-1">
+                                    <i class="fas fa-clock me-1"></i>
+                                    ${new Date(hist.created_at).toLocaleString('pt-BR')}
+                                </small>
+                                ${hist.detalhes ? `
+                                    <small class="text-muted">${hist.detalhes}</small>
+                                ` : ''}
+                            </div>
                         </div>
-                    </div>
-                `;
+                    `;
+                });
+                if (coletasHistory.length > 30) {
+                    html += `<div class="text-center mt-2"><small class="text-muted">... e mais ${coletasHistory.length - 30} registro(s)</small></div>`;
+                }
+            } else {
+                html += `<div class="text-center py-4 text-muted"><i class="fas fa-clipboard-list fa-2x mb-2"></i><p class="mb-0">Nenhuma ação em coletas registrada</p></div>`;
             }
+            html += `</div>`;
             
-            // Logs de atividade
+            // Tab Chat IA
+            html += `
+                <div class="tab-pane fade" id="modal-tab-chat-${timestamp}" role="tabpanel">
+            `;
+            if (chatIA.length > 0) {
+                chatIA.slice(0, 30).forEach(chat => {
+                    html += `
+                        <div class="card mb-2 border-start border-3 border-info">
+                            <div class="card-body py-2">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div class="flex-grow-1">
+                                        <div class="fw-bold mb-1">
+                                            <i class="fas fa-robot me-1 text-info"></i>
+                                            Conversa ${chat.categoria ? `- ${chat.categoria}` : ''}
+                                        </div>
+                                        <small class="text-muted d-block mb-1">
+                                            <i class="fas fa-clock me-1"></i>
+                                            ${new Date(chat.created_at).toLocaleString('pt-BR')}
+                                        </small>
+                                        <div class="d-flex gap-3">
+                                            ${chat.pagina_origem ? `
+                                                <small class="text-muted">
+                                                    <i class="fas fa-globe me-1"></i>${chat.pagina_origem}
+                                                </small>
+                                            ` : ''}
+                                            ${chat.tokens_usados ? `
+                                                <small class="text-muted">
+                                                    <i class="fas fa-coins me-1"></i>${chat.tokens_usados} tokens
+                                                </small>
+                                            ` : ''}
+                                        </div>
+                                    </div>
+                                    ${chat.satisfacao ? `
+                                        <span class="badge bg-warning">${'⭐'.repeat(chat.satisfacao)}</span>
+                                    ` : ''}
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+                if (chatIA.length > 30) {
+                    html += `<div class="text-center mt-2"><small class="text-muted">... e mais ${chatIA.length - 30} registro(s)</small></div>`;
+                }
+            } else {
+                html += `<div class="text-center py-4 text-muted"><i class="fas fa-robot fa-2x mb-2"></i><p class="mb-0">Nenhuma conversa com IA registrada</p></div>`;
+            }
+            html += `</div>`;
+            
+            // Tab Logs
+            html += `
+                <div class="tab-pane fade" id="modal-tab-logs-${timestamp}" role="tabpanel">
+            `;
             if (activityLogs.length > 0) {
-                html += `
-                    <div class="mb-3">
-                        <h6 class="text-primary mb-2"><i class="fas fa-history me-2"></i>Logs de Atividade (${activityLogs.length})</h6>
-                        <div class="table-responsive" style="max-height: 200px; overflow-y: auto;">
-                            <table class="table table-sm table-hover">
-                                <thead>
-                                    <tr>
-                                        <th>Data</th>
-                                        <th>Ação</th>
-                                        <th>Página</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    ${activityLogs.slice(0, 10).map(log => `
-                                        <tr>
-                                            <td><small>${new Date(log.created_at).toLocaleString('pt-BR')}</small></td>
-                                            <td><small>${log.acao}</small></td>
-                                            <td><small>${log.pagina || '-'}</small></td>
-                                        </tr>
-                                    `).join('')}
-                                </tbody>
-                            </table>
+                activityLogs.slice(0, 30).forEach(log => {
+                    html += `
+                        <div class="card mb-2 border-start border-3 border-warning">
+                            <div class="card-body py-2">
+                                <div class="fw-bold mb-1">
+                                    <i class="fas fa-history me-1 text-warning"></i>
+                                    ${log.acao || 'Ação'}
+                                </div>
+                                <small class="text-muted d-block mb-1">
+                                    <i class="fas fa-clock me-1"></i>
+                                    ${new Date(log.created_at).toLocaleString('pt-BR')}
+                                </small>
+                                ${log.pagina ? `
+                                    <small class="text-muted">
+                                        <i class="fas fa-globe me-1"></i>${log.pagina}
+                                    </small>
+                                ` : ''}
+                            </div>
                         </div>
+                    `;
+                });
+                if (activityLogs.length > 30) {
+                    html += `<div class="text-center mt-2"><small class="text-muted">... e mais ${activityLogs.length - 30} registro(s)</small></div>`;
+                }
+            } else {
+                html += `<div class="text-center py-4 text-muted"><i class="fas fa-history fa-2x mb-2"></i><p class="mb-0">Nenhum log de atividade registrado</p></div>`;
+            }
+            html += `</div>`;
+            
+            html += `</div>`;
+            
+            if (disparos.length === 0 && chatIA.length === 0 && coletasHistory.length === 0 && activityLogs.length === 0 && (!cadastros || cadastros.length === 0)) {
+                html = `
+                    <div class="text-center py-5">
+                        <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                        <h6 class="text-muted">Nenhuma atividade registrada</h6>
+                        <p class="text-muted mb-0">Este usuário ainda não possui histórico de atividades no sistema.</p>
                     </div>
                 `;
             }
             
-            if (disparos.length === 0 && chatIA.length === 0 && coletasHistory.length === 0 && activityLogs.length === 0) {
-                html += `
-                    <div class="alert alert-info mb-0">
-                        <i class="fas fa-info-circle me-2"></i>
-                        Nenhuma atividade registrada ainda.
-                    </div>
-                `;
-            }
-            
-            html += '</div>';
             container.innerHTML = html;
         }
 
@@ -1701,29 +1922,21 @@
                                 ${ultimoLogin}
                                 <div class="mt-3 text-center">
                                     <button class="btn btn-sm btn-outline-primary expand-history-btn" data-user-id="${usuario.id}">
-                                        <i class="fas fa-chevron-down me-1"></i>
+                                        <i class="fas fa-history me-1"></i>
                                         Ver Histórico
                                     </button>
                                 </div>
-                            </div>
-                            <div class="card-body border-top collapse historico-container" id="historico-${usuario.id.replace(/[^a-zA-Z0-9]/g, '_')}">
-                                <div class="spinner-border spinner-border-sm text-primary" role="status">
-                                    <span class="visually-hidden">Carregando...</span>
-                                </div>
-                                <p class="text-muted small mt-2">Carregando histórico...</p>
                             </div>
                         </div>
                     `;
                     container.appendChild(card);
                     
                     // Adicionar evento de clique
-                    const cardElement = card.querySelector('.usuario-logado-card');
                     const expandBtn = card.querySelector('.expand-history-btn');
-                    const historicoContainer = card.querySelector('.historico-container');
                     
                     expandBtn.addEventListener('click', async (e) => {
                         e.stopPropagation();
-                        await toggleHistoricoUsuario(usuario.id, historicoContainer, expandBtn);
+                        await toggleHistoricoUsuario(usuario.id, null, expandBtn);
                     });
                 });
                 
@@ -3120,6 +3333,65 @@
             btnTabEtiquetas.addEventListener('shown.bs.tab', function () {
                 carregarEtiquetas();
             });
+        }
+
+        // ========== FUNÇÃO DE MIGRAÇÃO ==========
+        async function executarMigracaoTipos() {
+            const btn = document.getElementById('btnMigracaoTipos');
+            const resultadoDiv = document.getElementById('resultadoMigracao');
+            
+            if (!confirm('Deseja executar a migração de normalização de tipos de veículo e carroceria?\n\nEsta operação atualizará todos os registros de motoristas no banco de dados.')) {
+                return;
+            }
+
+            try {
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Executando migração...';
+                resultadoDiv.style.display = 'block';
+                resultadoDiv.innerHTML = '<div class="alert alert-info"><i class="fas fa-spinner fa-spin me-2"></i>Executando migração, aguarde...</div>';
+
+                const response = await fetch('/api/migracao/normalizar-tipos', {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.success) {
+                    resultadoDiv.innerHTML = `
+                        <div class="alert alert-success">
+                            <h6><i class="fas fa-check-circle me-2"></i>Migração concluída com sucesso!</h6>
+                            <hr>
+                            <p class="mb-1"><strong>Total de registros:</strong> ${data.total}</p>
+                            <p class="mb-1"><strong>Atualizados:</strong> ${data.atualizados}</p>
+                            <p class="mb-0"><strong>Erros:</strong> ${data.erros}</p>
+                            ${data.detalhesErros && data.detalhesErros.length > 0 ? `
+                                <hr>
+                                <small><strong>Detalhes dos erros:</strong></small>
+                                <pre class="small mt-2" style="max-height: 200px; overflow-y: auto;">${JSON.stringify(data.detalhesErros, null, 2)}</pre>
+                            ` : ''}
+                        </div>
+                    `;
+                    mostrarSucesso(`Migração concluída: ${data.atualizados} de ${data.total} registros atualizados.`);
+                } else {
+                    throw new Error(data.error || 'Erro desconhecido ao executar migração');
+                }
+            } catch (error) {
+                console.error('❌ Erro ao executar migração:', error);
+                resultadoDiv.innerHTML = `
+                    <div class="alert alert-danger">
+                        <h6><i class="fas fa-exclamation-triangle me-2"></i>Erro ao executar migração</h6>
+                        <p class="mb-0">${error.message}</p>
+                    </div>
+                `;
+                mostrarErro('Erro ao executar migração: ' + error.message);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-play me-2"></i>Executar Migração';
+            }
         }
     </script>
 <!-- Chat IA -->

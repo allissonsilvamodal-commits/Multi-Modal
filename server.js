@@ -722,6 +722,165 @@ app.use((req, res, next) => {
   next();
 });
 
+// ========== MAPEAMENTOS E NORMALIZAÇÃO DE TIPOS DE VEÍCULO E CARROCERIA ==========
+// Mapeamento de tipos de veículo (valores válidos no banco)
+const TIPOS_VEICULO_MAP = {
+  '3/4': '3/4',
+  'fiorino': 'Fiorino',
+  'toco': 'Toco',
+  'vlc': 'VLC',
+  'bitruck': 'Bitruck',
+  'truck': 'Truck',
+  'bitrem': 'Bitrem',
+  'carreta': 'Carreta',
+  'carreta_ls': 'Carreta LS',
+  'carreta ls': 'Carreta LS',
+  'rodotrem': 'Rodotrem',
+  'vanderleia': 'Vanderleia',
+  'nao_informado': 'Não informado'
+};
+
+// Mapeamento de tipos de carroceria (valores válidos no banco)
+const TIPOS_CARROCERIA_MAP = {
+  'bau': 'bau',
+  'baú': 'bau',
+  'bau_frigorifico': 'bau_frigorifico',
+  'bau frigorifico': 'bau_frigorifico',
+  'baú frigorífico': 'bau_frigorifico',
+  'bau_refrigerado': 'bau_refrigerado',
+  'bau refrigerado': 'bau_refrigerado',
+  'baú refrigerado': 'bau_refrigerado',
+  'sider': 'sider',
+  'cacamba': 'cacamba',
+  'caçamba': 'cacamba',
+  'caamba': 'cacamba', // Variação quando o ç foi removido incorretamente
+  'CAÇAMBA': 'cacamba',
+  'Caçamba': 'cacamba',
+  'CaçamBA': 'cacamba',
+  'graneleiro': 'graneleiro',
+  'plataforma': 'plataforma',
+  'prancha': 'prancha',
+  'bitrem': 'bitrem',
+  'carreta': 'carreta',
+  'carreta_ls': 'carreta_ls',
+  'carreta ls': 'carreta_ls',
+  'rodotrem': 'rodotrem',
+  'vanderleia': 'vanderleia',
+  'apenas_cavalo': 'apenas_cavalo',
+  'apenas cavalo': 'apenas_cavalo',
+  'cegonheiro': 'cegonheiro',
+  'gaiola': 'gaiola',
+  'tanque': 'tanque',
+  'grade_baixa': 'grade_baixa',
+  'grade baixa': 'grade_baixa',
+  'GRADE BAIXA': 'grade_baixa',
+  'basculante': 'basculante',
+  'BASCULANTE': 'basculante',
+  'porta_container_20': 'porta_container_20',
+  'porta container 20': 'porta_container_20',
+  'PORTA CONTAINER 20': 'porta_container_20',
+  'porta_container_40': 'porta_container_40',
+  'porta container 40': 'porta_container_40',
+  'PORTA CONTAINER 40': 'porta_container_40',
+  'porta_container20/40': 'porta_container_20',
+  'PORTA CONTAINER20/40': 'porta_container_20',
+  'nao_informado': 'nao_informado'
+};
+
+// Função para normalizar texto (remove acentos, converte para minúsculas)
+function normalizeText(text) {
+  if (!text) return '';
+  return String(text)
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/ç/g, 'c')
+    .replace(/[^a-z0-9]/g, '')
+    .trim();
+}
+
+// Função para encontrar a chave correta no mapeamento de tipos de veículo
+function normalizeTipoVeiculo(valor) {
+  if (!valor || valor.trim() === '') return 'nao_informado';
+  
+  const valorNormalizado = normalizeText(valor);
+  const valorOriginal = valor.trim().toLowerCase();
+  
+  // Tentar correspondência exata primeiro
+  if (TIPOS_VEICULO_MAP[valorOriginal]) {
+    return TIPOS_VEICULO_MAP[valorOriginal];
+  }
+  
+  // Tentar correspondência por normalização
+  for (const [chave, valorMapeado] of Object.entries(TIPOS_VEICULO_MAP)) {
+    const chaveNormalizada = normalizeText(chave);
+    if (valorNormalizado === chaveNormalizada || 
+        valorNormalizado.includes(chaveNormalizada) ||
+        chaveNormalizada.includes(valorNormalizado)) {
+      return valorMapeado;
+    }
+  }
+  
+  // Match parcial mais flexível
+  for (const [chave, valorMapeado] of Object.entries(TIPOS_VEICULO_MAP)) {
+    const chaveNormalizada = normalizeText(chave);
+    if (valorNormalizado.length >= 3 && chaveNormalizada.length >= 3) {
+      if (valorNormalizado.substring(0, 3) === chaveNormalizada.substring(0, 3)) {
+        return valorMapeado;
+      }
+    }
+  }
+  
+  // Se não encontrar, retornar valor normalizado sem espaços
+  return valorOriginal.replace(/ /g, '_');
+}
+
+// Função para encontrar a chave correta no mapeamento de tipos de carroceria
+function normalizeTipoCarroceria(valor) {
+  if (!valor || valor.trim() === '') return 'nao_informado';
+  
+  const valorOriginal = valor.trim().toLowerCase();
+  const valorNormalizado = normalizeText(valor);
+  
+  // Tentar correspondência exata primeiro (sem normalização)
+  if (TIPOS_CARROCERIA_MAP[valorOriginal]) {
+    return TIPOS_CARROCERIA_MAP[valorOriginal];
+  }
+  
+  // Tentar correspondência com normalização (para pegar variações como "caamba")
+  if (valorNormalizado === 'caamba') {
+    return 'cacamba'; // Corrigir caso onde o ç foi removido incorretamente
+  }
+  
+  // Tentar correspondência por normalização
+  for (const [chave, valorMapeado] of Object.entries(TIPOS_CARROCERIA_MAP)) {
+    const chaveNormalizada = normalizeText(chave);
+    if (valorNormalizado === chaveNormalizada || 
+        valorNormalizado.includes(chaveNormalizada) ||
+        chaveNormalizada.includes(valorNormalizado)) {
+      return valorMapeado;
+    }
+  }
+  
+  // Match parcial mais flexível (especialmente para casos como "caamba" → "cacamba")
+  for (const [chave, valorMapeado] of Object.entries(TIPOS_CARROCERIA_MAP)) {
+    const chaveNormalizada = normalizeText(chave);
+    if (valorNormalizado.length >= 3 && chaveNormalizada.length >= 3) {
+      // Verificar se são similares (especialmente para "caamba" vs "cacamba")
+      if (valorNormalizado.substring(0, 3) === chaveNormalizada.substring(0, 3)) {
+        return valorMapeado;
+      }
+      // Match especial para "caamba" que deve mapear para "cacamba"
+      if (valorNormalizado === 'caamba' && chaveNormalizada.startsWith('cac')) {
+        return 'cacamba';
+      }
+    }
+  }
+  
+  // Se não encontrar, retornar valor normalizado sem espaços
+  return valorOriginal.replace(/ /g, '_');
+}
+
 // ========== FUNÇÕES AUXILIARES ==========
 function formatNumberForEvolution(number) {
   let cleanNumber = number.replace(/\D/g, '');
@@ -1515,8 +1674,8 @@ app.post('/api/motoristas/importar-csv', upload.single('csv'), async (req, res) 
           categoria_cnh: getValue('categoria_cnh')?.toUpperCase() || null,
           estado: getValue('estado')?.toUpperCase() || null,
           classe_veiculo: getValue('classe_veiculo')?.toLowerCase() || 'pesado',
-          tipo_veiculo: getValue('tipo_veiculo')?.toLowerCase().replace(/ /g, '_') || 'nao_informado',
-          tipo_carroceria: getValue('tipo_carroceria')?.toLowerCase().replace(/ /g, '_') || 'nao_informado',
+          tipo_veiculo: normalizeTipoVeiculo(getValue('tipo_veiculo')),
+          tipo_carroceria: normalizeTipoCarroceria(getValue('tipo_carroceria')),
           placa_cavalo: (getValue('placa_cavalo') ? normalizePlate(getValue('placa_cavalo')) : null) || null,
           placa_carreta1: (getValue('placa_carreta1') ? normalizePlate(getValue('placa_carreta1')) : null) || null,
           placa_carreta2: (getValue('placa_carreta2') ? normalizePlate(getValue('placa_carreta2')) : null) || null,
@@ -1753,8 +1912,8 @@ app.post('/api/motoristas/auth/profile', express.json(), async (req, res) => {
       placa_carreta2: body.placaCarreta2 && body.placaCarreta2.trim() ? normalizePlate(body.placaCarreta2) : null,
       placa_carreta3: body.placaCarreta3 && body.placaCarreta3.trim() ? normalizePlate(body.placaCarreta3) : null,
       classe_veiculo: body.classeVeiculo ? body.classeVeiculo.trim() : null,
-      tipo_veiculo: body.tipoVeiculo ? body.tipoVeiculo.trim() : null,
-      tipo_carroceria: body.tipoCarroceria ? body.tipoCarroceria.trim() : null,
+      tipo_veiculo: body.tipoVeiculo ? normalizeTipoVeiculo(body.tipoVeiculo) : null,
+      tipo_carroceria: body.tipoCarroceria ? normalizeTipoCarroceria(body.tipoCarroceria) : null,
       cidade: body.cidade ? body.cidade.trim() : null,
       estado: body.estado ? body.estado.trim() : null,
       empresa: body.empresa ? body.empresa.trim() : null
@@ -3419,6 +3578,18 @@ app.get('/api/user-activity/:userId', async (req, res) => {
       .order('created_at', { ascending: false })
       .limit(50);
     
+    // Buscar cadastros de motoristas realizados pelo usuário
+    const { data: cadastros, error: cadastrosError } = await supabaseAdmin
+      .from('motoristas')
+      .select('id, nome, telefone1, cnh, tipo_veiculo, tipo_carroceria, placa_cavalo, status, data_cadastro')
+      .eq('created_by', userId)
+      .order('data_cadastro', { ascending: false })
+      .limit(50);
+    
+    if (cadastrosError) {
+      console.error('❌ Erro ao buscar cadastros:', cadastrosError);
+    }
+    
     // Buscar última sessão do Supabase Auth
     let lastSignIn = null;
     try {
@@ -3440,7 +3611,8 @@ app.get('/api/user-activity/:userId', async (req, res) => {
         coletasHistory: coletasHistory || [],
         disparos: disparos || [],
         chatIA: chatIA || [],
-        movimentacoes: movimentacoes || []
+        movimentacoes: movimentacoes || [],
+        cadastros: cadastros || []
       }
     });
   } catch (error) {
@@ -8117,6 +8289,115 @@ app.use('*', (req, res) => {
 });
 
 // ========== INICIALIZAÇÃO DO SERVIDOR ==========
+// ========== ENDPOINT DE MIGRAÇÃO PARA NORMALIZAR TIPOS DE VEÍCULO E CARROCERIA ==========
+app.post('/api/migracao/normalizar-tipos', requireAuth, async (req, res) => {
+  try {
+    // Verificar se é admin
+    const usuario = req.session?.usuario;
+    if (!usuario) {
+      return res.status(401).json({ success: false, error: 'Não autenticado' });
+    }
+
+    // Buscar role do usuário
+    const { data: userProfile, error: profileError } = await supabaseAdmin
+      .from('user_profiles')
+      .select('role')
+      .eq('id', usuario)
+      .maybeSingle();
+
+    if (profileError || !userProfile || userProfile.role !== 'admin') {
+      return res.status(403).json({ success: false, error: 'Acesso negado. Apenas administradores podem executar migrações.' });
+    }
+
+    console.log('🔄 Iniciando migração de normalização de tipos de veículo e carroceria...');
+
+    // Buscar todos os motoristas
+    const { data: motoristas, error: fetchError } = await supabaseAdmin
+      .from('motoristas')
+      .select('id, tipo_veiculo, tipo_carroceria');
+
+    if (fetchError) {
+      throw fetchError;
+    }
+
+    let atualizados = 0;
+    let erros = [];
+    const atualizacoes = [];
+
+    // Processar cada motorista
+    for (const motorista of motoristas || []) {
+      const atualizacao = { id: motorista.id };
+      let precisaAtualizar = false;
+
+      // Normalizar tipo_veiculo
+      if (motorista.tipo_veiculo) {
+        const tipoVeiculoNormalizado = normalizeTipoVeiculo(motorista.tipo_veiculo);
+        if (tipoVeiculoNormalizado !== motorista.tipo_veiculo) {
+          atualizacao.tipo_veiculo = tipoVeiculoNormalizado;
+          precisaAtualizar = true;
+        }
+      }
+
+      // Normalizar tipo_carroceria
+      if (motorista.tipo_carroceria) {
+        const tipoCarroceriaNormalizado = normalizeTipoCarroceria(motorista.tipo_carroceria);
+        if (tipoCarroceriaNormalizado !== motorista.tipo_carroceria) {
+          atualizacao.tipo_carroceria = tipoCarroceriaNormalizado;
+          precisaAtualizar = true;
+        }
+      }
+
+      // Se precisa atualizar, adicionar à lista
+      if (precisaAtualizar) {
+        atualizacoes.push(atualizacao);
+      }
+    }
+
+    // Executar atualizações em lote
+    console.log(`📊 ${atualizacoes.length} registros precisam ser atualizados de ${motoristas?.length || 0} total`);
+
+    for (const atualizacao of atualizacoes) {
+      try {
+        const { id, ...dados } = atualizacao;
+        const { error: updateError } = await supabaseAdmin
+          .from('motoristas')
+          .update(dados)
+          .eq('id', id);
+
+        if (updateError) {
+          console.error(`❌ Erro ao atualizar motorista ${id}:`, updateError);
+          erros.push({ id, erro: updateError.message });
+        } else {
+          atualizados++;
+          console.log(`✅ Motorista ${id} atualizado:`, dados);
+        }
+      } catch (error) {
+        console.error(`❌ Erro ao atualizar motorista ${atualizacao.id}:`, error);
+        erros.push({ id: atualizacao.id, erro: error.message });
+      }
+    }
+
+    console.log(`✅ Migração concluída: ${atualizados} atualizados, ${erros.length} erros`);
+
+    res.json({
+      success: true,
+      total: motoristas?.length || 0,
+      atualizados,
+      erros: erros.length,
+      detalhesErros: erros.length > 0 ? erros : undefined,
+      mensagem: `Migração concluída: ${atualizados} de ${motoristas?.length || 0} registros atualizados com sucesso.`
+    });
+
+  } catch (error) {
+    console.error('❌ Erro na migração:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Erro ao executar migração: ' + error.message
+    });
+  }
+});
+
+// ========== INICIAR SERVIDOR ==========
 app.listen(PORT, '0.0.0.0', async () => {
   console.log('================================');
   console.log('🎯 Servidor rodando!');

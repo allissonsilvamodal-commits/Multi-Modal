@@ -1169,6 +1169,7 @@ const tiposCarroceriaMap = {
   bau_refrigerado: 'Baú Refrigerado',
   sider: 'Sider',
   cacamba: 'Caçamba',
+  caamba: 'Caçamba', // Variação quando o ç foi removido incorretamente
   graneleiro: 'Graneleiro',
   plataforma: 'Plataforma',
   prancha: 'Prancha',
@@ -1624,26 +1625,124 @@ function atualizarEstatisticas() {
   atualizarCardsCarrocerias();
 }
 
+// Função para normalizar texto (remove acentos, converte para minúsculas)
+function normalizarTexto(texto) {
+  if (!texto) return '';
+  return texto.toString()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/ç/g, 'c')
+    .replace(/[^a-z0-9]/g, '')
+    .trim();
+}
+
+// Função para encontrar a chave correta no mapeamento baseada no valor normalizado
+function encontrarChaveCarroceria(valor) {
+  if (!valor) return null;
+  
+  // Normalizar o valor recebido
+  const valorNormalizado = normalizarTexto(valor);
+  
+  // Tentar encontrar correspondência exata primeiro (chave exata)
+  if (tiposCarroceriaMap[valor]) {
+    return valor;
+  }
+  
+  // Correção especial para "caamba" que deve mapear para "cacamba"
+  if (valorNormalizado === 'caamba') {
+    return 'cacamba';
+  }
+  
+  // Tentar encontrar correspondência por normalização bidirecional
+  for (const [chave, nomeAmigavel] of Object.entries(tiposCarroceriaMap)) {
+    const chaveNormalizada = normalizarTexto(chave);
+    const nomeNormalizado = normalizarTexto(nomeAmigavel);
+    
+    // Verificar correspondência bidirecional (mais robusto)
+    if (valorNormalizado === chaveNormalizada || 
+        valorNormalizado === nomeNormalizado ||
+        (chaveNormalizada.includes(valorNormalizado) && valorNormalizado.length >= 3) ||
+        (valorNormalizado.includes(chaveNormalizada) && chaveNormalizada.length >= 3)) {
+      return chave;
+    }
+  }
+  
+  // Se não encontrar correspondência, tentar match parcial mais flexível
+  for (const [chave, nomeAmigavel] of Object.entries(tiposCarroceriaMap)) {
+    const chaveNormalizada = normalizarTexto(chave);
+    const nomeNormalizado = normalizarTexto(nomeAmigavel);
+    
+    // Match parcial mais flexível (pelo menos 3 caracteres correspondentes)
+    if (valorNormalizado.length >= 3 && chaveNormalizada.length >= 3) {
+      if (valorNormalizado.substring(0, 3) === chaveNormalizada.substring(0, 3) ||
+          nomeNormalizado.substring(0, Math.min(3, nomeNormalizado.length)) === valorNormalizado.substring(0, Math.min(3, valorNormalizado.length))) {
+        return chave;
+      }
+      // Match especial para "caamba" que deve mapear para "cacamba"
+      if (valorNormalizado === 'caamba' && chaveNormalizada.startsWith('cac')) {
+        return 'cacamba';
+      }
+    }
+  }
+  
+  // Se ainda não encontrar, retornar null para usar o valor original
+  return null;
+}
+
 function atualizarCardsCarrocerias() {
   const carroceriasGrid = document.getElementById('carroceriasGrid');
   if (!carroceriasGrid) return;
   
-  // Contar motoristas por carroceria
+  // Contar motoristas por carroceria (usando chave normalizada)
   const contagemPorCarroceria = {};
+  const chaveOriginalMap = {}; // Mapear chave normalizada para a chave original do mapeamento
   
   todosContatos.forEach(contato => {
     const carroceria = contato.tipo_carroceria;
     if (carroceria) {
-      if (!contagemPorCarroceria[carroceria]) {
-        contagemPorCarroceria[carroceria] = 0;
+      // Encontrar a chave correta no mapeamento
+      const chaveMapeada = encontrarChaveCarroceria(carroceria);
+      
+      // Se encontrou correspondência no mapeamento, usar essa chave
+      // Senão, normalizar o valor original para agrupar variações
+      const chaveFinal = chaveMapeada || normalizarTexto(carroceria);
+      
+      if (!contagemPorCarroceria[chaveFinal]) {
+        contagemPorCarroceria[chaveFinal] = 0;
+        // Armazenar a chave original do mapeamento se encontrada
+        chaveOriginalMap[chaveFinal] = chaveMapeada || null;
       }
-      contagemPorCarroceria[carroceria]++;
+      contagemPorCarroceria[chaveFinal]++;
     }
   });
   
-  // Ordenar por quantidade (maior para menor)
+  // Converter para array e ordenar por quantidade (maior para menor)
   const carroceriasOrdenadas = Object.entries(contagemPorCarroceria)
-    .sort((a, b) => b[1] - a[1]);
+    .map(([chave, quantidade]) => {
+      // Usar a chave original do mapeamento se disponível, senão usar a chave normalizada
+      const chaveOriginal = chaveOriginalMap[chave] || chave;
+      const nomeAmigavel = tiposCarroceriaMap[chaveOriginal] || chaveOriginal;
+      return { chave: chaveOriginal, nomeAmigavel, quantidade };
+    })
+    .sort((a, b) => b.quantidade - a.quantidade);
+  
+  // Agrupar por nome amigável para evitar duplicações visuais
+  const carroceriasAgrupadas = {};
+  carroceriasOrdenadas.forEach(item => {
+    const nomeNormalizado = normalizarTexto(item.nomeAmigavel);
+    if (!carroceriasAgrupadas[nomeNormalizado]) {
+      carroceriasAgrupadas[nomeNormalizado] = {
+        nomeAmigavel: item.nomeAmigavel,
+        quantidade: 0
+      };
+    }
+    carroceriasAgrupadas[nomeNormalizado].quantidade += item.quantidade;
+  });
+  
+  // Converter de volta para array ordenado
+  const carroceriasFinais = Object.values(carroceriasAgrupadas)
+    .sort((a, b) => b.quantidade - a.quantidade);
   
   // Limpar grid
   carroceriasGrid.innerHTML = '';
@@ -1653,8 +1752,7 @@ function atualizarCardsCarrocerias() {
   let corIndex = 0;
   
   // Criar cards para cada carroceria
-  carroceriasOrdenadas.forEach(([carroceria, quantidade]) => {
-    const nomeAmigavel = tiposCarroceriaMap[carroceria] || carroceria;
+  carroceriasFinais.forEach(({ nomeAmigavel, quantidade }) => {
     const cor = cores[corIndex % cores.length];
     
     const card = document.createElement('div');
@@ -1672,11 +1770,11 @@ function atualizarCardsCarrocerias() {
   });
   
   // Se não houver carrocerias, mostrar mensagem
-  if (carroceriasOrdenadas.length === 0) {
+  if (carroceriasFinais.length === 0) {
     carroceriasGrid.innerHTML = '<div class="col-12 text-center text-muted py-3">Nenhuma carroceria encontrada</div>';
   }
   
-  console.log(`✅ Cards de carrocerias atualizados: ${carroceriasOrdenadas.length} tipos`);
+  console.log(`✅ Cards de carrocerias atualizados: ${carroceriasFinais.length} tipos (sem duplicações)`);
 }
 
 function carregarFiltros() {
