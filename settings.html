@@ -619,6 +619,22 @@
             background: var(--primary-gradient);
             color: white;
         }
+        
+        /* Cards de Usuários Logados */
+        #listaUsuariosLogados .card {
+            transition: all 0.3s ease;
+            border-left: 4px solid #667eea !important;
+        }
+        
+        #listaUsuariosLogados .card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 24px rgba(102, 126, 234, 0.2) !important;
+        }
+        
+        #listaUsuariosLogados .badge {
+            font-size: 0.7rem;
+            padding: 0.35rem 0.65rem;
+        }
     </style>
 </head>
 <body>
@@ -703,7 +719,35 @@
                                     <button class="btn btn-primary" onclick="abrirModalNovoUsuario()">
                                     <i class="fas fa-plus me-2"></i>Adicionar Usuário
                                 </button>
+                                <button class="btn btn-info ms-2" onclick="carregarUsuariosLogados()" title="Atualizar lista de usuários logados">
+                                    <i class="fas fa-sync-alt me-2"></i>Atualizar Usuários Logados
+                                </button>
                             </div>
+                            
+                            <!-- Card de Usuários Logados -->
+                            <div class="card mb-4" style="background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1)); border: 2px solid rgba(102, 126, 234, 0.3);">
+                                <div class="card-header bg-transparent border-0">
+                                    <h6 class="mb-0">
+                                        <i class="fas fa-user-check me-2 text-success"></i>
+                                        <span id="contadorUsuariosLogados">0</span> Usuário(s) Logado(s) no Momento
+                                    </h6>
+                                </div>
+                                <div class="card-body">
+                                    <div id="listaUsuariosLogados" class="row g-3">
+                                        <div class="col-12 text-center py-3">
+                                            <div class="spinner-border spinner-border-sm text-primary" role="status">
+                                                <span class="visually-hidden">Carregando...</span>
+                                            </div>
+                                            <p class="text-muted mt-2 mb-0">Carregando usuários logados...</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <h6 class="mb-3">
+                                <i class="fas fa-users me-2"></i>
+                                Todos os Usuários do Sistema
+                            </h6>
                             <div class="table-responsive">
                                     <table class="table">
                                     <thead>
@@ -1133,6 +1177,7 @@
             await inicializarSupabase();
             await verificarAutenticacao();
             await carregarUsuarios();
+            await carregarUsuariosLogados(); // Carregar usuários logados ao iniciar
             await carregarCredenciaisAPI();
             await carregarConfiguracoes();
             console.log('✅ Configurações carregadas com sucesso!');
@@ -1252,6 +1297,114 @@
                 localStorage.removeItem('lastActivity');
                 localStorage.removeItem('permissoesData');
                 window.location.href = 'login.html';
+            }
+        }
+
+        // ========== USUÁRIOS LOGADOS ==========
+        async function carregarUsuariosLogados() {
+            try {
+                const container = document.getElementById('listaUsuariosLogados');
+                const contador = document.getElementById('contadorUsuariosLogados');
+                
+                if (!container) return;
+                
+                container.innerHTML = `
+                    <div class="col-12 text-center py-3">
+                        <div class="spinner-border spinner-border-sm text-primary" role="status">
+                            <span class="visually-hidden">Carregando...</span>
+                        </div>
+                        <p class="text-muted mt-2 mb-0">Carregando usuários logados...</p>
+                    </div>
+                `;
+                
+                const response = await fetch('/api/active-sessions');
+                if (!response.ok) {
+                    throw new Error('Erro ao buscar usuários logados');
+                }
+                
+                const data = await response.json();
+                
+                if (!data.success || !data.usuarios || data.usuarios.length === 0) {
+                    container.innerHTML = `
+                        <div class="col-12">
+                            <div class="alert alert-info mb-0">
+                                <i class="fas fa-info-circle me-2"></i>
+                                Nenhum usuário logado no momento.
+                            </div>
+                        </div>
+                    `;
+                    if (contador) contador.textContent = '0';
+                    return;
+                }
+                
+                // Atualizar contador
+                if (contador) {
+                    contador.textContent = data.count || data.usuarios.length;
+                }
+                
+                // Renderizar usuários
+                container.innerHTML = '';
+                
+                data.usuarios.forEach(usuario => {
+                    const roleBadge = usuario.role === 'admin' 
+                        ? '<span class="badge bg-danger">Admin</span>'
+                        : '<span class="badge bg-primary">Usuário</span>';
+                    
+                    const departamento = usuario.departamento 
+                        ? `<small class="text-muted d-block"><i class="fas fa-building me-1"></i>${usuario.departamento}</small>` 
+                        : '';
+                    
+                    const cargo = usuario.cargo 
+                        ? `<small class="text-muted d-block"><i class="fas fa-briefcase me-1"></i>${usuario.cargo}</small>` 
+                        : '';
+                    
+                    const ultimoLogin = usuario.last_sign_in_at 
+                        ? `<small class="text-muted d-block"><i class="fas fa-clock me-1"></i>Último acesso: ${new Date(usuario.last_sign_in_at).toLocaleString('pt-BR')}</small>` 
+                        : '<small class="text-success d-block"><i class="fas fa-circle me-1"></i>Online agora</small>';
+                    
+                    const card = document.createElement('div');
+                    card.className = 'col-md-6 col-lg-4';
+                    card.innerHTML = `
+                        <div class="card border-0 shadow-sm h-100" style="transition: transform 0.2s;">
+                            <div class="card-body">
+                                <div class="d-flex align-items-start justify-content-between mb-2">
+                                    <div class="flex-grow-1">
+                                        <h6 class="mb-1">
+                                            <i class="fas fa-user-circle me-2 text-primary"></i>
+                                            ${usuario.nome || 'Sem nome'}
+                                        </h6>
+                                        ${roleBadge}
+                                    </div>
+                                    <div class="text-success">
+                                        <i class="fas fa-circle" style="font-size: 0.5rem;"></i>
+                                    </div>
+                                </div>
+                                <p class="text-muted small mb-2">
+                                    <i class="fas fa-envelope me-1"></i>${usuario.email || '-'}
+                                </p>
+                                ${departamento}
+                                ${cargo}
+                                ${ultimoLogin}
+                            </div>
+                        </div>
+                    `;
+                    container.appendChild(card);
+                });
+                
+                console.log(`✅ ${data.usuarios.length} usuário(s) logado(s) carregado(s)`);
+            } catch (error) {
+                console.error('❌ Erro ao carregar usuários logados:', error);
+                const container = document.getElementById('listaUsuariosLogados');
+                if (container) {
+                    container.innerHTML = `
+                        <div class="col-12">
+                            <div class="alert alert-danger mb-0">
+                                <i class="fas fa-exclamation-triangle me-2"></i>
+                                Erro ao carregar usuários logados: ${error.message}
+                            </div>
+                        </div>
+                    `;
+                }
             }
         }
 

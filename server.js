@@ -2926,6 +2926,7 @@ app.get('/api/auth/status', async (req, res) => {
 app.get('/api/active-sessions', async (req, res) => {
   try {
     const usuariosUnicos = new Set();
+    const usuariosDetalhes = new Map(); // Map para armazenar detalhes dos usuários
     
     // 1. Contar sessões ativas do SQLite (express-session)
     try {
@@ -2967,6 +2968,15 @@ app.get('/api/active-sessions', async (req, res) => {
                     const userId = sessData.userData?.id || sessData.userData?.email || sessData.usuario?.id || sessData.usuario?.email || sessData.usuario;
                     if (userId) {
                       usuariosUnicos.add(userId);
+                      // Armazenar detalhes da sessão
+                      if (sessData.userData) {
+                        usuariosDetalhes.set(userId, {
+                          id: userId,
+                          nome: sessData.userData.nome || sessData.userData.username || sessData.userData.email,
+                          email: sessData.userData.email,
+                          tipo: 'sessao'
+                        });
+                      }
                     }
                   }
                 }
@@ -3000,12 +3010,58 @@ app.get('/api/active-sessions', async (req, res) => {
             // Se fez login nas últimas 24 horas, considerar como ativo
             if (diff < vinteQuatroHoras) {
               usuariosUnicos.add(user.id);
+              
+              // Buscar dados completos do usuário no user_profiles
+              usuariosDetalhes.set(user.id, {
+                id: user.id,
+                email: user.email,
+                last_sign_in_at: user.last_sign_in_at,
+                tipo: 'supabase'
+              });
             }
           }
         });
       }
     } catch (error) {
       console.warn('⚠️ Erro ao buscar usuários do Supabase Auth:', error.message);
+    }
+    
+    // 3. Buscar informações completas dos usuários no user_profiles
+    const usuariosCompletos = [];
+    for (const userId of usuariosUnicos) {
+      try {
+        const { data: profile, error } = await supabaseAdmin
+          .from('user_profiles')
+          .select('id, nome, email, role, departamento, cargo')
+          .eq('id', userId)
+          .maybeSingle();
+        
+        const detalhes = usuariosDetalhes.get(userId) || {};
+        if (!error && profile) {
+          usuariosCompletos.push({
+            id: profile.id,
+            nome: profile.nome || detalhes.nome || 'Sem nome',
+            email: profile.email || detalhes.email,
+            role: profile.role || 'user',
+            departamento: profile.departamento || null,
+            cargo: profile.cargo || null,
+            last_sign_in_at: detalhes.last_sign_in_at || null
+          });
+        } else if (detalhes && detalhes.id) {
+          // Se não encontrou no user_profiles, usar dados da sessão
+          usuariosCompletos.push({
+            id: detalhes.id,
+            nome: detalhes.nome || 'Sem nome',
+            email: detalhes.email,
+            role: 'user',
+            departamento: null,
+            cargo: null,
+            last_sign_in_at: detalhes.last_sign_in_at || null
+          });
+        }
+      } catch (error) {
+        console.warn(`⚠️ Erro ao buscar perfil do usuário ${userId}:`, error.message);
+      }
     }
     
     const totalUsuariosLogados = usuariosUnicos.size;
@@ -3015,13 +3071,14 @@ app.get('/api/active-sessions', async (req, res) => {
     res.json({
       success: true,
       count: totalUsuariosLogados,
-      usuarios: Array.from(usuariosUnicos).length
+      usuarios: usuariosCompletos
     });
   } catch (error) {
     console.error('❌ Erro ao contar sessões ativas:', error);
     res.json({
       success: true,
       count: 0,
+      usuarios: [],
       error: 'Erro ao contar sessões'
     });
   }
