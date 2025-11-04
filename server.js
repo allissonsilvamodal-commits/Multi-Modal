@@ -3117,6 +3117,183 @@ app.get('/api/active-sessions', async (req, res) => {
   }
 });
 
+// ========== ENDPOINT PARA DADOS DE ATIVIDADE DO SISTEMA ==========
+app.get('/api/system-activity', async (req, res) => {
+  try {
+    const agora = new Date();
+    const ontem = new Date(agora);
+    ontem.setDate(ontem.getDate() - 1);
+    
+    // Inicializar dados por período (6 períodos de 4 horas)
+    const atividadeData = {
+      '00-04': 0,
+      '04-08': 0,
+      '08-12': 0,
+      '12-16': 0,
+      '16-20': 0,
+      '20-24': 0
+    };
+    
+    // 1. Buscar coletas criadas
+    try {
+      const { data: coletas, error } = await supabaseAdmin
+        .from('coletas')
+        .select('created_at')
+        .gte('created_at', ontem.toISOString());
+      
+      if (!error && coletas) {
+        coletas.forEach(coleta => {
+          const hora = new Date(coleta.created_at).getHours();
+          if (hora >= 0 && hora < 4) atividadeData['00-04']++;
+          else if (hora >= 4 && hora < 8) atividadeData['04-08']++;
+          else if (hora >= 8 && hora < 12) atividadeData['08-12']++;
+          else if (hora >= 12 && hora < 16) atividadeData['12-16']++;
+          else if (hora >= 16 && hora < 20) atividadeData['16-20']++;
+          else if (hora >= 20) atividadeData['20-24']++;
+        });
+      }
+    } catch (error) {
+      console.warn('⚠️ Erro ao buscar coletas:', error.message);
+    }
+    
+    // 2. Buscar disparos de mensagens
+    try {
+      const { data: disparos, error } = await supabaseAdmin
+        .from('disparos_log')
+        .select('created_at')
+        .gte('created_at', ontem.toISOString());
+      
+      if (!error && disparos) {
+        disparos.forEach(disp => {
+          const hora = new Date(disp.created_at).getHours();
+          if (hora >= 0 && hora < 4) atividadeData['00-04']++;
+          else if (hora >= 4 && hora < 8) atividadeData['04-08']++;
+          else if (hora >= 8 && hora < 12) atividadeData['08-12']++;
+          else if (hora >= 12 && hora < 16) atividadeData['12-16']++;
+          else if (hora >= 16 && hora < 20) atividadeData['16-20']++;
+          else if (hora >= 20) atividadeData['20-24']++;
+        });
+      }
+    } catch (error) {
+      console.warn('⚠️ Erro ao buscar disparos:', error.message);
+    }
+    
+    // 3. Buscar cadastros de motoristas
+    try {
+      const { data: motoristas, error } = await supabaseAdmin
+        .from('motoristas')
+        .select('data_cadastro')
+        .gte('data_cadastro', ontem.toISOString());
+      
+      if (!error && motoristas) {
+        motoristas.forEach(m => {
+          const hora = new Date(m.data_cadastro).getHours();
+          if (hora >= 0 && hora < 4) atividadeData['00-04']++;
+          else if (hora >= 4 && hora < 8) atividadeData['04-08']++;
+          else if (hora >= 8 && hora < 12) atividadeData['08-12']++;
+          else if (hora >= 12 && hora < 16) atividadeData['12-16']++;
+          else if (hora >= 16 && hora < 20) atividadeData['16-20']++;
+          else if (hora >= 20) atividadeData['20-24']++;
+        });
+      }
+    } catch (error) {
+      console.warn('⚠️ Erro ao buscar motoristas:', error.message);
+    }
+    
+    // 4. Buscar histórico de coletas (ações)
+    try {
+      const { data: historico, error } = await supabaseAdmin
+        .from('historico_coletas')
+        .select('created_at')
+        .gte('created_at', ontem.toISOString());
+      
+      if (!error && historico) {
+        historico.forEach(h => {
+          const hora = new Date(h.created_at).getHours();
+          if (hora >= 0 && hora < 4) atividadeData['00-04']++;
+          else if (hora >= 4 && hora < 8) atividadeData['04-08']++;
+          else if (hora >= 8 && hora < 12) atividadeData['08-12']++;
+          else if (hora >= 12 && hora < 16) atividadeData['12-16']++;
+          else if (hora >= 16 && hora < 20) atividadeData['16-20']++;
+          else if (hora >= 20) atividadeData['20-24']++;
+        });
+      }
+    } catch (error) {
+      console.warn('⚠️ Erro ao buscar histórico:', error.message);
+    }
+    
+    // 5. Buscar chat com IA
+    try {
+      const { data: chatIA, error } = await supabaseAdmin
+        .from('chat_ia_conversas')
+        .select('created_at')
+        .gte('created_at', ontem.toISOString());
+      
+      if (!error && chatIA) {
+        chatIA.forEach(chat => {
+          const hora = new Date(chat.created_at).getHours();
+          if (hora >= 0 && hora < 4) atividadeData['00-04']++;
+          else if (hora >= 4 && hora < 8) atividadeData['04-08']++;
+          else if (hora >= 8 && hora < 12) atividadeData['08-12']++;
+          else if (hora >= 12 && hora < 16) atividadeData['12-16']++;
+          else if (hora >= 16 && hora < 20) atividadeData['16-20']++;
+          else if (hora >= 20) atividadeData['20-24']++;
+        });
+      }
+    } catch (error) {
+      console.warn('⚠️ Erro ao buscar chat IA:', error.message);
+    }
+    
+    // 6. Buscar logs de atividade
+    try {
+      const { data: logs, error } = await supabaseAdmin
+        .from('user_activity_logs')
+        .select('created_at')
+        .gte('created_at', ontem.toISOString());
+      
+      if (!error && logs) {
+        logs.forEach(log => {
+          const hora = new Date(log.created_at).getHours();
+          if (hora >= 0 && hora < 4) atividadeData['00-04']++;
+          else if (hora >= 4 && hora < 8) atividadeData['04-08']++;
+          else if (hora >= 8 && hora < 12) atividadeData['08-12']++;
+          else if (hora >= 12 && hora < 16) atividadeData['12-16']++;
+          else if (hora >= 16 && hora < 20) atividadeData['16-20']++;
+          else if (hora >= 20) atividadeData['20-24']++;
+        });
+      }
+    } catch (error) {
+      console.warn('⚠️ Erro ao buscar logs de atividade:', error.message);
+    }
+    
+    // Converter para array na ordem correta
+    const data = [
+      atividadeData['00-04'],
+      atividadeData['04-08'],
+      atividadeData['08-12'],
+      atividadeData['12-16'],
+      atividadeData['16-20'],
+      atividadeData['20-24']
+    ];
+    
+    console.log('📊 Dados de atividade do sistema:', data);
+    
+    res.json({
+      success: true,
+      data: data,
+      labels: ['00h-04h', '04h-08h', '08h-12h', '12h-16h', '16h-20h', '20h-24h']
+    });
+  } catch (error) {
+    console.error('❌ Erro ao buscar dados de atividade:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Erro ao buscar dados de atividade',
+      data: [0, 0, 0, 0, 0, 0],
+      labels: ['00h-04h', '04h-08h', '08h-12h', '12h-16h', '16h-20h', '20h-24h']
+    });
+  }
+});
+
 // ========== ENDPOINT PARA HISTÓRICO DE ATIVIDADES DO USUÁRIO ==========
 app.get('/api/user-activity/:userId', async (req, res) => {
   try {
