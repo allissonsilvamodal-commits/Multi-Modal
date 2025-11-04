@@ -635,6 +635,35 @@
             font-size: 0.7rem;
             padding: 0.35rem 0.65rem;
         }
+        
+        /* Estilos para histórico expandido */
+        .historico-container {
+            background-color: #f8f9fa;
+            max-height: 600px;
+            overflow-y: auto;
+        }
+        
+        .historico-content {
+            padding: 0.5rem 0;
+        }
+        
+        .historico-content .table {
+            font-size: 0.875rem;
+        }
+        
+        .expand-history-btn {
+            transition: all 0.3s ease;
+        }
+        
+        .expand-history-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        
+        .usuario-logado-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 24px rgba(102, 126, 234, 0.2) !important;
+        }
     </style>
 </head>
 <body>
@@ -1300,6 +1329,291 @@
             }
         }
 
+        // ========== FUNÇÃO PARA EXPANDIR/RECOLHER HISTÓRICO ==========
+        async function toggleHistoricoUsuario(userId, container, btn) {
+            const isExpanded = container.classList.contains('show');
+            
+            if (isExpanded) {
+                // Recolher
+                const bsCollapse = bootstrap.Collapse.getInstance(container);
+                if (bsCollapse) {
+                    bsCollapse.hide();
+                } else {
+                    container.classList.remove('show');
+                }
+                btn.innerHTML = '<i class="fas fa-chevron-down me-1"></i>Ver Histórico';
+            } else {
+                // Expandir
+                btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Carregando...';
+                
+                try {
+                    // Obter token Supabase se disponível
+                    let authHeaders = {
+                        'Content-Type': 'application/json'
+                    };
+                    
+                    // Tentar obter token do Supabase
+                    if (window.supabase) {
+                        try {
+                            const { data: { session } } = await window.supabase.auth.getSession();
+                            if (session && session.access_token) {
+                                authHeaders['Authorization'] = `Bearer ${session.access_token}`;
+                            }
+                        } catch (e) {
+                            console.warn('⚠️ Não foi possível obter token Supabase:', e);
+                        }
+                    }
+                    
+                    // Adicionar email do usuário logado do localStorage
+                    const loggedInUserData = localStorage.getItem('loggedInUser');
+                    if (loggedInUserData) {
+                        try {
+                            const userData = JSON.parse(loggedInUserData);
+                            if (userData.email) {
+                                authHeaders['X-User-Email'] = userData.email;
+                            }
+                        } catch (e) {
+                            console.warn('⚠️ Erro ao parsear loggedInUser:', e);
+                        }
+                    }
+                    
+                    const response = await fetch(`/api/user-activity/${userId}`, {
+                        credentials: 'include',
+                        headers: authHeaders
+                    });
+                    
+                    if (!response.ok) {
+                        const errorData = await response.json().catch(() => ({}));
+                        throw new Error(errorData.error || `Erro ${response.status}: ${response.statusText}`);
+                    }
+                    
+                    const result = await response.json();
+                    
+                    if (!result.success) {
+                        throw new Error(result.error || 'Erro ao buscar histórico');
+                    }
+                    
+                    renderizarHistoricoUsuario(container, result.data);
+                    
+                    // Expandir usando Bootstrap Collapse
+                    const bsCollapse = new bootstrap.Collapse(container, {
+                        toggle: false
+                    });
+                    bsCollapse.show();
+                    
+                    btn.innerHTML = '<i class="fas fa-chevron-up me-1"></i>Ocultar Histórico';
+                } catch (error) {
+                    console.error('❌ Erro ao carregar histórico:', error);
+                    container.innerHTML = `
+                        <div class="alert alert-danger mb-0">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            Erro ao carregar histórico: ${error.message}
+                        </div>
+                    `;
+                    btn.innerHTML = '<i class="fas fa-chevron-down me-1"></i>Ver Histórico';
+                }
+            }
+        }
+        
+        // ========== FUNÇÃO PARA RENDERIZAR HISTÓRICO ==========
+        function renderizarHistoricoUsuario(container, data) {
+            const { lastLogin, accountCreated, activityLogs, coletasHistory, disparos, chatIA, movimentacoes } = data;
+            
+            let html = '<div class="historico-content">';
+            
+            // Informações gerais
+            html += `
+                <div class="mb-3">
+                    <h6 class="text-primary mb-3"><i class="fas fa-info-circle me-2"></i>Informações da Conta</h6>
+                    <div class="row g-2">
+                        <div class="col-md-6">
+                            <small class="text-muted d-block">Conta criada em:</small>
+                            <strong>${accountCreated ? new Date(accountCreated).toLocaleString('pt-BR') : 'Não informado'}</strong>
+                        </div>
+                        <div class="col-md-6">
+                            <small class="text-muted d-block">Último login:</small>
+                            <strong>${lastLogin ? new Date(lastLogin).toLocaleString('pt-BR') : 'Não informado'}</strong>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Estatísticas rápidas
+            html += `
+                <div class="mb-3">
+                    <h6 class="text-primary mb-3"><i class="fas fa-chart-bar me-2"></i>Estatísticas</h6>
+                    <div class="row g-2">
+                        <div class="col-md-3">
+                            <div class="card bg-light">
+                                <div class="card-body text-center p-2">
+                                    <strong class="d-block text-primary">${disparos.length}</strong>
+                                    <small class="text-muted">Disparos</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card bg-light">
+                                <div class="card-body text-center p-2">
+                                    <strong class="d-block text-success">${coletasHistory.length}</strong>
+                                    <small class="text-muted">Ações em Coletas</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card bg-light">
+                                <div class="card-body text-center p-2">
+                                    <strong class="d-block text-info">${chatIA.length}</strong>
+                                    <small class="text-muted">Chats com IA</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card bg-light">
+                                <div class="card-body text-center p-2">
+                                    <strong class="d-block text-warning">${movimentacoes.length}</strong>
+                                    <small class="text-muted">Movimentações</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Disparos de mensagens
+            if (disparos.length > 0) {
+                html += `
+                    <div class="mb-3">
+                        <h6 class="text-primary mb-2"><i class="fas fa-paper-plane me-2"></i>Disparos de Mensagens (${disparos.length})</h6>
+                        <div class="table-responsive" style="max-height: 200px; overflow-y: auto;">
+                            <table class="table table-sm table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Data</th>
+                                        <th>Número</th>
+                                        <th>Status</th>
+                                        <th>Tamanho</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${disparos.slice(0, 10).map(disp => `
+                                        <tr>
+                                            <td><small>${new Date(disp.created_at).toLocaleString('pt-BR')}</small></td>
+                                            <td><small>${disp.numero}</small></td>
+                                            <td><span class="badge bg-${disp.status === 'success' ? 'success' : 'danger'}">${disp.status}</span></td>
+                                            <td><small>${disp.mensagem_tamanho || 0} chars</small></td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            // Chat com IA
+            if (chatIA.length > 0) {
+                html += `
+                    <div class="mb-3">
+                        <h6 class="text-primary mb-2"><i class="fas fa-robot me-2"></i>Chat com IA (${chatIA.length})</h6>
+                        <div class="table-responsive" style="max-height: 200px; overflow-y: auto;">
+                            <table class="table table-sm table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Data</th>
+                                        <th>Página</th>
+                                        <th>Categoria</th>
+                                        <th>Tokens</th>
+                                        <th>Avaliação</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${chatIA.slice(0, 10).map(chat => `
+                                        <tr>
+                                            <td><small>${new Date(chat.created_at).toLocaleString('pt-BR')}</small></td>
+                                            <td><small>${chat.pagina_origem || '-'}</small></td>
+                                            <td><small>${chat.categoria || '-'}</small></td>
+                                            <td><small>${chat.tokens_usados || 0}</small></td>
+                                            <td>${chat.satisfacao ? '<span class="badge bg-warning">⭐'.repeat(chat.satisfacao) + '</span>' : '-'}</td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            // Histórico de coletas
+            if (coletasHistory.length > 0) {
+                html += `
+                    <div class="mb-3">
+                        <h6 class="text-primary mb-2"><i class="fas fa-clipboard-list me-2"></i>Ações em Coletas (${coletasHistory.length})</h6>
+                        <div class="table-responsive" style="max-height: 200px; overflow-y: auto;">
+                            <table class="table table-sm table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Data</th>
+                                        <th>Ação</th>
+                                        <th>Detalhes</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${coletasHistory.slice(0, 10).map(hist => `
+                                        <tr>
+                                            <td><small>${new Date(hist.created_at).toLocaleString('pt-BR')}</small></td>
+                                            <td><small>${hist.acao}</small></td>
+                                            <td><small>${hist.detalhes || '-'}</small></td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            // Logs de atividade
+            if (activityLogs.length > 0) {
+                html += `
+                    <div class="mb-3">
+                        <h6 class="text-primary mb-2"><i class="fas fa-history me-2"></i>Logs de Atividade (${activityLogs.length})</h6>
+                        <div class="table-responsive" style="max-height: 200px; overflow-y: auto;">
+                            <table class="table table-sm table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Data</th>
+                                        <th>Ação</th>
+                                        <th>Página</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${activityLogs.slice(0, 10).map(log => `
+                                        <tr>
+                                            <td><small>${new Date(log.created_at).toLocaleString('pt-BR')}</small></td>
+                                            <td><small>${log.acao}</small></td>
+                                            <td><small>${log.pagina || '-'}</small></td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            if (disparos.length === 0 && chatIA.length === 0 && coletasHistory.length === 0 && activityLogs.length === 0) {
+                html += `
+                    <div class="alert alert-info mb-0">
+                        <i class="fas fa-info-circle me-2"></i>
+                        Nenhuma atividade registrada ainda.
+                    </div>
+                `;
+            }
+            
+            html += '</div>';
+            container.innerHTML = html;
+        }
+
         // ========== USUÁRIOS LOGADOS ==========
         async function carregarUsuariosLogados() {
             try {
@@ -1365,7 +1679,7 @@
                     const card = document.createElement('div');
                     card.className = 'col-md-6 col-lg-4';
                     card.innerHTML = `
-                        <div class="card border-0 shadow-sm h-100" style="transition: transform 0.2s;">
+                        <div class="card border-0 shadow-sm h-100 usuario-logado-card" data-user-id="${usuario.id}" style="cursor: pointer; transition: transform 0.2s;">
                             <div class="card-body">
                                 <div class="d-flex align-items-start justify-content-between mb-2">
                                     <div class="flex-grow-1">
@@ -1385,10 +1699,32 @@
                                 ${departamento}
                                 ${cargo}
                                 ${ultimoLogin}
+                                <div class="mt-3 text-center">
+                                    <button class="btn btn-sm btn-outline-primary expand-history-btn" data-user-id="${usuario.id}">
+                                        <i class="fas fa-chevron-down me-1"></i>
+                                        Ver Histórico
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="card-body border-top collapse historico-container" id="historico-${usuario.id.replace(/[^a-zA-Z0-9]/g, '_')}">
+                                <div class="spinner-border spinner-border-sm text-primary" role="status">
+                                    <span class="visually-hidden">Carregando...</span>
+                                </div>
+                                <p class="text-muted small mt-2">Carregando histórico...</p>
                             </div>
                         </div>
                     `;
                     container.appendChild(card);
+                    
+                    // Adicionar evento de clique
+                    const cardElement = card.querySelector('.usuario-logado-card');
+                    const expandBtn = card.querySelector('.expand-history-btn');
+                    const historicoContainer = card.querySelector('.historico-container');
+                    
+                    expandBtn.addEventListener('click', async (e) => {
+                        e.stopPropagation();
+                        await toggleHistoricoUsuario(usuario.id, historicoContainer, expandBtn);
+                    });
                 });
                 
                 console.log(`✅ ${data.usuarios.length} usuário(s) logado(s) carregado(s)`);
@@ -1416,17 +1752,46 @@
                     return;
                 }
 
-                const { data, error } = await window.supabase
+                // Buscar todos os usuários
+                const { data: usuarios, error } = await window.supabase
                     .from('user_profiles')
                     .select('*')
                     .order('nome');
 
                 if (error) throw error;
 
-                usuariosData = data || [];
+                // Buscar IDs de motoristas na tabela motoristas
+                const { data: motoristas, error: motoristasError } = await window.supabase
+                    .from('motoristas')
+                    .select('auth_user_id')
+                    .not('auth_user_id', 'is', null);
+
+                if (motoristasError) {
+                    console.warn('⚠️ Erro ao buscar motoristas:', motoristasError);
+                }
+
+                // Criar Set com IDs de motoristas para busca rápida
+                const motoristaIds = new Set();
+                if (motoristas && motoristas.length > 0) {
+                    motoristas.forEach(m => {
+                        if (m.auth_user_id) {
+                            motoristaIds.add(m.auth_user_id);
+                        }
+                    });
+                }
+
+                // Filtrar apenas usuários administrativos (excluir motoristas)
+                usuariosData = (usuarios || []).filter(usuario => {
+                    // Excluir se for um motorista
+                    if (motoristaIds.has(usuario.id)) {
+                        return false;
+                    }
+                    return true;
+                });
+
                 renderizarUsuarios();
                 atualizarSelectUsuarios();
-                console.log('✅ Usuários carregados:', usuariosData.length);
+                console.log(`✅ ${usuariosData.length} usuário(s) administrativo(s) carregado(s) (${(usuarios || []).length - usuariosData.length} motorista(s) excluído(s))`);
             } catch (error) {
                 console.error('❌ Erro ao carregar usuários:', error);
                 usuariosData = [];
@@ -2395,12 +2760,41 @@
 
                 if (error) throw error;
 
-                if (!usuarios || usuarios.length === 0) {
-                    container.innerHTML = '<p class="text-muted text-center py-3">Nenhum usuário encontrado.</p>';
+                // Buscar IDs de motoristas na tabela motoristas
+                const { data: motoristas, error: motoristasError } = await window.supabase
+                    .from('motoristas')
+                    .select('auth_user_id')
+                    .not('auth_user_id', 'is', null);
+
+                if (motoristasError) {
+                    console.warn('⚠️ Erro ao buscar motoristas:', motoristasError);
+                }
+
+                // Criar Set com IDs de motoristas para busca rápida
+                const motoristaIds = new Set();
+                if (motoristas && motoristas.length > 0) {
+                    motoristas.forEach(m => {
+                        if (m.auth_user_id) {
+                            motoristaIds.add(m.auth_user_id);
+                        }
+                    });
+                }
+
+                // Filtrar apenas usuários administrativos (excluir motoristas)
+                const usuariosAdministrativos = (usuarios || []).filter(usuario => {
+                    // Excluir se for um motorista
+                    if (motoristaIds.has(usuario.id)) {
+                        return false;
+                    }
+                    return true;
+                });
+
+                if (usuariosAdministrativos.length === 0) {
+                    container.innerHTML = '<p class="text-muted text-center py-3">Nenhum usuário administrativo encontrado.</p>';
                     return;
                 }
                 
-                console.log('👤 Total de usuários:', usuarios.length);
+                console.log(`👤 Total de usuários administrativos: ${usuariosAdministrativos.length} (${(usuarios || []).length - usuariosAdministrativos.length} motorista(s) excluído(s))`);
 
                 // LIMPAR E RECRIAR TUDO com estrutura simples e funcional
                 container.innerHTML = '';
@@ -2408,7 +2802,7 @@
                 // Criar div wrapper
                 const wrapper = document.createElement('div');
                 
-                usuarios.forEach(usuario => {
+                usuariosAdministrativos.forEach(usuario => {
                     const usuarioId = String(usuario.id);
                     const estaSelecionado = idsSelecionados.includes(usuarioId);
                     const temTelefone = !!usuario.telefone;
@@ -2476,7 +2870,7 @@
                 
                 container.appendChild(wrapper);
                 
-                console.log(`✅ ${usuarios.length} usuários carregados com checkboxes funcionais`);
+                console.log(`✅ ${usuariosAdministrativos.length} usuário(s) administrativo(s) carregado(s) com checkboxes funcionais`);
                 
             } catch (error) {
                 console.error('❌ Erro ao carregar usuários para emergência:', error);

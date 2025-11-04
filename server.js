@@ -2928,6 +2928,25 @@ app.get('/api/active-sessions', async (req, res) => {
     const usuariosUnicos = new Set();
     const usuariosDetalhes = new Map(); // Map para armazenar detalhes dos usuários
     
+    // Buscar IDs de motoristas para excluir (fazer isso primeiro)
+    const motoristaIds = new Set();
+    try {
+      const { data: motoristas, error: motoristasError } = await supabaseAdmin
+        .from('motoristas')
+        .select('auth_user_id')
+        .not('auth_user_id', 'is', null);
+      
+      if (!motoristasError && motoristas) {
+        motoristas.forEach(m => {
+          if (m.auth_user_id) {
+            motoristaIds.add(m.auth_user_id);
+          }
+        });
+      }
+    } catch (error) {
+      console.warn('⚠️ Erro ao buscar motoristas:', error.message);
+    }
+    
     // 1. Contar sessões ativas do SQLite (express-session)
     try {
       const db = new sqlite3.Database('./sessions.db');
@@ -2967,6 +2986,10 @@ app.get('/api/active-sessions', async (req, res) => {
                     // Adicionar ID do usuário ou email como identificador único
                     const userId = sessData.userData?.id || sessData.userData?.email || sessData.usuario?.id || sessData.usuario?.email || sessData.usuario;
                     if (userId) {
+                      // Excluir motoristas
+                      if (motoristaIds.has(userId)) {
+                        return;
+                      }
                       usuariosUnicos.add(userId);
                       // Armazenar detalhes da sessão
                       if (sessData.userData) {
@@ -3002,6 +3025,11 @@ app.get('/api/active-sessions', async (req, res) => {
         const vinteQuatroHoras = 24 * 60 * 60 * 1000; // 24 horas em ms
         
         authUsers.users.forEach(user => {
+          // Excluir motoristas
+          if (motoristaIds.has(user.id)) {
+            return;
+          }
+          
           // Verificar se o usuário tem última sessão recente (últimas 24h)
           if (user.last_sign_in_at) {
             const lastSignIn = new Date(user.last_sign_in_at).getTime();
@@ -3026,9 +3054,14 @@ app.get('/api/active-sessions', async (req, res) => {
       console.warn('⚠️ Erro ao buscar usuários do Supabase Auth:', error.message);
     }
     
-    // 3. Buscar informações completas dos usuários no user_profiles
+    // 3. Buscar informações completas dos usuários no user_profiles e filtrar motoristas
     const usuariosCompletos = [];
     for (const userId of usuariosUnicos) {
+      // Excluir motoristas antes de buscar perfil
+      if (motoristaIds.has(userId)) {
+        continue;
+      }
+      
       try {
         const { data: profile, error } = await supabaseAdmin
           .from('user_profiles')
@@ -3048,7 +3081,7 @@ app.get('/api/active-sessions', async (req, res) => {
             last_sign_in_at: detalhes.last_sign_in_at || null
           });
         } else if (detalhes && detalhes.id) {
-          // Se não encontrou no user_profiles, usar dados da sessão
+          // Se não encontrou no user_profiles, usar dados da sessão (só se não for motorista)
           usuariosCompletos.push({
             id: detalhes.id,
             nome: detalhes.nome || 'Sem nome',
@@ -3064,9 +3097,9 @@ app.get('/api/active-sessions', async (req, res) => {
       }
     }
     
-    const totalUsuariosLogados = usuariosUnicos.size;
+    const totalUsuariosLogados = usuariosCompletos.length;
     
-    console.log(`👥 Usuários únicos logados: ${totalUsuariosLogados}`);
+    console.log(`👥 Usuários administrativos únicos logados: ${totalUsuariosLogados} (motoristas excluídos)`);
     
     res.json({
       success: true,
@@ -3080,6 +3113,164 @@ app.get('/api/active-sessions', async (req, res) => {
       count: 0,
       usuarios: [],
       error: 'Erro ao contar sessões'
+    });
+  }
+});
+
+// ========== ENDPOINT PARA HISTÓRICO DE ATIVIDADES DO USUÁRIO ==========
+app.get('/api/user-activity/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    
+    // Verificar autenticação - tentar múltiplas formas
+    let user = null;
+    let isAdmin = false;
+    
+    // 1. Tentar via getUserFromRequest (sessão ou token Supabase)
+    const userResult = await getUserFromRequest(req);
+    
+    if (userResult && userResult.user) {
+      user = userResult.user;
+      // Buscar role no user_profiles
+      try {
+        const { data: profile, error } = await supabaseAdmin
+          .from('user_profiles')
+          .select('role')
+          .eq('id', user.id)
+          .maybeSingle();
+        
+        if (!error && profile) {
+          isAdmin = profile.role === 'admin';
+          user.role = profile.role;
+        }
+      } catch (error) {
+        console.warn('⚠️ Erro ao buscar role do usuário:', error.message);
+      }
+    }
+    
+    // 2. Se não encontrou, tentar verificar se é admin através do localStorage via header
+    if (!user) {
+      const xUserEmail = req.headers['x-user-email'];
+      if (xUserEmail) {
+        try {
+          // Buscar usuário pelo email no user_profiles
+          const { data: profile, error } = await supabaseAdmin
+            .from('user_profiles')
+            .select('id, role, email')
+            .eq('email', xUserEmail)
+            .maybeSingle();
+          
+          if (!error && profile) {
+            user = {
+              id: profile.id,
+              email: profile.email,
+              role: profile.role
+            };
+            isAdmin = profile.role === 'admin';
+          }
+        } catch (error) {
+          console.warn('⚠️ Erro ao buscar usuário por email:', error.message);
+        }
+      }
+    }
+    
+    // 3. Se ainda não encontrou, retornar erro
+    if (!user || !user.id) {
+      console.log('❌ Usuário não autenticado no endpoint /api/user-activity');
+      return res.status(401).json({ success: false, error: 'Não autenticado' });
+    }
+    
+    // Verificar permissões
+    const isOwnProfile = user.id === userId;
+    
+    // Permitir acesso se for admin OU se for o próprio perfil
+    if (!isAdmin && !isOwnProfile) {
+      console.log(`❌ Sem permissão: user.id=${user.id}, userId=${userId}, isAdmin=${isAdmin}`);
+      return res.status(403).json({ success: false, error: 'Sem permissão para acessar este histórico' });
+    }
+    
+    console.log(`✅ Permissão concedida: user.id=${user.id}, userId=${userId}, isAdmin=${isAdmin}`);
+    
+    // Buscar histórico de atividades da tabela user_activity_logs
+    const { data: activityLogs, error: activityError } = await supabaseAdmin
+      .from('user_activity_logs')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(100);
+    
+    if (activityError) {
+      console.error('❌ Erro ao buscar activity logs:', activityError);
+    }
+    
+    // Buscar último login do user_profiles
+    const { data: profile, error: profileError } = await supabaseAdmin
+      .from('user_profiles')
+      .select('last_login, created_at')
+      .eq('id', userId)
+      .maybeSingle();
+    
+    // Buscar histórico de coletas
+    const { data: coletasHistory, error: coletasError } = await supabaseAdmin
+      .from('historico_coletas')
+      .select('acao, detalhes, created_at')
+      .ilike('usuario', userId) // Usar ilike para buscar por string
+      .order('created_at', { ascending: false })
+      .limit(50);
+    
+    // Buscar disparos de mensagens
+    const { data: disparos, error: disparosError } = await supabaseAdmin
+      .from('disparos_log')
+      .select('numero, status, created_at, mensagem_tamanho')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(50);
+    
+    // Buscar uso do chat com IA
+    const { data: chatIA, error: chatError } = await supabaseAdmin
+      .from('chat_ia_conversas')
+      .select('mensagem, resposta, pagina_origem, categoria, tokens_usados, satisfacao, created_at')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(50);
+    
+    // Buscar histórico de movimentações em coletas
+    const { data: movimentacoes, error: movError } = await supabaseAdmin
+      .from('historico_movimentacoes')
+      .select('acao, detalhes, created_at')
+      .eq('usuario_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(50);
+    
+    // Buscar última sessão do Supabase Auth
+    let lastSignIn = null;
+    try {
+      const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.getUserById(userId);
+      if (!authError && authUser?.user?.last_sign_in_at) {
+        lastSignIn = authUser.user.last_sign_in_at;
+      }
+    } catch (error) {
+      console.warn('⚠️ Erro ao buscar last_sign_in_at:', error.message);
+    }
+    
+    res.json({
+      success: true,
+      data: {
+        userId,
+        lastLogin: profile?.last_login || lastSignIn,
+        accountCreated: profile?.created_at,
+        activityLogs: activityLogs || [],
+        coletasHistory: coletasHistory || [],
+        disparos: disparos || [],
+        chatIA: chatIA || [],
+        movimentacoes: movimentacoes || []
+      }
+    });
+  } catch (error) {
+    console.error('❌ Erro ao buscar histórico de atividades:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Erro ao buscar histórico de atividades'
     });
   }
 });
