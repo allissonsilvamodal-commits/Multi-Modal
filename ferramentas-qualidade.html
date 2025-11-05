@@ -1,0 +1,1697 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ferramentas de Qualidade - Intranet</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/permissions.js"></script>
+    <style>
+        :root {
+            --primary: #667eea;
+            --secondary: #764ba2;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            min-height: 100vh;
+        }
+        
+        .header-section {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            padding: 2rem 0;
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+        
+        .tool-card {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            padding: 2rem;
+            margin-bottom: 2rem;
+            transition: all 0.3s ease;
+            border: 1px solid #e5e7eb;
+        }
+        
+        .tool-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 30px rgba(0,0,0,0.15);
+            border-color: var(--primary);
+        }
+        
+        .tool-icon {
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+        }
+        
+        .nav-tabs .nav-link {
+            color: #6b7280;
+            border: none;
+            border-bottom: 3px solid transparent;
+            padding: 0.75rem 1.5rem;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+        
+        .nav-tabs .nav-link:hover {
+            color: var(--primary);
+            border-bottom-color: rgba(102, 126, 234, 0.3);
+        }
+        
+        .nav-tabs .nav-link.active {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+            background: transparent;
+        }
+        
+        .form-section {
+            background: #f9fafb;
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+        }
+        
+        .ishikawa-container {
+            position: relative;
+            min-height: 500px;
+            overflow: auto;
+        }
+        
+        .ishikawa-diagram {
+            position: relative;
+            margin: 50px auto;
+            width: 100%;
+            max-width: 1000px;
+        }
+        
+        .fishbone-spine {
+            stroke: #333;
+            stroke-width: 3;
+        }
+        
+        .fishbone-branch {
+            stroke: #667eea;
+            stroke-width: 2;
+        }
+        
+        .fishbone-label {
+            font-size: 14px;
+            fill: #333;
+            font-weight: 500;
+        }
+        
+        .action-item {
+            background: white;
+            border-left: 4px solid var(--primary);
+            padding: 1rem;
+            margin-bottom: 1rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        .action-item.completed {
+            border-left-color: var(--success);
+            opacity: 0.8;
+        }
+        
+        .btn-export {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            border: none;
+            color: white;
+            padding: 0.5rem 1.5rem;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-export:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <div class="header-section">
+        <div class="container">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1><i class="fas fa-tools me-2"></i>Ferramentas de Qualidade</h1>
+                    <p class="mb-0">Conjunto de ferramentas para análise e melhoria contínua</p>
+                </div>
+                <div>
+                    <a href="treinamentos.html" class="btn btn-light">
+                        <i class="fas fa-arrow-left me-2"></i>Voltar aos Treinamentos
+                    </a>
+                    <a href="portal.html" class="btn btn-light ms-2">
+                        <i class="fas fa-home me-2"></i>Portal
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- Tabs de Ferramentas -->
+        <ul class="nav nav-tabs mb-4" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-5porques" type="button">
+                    <i class="fas fa-question-circle me-1"></i>5 Porquês
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-5w2h" type="button">
+                    <i class="fas fa-clipboard-question me-1"></i>5W2H
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-ishikawa" type="button">
+                    <i class="fas fa-project-diagram me-1"></i>Ishikawa
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-plano-acao" type="button">
+                    <i class="fas fa-tasks me-1"></i>Plano de Ação
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-pdca" type="button">
+                    <i class="fas fa-sync-alt me-1"></i>PDCA
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-brainstorm" type="button">
+                    <i class="fas fa-lightbulb me-1"></i>Brainstorming
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-arquivos" type="button">
+                    <i class="fas fa-archive me-1"></i>Arquivos
+                    <span class="badge bg-danger ms-1" id="badgeAlertas" style="display: none;">0</span>
+                </button>
+            </li>
+        </ul>
+
+        <div class="tab-content">
+            <!-- Tab 5 Porquês -->
+            <div class="tab-pane fade show active" id="tab-5porques" role="tabpanel">
+                <div class="tool-card">
+                    <div class="d-flex align-items-center mb-4">
+                        <div class="tool-icon">
+                            <i class="fas fa-question-circle"></i>
+                        </div>
+                        <div class="ms-3">
+                            <h3>5 Porquês</h3>
+                            <p class="text-muted mb-0">Técnica para identificar a causa raiz de um problema através de perguntas sucessivas</p>
+                        </div>
+                    </div>
+                    
+                    <div class="form-section">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Problema Identificado:</label>
+                            <input type="text" class="form-control" id="problema5porques" placeholder="Descreva o problema inicial">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">1º Por quê?</label>
+                            <input type="text" class="form-control" id="porque1" placeholder="Por que isso aconteceu?">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">2º Por quê?</label>
+                            <input type="text" class="form-control" id="porque2" placeholder="Por que isso aconteceu?">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">3º Por quê?</label>
+                            <input type="text" class="form-control" id="porque3" placeholder="Por que isso aconteceu?">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">4º Por quê?</label>
+                            <input type="text" class="form-control" id="porque4" placeholder="Por que isso aconteceu?">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">5º Por quê?</label>
+                            <input type="text" class="form-control" id="porque5" placeholder="Por que isso aconteceu?">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Causa Raiz Identificada:</label>
+                            <textarea class="form-control" id="causaRaiz" rows="3" placeholder="Com base nas respostas, identifique a causa raiz"></textarea>
+                        </div>
+                        
+                        <div class="d-flex gap-2">
+                            <button class="btn btn-primary" onclick="exportar5Porques()">
+                                <i class="fas fa-download me-2"></i>Exportar PDF
+                            </button>
+                            <button class="btn btn-secondary" onclick="limpar5Porques()">
+                                <i class="fas fa-redo me-2"></i>Limpar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab 5W2H -->
+            <div class="tab-pane fade" id="tab-5w2h" role="tabpanel">
+                <div class="tool-card">
+                    <div class="d-flex align-items-center mb-4">
+                        <div class="tool-icon">
+                            <i class="fas fa-clipboard-question"></i>
+                        </div>
+                        <div class="ms-3">
+                            <h3>5W2H</h3>
+                            <p class="text-muted mb-0">Ferramenta para planejamento e organização de ações através de perguntas específicas</p>
+                        </div>
+                    </div>
+                    
+                    <div class="form-section">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Título do 5W2H:</label>
+                            <input type="text" class="form-control" id="titulo5w2h" placeholder="Nome/identificação deste 5W2H">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <label class="form-label fw-bold mb-0">Linhas de Informação:</label>
+                                <button class="btn btn-sm btn-primary" onclick="adicionarLinha5W2H()">
+                                    <i class="fas fa-plus me-1"></i>Adicionar Linha
+                                </button>
+                            </div>
+                            <div id="linhas5w2h">
+                                <!-- Linhas serão adicionadas aqui -->
+                            </div>
+                        </div>
+                        
+                        <div class="d-flex gap-2">
+                            <button class="btn btn-success" onclick="salvar5W2H()">
+                                <i class="fas fa-save me-2"></i>Salvar
+                            </button>
+                            <button class="btn btn-primary" onclick="exportar5W2H()">
+                                <i class="fas fa-download me-2"></i>Exportar PDF
+                            </button>
+                            <button class="btn btn-secondary" onclick="limpar5W2H()">
+                                <i class="fas fa-redo me-2"></i>Limpar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab Ishikawa -->
+            <div class="tab-pane fade" id="tab-ishikawa" role="tabpanel">
+                <div class="tool-card">
+                    <div class="d-flex align-items-center mb-4">
+                        <div class="tool-icon">
+                            <i class="fas fa-project-diagram"></i>
+                        </div>
+                        <div class="ms-3">
+                            <h3>Diagrama de Ishikawa (Espinha de Peixe)</h3>
+                            <p class="text-muted mb-0">Diagrama para identificar e organizar causas de um problema</p>
+                        </div>
+                    </div>
+                    
+                    <div class="form-section mb-4">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Problema (Efeito):</label>
+                            <input type="text" class="form-control" id="problemaIshikawa" placeholder="Descreva o problema principal">
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-3 mb-3">
+                                <label class="form-label fw-bold">Método:</label>
+                                <textarea class="form-control" id="ishikawa-metodo" rows="3" placeholder="Causas relacionadas ao método/processo"></textarea>
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <label class="form-label fw-bold">Mão de Obra:</label>
+                                <textarea class="form-control" id="ishikawa-maoobra" rows="3" placeholder="Causas relacionadas às pessoas"></textarea>
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <label class="form-label fw-bold">Material:</label>
+                                <textarea class="form-control" id="ishikawa-material" rows="3" placeholder="Causas relacionadas aos materiais"></textarea>
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <label class="form-label fw-bold">Máquina:</label>
+                                <textarea class="form-control" id="ishikawa-maquina" rows="3" placeholder="Causas relacionadas às máquinas/equipamentos"></textarea>
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <label class="form-label fw-bold">Meio Ambiente:</label>
+                                <textarea class="form-control" id="ishikawa-meioambiente" rows="3" placeholder="Causas relacionadas ao ambiente"></textarea>
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <label class="form-label fw-bold">Medição:</label>
+                                <textarea class="form-control" id="ishikawa-medicao" rows="3" placeholder="Causas relacionadas à medição"></textarea>
+                            </div>
+                        </div>
+                        
+                        <div class="d-flex gap-2">
+                            <button class="btn btn-primary" onclick="visualizarIshikawa()">
+                                <i class="fas fa-eye me-2"></i>Visualizar Diagrama
+                            </button>
+                            <button class="btn btn-success" onclick="exportarIshikawa()">
+                                <i class="fas fa-download me-2"></i>Exportar PDF
+                            </button>
+                            <button class="btn btn-secondary" onclick="limparIshikawa()">
+                                <i class="fas fa-redo me-2"></i>Limpar
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="ishikawa-container" id="ishikawa-diagram-container" style="display: none;">
+                        <svg id="ishikawa-svg" class="ishikawa-diagram"></svg>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab Plano de Ação -->
+            <div class="tab-pane fade" id="tab-plano-acao" role="tabpanel">
+                <div class="tool-card">
+                    <div class="d-flex align-items-center mb-4">
+                        <div class="tool-icon">
+                            <i class="fas fa-tasks"></i>
+                        </div>
+                        <div class="ms-3">
+                            <h3>Plano de Ação</h3>
+                            <p class="text-muted mb-0">Organize ações, responsáveis, prazos e status de execução</p>
+                        </div>
+                    </div>
+                    
+                    <div class="form-section mb-4">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Título do Plano:</label>
+                            <input type="text" class="form-control" id="tituloPlano" placeholder="Nome do plano de ação">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Objetivo:</label>
+                            <textarea class="form-control" id="objetivoPlano" rows="2" placeholder="Qual o objetivo deste plano?"></textarea>
+                        </div>
+                        
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h5 class="mb-0">Ações</h5>
+                            <button class="btn btn-primary btn-sm" onclick="adicionarAcao()">
+                                <i class="fas fa-plus me-1"></i>Adicionar Ação
+                            </button>
+                        </div>
+                        
+                        <div id="listaAcoes">
+                            <!-- Ações serão adicionadas aqui -->
+                        </div>
+                        
+                        <div class="alert alert-info mt-3" id="alertasPlano" style="display: none;">
+                            <i class="fas fa-info-circle me-2"></i>
+                            <strong>Alertas de Prazo:</strong>
+                            <div id="listaAlertasPlano"></div>
+                        </div>
+                        
+                        <div class="d-flex gap-2 mt-3">
+                            <button class="btn btn-success" onclick="salvarPlanoAcao()">
+                                <i class="fas fa-save me-2"></i>Salvar
+                            </button>
+                            <button class="btn btn-primary" onclick="exportarPlanoAcao()">
+                                <i class="fas fa-download me-2"></i>Exportar PDF
+                            </button>
+                            <button class="btn btn-secondary" onclick="limparPlanoAcao()">
+                                <i class="fas fa-redo me-2"></i>Limpar Tudo
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab PDCA -->
+            <div class="tab-pane fade" id="tab-pdca" role="tabpanel">
+                <div class="tool-card">
+                    <div class="d-flex align-items-center mb-4">
+                        <div class="tool-icon">
+                            <i class="fas fa-sync-alt"></i>
+                        </div>
+                        <div class="ms-3">
+                            <h3>PDCA (Plan-Do-Check-Act)</h3>
+                            <p class="text-muted mb-0">Ciclo de melhoria contínua: Planejar, Executar, Verificar e Agir</p>
+                        </div>
+                    </div>
+                    
+                    <div class="form-section">
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <div class="card h-100 border-primary">
+                                    <div class="card-header bg-primary text-white">
+                                        <h5 class="mb-0"><i class="fas fa-clipboard-list me-2"></i>PLAN - Planejar</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="mb-3">
+                                            <label class="form-label fw-bold">Problema/Oportunidade:</label>
+                                            <textarea class="form-control" id="pdca-problema" rows="2"></textarea>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label fw-bold">Objetivo:</label>
+                                            <textarea class="form-control" id="pdca-objetivo" rows="2"></textarea>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label fw-bold">Plano de Ação:</label>
+                                            <textarea class="form-control" id="pdca-plano" rows="3"></textarea>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="card h-100 border-success">
+                                    <div class="card-header bg-success text-white">
+                                        <h5 class="mb-0"><i class="fas fa-play me-2"></i>DO - Executar</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="mb-3">
+                                            <label class="form-label fw-bold">O que foi executado:</label>
+                                            <textarea class="form-control" id="pdca-executado" rows="3"></textarea>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label fw-bold">Dificuldades encontradas:</label>
+                                            <textarea class="form-control" id="pdca-dificuldades" rows="2"></textarea>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <div class="card h-100 border-warning">
+                                    <div class="card-header bg-warning text-dark">
+                                        <h5 class="mb-0"><i class="fas fa-search me-2"></i>CHECK - Verificar</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="mb-3">
+                                            <label class="form-label fw-bold">Resultados obtidos:</label>
+                                            <textarea class="form-control" id="pdca-resultados" rows="3"></textarea>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label fw-bold">Comparação com objetivo:</label>
+                                            <textarea class="form-control" id="pdca-comparacao" rows="2"></textarea>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="card h-100 border-danger">
+                                    <div class="card-header bg-danger text-white">
+                                        <h5 class="mb-0"><i class="fas fa-cog me-2"></i>ACT - Agir</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="mb-3">
+                                            <label class="form-label fw-bold">Padronização:</label>
+                                            <textarea class="form-control" id="pdca-padronizacao" rows="2"></textarea>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label fw-bold">Próximos passos:</label>
+                                            <textarea class="form-control" id="pdca-proximos" rows="2"></textarea>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label fw-bold">Próximo ciclo PDCA:</label>
+                                            <textarea class="form-control" id="pdca-proximo-ciclo" rows="2"></textarea>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="d-flex gap-2">
+                            <button class="btn btn-primary" onclick="exportarPDCA()">
+                                <i class="fas fa-download me-2"></i>Exportar PDF
+                            </button>
+                            <button class="btn btn-secondary" onclick="limparPDCA()">
+                                <i class="fas fa-redo me-2"></i>Limpar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab Brainstorming -->
+            <div class="tab-pane fade" id="tab-brainstorm" role="tabpanel">
+                <div class="tool-card">
+                    <div class="d-flex align-items-center mb-4">
+                        <div class="tool-icon">
+                            <i class="fas fa-lightbulb"></i>
+                        </div>
+                        <div class="ms-3">
+                            <h3>Brainstorming</h3>
+                            <p class="text-muted mb-0">Técnica para gerar ideias e soluções criativas</p>
+                        </div>
+                    </div>
+                    
+                    <div class="form-section">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Tema/Problema:</label>
+                            <input type="text" class="form-control" id="temaBrainstorm" placeholder="Qual o tema ou problema a ser discutido?">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Objetivo:</label>
+                            <textarea class="form-control" id="objetivoBrainstorm" rows="2" placeholder="Qual o objetivo desta sessão?"></textarea>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Regras:</label>
+                            <ul class="list-group">
+                                <li class="list-group-item"><i class="fas fa-check-circle text-success me-2"></i>Não critique ideias</li>
+                                <li class="list-group-item"><i class="fas fa-check-circle text-success me-2"></i>Quantidade é mais importante que qualidade</li>
+                                <li class="list-group-item"><i class="fas fa-check-circle text-success me-2"></i>Construa sobre ideias dos outros</li>
+                                <li class="list-group-item"><i class="fas fa-check-circle text-success me-2"></i>Pensamentos livres e criativos</li>
+                            </ul>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Ideias:</label>
+                            <div class="input-group mb-2">
+                                <input type="text" class="form-control" id="novaIdeia" placeholder="Digite uma ideia...">
+                                <button class="btn btn-primary" onclick="adicionarIdeia()">
+                                    <i class="fas fa-plus"></i> Adicionar
+                                </button>
+                            </div>
+                            <div id="listaIdeias" class="row g-2">
+                                <!-- Ideias serão adicionadas aqui -->
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Ideias Selecionadas (Top 5):</label>
+                            <div id="ideiasSelecionadas" class="list-group">
+                                <!-- Ideias selecionadas aparecerão aqui -->
+                            </div>
+                        </div>
+                        
+                        <div class="d-flex gap-2">
+                            <button class="btn btn-primary" onclick="exportarBrainstorm()">
+                                <i class="fas fa-download me-2"></i>Exportar PDF
+                            </button>
+                            <button class="btn btn-secondary" onclick="limparBrainstorm()">
+                                <i class="fas fa-redo me-2"></i>Limpar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab Arquivos -->
+            <div class="tab-pane fade" id="tab-arquivos" role="tabpanel">
+                <div class="tool-card">
+                    <div class="d-flex align-items-center mb-4">
+                        <div class="tool-icon">
+                            <i class="fas fa-archive"></i>
+                        </div>
+                        <div class="ms-3">
+                            <h3>Ferramentas Arquivadas</h3>
+                            <p class="text-muted mb-0">Consulte e gerencie suas ferramentas salvas</p>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <div class="row">
+                            <div class="col-md-4">
+                                <select class="form-select" id="filtroTipoArquivo">
+                                    <option value="">Todos os tipos</option>
+                                    <option value="5porques">5 Porquês</option>
+                                    <option value="5w2h">5W2H</option>
+                                    <option value="ishikawa">Ishikawa</option>
+                                    <option value="plano_acao">Plano de Ação</option>
+                                    <option value="pdca">PDCA</option>
+                                    <option value="brainstorm">Brainstorming</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <select class="form-select" id="filtroArquivado">
+                                    <option value="false">Ativas</option>
+                                    <option value="true">Arquivadas</option>
+                                    <option value="">Todas</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <button class="btn btn-primary w-100" onclick="carregarFerramentasArquivadas()">
+                                    <i class="fas fa-search me-2"></i>Filtrar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div id="listaFerramentasArquivadas">
+                        <div class="text-center py-5">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Carregando...</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Variáveis globais
+        let acoesPlano = [];
+        let ideiasBrainstorm = [];
+        let ideiasSelecionadas = [];
+        let linhas5W2H = [];
+        let usuariosPlataforma = [];
+        let ferramentaAtualId = null; // ID da ferramenta sendo editada
+        
+        // Carregar usuários ao iniciar
+        async function carregarUsuarios() {
+            try {
+                const response = await fetch('/api/ferramentas-qualidade/usuarios', {
+                    credentials: 'include'
+                });
+                const data = await response.json();
+                if (data.success) {
+                    usuariosPlataforma = data.usuarios || [];
+                }
+            } catch (error) {
+                console.error('❌ Erro ao carregar usuários:', error);
+            }
+        }
+        
+        // Carregar alertas ao iniciar
+        async function carregarAlertas() {
+            try {
+                const response = await fetch('/api/ferramentas-qualidade/alertas', {
+                    credentials: 'include'
+                });
+                const data = await response.json();
+                if (data.success && data.alertas) {
+                    const alertasVencidos = data.alertas.filter(a => a.status === 'vencido' || a.status === 'em_alerta');
+                    const badge = document.getElementById('badgeAlertas');
+                    if (badge) {
+                        if (alertasVencidos.length > 0) {
+                            badge.textContent = alertasVencidos.length;
+                            badge.style.display = 'inline-block';
+                        } else {
+                            badge.style.display = 'none';
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error('❌ Erro ao carregar alertas:', error);
+            }
+        }
+        
+        // Inicialização
+        document.addEventListener('DOMContentLoaded', async () => {
+            await carregarUsuarios();
+            await carregarAlertas();
+            setInterval(carregarAlertas, 60000); // Verificar alertas a cada minuto
+            
+            // Adicionar primeira linha ao 5W2H
+            adicionarLinha5W2H();
+            
+            // Carregar ferramentas quando a tab de arquivos for aberta
+            const tabArquivos = document.querySelector('[data-bs-target="#tab-arquivos"]');
+            if (tabArquivos) {
+                tabArquivos.addEventListener('shown.bs.tab', () => {
+                    carregarFerramentasArquivadas();
+                });
+            }
+        });
+        
+        // Função auxiliar para calcular dias restantes
+        function calcularDiasRestantes(prazo) {
+            if (!prazo) return null;
+            const hoje = new Date();
+            hoje.setHours(0, 0, 0, 0);
+            const prazoDate = new Date(prazo);
+            prazoDate.setHours(0, 0, 0, 0);
+            const diff = Math.floor((prazoDate - hoje) / (1000 * 60 * 60 * 24));
+            return diff;
+        }
+        
+        // Função auxiliar para formatar status de prazo
+        function formatarStatusPrazo(dias) {
+            if (dias === null) return { texto: '-', classe: 'text-muted' };
+            if (dias < 0) return { texto: `${Math.abs(dias)} dias atrasado`, classe: 'text-danger fw-bold' };
+            if (dias === 0) return { texto: 'Vence hoje', classe: 'text-warning fw-bold' };
+            if (dias <= 3) return { texto: `${dias} dias restantes`, classe: 'text-warning' };
+            return { texto: `${dias} dias restantes`, classe: 'text-success' };
+        }
+
+        // ========== 5 PORQUÊS ==========
+        function exportar5Porques() {
+            const problema = document.getElementById('problema5porques').value;
+            const porques = [
+                document.getElementById('porque1').value,
+                document.getElementById('porque2').value,
+                document.getElementById('porque3').value,
+                document.getElementById('porque4').value,
+                document.getElementById('porque5').value
+            ];
+            const causaRaiz = document.getElementById('causaRaiz').value;
+            
+            const conteudo = `
+                <h2>Análise 5 Porquês</h2>
+                <h3>Problema: ${problema}</h3>
+                <ol>
+                    ${porques.map((p, i) => `<li><strong>${i+1}º Por quê?</strong> ${p || 'Não preenchido'}</li>`).join('')}
+                </ol>
+                <h3>Causa Raiz Identificada:</h3>
+                <p>${causaRaiz || 'Não identificada'}</p>
+            `;
+            
+            imprimirConteudo(conteudo, 'Análise 5 Porquês');
+        }
+
+        function limpar5Porques() {
+            document.getElementById('problema5porques').value = '';
+            document.getElementById('porque1').value = '';
+            document.getElementById('porque2').value = '';
+            document.getElementById('porque3').value = '';
+            document.getElementById('porque4').value = '';
+            document.getElementById('porque5').value = '';
+            document.getElementById('causaRaiz').value = '';
+        }
+
+        // ========== 5W2H ==========
+        function adicionarLinha5W2H() {
+            const linha = {
+                id: Date.now(),
+                what: '',
+                why: '',
+                where: '',
+                when: '',
+                who: '',
+                how: '',
+                howMuch: '',
+                howMany: ''
+            };
+            linhas5W2H.push(linha);
+            renderizarLinhas5W2H();
+        }
+        
+        function removerLinha5W2H(id) {
+            linhas5W2H = linhas5W2H.filter(l => l.id !== id);
+            renderizarLinhas5W2H();
+        }
+        
+        function atualizarLinha5W2H(id, campo, valor) {
+            const linha = linhas5W2H.find(l => l.id === id);
+            if (linha) {
+                linha[campo] = valor;
+            }
+        }
+        
+        function renderizarLinhas5W2H() {
+            const container = document.getElementById('linhas5w2h');
+            container.innerHTML = '';
+            
+            linhas5W2H.forEach((linha, index) => {
+                const div = document.createElement('div');
+                div.className = 'card mb-3';
+                div.innerHTML = `
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <strong>Linha ${index + 1}</strong>
+                        <button class="btn btn-sm btn-danger" onclick="removerLinha5W2H(${linha.id})">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-2">
+                            <div class="col-md-6">
+                                <label class="form-label small">O QUÊ (What)?</label>
+                                <input type="text" class="form-control form-control-sm" 
+                                       value="${linha.what || ''}" 
+                                       onchange="atualizarLinha5W2H(${linha.id}, 'what', this.value)">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small">POR QUÊ (Why)?</label>
+                                <input type="text" class="form-control form-control-sm" 
+                                       value="${linha.why || ''}" 
+                                       onchange="atualizarLinha5W2H(${linha.id}, 'why', this.value)">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small">ONDE (Where)?</label>
+                                <input type="text" class="form-control form-control-sm" 
+                                       value="${linha.where || ''}" 
+                                       onchange="atualizarLinha5W2H(${linha.id}, 'where', this.value)">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small">QUANDO (When)?</label>
+                                <input type="text" class="form-control form-control-sm" 
+                                       value="${linha.when || ''}" 
+                                       onchange="atualizarLinha5W2H(${linha.id}, 'when', this.value)">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small">QUEM (Who)?</label>
+                                <input type="text" class="form-control form-control-sm" 
+                                       value="${linha.who || ''}" 
+                                       onchange="atualizarLinha5W2H(${linha.id}, 'who', this.value)">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small">COMO (How)?</label>
+                                <input type="text" class="form-control form-control-sm" 
+                                       value="${linha.how || ''}" 
+                                       onchange="atualizarLinha5W2H(${linha.id}, 'how', this.value)">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small">QUANTO (How much)?</label>
+                                <input type="text" class="form-control form-control-sm" 
+                                       value="${linha.howMuch || ''}" 
+                                       onchange="atualizarLinha5W2H(${linha.id}, 'howMuch', this.value)">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small">QUANTIDADE (How many)?</label>
+                                <input type="text" class="form-control form-control-sm" 
+                                       value="${linha.howMany || ''}" 
+                                       onchange="atualizarLinha5W2H(${linha.id}, 'howMany', this.value)">
+                            </div>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(div);
+            });
+        }
+        
+        async function salvar5W2H() {
+            const titulo = document.getElementById('titulo5w2h').value;
+            if (!titulo) {
+                alert('Por favor, preencha o título do 5W2H.');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/ferramentas-qualidade', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({
+                        id: ferramentaAtualId,
+                        tipo_ferramenta: '5w2h',
+                        titulo: titulo,
+                        dados: { linhas: linhas5W2H }
+                    })
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    ferramentaAtualId = data.ferramenta.id;
+                    alert('✅ 5W2H salvo com sucesso!');
+                } else {
+                    alert('❌ Erro ao salvar: ' + (data.error || 'Erro desconhecido'));
+                }
+            } catch (error) {
+                console.error('❌ Erro ao salvar 5W2H:', error);
+                alert('❌ Erro ao salvar 5W2H.');
+            }
+        }
+        
+        function exportar5W2H() {
+            const titulo = document.getElementById('titulo5w2h').value || 'Análise 5W2H';
+            
+            let htmlLinhas = linhas5W2H.map((linha, index) => `
+                <tr>
+                    <td><strong>Linha ${index + 1}</strong></td>
+                    <td>${linha.what || '-'}</td>
+                    <td>${linha.why || '-'}</td>
+                    <td>${linha.where || '-'}</td>
+                    <td>${linha.when || '-'}</td>
+                    <td>${linha.who || '-'}</td>
+                    <td>${linha.how || '-'}</td>
+                    <td>${linha.howMuch || '-'}</td>
+                    <td>${linha.howMany || '-'}</td>
+                </tr>
+            `).join('');
+            
+            const conteudo = `
+                <h2>${titulo}</h2>
+                <table class="table table-bordered">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>O QUÊ</th>
+                            <th>POR QUÊ</th>
+                            <th>ONDE</th>
+                            <th>QUANDO</th>
+                            <th>QUEM</th>
+                            <th>COMO</th>
+                            <th>QUANTO</th>
+                            <th>QUANTIDADE</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${htmlLinhas || '<tr><td colspan="9">Nenhuma linha cadastrada</td></tr>'}
+                    </tbody>
+                </table>
+            `;
+            
+            imprimirConteudo(conteudo, titulo);
+        }
+
+        function limpar5W2H() {
+            document.getElementById('titulo5w2h').value = '';
+            linhas5W2H = [];
+            ferramentaAtualId = null;
+            renderizarLinhas5W2H();
+            adicionarLinha5W2H(); // Adicionar primeira linha vazia
+        }
+
+        // ========== ISHIKAWA ==========
+        function visualizarIshikawa() {
+            const problema = document.getElementById('problemaIshikawa').value;
+            if (!problema) {
+                alert('Por favor, preencha o problema primeiro.');
+                return;
+            }
+            
+            const container = document.getElementById('ishikawa-diagram-container');
+            container.style.display = 'block';
+            
+            // Criar SVG do diagrama
+            const svg = document.getElementById('ishikawa-svg');
+            svg.innerHTML = '';
+            
+            const width = 1000;
+            const height = 600;
+            svg.setAttribute('width', width);
+            svg.setAttribute('height', height);
+            
+            // Espinha principal (horizontal)
+            const spine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+            spine.setAttribute('x1', '50');
+            spine.setAttribute('y1', height / 2);
+            spine.setAttribute('x2', width - 50);
+            spine.setAttribute('y2', height / 2);
+            spine.setAttribute('class', 'fishbone-spine');
+            svg.appendChild(spine);
+            
+            // Efeito (problema)
+            const textoEfeito = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            textoEfeito.setAttribute('x', width - 100);
+            textoEfeito.setAttribute('y', height / 2 - 20);
+            textoEfeito.setAttribute('class', 'fishbone-label');
+            textoEfeito.setAttribute('font-size', '18');
+            textoEfeito.setAttribute('font-weight', 'bold');
+            textoEfeito.textContent = problema;
+            svg.appendChild(textoEfeito);
+            
+            // Categorias 6M
+            const categorias = [
+                { nome: 'Método', id: 'ishikawa-metodo', y: 100 },
+                { nome: 'Mão de Obra', id: 'ishikawa-maoobra', y: 200 },
+                { nome: 'Material', id: 'ishikawa-material', y: 300 },
+                { nome: 'Máquina', id: 'ishikawa-maquina', y: 400 },
+                { nome: 'Meio Ambiente', id: 'ishikawa-meioambiente', y: 500 },
+                { nome: 'Medição', id: 'ishikawa-medicao', y: height - 50 }
+            ];
+            
+            categorias.forEach((cat, index) => {
+                const x = 150 + (index % 2 === 0 ? 0 : width - 300);
+                const y = cat.y;
+                
+                // Ramo diagonal
+                const branch = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                branch.setAttribute('x1', x);
+                branch.setAttribute('y1', y);
+                branch.setAttribute('x2', width / 2);
+                branch.setAttribute('y2', height / 2);
+                branch.setAttribute('class', 'fishbone-branch');
+                svg.appendChild(branch);
+                
+                // Label da categoria
+                const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                label.setAttribute('x', x - 50);
+                label.setAttribute('y', y);
+                label.setAttribute('class', 'fishbone-label');
+                label.setAttribute('font-size', '14');
+                label.setAttribute('font-weight', 'bold');
+                label.textContent = cat.nome;
+                svg.appendChild(label);
+                
+                // Causas (pequenos ramos)
+                const causas = document.getElementById(cat.id).value.split('\n').filter(c => c.trim());
+                causas.forEach((causa, i) => {
+                    const causaX = x - 100 - (i * 80);
+                    const causaY = y + (i % 2 === 0 ? -20 : 20);
+                    
+                    // Pequeno ramo
+                    const causaBranch = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                    causaBranch.setAttribute('x1', causaX);
+                    causaBranch.setAttribute('y1', causaY);
+                    causaBranch.setAttribute('x2', x);
+                    causaBranch.setAttribute('y2', y);
+                    causaBranch.setAttribute('stroke', '#999');
+                    causaBranch.setAttribute('stroke-width', '1');
+                    svg.appendChild(causaBranch);
+                    
+                    // Texto da causa
+                    const causaTexto = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                    causaTexto.setAttribute('x', causaX - 10);
+                    causaTexto.setAttribute('y', causaY);
+                    causaTexto.setAttribute('font-size', '10');
+                    causaTexto.setAttribute('text-anchor', 'end');
+                    causaTexto.textContent = causa.substring(0, 30);
+                    svg.appendChild(causaTexto);
+                });
+            });
+        }
+
+        function exportarIshikawa() {
+            const problema = document.getElementById('problemaIshikawa').value;
+            const categorias = [
+                { nome: 'Método', id: 'ishikawa-metodo' },
+                { nome: 'Mão de Obra', id: 'ishikawa-maoobra' },
+                { nome: 'Material', id: 'ishikawa-material' },
+                { nome: 'Máquina', id: 'ishikawa-maquina' },
+                { nome: 'Meio Ambiente', id: 'ishikawa-meioambiente' },
+                { nome: 'Medição', id: 'ishikawa-medicao' }
+            ];
+            
+            let htmlCategorias = categorias.map(cat => {
+                const causas = document.getElementById(cat.id).value.split('\n').filter(c => c.trim());
+                return `
+                    <tr>
+                        <td><strong>${cat.nome}</strong></td>
+                        <td>
+                            <ul>
+                                ${causas.map(c => `<li>${c}</li>`).join('')}
+                            </ul>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+            
+            const conteudo = `
+                <h2>Diagrama de Ishikawa</h2>
+                <h3>Problema (Efeito): ${problema}</h3>
+                <table class="table table-bordered">
+                    <thead>
+                        <tr>
+                            <th>Categoria</th>
+                            <th>Causas</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${htmlCategorias}
+                    </tbody>
+                </table>
+            `;
+            
+            imprimirConteudo(conteudo, 'Diagrama de Ishikawa');
+        }
+
+        function limparIshikawa() {
+            document.getElementById('problemaIshikawa').value = '';
+            ['ishikawa-metodo', 'ishikawa-maoobra', 'ishikawa-material', 'ishikawa-maquina', 'ishikawa-meioambiente', 'ishikawa-medicao'].forEach(id => {
+                document.getElementById(id).value = '';
+            });
+            document.getElementById('ishikawa-diagram-container').style.display = 'none';
+        }
+
+        // ========== PLANO DE AÇÃO ==========
+        function adicionarAcao() {
+            const acao = {
+                id: Date.now().toString(),
+                descricao: '',
+                responsavel_id: '',
+                prazo: '',
+                status: 'pendente'
+            };
+            
+            acoesPlano.push(acao);
+            renderizarAcoes();
+            atualizarAlertasPlano();
+        }
+
+        function removerAcao(id) {
+            acoesPlano = acoesPlano.filter(a => a.id !== id);
+            renderizarAcoes();
+            atualizarAlertasPlano();
+        }
+
+        function atualizarAcao(id, campo, valor) {
+            const acao = acoesPlano.find(a => a.id === id);
+            if (acao) {
+                acao[campo] = valor;
+                renderizarAcoes();
+                atualizarAlertasPlano();
+            }
+        }
+
+        function renderizarAcoes() {
+            const container = document.getElementById('listaAcoes');
+            container.innerHTML = '';
+            
+            if (acoesPlano.length === 0) {
+                container.innerHTML = '<p class="text-muted text-center py-3">Nenhuma ação cadastrada. Clique em "Adicionar Ação" para começar.</p>';
+                return;
+            }
+            
+            acoesPlano.forEach(acao => {
+                const dias = calcularDiasRestantes(acao.prazo);
+                const statusPrazo = formatarStatusPrazo(dias);
+                const responsavelNome = usuariosPlataforma.find(u => u.id === acao.responsavel_id)?.nome || 'Selecione...';
+                
+                const div = document.createElement('div');
+                div.className = `action-item ${acao.status === 'concluida' ? 'completed' : ''} ${dias !== null && dias < 0 ? 'border-danger' : dias !== null && dias <= 3 ? 'border-warning' : ''}`;
+                div.innerHTML = `
+                    <div class="row align-items-center">
+                        <div class="col-md-4">
+                            <input type="text" class="form-control form-control-sm" 
+                                   value="${acao.descricao || ''}" 
+                                   placeholder="Descrição da ação"
+                                   onchange="atualizarAcao('${acao.id}', 'descricao', this.value)">
+                        </div>
+                        <div class="col-md-3">
+                            <select class="form-select form-select-sm" 
+                                    onchange="atualizarAcao('${acao.id}', 'responsavel_id', this.value)">
+                                <option value="">Selecione o responsável...</option>
+                                ${usuariosPlataforma.map(u => `
+                                    <option value="${u.id}" ${acao.responsavel_id === u.id ? 'selected' : ''}>
+                                        ${u.nome}${u.departamento ? ' - ' + u.departamento : ''}
+                                    </option>
+                                `).join('')}
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <input type="date" class="form-control form-control-sm" 
+                                   value="${acao.prazo || ''}" 
+                                   onchange="atualizarAcao('${acao.id}', 'prazo', this.value)">
+                        </div>
+                        <div class="col-md-2">
+                            <small class="${statusPrazo.classe}">${statusPrazo.texto}</small><br>
+                            <select class="form-select form-select-sm mt-1" 
+                                    onchange="atualizarAcao('${acao.id}', 'status', this.value)">
+                                <option value="pendente" ${acao.status === 'pendente' ? 'selected' : ''}>Pendente</option>
+                                <option value="em_andamento" ${acao.status === 'em_andamento' ? 'selected' : ''}>Em Andamento</option>
+                                <option value="concluida" ${acao.status === 'concluida' ? 'selected' : ''}>Concluída</option>
+                            </select>
+                        </div>
+                        <div class="col-md-1">
+                            <button class="btn btn-danger btn-sm" onclick="removerAcao('${acao.id}')">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(div);
+            });
+        }
+        
+        function atualizarAlertasPlano() {
+            const alertasContainer = document.getElementById('listaAlertasPlano');
+            const alertasDiv = document.getElementById('alertasPlano');
+            if (!alertasContainer || !alertasDiv) return;
+            
+            const alertas = acoesPlano
+                .filter(a => a.prazo && a.responsavel_id)
+                .map(a => {
+                    const dias = calcularDiasRestantes(a.prazo);
+                    const responsavel = usuariosPlataforma.find(u => u.id === a.responsavel_id);
+                    return { ...a, dias, responsavel };
+                })
+                .filter(a => a.dias !== null && (a.dias < 0 || a.dias <= 3));
+            
+            if (alertas.length === 0) {
+                alertasDiv.style.display = 'none';
+                return;
+            }
+            
+            alertasDiv.style.display = 'block';
+            alertasContainer.innerHTML = alertas.map(a => {
+                const status = formatarStatusPrazo(a.dias);
+                return `
+                    <div class="alert alert-${a.dias < 0 ? 'danger' : 'warning'} mb-2 py-2">
+                        <strong>${a.descricao || 'Ação sem descrição'}</strong> - 
+                        Responsável: ${a.responsavel?.nome || 'Não definido'} - 
+                        <span class="${status.classe}">${status.texto}</span>
+                    </div>
+                `;
+            }).join('');
+        }
+        
+        async function salvarPlanoAcao() {
+            const titulo = document.getElementById('tituloPlano').value;
+            const objetivo = document.getElementById('objetivoPlano').value;
+            
+            if (!titulo) {
+                alert('Por favor, preencha o título do plano de ação.');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/ferramentas-qualidade', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({
+                        id: ferramentaAtualId,
+                        tipo_ferramenta: 'plano_acao',
+                        titulo: titulo,
+                        dados: {
+                            objetivo: objetivo,
+                            acoes: acoesPlano.map(a => ({
+                                id: a.id,
+                                descricao: a.descricao,
+                                responsavel_id: a.responsavel_id,
+                                prazo: a.prazo,
+                                status: a.status
+                            }))
+                        }
+                    })
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    ferramentaAtualId = data.ferramenta.id;
+                    alert('✅ Plano de Ação salvo com sucesso!');
+                    await carregarAlertas(); // Recarregar alertas
+                } else {
+                    alert('❌ Erro ao salvar: ' + (data.error || 'Erro desconhecido'));
+                }
+            } catch (error) {
+                console.error('❌ Erro ao salvar plano de ação:', error);
+                alert('❌ Erro ao salvar plano de ação.');
+            }
+        }
+
+        function exportarPlanoAcao() {
+            const titulo = document.getElementById('tituloPlano').value || 'Plano de Ação';
+            const objetivo = document.getElementById('objetivoPlano').value;
+            
+            let htmlAcoes = acoesPlano.map((acao, index) => {
+                const responsavel = usuariosPlataforma.find(u => u.id === acao.responsavel_id);
+                const dias = calcularDiasRestantes(acao.prazo);
+                const statusPrazo = formatarStatusPrazo(dias);
+                return `
+                    <tr>
+                        <td>${index + 1}</td>
+                        <td>${acao.descricao || '-'}</td>
+                        <td>${responsavel?.nome || '-'}</td>
+                        <td>${acao.prazo || '-'}</td>
+                        <td><span class="${statusPrazo.classe}">${statusPrazo.texto}</span></td>
+                        <td>${acao.status === 'pendente' ? 'Pendente' : acao.status === 'em_andamento' ? 'Em Andamento' : 'Concluída'}</td>
+                    </tr>
+                `;
+            }).join('');
+            
+            const conteudo = `
+                <h2>${titulo}</h2>
+                <h3>Objetivo:</h3>
+                <p>${objetivo || '-'}</p>
+                <table class="table table-bordered">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Ação</th>
+                            <th>Responsável</th>
+                            <th>Prazo</th>
+                            <th>Status do Prazo</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${htmlAcoes || '<tr><td colspan="6">Nenhuma ação cadastrada</td></tr>'}
+                    </tbody>
+                </table>
+            `;
+            
+            imprimirConteudo(conteudo, titulo);
+        }
+
+        function limparPlanoAcao() {
+            document.getElementById('tituloPlano').value = '';
+            document.getElementById('objetivoPlano').value = '';
+            acoesPlano = [];
+            ferramentaAtualId = null;
+            renderizarAcoes();
+            atualizarAlertasPlano();
+        }
+        
+        // ========== ARQUIVOS ==========
+        async function carregarFerramentasArquivadas() {
+            const container = document.getElementById('listaFerramentasArquivadas');
+            const tipo = document.getElementById('filtroTipoArquivo').value;
+            const arquivado = document.getElementById('filtroArquivado').value;
+            
+            container.innerHTML = '<div class="text-center py-5"><div class="spinner-border text-primary" role="status"></div></div>';
+            
+            try {
+                let url = '/api/ferramentas-qualidade?';
+                if (tipo) url += `tipo=${tipo}&`;
+                if (arquivado !== '') url += `arquivado=${arquivado}`;
+                
+                const response = await fetch(url, {
+                    credentials: 'include'
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    const ferramentas = data.ferramentas || [];
+                    
+                    if (ferramentas.length === 0) {
+                        container.innerHTML = '<div class="alert alert-info">Nenhuma ferramenta encontrada.</div>';
+                        return;
+                    }
+                    
+                    const tiposNome = {
+                        '5porques': '5 Porquês',
+                        '5w2h': '5W2H',
+                        'ishikawa': 'Ishikawa',
+                        'plano_acao': 'Plano de Ação',
+                        'pdca': 'PDCA',
+                        'brainstorm': 'Brainstorming'
+                    };
+                    
+                    container.innerHTML = ferramentas.map(f => {
+                        const dataCriacao = new Date(f.criado_em).toLocaleDateString('pt-BR');
+                        const temAlerta = f.tem_prazos && f.proximo_vencimento && 
+                            new Date(f.proximo_vencimento) <= new Date();
+                        
+                        return `
+                            <div class="card mb-3 ${f.arquivado ? 'border-secondary' : temAlerta ? 'border-warning' : ''}">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-start">
+                                        <div class="flex-grow-1">
+                                            <h5 class="card-title">
+                                                ${f.titulo}
+                                                ${f.arquivado ? '<span class="badge bg-secondary ms-2">Arquivado</span>' : ''}
+                                                ${temAlerta ? '<span class="badge bg-warning ms-2">Prazo próximo</span>' : ''}
+                                            </h5>
+                                            <p class="text-muted mb-2">
+                                                <strong>Tipo:</strong> ${tiposNome[f.tipo_ferramenta] || f.tipo_ferramenta} | 
+                                                <strong>Criado em:</strong> ${dataCriacao}
+                                            </p>
+                                        </div>
+                                        <div class="btn-group">
+                                            <button class="btn btn-sm btn-primary" onclick="carregarFerramenta('${f.id}')">
+                                                <i class="fas fa-edit"></i> Editar
+                                            </button>
+                                            <button class="btn btn-sm btn-${f.arquivado ? 'success' : 'secondary'}" 
+                                                    onclick="arquivarFerramenta('${f.id}', ${!f.arquivado})">
+                                                <i class="fas fa-${f.arquivado ? 'folder-open' : 'archive'}"></i> 
+                                                ${f.arquivado ? 'Desarquivar' : 'Arquivar'}
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    }).join('');
+                } else {
+                    container.innerHTML = '<div class="alert alert-danger">Erro ao carregar ferramentas.</div>';
+                }
+            } catch (error) {
+                console.error('❌ Erro ao carregar ferramentas:', error);
+                container.innerHTML = '<div class="alert alert-danger">Erro ao carregar ferramentas.</div>';
+            }
+        }
+        
+        async function carregarFerramenta(id) {
+            try {
+                const response = await fetch(`/api/ferramentas-qualidade/${id}`, {
+                    credentials: 'include'
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    const f = data.ferramenta;
+                    ferramentaAtualId = f.id;
+                    
+                    // Determinar qual tab abrir e carregar dados
+                    if (f.tipo_ferramenta === '5w2h') {
+                        document.getElementById('titulo5w2h').value = f.titulo || '';
+                        linhas5W2H = f.dados?.linhas || [];
+                        renderizarLinhas5W2H();
+                        // Abrir tab 5W2H
+                        const tab5w2h = document.querySelector('[data-bs-target="#tab-5w2h"]');
+                        if (tab5w2h) tab5w2h.click();
+                    } else if (f.tipo_ferramenta === 'plano_acao') {
+                        document.getElementById('tituloPlano').value = f.titulo || '';
+                        document.getElementById('objetivoPlano').value = f.dados?.objetivo || '';
+                        acoesPlano = f.dados?.acoes || [];
+                        renderizarAcoes();
+                        atualizarAlertasPlano();
+                        // Abrir tab plano de ação
+                        const tabPlano = document.querySelector('[data-bs-target="#tab-plano-acao"]');
+                        if (tabPlano) tabPlano.click();
+                    }
+                    // Adicionar outros tipos conforme necessário
+                }
+            } catch (error) {
+                console.error('❌ Erro ao carregar ferramenta:', error);
+                alert('Erro ao carregar ferramenta.');
+            }
+        }
+        
+        async function arquivarFerramenta(id, arquivar) {
+            try {
+                const response = await fetch(`/api/ferramentas-qualidade/${id}/arquivar`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({ arquivado: arquivar })
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    carregarFerramentasArquivadas();
+                } else {
+                    alert('Erro ao arquivar ferramenta.');
+                }
+            } catch (error) {
+                console.error('❌ Erro ao arquivar ferramenta:', error);
+                alert('Erro ao arquivar ferramenta.');
+            }
+        }
+
+        // ========== PDCA ==========
+        function exportarPDCA() {
+            const dados = {
+                problema: document.getElementById('pdca-problema').value,
+                objetivo: document.getElementById('pdca-objetivo').value,
+                plano: document.getElementById('pdca-plano').value,
+                executado: document.getElementById('pdca-executado').value,
+                dificuldades: document.getElementById('pdca-dificuldades').value,
+                resultados: document.getElementById('pdca-resultados').value,
+                comparacao: document.getElementById('pdca-comparacao').value,
+                padronizacao: document.getElementById('pdca-padronizacao').value,
+                proximos: document.getElementById('pdca-proximos').value,
+                proximoCiclo: document.getElementById('pdca-proximo-ciclo').value
+            };
+            
+            const conteudo = `
+                <h2>Ciclo PDCA</h2>
+                <div style="border: 2px solid #007bff; padding: 20px; margin-bottom: 20px;">
+                    <h3 style="color: #007bff;">PLAN - Planejar</h3>
+                    <p><strong>Problema/Oportunidade:</strong> ${dados.problema || '-'}</p>
+                    <p><strong>Objetivo:</strong> ${dados.objetivo || '-'}</p>
+                    <p><strong>Plano de Ação:</strong> ${dados.plano || '-'}</p>
+                </div>
+                <div style="border: 2px solid #28a745; padding: 20px; margin-bottom: 20px;">
+                    <h3 style="color: #28a745;">DO - Executar</h3>
+                    <p><strong>O que foi executado:</strong> ${dados.executado || '-'}</p>
+                    <p><strong>Dificuldades encontradas:</strong> ${dados.dificuldades || '-'}</p>
+                </div>
+                <div style="border: 2px solid #ffc107; padding: 20px; margin-bottom: 20px;">
+                    <h3 style="color: #856404;">CHECK - Verificar</h3>
+                    <p><strong>Resultados obtidos:</strong> ${dados.resultados || '-'}</p>
+                    <p><strong>Comparação com objetivo:</strong> ${dados.comparacao || '-'}</p>
+                </div>
+                <div style="border: 2px solid #dc3545; padding: 20px;">
+                    <h3 style="color: #dc3545;">ACT - Agir</h3>
+                    <p><strong>Padronização:</strong> ${dados.padronizacao || '-'}</p>
+                    <p><strong>Próximos passos:</strong> ${dados.proximos || '-'}</p>
+                    <p><strong>Próximo ciclo PDCA:</strong> ${dados.proximoCiclo || '-'}</p>
+                </div>
+            `;
+            
+            imprimirConteudo(conteudo, 'Ciclo PDCA');
+        }
+
+        function limparPDCA() {
+            ['pdca-problema', 'pdca-objetivo', 'pdca-plano', 'pdca-executado', 'pdca-dificuldades', 
+             'pdca-resultados', 'pdca-comparacao', 'pdca-padronizacao', 'pdca-proximos', 'pdca-proximo-ciclo'].forEach(id => {
+                document.getElementById(id).value = '';
+            });
+        }
+
+        // ========== BRAINSTORMING ==========
+        function adicionarIdeia() {
+            const input = document.getElementById('novaIdeia');
+            const ideia = input.value.trim();
+            
+            if (!ideia) {
+                alert('Por favor, digite uma ideia.');
+                return;
+            }
+            
+            ideiasBrainstorm.push({
+                id: Date.now(),
+                texto: ideia
+            });
+            
+            input.value = '';
+            renderizarIdeias();
+        }
+
+        function removerIdeia(id) {
+            ideiasBrainstorm = ideiasBrainstorm.filter(i => i.id !== id);
+            ideiasSelecionadas = ideiasSelecionadas.filter(i => i !== id);
+            renderizarIdeias();
+            renderizarIdeiasSelecionadas();
+        }
+
+        function selecionarIdeia(id) {
+            if (ideiasSelecionadas.includes(id)) {
+                ideiasSelecionadas = ideiasSelecionadas.filter(i => i !== id);
+            } else {
+                if (ideiasSelecionadas.length < 5) {
+                    ideiasSelecionadas.push(id);
+                } else {
+                    alert('Você pode selecionar no máximo 5 ideias.');
+                    return;
+                }
+            }
+            renderizarIdeias();
+            renderizarIdeiasSelecionadas();
+        }
+
+        function renderizarIdeias() {
+            const container = document.getElementById('listaIdeias');
+            container.innerHTML = '';
+            
+            ideiasBrainstorm.forEach(ideia => {
+                const isSelected = ideiasSelecionadas.includes(ideia.id);
+                const div = document.createElement('div');
+                div.className = 'col-md-4';
+                div.innerHTML = `
+                    <div class="card ${isSelected ? 'border-primary bg-primary text-white' : ''}" style="cursor: pointer;" onclick="selecionarIdeia(${ideia.id})">
+                        <div class="card-body p-2">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span>${ideia.texto}</span>
+                                ${isSelected ? '<i class="fas fa-check-circle"></i>' : ''}
+                            </div>
+                            <button class="btn btn-sm btn-danger mt-2" onclick="event.stopPropagation(); removerIdeia(${ideia.id})">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function renderizarIdeiasSelecionadas() {
+            const container = document.getElementById('ideiasSelecionadas');
+            container.innerHTML = '';
+            
+            ideiasSelecionadas.forEach(id => {
+                const ideia = ideiasBrainstorm.find(i => i.id === id);
+                if (ideia) {
+                    const li = document.createElement('li');
+                    li.className = 'list-group-item';
+                    li.textContent = ideia.texto;
+                    container.appendChild(li);
+                }
+            });
+        }
+
+        function exportarBrainstorm() {
+            const tema = document.getElementById('temaBrainstorm').value;
+            const objetivo = document.getElementById('objetivoBrainstorm').value;
+            
+            let htmlIdeias = ideiasBrainstorm.map((ideia, index) => {
+                const isSelected = ideiasSelecionadas.includes(ideia.id);
+                return `<li>${ideia.texto} ${isSelected ? '<strong>(Selecionada)</strong>' : ''}</li>`;
+            }).join('');
+            
+            let htmlSelecionadas = ideiasSelecionadas.map(id => {
+                const ideia = ideiasBrainstorm.find(i => i.id === id);
+                return ideia ? `<li>${ideia.texto}</li>` : '';
+            }).join('');
+            
+            const conteudo = `
+                <h2>Brainstorming</h2>
+                <p><strong>Tema/Problema:</strong> ${tema || '-'}</p>
+                <p><strong>Objetivo:</strong> ${objetivo || '-'}</p>
+                <h3>Todas as Ideias (${ideiasBrainstorm.length}):</h3>
+                <ul>${htmlIdeias || '<li>Nenhuma ideia registrada</li>'}</ul>
+                <h3>Top 5 Ideias Selecionadas:</h3>
+                <ol>${htmlSelecionadas || '<li>Nenhuma ideia selecionada</li>'}</ol>
+            `;
+            
+            imprimirConteudo(conteudo, 'Brainstorming');
+        }
+
+        function limparBrainstorm() {
+            document.getElementById('temaBrainstorm').value = '';
+            document.getElementById('objetivoBrainstorm').value = '';
+            ideiasBrainstorm = [];
+            ideiasSelecionadas = [];
+            renderizarIdeias();
+            renderizarIdeiasSelecionadas();
+        }
+
+        // ========== FUNÇÃO AUXILIAR PARA IMPRIMIR ==========
+        function imprimirConteudo(conteudo, titulo) {
+            const janela = window.open('', '_blank');
+            if (!janela) {
+                alert('Por favor, permita pop-ups para esta funcionalidade.');
+                return;
+            }
+            
+            janela.document.open();
+            janela.document.write('<!DOCTYPE html>');
+            janela.document.write('<html>');
+            janela.document.write('<head>');
+            janela.document.write('<title>' + (titulo || 'Documento') + '</title>');
+            janela.document.write('<style>');
+            janela.document.write('body { font-family: Arial, sans-serif; padding: 20px; }');
+            janela.document.write('table { border-collapse: collapse; width: 100%; margin: 20px 0; }');
+            janela.document.write('th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }');
+            janela.document.write('th { background-color: #f2f2f2; }');
+            janela.document.write('</style>');
+            janela.document.write('</head>');
+            janela.document.write('<body>');
+            janela.document.write(conteudo);
+            janela.document.write('<script>');
+            janela.document.write('window.onload = function() { window.print(); }');
+            janela.document.write('</script>');
+            janela.document.write('</body>');
+            janela.document.write('</html>');
+            janela.document.close();
+        }
+
+        // Permitir Enter no input de ideias
+        document.addEventListener('DOMContentLoaded', function() {
+            const inputIdeia = document.getElementById('novaIdeia');
+            if (inputIdeia) {
+                inputIdeia.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') {
+                        adicionarIdeia();
+                    }
+                });
+            }
+        });
+    </script>
+    
+    <!-- Chat IA -->
+    <link rel="stylesheet" href="css/chat-ia.css">
+    <script src="js/chat-ia.js"></script>
+</body>
+</html>
+

@@ -1154,7 +1154,7 @@ async function inicializarSupabase() {
         
         // Variáveis de paginação otimizada para 20k+ motoristas
 let currentPage = 1;
-        let itemsPerPage = 100;
+        let itemsPerPage = 50;
         let totalPages = 1;
         let motoristasFiltrados = [];
         let totalMotoristasCount = 0;
@@ -1471,12 +1471,35 @@ const estados = [
                     const resp = await fetch('/api/filtros/motoristas/carrocerias');
                     if (resp.ok) {
                         const json = await resp.json();
-                        const valores = new Set((json.carrocerias||[]).map(v => (v||'').trim()).filter(Boolean));
-                        // Unir com lista padronizada do cadastro (mesma "máscara")
-                        Object.values(tiposCarroceriaMap||{}).forEach(lbl => { if(lbl) valores.add(lbl); });
+                        // Usar Map para evitar duplicações case-insensitive
+                        const valoresMap = new Map();
+                        
+                        // Primeiro, adicionar valores do backend
+                        (json.carrocerias||[]).forEach(v => {
+                            const valor = (v||'').trim();
+                            if (valor) {
+                                const chaveNormalizada = valor.toLowerCase();
+                                if (!valoresMap.has(chaveNormalizada)) {
+                                    valoresMap.set(chaveNormalizada, valor);
+                                }
+                            }
+                        });
+                        
+                        // Depois, adicionar valores padronizados do cadastro (sobrescrevem se já existirem)
+                        Object.values(tiposCarroceriaMap||{}).forEach(lbl => {
+                            if (lbl) {
+                                const chaveNormalizada = lbl.toLowerCase();
+                                valoresMap.set(chaveNormalizada, lbl);
+                            }
+                        });
+                        
                         // Garantir presença explícita dessas opções
-                        ['BASCULANTE','PORTA CONTAINER 20','PORTA CONTAINER 40','PORTA CONTAINER20/40'].forEach(v=>valores.add(v));
-                        const listaOrdenada = Array.from(valores).sort((a,b)=> a.localeCompare(b,'pt-BR'));
+                        ['BASCULANTE','PORTA CONTAINER 20','PORTA CONTAINER 40','PORTA CONTAINER20/40'].forEach(v => {
+                            const chaveNormalizada = v.toLowerCase();
+                            valoresMap.set(chaveNormalizada, v);
+                        });
+                        
+                        const listaOrdenada = Array.from(valoresMap.values()).sort((a,b)=> a.localeCompare(b,'pt-BR'));
                         listaOrdenada.forEach(valorOriginal => {
                             const option = document.createElement('option');
                             option.value = valorOriginal;
@@ -1688,8 +1711,11 @@ const estados = [
 
         // ========== SELECIONAR TODOS ==========
         function selecionarTodos() {
-            // Selecionar TODOS os motoristas filtrados
-            motoristasFiltrados.forEach(motorista => {
+            // Selecionar até o limite configurado (itemsPerPage)
+            const limite = itemsPerPage;
+            const motoristasParaSelecionar = motoristasFiltrados.slice(0, limite);
+            
+            motoristasParaSelecionar.forEach(motorista => {
                 selectedMotoristas.add(motorista.id);
             });
             
