@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Exemplo - Módulo de Orquestração IA</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        h1 {
+            color: #333;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: #667eea;
+            margin-top: 30px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #555;
+        }
+        select, textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+        button {
+            background: #667eea;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-right: 10px;
+        }
+        button:hover {
+            background: #5568d3;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .resultado {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f9f9f9;
+            border-left: 4px solid #667eea;
+            border-radius: 4px;
+        }
+        .resultado h3 {
+            margin-top: 0;
+            color: #667eea;
+        }
+        .resultado pre {
+            background: #fff;
+            padding: 15px;
+            border-radius: 4px;
+            overflow-x: auto;
+            white-space: pre-wrap;
+        }
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-left: 10px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .error {
+            background: #fee;
+            border-left-color: #dc3545;
+            color: #721c24;
+        }
+        .success {
+            background: #efe;
+            border-left-color: #28a745;
+        }
+        .ferramentas-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+        .ferramenta-card {
+            padding: 15px;
+            background: #f8f9fa;
+            border: 2px solid #e9ecef;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .ferramenta-card:hover {
+            border-color: #667eea;
+            background: #f0f4ff;
+        }
+        .ferramenta-card.selected {
+            border-color: #667eea;
+            background: #e7edff;
+        }
+        .ferramenta-card h4 {
+            margin: 0 0 5px 0;
+            color: #333;
+        }
+        .ferramenta-card p {
+            margin: 0;
+            font-size: 12px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧠 Módulo de Orquestração de Ferramentas de Qualidade com IA</h1>
+        <p>Este exemplo demonstra como usar o módulo de orquestração de ferramentas de qualidade.</p>
+
+        <h2>1. Selecione uma Ferramenta</h2>
+        <div class="ferramentas-grid" id="ferramentasGrid"></div>
+
+        <h2>2. Informe o Contexto</h2>
+        <div class="form-group">
+            <label for="ferramentaSelect">Ferramenta:</label>
+            <select id="ferramentaSelect">
+                <option value="">Selecione uma ferramenta...</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="contextoInput">Contexto / Problema:</label>
+            <textarea id="contextoInput" placeholder="Digite o contexto ou problema a ser analisado..."></textarea>
+        </div>
+
+        <button id="executarBtn" onclick="executarAnalise()">🚀 Executar Análise</button>
+        <button onclick="listarFerramentas()">📋 Listar Ferramentas</button>
+        <button onclick="limparResultado()">🗑️ Limpar</button>
+
+        <div id="resultado"></div>
+    </div>
+
+    <script type="module">
+        // Importar módulo de orquestração
+        import { 
+            executarFerramenta, 
+            listarFerramentas as listarFerramentasModulo,
+            obterInfoFerramenta 
+        } from './js/modules/iaTools/index.js';
+
+        // Tornar funções globais para uso no HTML
+        window.executarFerramentaModulo = executarFerramenta;
+        window.listarFerramentasModulo = listarFerramentasModulo;
+        window.obterInfoFerramentaModulo = obterInfoFerramenta;
+
+        // Carregar ferramentas ao iniciar
+        document.addEventListener('DOMContentLoaded', () => {
+            carregarFerramentas();
+        });
+
+        function carregarFerramentas() {
+            const ferramentas = listarFerramentasModulo();
+            const select = document.getElementById('ferramentaSelect');
+            const grid = document.getElementById('ferramentasGrid');
+
+            ferramentas.forEach(ferramenta => {
+                // Adicionar ao select
+                const option = document.createElement('option');
+                option.value = ferramenta.id;
+                option.textContent = `${ferramenta.nome} - ${ferramenta.descricao}`;
+                select.appendChild(option);
+
+                // Adicionar card ao grid
+                const card = document.createElement('div');
+                card.className = 'ferramenta-card';
+                card.onclick = () => {
+                    select.value = ferramenta.id;
+                    document.querySelectorAll('.ferramenta-card').forEach(c => c.classList.remove('selected'));
+                    card.classList.add('selected');
+                };
+                card.innerHTML = `
+                    <h4>${ferramenta.nome}</h4>
+                    <p>${ferramenta.descricao}</p>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        window.executarAnalise = async function() {
+            const ferramenta = document.getElementById('ferramentaSelect').value;
+            const contexto = document.getElementById('contextoInput').value.trim();
+            const resultadoDiv = document.getElementById('resultado');
+            const executarBtn = document.getElementById('executarBtn');
+
+            if (!ferramenta) {
+                resultadoDiv.innerHTML = `
+                    <div class="resultado error">
+                        <h3>❌ Erro</h3>
+                        <p>Por favor, selecione uma ferramenta.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            if (!contexto) {
+                resultadoDiv.innerHTML = `
+                    <div class="resultado error">
+                        <h3>❌ Erro</h3>
+                        <p>Por favor, informe o contexto ou problema a ser analisado.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            // Mostrar loading
+            executarBtn.disabled = true;
+            executarBtn.innerHTML = '⏳ Processando... <span class="loading"></span>';
+            resultadoDiv.innerHTML = `
+                <div class="resultado">
+                    <h3>⏳ Processando análise...</h3>
+                    <p>Aguarde enquanto a IA processa sua solicitação.</p>
+                </div>
+            `;
+
+            try {
+                const resultado = await executarFerramentaModulo(ferramenta, contexto);
+                
+                resultadoDiv.innerHTML = `
+                    <div class="resultado success">
+                        <h3>✅ Análise Concluída - ${obterInfoFerramentaModulo(ferramenta).nome}</h3>
+                        <pre>${JSON.stringify(resultado, null, 2)}</pre>
+                    </div>
+                `;
+            } catch (error) {
+                resultadoDiv.innerHTML = `
+                    <div class="resultado error">
+                        <h3>❌ Erro na Análise</h3>
+                        <p><strong>Erro:</strong> ${error.message}</p>
+                        <pre>${error.stack || ''}</pre>
+                    </div>
+                `;
+            } finally {
+                executarBtn.disabled = false;
+                executarBtn.innerHTML = '🚀 Executar Análise';
+            }
+        };
+
+        window.listarFerramentas = function() {
+            const ferramentas = listarFerramentasModulo();
+            const resultadoDiv = document.getElementById('resultado');
+            
+            resultadoDiv.innerHTML = `
+                <div class="resultado">
+                    <h3>📋 Ferramentas Disponíveis</h3>
+                    <ul>
+                        ${ferramentas.map(f => `
+                            <li>
+                                <strong>${f.nome}</strong> (${f.id})<br>
+                                <small>${f.descricao}</small>
+                            </li>
+                        `).join('')}
+                    </ul>
+                </div>
+            `;
+        };
+
+        window.limparResultado = function() {
+            document.getElementById('resultado').innerHTML = '';
+            document.getElementById('contextoInput').value = '';
+            document.getElementById('ferramentaSelect').value = '';
+            document.querySelectorAll('.ferramenta-card').forEach(c => c.classList.remove('selected'));
+        };
+    </script>
+</body>
+</html>
+

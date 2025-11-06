@@ -7514,11 +7514,11 @@ app.get('/api/treinamentos/usuarios', async (req, res) => {
     // Buscar assinaturas de treinamentos para cada usuário
     const usuariosComTreinamentos = await Promise.all(
       (usuarios || []).map(async (usuario) => {
-        const { data: assinaturas, error: assinaturasError } = await supabaseAdmin
-          .from('treinamentos_assinaturas')
+    const { data: assinaturas, error: assinaturasError } = await supabaseAdmin
+      .from('treinamentos_assinaturas')
           .select('treinamento_slug, data_assinatura')
           .eq('user_id', usuario.id)
-          .order('data_assinatura', { ascending: false });
+      .order('data_assinatura', { ascending: false });
 
         return {
           ...usuario,
@@ -9852,24 +9852,58 @@ app.post('/api/ferramentas-qualidade/ia/relatorio', async (req, res) => {
       return res.status(401).json({ success: false, error: 'Não autenticado' });
     }
 
-    const { titulo, contexto } = req.body;
+    const { titulo, contexto, projeto_id } = req.body;
 
-    // Buscar todas as ferramentas do usuário para contexto
+    // Buscar ferramentas do projeto específico ou do usuário
     let ferramentas = [];
     try {
-      const { data, error: ferramentasError } = await supabaseAdmin
+      let query = supabaseAdmin
         .from('ferramentas_qualidade')
         .select('tipo_ferramenta, titulo, dados')
-        .eq('criado_por', userId)
-        .order('criado_em', { ascending: false })
-        .limit(20);
+        .eq('criado_por', userId);
+      
+      // Se projeto_id foi fornecido, buscar apenas ferramentas desse projeto
+      if (projeto_id) {
+        query = query.eq('projeto_id', projeto_id);
+        console.log(`📋 Buscando ferramentas do projeto: ${projeto_id}`);
+      } else {
+        // Buscar últimas 20 ferramentas do usuário
+        query = query.order('criado_em', { ascending: false }).limit(20);
+        console.log('📋 Buscando últimas ferramentas do usuário');
+      }
+      
+      const { data, error: ferramentasError } = await query;
       
       if (!ferramentasError && data) {
         ferramentas = data;
+        console.log(`✅ Encontradas ${ferramentas.length} ferramentas`);
       }
     } catch (dbError) {
       console.warn('⚠️ Erro ao buscar ferramentas para contexto:', dbError);
       // Continuar sem contexto de ferramentas
+    }
+
+    // Buscar informações do projeto se projeto_id foi fornecido
+    let projetoInfo = '';
+    if (projeto_id) {
+      try {
+        const { data: projeto, error: projetoError } = await supabaseAdmin
+          .from('projetos_qualidade')
+          .select('titulo, problema, descricao')
+          .eq('id', projeto_id)
+          .eq('criado_por', userId)
+          .single();
+        
+        if (!projetoError && projeto) {
+          projetoInfo = `
+Projeto: ${projeto.titulo}
+Problema: ${projeto.problema || 'Não especificado'}
+${projeto.descricao ? `Descrição: ${projeto.descricao}` : ''}
+`;
+        }
+      } catch (projError) {
+        console.warn('⚠️ Erro ao buscar informações do projeto:', projError);
+      }
     }
 
     let contextoFerramentas = '';
@@ -9889,16 +9923,16 @@ app.post('/api/ferramentas-qualidade/ia/relatorio', async (req, res) => {
 
     const prompt = `Gere um relatório completo e profissional de análise de qualidade com base nas seguintes informações:
 
-Título: ${titulo || 'Relatório de Análise'}
+${projetoInfo ? projetoInfo + '\n' : ''}Título: ${titulo || 'Relatório de Análise'}
 Contexto Adicional: ${contexto || 'Nenhum contexto adicional fornecido'}
 
-Ferramentas Utilizadas:
+Ferramentas Utilizadas neste Projeto:
 ${contextoFerramentas || 'Nenhuma ferramenta encontrada'}
 
 O relatório deve incluir:
 1. Resumo Executivo
-2. Problema Identificado
-3. Análise Realizada (com base nas ferramentas)
+2. Problema Identificado${projetoInfo ? ' (do projeto)' : ''}
+3. Análise Realizada (com base nas ferramentas utilizadas)
 4. Causas Raiz Identificadas
 5. Ações Planejadas
 6. Resultados Esperados

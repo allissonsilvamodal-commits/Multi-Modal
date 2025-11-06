@@ -56,8 +56,21 @@
             padding: 30px;
             margin-bottom: 30px;
             box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-            transition: transform 0.3s, box-shadow 0.3s;
+            transition: all 0.3s ease;
             cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .tool-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 5px;
+            height: 100%;
+            background: transparent;
+            transition: all 0.3s ease;
         }
 
         .tool-card:hover {
@@ -65,12 +78,27 @@
             box-shadow: 0 10px 25px rgba(0,0,0,0.15);
         }
 
+        .tool-card:hover::before {
+            width: 100%;
+            opacity: 0.05;
+        }
+
         .tool-card.completed {
             border-left: 5px solid var(--secondary-color);
+            background: linear-gradient(to right, rgba(0, 168, 107, 0.05) 0%, white 5%);
+        }
+
+        .tool-card.completed::before {
+            background: var(--secondary-color);
         }
 
         .tool-card.in-progress {
             border-left: 5px solid var(--accent-color);
+            background: linear-gradient(to right, rgba(255, 107, 53, 0.05) 0%, white 5%);
+        }
+
+        .tool-card.in-progress::before {
+            background: var(--accent-color);
         }
 
         .tool-icon {
@@ -184,17 +212,43 @@
         }
 
         .quiz-option {
-            padding: 12px;
+            padding: 15px;
             margin: 10px 0;
             border: 2px solid #e0e0e0;
             border-radius: 8px;
             cursor: pointer;
             transition: all 0.3s;
+            position: relative;
+            padding-left: 45px;
+        }
+
+        .quiz-option::before {
+            content: counter(option-counter);
+            counter-increment: option-counter;
+            position: absolute;
+            left: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 25px;
+            height: 25px;
+            border-radius: 50%;
+            background: #f0f0f0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 0.85rem;
+            color: #666;
+        }
+
+        .quiz-container {
+            counter-reset: option-counter;
         }
 
         .quiz-option:hover {
             border-color: var(--primary-color);
             background: #f0f7ff;
+            transform: translateX(5px);
         }
 
         .quiz-option.correct {
@@ -202,9 +256,21 @@
             background: #e8f5e9;
         }
 
+        .quiz-option.correct::before {
+            background: var(--secondary-color);
+            color: white;
+            content: '✓';
+        }
+
         .quiz-option.incorrect {
             border-color: #f44336;
             background: #ffebee;
+        }
+
+        .quiz-option.incorrect::before {
+            background: #f44336;
+            color: white;
+            content: '✗';
         }
 
         .badge-custom {
@@ -283,6 +349,96 @@
             transform: scale(1.1);
         }
 
+        .tool-summary {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-left: 4px solid var(--primary-color);
+        }
+
+        .tool-summary h6 {
+            color: var(--primary-color);
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+
+        .completion-badge {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: var(--secondary-color);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            box-shadow: 0 3px 10px rgba(0, 168, 107, 0.3);
+        }
+
+        .progress-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+            background: #e0e0e0;
+        }
+
+        .progress-indicator.completed {
+            background: var(--secondary-color);
+        }
+
+        .progress-indicator.in-progress {
+            background: var(--accent-color);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .quick-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            background: var(--primary-color);
+            color: white;
+            border-radius: 20px;
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: all 0.3s;
+            margin-top: 10px;
+        }
+
+        .quick-link:hover {
+            background: #0052a3;
+            color: white;
+            transform: scale(1.05);
+        }
+
+        .tool-order-badge {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 0.9rem;
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+        }
+
         @media (max-width: 768px) {
             .step-indicator {
                 flex-wrap: wrap;
@@ -290,6 +446,16 @@
 
             .step {
                 margin: 5px;
+            }
+
+            .tool-card {
+                padding: 20px;
+            }
+
+            .tool-icon {
+                width: 60px;
+                height: 60px;
+                font-size: 1.5rem;
             }
         }
     </style>
@@ -340,12 +506,27 @@
         <!-- Progress -->
         <div class="progress-container">
             <div class="d-flex justify-content-between align-items-center mb-3">
-                <h5 class="mb-0">Seu Progresso</h5>
-                <span id="progressPercentage" class="badge bg-success">0%</span>
+                <div>
+                    <h5 class="mb-1"><i class="bi bi-graph-up"></i> Seu Progresso</h5>
+                    <small class="text-muted">Complete todas as ferramentas para receber seu certificado</small>
+                </div>
+                <div class="text-end">
+                    <span id="progressPercentage" class="badge bg-success fs-6">0%</span>
+                    <div class="mt-1">
+                        <small class="text-muted">
+                            <span id="completedCount">0</span> de <span id="totalCount">9</span> concluídas
+                        </small>
+                    </div>
+                </div>
             </div>
-            <div class="progress" style="height: 25px;">
+            <div class="progress" style="height: 30px; border-radius: 15px;">
                 <div id="progressBar" class="progress-bar progress-bar-striped progress-bar-animated" 
-                     role="progressbar" style="width: 0%"></div>
+                     role="progressbar" style="width: 0%; font-weight: 600; display: flex; align-items: center; justify-content: center;">
+                    <span id="progressText">0% Completo</span>
+                </div>
+            </div>
+            <div class="mt-3" id="progressIndicators">
+                <!-- Indicadores serão inseridos via JavaScript -->
             </div>
         </div>
 
@@ -718,7 +899,7 @@
                     tips: [
                         'Use as 6M como guia, mas adapte às suas necessidades',
                         'Seja específico nas causas',
-                        'Involva pessoas que conhecem o processo',
+                        'Envolva pessoas que conhecem o processo',
                         'Não pare na primeira causa encontrada',
                         'Valide as causas com dados quando possível'
                     ],
@@ -791,7 +972,7 @@
                         'Não pare na primeira resposta óbvia',
                         'Seja específico nas respostas',
                         'Pode precisar de mais ou menos de 5 perguntas',
-                        'Involva pessoas que conhecem o processo',
+                        'Envolva pessoas que conhecem o processo',
                         'Documente todo o processo de análise'
                     ],
                     quiz: {
@@ -1136,18 +1317,27 @@
                 card.className = `col-md-6 col-lg-4 mb-4`;
                 card.innerHTML = `
                     <div class="tool-card ${isCompleted ? 'completed' : ''}" onclick="openTool('${tool.id}')">
+                        ${isCompleted ? '<div class="completion-badge"><i class="bi bi-check-circle-fill"></i></div>' : ''}
+                        <div class="tool-order-badge">${tool.order}</div>
                         <div class="tool-icon ${tool.color}">
                             <i class="bi ${tool.icon}"></i>
                         </div>
-                        <h4>${tool.name}</h4>
-                        <p class="text-muted">${tool.description}</p>
-                        <div class="d-flex justify-content-between align-items-center">
-                            <span class="badge bg-${isCompleted ? 'success' : 'secondary'}">
-                                ${isCompleted ? '<i class="bi bi-check-circle"></i> Concluído' : 'Pendente'}
-                            </span>
-                            <button class="btn btn-sm btn-outline-primary">
-                                <i class="bi bi-arrow-right"></i>
-                            </button>
+                        <h4 style="margin-top: 10px;">${tool.name}</h4>
+                        <p class="text-muted mb-3">${tool.description}</p>
+                        <div class="tool-summary">
+                            <h6><i class="bi bi-info-circle"></i> Resumo</h6>
+                            <p class="mb-0" style="font-size: 0.9rem; color: #666;">${tool.content.overview.substring(0, 100)}...</p>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mt-3">
+                            <div>
+                                <span class="progress-indicator ${isCompleted ? 'completed' : ''}"></span>
+                                <span class="badge bg-${isCompleted ? 'success' : 'secondary'}">
+                                    ${isCompleted ? 'Concluído' : 'Pendente'}
+                                </span>
+                            </div>
+                            <a href="ferramentas-qualidade.html#${tool.id}" class="quick-link" onclick="event.stopPropagation();">
+                                <i class="bi bi-play-circle"></i> Praticar
+                            </a>
                         </div>
                     </div>
                 `;
@@ -1198,33 +1388,67 @@
                 <div class="tab-content mt-4">
                     <!-- Overview -->
                     <div class="tab-pane fade show active" id="overview-${tool.id}">
-                        <h5 class="mb-3">Sobre a Ferramenta</h5>
-                        <p>${content.overview}</p>
+                        <div class="alert alert-info mb-4">
+                            <h6><i class="bi bi-lightbulb"></i> Sobre a Ferramenta</h6>
+                            <p class="mb-0">${content.overview}</p>
+                        </div>
                         
-                        <h5 class="mt-4 mb-3">Quando Usar</h5>
-                        <ul class="list-group">
-                            ${content.whenToUse.map(item => `
-                                <li class="list-group-item">
-                                    <i class="bi bi-check-circle text-success"></i> ${item}
-                                </li>
-                            `).join('')}
-                        </ul>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h5 class="mb-3"><i class="bi bi-calendar-check"></i> Quando Usar</h5>
+                                <ul class="list-group">
+                                    ${content.whenToUse.map(item => `
+                                        <li class="list-group-item">
+                                            <i class="bi bi-check-circle text-success"></i> ${item}
+                                        </li>
+                                    `).join('')}
+                                </ul>
+                            </div>
+                            <div class="col-md-6">
+                                <h5 class="mb-3"><i class="bi bi-star"></i> Benefícios</h5>
+                                <div class="card">
+                                    <div class="card-body">
+                                        <ul class="mb-0">
+                                            <li><strong>Eficiência:</strong> Organiza informações de forma estruturada</li>
+                                            <li><strong>Clareza:</strong> Facilita a comunicação e tomada de decisão</li>
+                                            <li><strong>Resultados:</strong> Aumenta a probabilidade de sucesso</li>
+                                            <li><strong>Documentação:</strong> Cria registro histórico das análises</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-4">
+                            <a href="ferramentas-qualidade.html" class="btn btn-primary btn-lg w-100">
+                                <i class="bi bi-play-circle"></i> Praticar Esta Ferramenta Agora
+                            </a>
+                        </div>
                     </div>
 
                     <!-- Steps -->
                     <div class="tab-pane fade" id="steps-${tool.id}">
-                        <h5 class="mb-3">Passo a Passo</h5>
-                        <div class="step-indicator">
+                        <h5 class="mb-3"><i class="bi bi-list-ol"></i> Passo a Passo</h5>
+                        <div class="step-indicator mb-4">
                             ${content.steps.map((step, index) => `
-                                <div class="step ${index === 0 ? 'active' : ''}">${index + 1}</div>
+                                <div class="step ${index === 0 ? 'active' : ''}" title="${step.title}">${index + 1}</div>
                             `).join('')}
                         </div>
-                        ${content.steps.map((step, index) => `
-                            <div class="example-box">
-                                <h5>${step.title}</h5>
-                                <p>${step.description}</p>
-                            </div>
-                        `).join('')}
+                        <div class="row">
+                            ${content.steps.map((step, index) => `
+                                <div class="col-md-6 mb-3">
+                                    <div class="card h-100">
+                                        <div class="card-header bg-primary text-white">
+                                            <strong>Passo ${index + 1}</strong>
+                                        </div>
+                                        <div class="card-body">
+                                            <h6 class="text-primary">${step.title}</h6>
+                                            <p class="mb-0">${step.description}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
                     </div>
 
                     <!-- Example -->
@@ -1235,14 +1459,26 @@
 
                     <!-- Tips -->
                     <div class="tab-pane fade" id="tips-${tool.id}">
-                        <h5 class="mb-3">Dicas Importantes</h5>
+                        <h5 class="mb-3"><i class="bi bi-lightbulb-fill text-warning"></i> Dicas Importantes</h5>
+                        <div class="alert alert-warning mb-4">
+                            <strong><i class="bi bi-exclamation-triangle"></i> Atenção:</strong> Estas dicas foram desenvolvidas com base em melhores práticas e experiência prática. Aplique-as conforme o contexto do seu projeto.
+                        </div>
                         <div class="row">
                             ${content.tips.map((tip, index) => `
                                 <div class="col-md-6 mb-3">
-                                    <div class="card">
+                                    <div class="card border-warning h-100">
                                         <div class="card-body">
-                                            <h6><i class="bi bi-lightbulb text-warning"></i> Dica ${index + 1}</h6>
-                                            <p class="mb-0">${tip}</p>
+                                            <div class="d-flex align-items-start">
+                                                <div class="me-3">
+                                                    <div class="bg-warning text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 35px; height: 35px; font-weight: bold;">
+                                                        ${index + 1}
+                                                    </div>
+                                                </div>
+                                                <div>
+                                                    <h6 class="text-warning mb-2">Dica Prática</h6>
+                                                    <p class="mb-0">${tip}</p>
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -1253,13 +1489,19 @@
                     <!-- Quiz -->
                     <div class="tab-pane fade" id="quiz-${tool.id}">
                         <div class="quiz-container">
-                            <h5 class="quiz-question">${content.quiz.question}</h5>
+                            <div class="alert alert-primary mb-4">
+                                <h6><i class="bi bi-question-circle"></i> Teste Seu Conhecimento</h6>
+                                <p class="mb-0">Responda a pergunta abaixo para verificar seu entendimento sobre esta ferramenta.</p>
+                            </div>
+                            <h5 class="quiz-question mb-4">
+                                <i class="bi bi-chat-quote text-primary"></i> ${content.quiz.question}
+                            </h5>
                             ${content.quiz.options.map((option, index) => `
                                 <div class="quiz-option" onclick="checkAnswer(${index}, ${content.quiz.correct}, '${tool.id}')">
-                                    ${String.fromCharCode(65 + index)}. ${option}
+                                    ${option}
                                 </div>
                             `).join('')}
-                            <div id="quiz-result-${tool.id}" class="mt-3"></div>
+                            <div id="quiz-result-${tool.id}" class="mt-4"></div>
                         </div>
                     </div>
                 </div>
@@ -1417,6 +1659,11 @@
             const options = document.querySelectorAll(`#quiz-${toolId} .quiz-option`);
             const resultDiv = document.getElementById(`quiz-result-${toolId}`);
             
+            // Desabilitar todas as opções após resposta
+            options.forEach(opt => {
+                opt.style.pointerEvents = 'none';
+            });
+            
             options.forEach((opt, index) => {
                 opt.classList.remove('correct', 'incorrect');
                 if (index === correct) {
@@ -1429,13 +1676,17 @@
             if (selected === correct) {
                 resultDiv.innerHTML = `
                     <div class="alert alert-success">
-                        <i class="bi bi-check-circle"></i> <strong>Correto!</strong> Parabéns!
+                        <h6><i class="bi bi-check-circle-fill"></i> <strong>Parabéns! Resposta Correta!</strong></h6>
+                        <p class="mb-0">Você demonstrou compreensão sobre esta ferramenta. Continue assim!</p>
                     </div>
                 `;
             } else {
+                const correctAnswer = options[correct].textContent.trim();
                 resultDiv.innerHTML = `
                     <div class="alert alert-danger">
-                        <i class="bi bi-x-circle"></i> <strong>Incorreto.</strong> Tente novamente!
+                        <h6><i class="bi bi-x-circle-fill"></i> <strong>Resposta Incorreta</strong></h6>
+                        <p class="mb-2">A resposta correta é: <strong>${correctAnswer}</strong></p>
+                        <p class="mb-0">Revise o conteúdo e tente novamente!</p>
                     </div>
                 `;
             }
@@ -1502,8 +1753,50 @@
             trainingState.progress = percentage;
             localStorage.setItem('trainingProgress', percentage.toString());
             
-            document.getElementById('progressBar').style.width = percentage + '%';
-            document.getElementById('progressPercentage').textContent = percentage + '%';
+            const progressBar = document.getElementById('progressBar');
+            const progressText = document.getElementById('progressText');
+            const progressPercentage = document.getElementById('progressPercentage');
+            const completedCount = document.getElementById('completedCount');
+            const totalCount = document.getElementById('totalCount');
+            const progressIndicators = document.getElementById('progressIndicators');
+            
+            if (progressBar) {
+                progressBar.style.width = percentage + '%';
+                progressBar.setAttribute('aria-valuenow', percentage);
+            }
+            
+            if (progressText) {
+                progressText.textContent = percentage + '% Completo';
+            }
+            
+            if (progressPercentage) {
+                progressPercentage.textContent = percentage + '%';
+            }
+            
+            if (completedCount) {
+                completedCount.textContent = completed;
+            }
+            
+            if (totalCount) {
+                totalCount.textContent = total;
+            }
+            
+            // Atualizar indicadores visuais
+            if (progressIndicators) {
+                progressIndicators.innerHTML = `
+                    <div class="row">
+                        ${tools.map(tool => `
+                            <div class="col-6 col-md-4 col-lg-3 mb-2">
+                                <div class="d-flex align-items-center">
+                                    <span class="progress-indicator ${trainingState.completed.includes(tool.id) ? 'completed' : ''}" 
+                                          style="margin-right: 8px;"></span>
+                                    <small style="font-size: 0.85rem;">${tool.name}</small>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+            }
         }
 
         // Mostrar certificado
