@@ -442,8 +442,47 @@
             // Adicione mais treinamentos aqui no futuro
         ];
         
+        // ========== INICIALIZAÇÃO SUPABASE ==========
+        let supabase = null;
+        
+        async function inicializarSupabase() {
+            try {
+                console.log('🔧 Inicializando Supabase...');
+                
+                // Buscar configuração do servidor
+                const response = await fetch('/api/supabase-config');
+                if (!response.ok) {
+                    console.warn('⚠️ Não foi possível buscar configuração do Supabase');
+                    return false;
+                }
+                
+                const config = await response.json();
+                console.log('📋 Configuração Supabase carregada');
+                
+                // Inicializar cliente Supabase
+                if (typeof window.supabase !== 'undefined') {
+                    supabase = window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey);
+                    window.supabase = supabase;
+                    console.log('✅ Supabase inicializado com sucesso');
+                    return true;
+                } else {
+                    console.warn('⚠️ Biblioteca Supabase não carregada');
+                    return false;
+                }
+            } catch (error) {
+                console.warn('⚠️ Erro ao inicializar Supabase:', error);
+                return false;
+            }
+        }
+        
         let currentUser = null;
         let userAssinaturas = [];
+        
+        // Inicializar ao carregar a página
+        document.addEventListener('DOMContentLoaded', async function() {
+            await inicializarSupabase();
+            await inicializar();
+        });
         
         async function inicializar() {
             // Verificar autenticação
@@ -485,8 +524,65 @@
         
         async function carregarUsuariosTreinamentos() {
             try {
-                const response = await fetch('/api/treinamentos/usuarios', { credentials: 'include' });
+                // Obter token de autenticação do Supabase
+                let authToken = null;
+                let userEmail = null;
+                
+                if (supabase || window.supabase) {
+                    const sbClient = supabase || window.supabase;
+                    try {
+                        const { data: session } = await sbClient.auth.getSession();
+                        if (session?.session?.access_token) {
+                            authToken = session.session.access_token;
+                        }
+                        if (session?.session?.user?.email) {
+                            userEmail = session.session.user.email;
+                        }
+                    } catch (err) {
+                        console.warn('⚠️ Erro ao obter sessão do Supabase:', err);
+                    }
+                }
+                
+                // Preparar headers
+                const headers = {
+                    'Content-Type': 'application/json'
+                };
+                
+                if (authToken) {
+                    headers['Authorization'] = `Bearer ${authToken}`;
+                } else if (userEmail) {
+                    headers['X-User-Email'] = userEmail;
+                }
+                
+                const response = await fetch('/api/treinamentos/usuarios', { 
+                    credentials: 'include',
+                    headers: headers
+                });
+                
                 if (!response.ok) {
+                    if (response.status === 401) {
+                        console.warn('⚠️ Não autenticado, tentando obter token novamente...');
+                        // Tentar obter token novamente
+                        if (supabase || window.supabase) {
+                            const sbClient = supabase || window.supabase;
+                            const { data: session } = await sbClient.auth.getSession();
+                            if (session?.session?.access_token) {
+                                headers['Authorization'] = `Bearer ${session.session.access_token}`;
+                                const retryResponse = await fetch('/api/treinamentos/usuarios', { 
+                                    credentials: 'include',
+                                    headers: headers
+                                });
+                                if (retryResponse.ok) {
+                                    const data = await retryResponse.json();
+                                    if (data.success && data.usuarios) {
+                                        renderizarUsuariosTreinamentos(data.usuarios);
+                                        document.getElementById('usuariosTreinamentosSection').style.display = 'block';
+                                        return;
+                                    }
+                                }
+                            }
+                        }
+                    }
                     throw new Error('Erro ao carregar usuários');
                 }
                 
@@ -582,29 +678,36 @@
         
         async function carregarAssinaturas() {
             try {
-                let sbClient = window.supabase;
+                let sbClient = supabase || window.supabase;
+                
+                // Se não tiver cliente, tentar inicializar
                 if (!sbClient) {
-                    const configResp = await fetch('/api/supabase-config');
-                    if (!configResp.ok) return;
-                    const config = await configResp.json();
-                    if (typeof window.supabase !== 'undefined') {
-                        sbClient = window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey);
-                    } else {
-                        return;
-                    }
+                    await inicializarSupabase();
+                    sbClient = supabase || window.supabase;
                 }
                 
-                if (sbClient) {
-                    const { data: session } = await sbClient.auth.getSession();
-                    if (session?.session?.user) {
-                        const { data, error } = await sbClient
-                            .from('treinamentos_assinaturas')
-                            .select('treinamento_slug, data_assinatura')
-                            .eq('user_id', session.session.user.id);
-                        
-                        if (!error && data) {
-                            userAssinaturas = data;
-                        }
+                if (!sbClient || typeof sbClient.auth === 'undefined') {
+                    console.warn('⚠️ Cliente Supabase não disponível');
+                    return;
+                }
+                
+                const { data: session, error: sessionError } = await sbClient.auth.getSession();
+                
+                if (sessionError) {
+                    console.warn('⚠️ Erro ao obter sessão:', sessionError);
+                    return;
+                }
+                
+                if (session?.session?.user) {
+                    const { data, error } = await sbClient
+                        .from('treinamentos_assinaturas')
+                        .select('treinamento_slug, data_assinatura')
+                        .eq('user_id', session.session.user.id);
+                    
+                    if (!error && data) {
+                        userAssinaturas = data;
+                    } else if (error) {
+                        console.warn('⚠️ Erro ao buscar assinaturas:', error);
                     }
                 }
             } catch (error) {
@@ -711,8 +814,7 @@
             document.getElementById('porcentagemConclusao').textContent = porcentagem + '%';
         }
         
-        // Inicializar quando a página carregar
-        document.addEventListener('DOMContentLoaded', inicializar);
+        // Inicialização já feita acima com Supabase
     </script>
 <!-- Chat IA -->
 <link rel="stylesheet" href="css/chat-ia.css">

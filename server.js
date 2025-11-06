@@ -7489,8 +7489,17 @@ app.get('/api/chat/ia/analise', requireAuth, async (req, res) => {
 });
 
 // ========== ENDPOINT PARA LISTAR USUÁRIOS E SEUS TREINAMENTOS ==========
-app.get('/api/treinamentos/usuarios', requireAuth, async (req, res) => {
+app.get('/api/treinamentos/usuarios', async (req, res) => {
   try {
+    const userResult = await getUserFromRequest(req);
+    
+    if (!userResult || !userResult.user) {
+      return res.status(401).json({ 
+        success: false, 
+        error: 'Não autenticado' 
+      });
+    }
+
     // Buscar todos os usuários ativos do sistema
     const { data: usuarios, error: usuariosError } = await supabaseAdmin
       .from('user_profiles')
@@ -7502,50 +7511,32 @@ app.get('/api/treinamentos/usuarios', requireAuth, async (req, res) => {
       throw usuariosError;
     }
 
-    // Buscar todas as assinaturas de treinamentos
-    const { data: assinaturas, error: assinaturasError } = await supabaseAdmin
-      .from('treinamentos_assinaturas')
-      .select('user_id, treinamento_slug, nome, data_assinatura')
-      .order('data_assinatura', { ascending: false });
+    // Buscar assinaturas de treinamentos para cada usuário
+    const usuariosComTreinamentos = await Promise.all(
+      (usuarios || []).map(async (usuario) => {
+        const { data: assinaturas, error: assinaturasError } = await supabaseAdmin
+          .from('treinamentos_assinaturas')
+          .select('treinamento_slug, data_assinatura')
+          .eq('user_id', usuario.id)
+          .order('data_assinatura', { ascending: false });
 
-    if (assinaturasError) {
-      throw assinaturasError;
-    }
-
-    // Organizar assinaturas por usuário
-    const assinaturasPorUsuario = {};
-    (assinaturas || []).forEach(assinatura => {
-      const userId = assinatura.user_id;
-      if (!assinaturasPorUsuario[userId]) {
-        assinaturasPorUsuario[userId] = [];
-      }
-      assinaturasPorUsuario[userId].push({
-        treinamento_slug: assinatura.treinamento_slug,
-        nome: assinatura.nome,
-        data_assinatura: assinatura.data_assinatura
-      });
-    });
-
-    // Combinar dados de usuários com suas assinaturas
-    const usuariosComTreinamentos = (usuarios || []).map(usuario => ({
-      id: usuario.id,
-      nome: usuario.nome || usuario.email || 'Usuário sem nome',
-      email: usuario.email,
-      departamento: usuario.departamento,
-      role: usuario.role,
-      treinamentos: assinaturasPorUsuario[usuario.id] || []
-    }));
+        return {
+          ...usuario,
+          treinamentos: assinaturasError ? [] : (assinaturas || [])
+        };
+      })
+    );
 
     res.json({
       success: true,
-      usuarios: usuariosComTreinamentos,
-      totalUsuarios: usuariosComTreinamentos.length,
-      totalAssinaturas: assinaturas?.length || 0
+      usuarios: usuariosComTreinamentos
     });
-
   } catch (error) {
     console.error('❌ Erro ao buscar usuários e treinamentos:', error);
-    res.status(500).json({ success: false, error: 'Erro ao buscar dados: ' + error.message });
+    res.status(500).json({
+      success: false,
+      error: 'Erro ao carregar dados'
+    });
   }
 });
 
