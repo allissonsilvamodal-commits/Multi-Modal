@@ -1,0 +1,982 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel de Qualidade - Intranet</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/permissions.js"></script>
+    <style>
+        body {
+            background: #f8f9fa;
+            font-family: Arial, sans-serif;
+        }
+        
+        .header-section {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 2rem 0;
+            margin-bottom: 2rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .ferramenta-card {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            border: 1px solid #dee2e6;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+        
+        .ferramenta-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+            border-color: #667eea;
+        }
+        
+        .ferramenta-card .ferramenta-content {
+            cursor: pointer;
+        }
+        
+        .ferramenta-card .ferramenta-actions {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            display: flex;
+            gap: 0.5rem;
+            z-index: 10;
+        }
+        
+        .ferramenta-card .ferramenta-actions button {
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        
+        .ferramenta-card:hover .ferramenta-actions button {
+            opacity: 1;
+        }
+        
+        .ferramenta-card.prioridade-alta {
+            border-left: 4px solid #dc3545;
+        }
+        
+        .ferramenta-card.prioridade-media {
+            border-left: 4px solid #ffc107;
+        }
+        
+        .ferramenta-card.prioridade-baixa {
+            border-left: 4px solid #28a745;
+        }
+        
+        .ferramenta-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 1rem;
+        }
+        
+        .ferramenta-tipo {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            background: #667eea;
+            color: white;
+        }
+        
+        .ferramenta-tipo.plano_acao {
+            background: #dc3545;
+        }
+        
+        .ferramenta-tipo.ishikawa {
+            background: #17a2b8;
+        }
+        
+        .ferramenta-tipo.5w2h {
+            background: #28a745;
+        }
+        
+        .ferramenta-tipo.pdca {
+            background: #ffc107;
+            color: #333;
+        }
+        
+        .ferramenta-tipo.brainstorm {
+            background: #6f42c1;
+        }
+        
+        .ferramenta-titulo {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #333;
+            margin: 0.5rem 0;
+        }
+        
+        .ferramenta-info {
+            display: flex;
+            gap: 1.5rem;
+            flex-wrap: wrap;
+            margin-top: 1rem;
+            color: #6c757d;
+            font-size: 0.9rem;
+        }
+        
+        .ferramenta-info-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .badge-alerta {
+            background: #dc3545;
+            color: white;
+            padding: 0.25rem 0.75rem;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+        
+        .badge-pendente {
+            background: #ffc107;
+            color: #333;
+        }
+        
+        .badge-em-alerta {
+            background: #fd7e14;
+            color: white;
+        }
+        
+        .badge-vencido {
+            background: #dc3545;
+            color: white;
+        }
+        
+        .badge-finalizado {
+            background: #28a745;
+            color: white;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        
+        .stat-card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 12px;
+            text-align: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        .stat-card h3 {
+            font-size: 2rem;
+            font-weight: 700;
+            margin: 0;
+            color: #667eea;
+        }
+        
+        .stat-card p {
+            margin: 0.5rem 0 0 0;
+            color: #6c757d;
+            font-size: 0.9rem;
+        }
+        
+        .filters-section {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 12px;
+            margin-bottom: 2rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        .modal-content {
+            border-radius: 12px;
+        }
+        
+        .acao-item {
+            background: #f8f9fa;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            border-left: 4px solid #667eea;
+        }
+        
+        .acao-item.vencido {
+            border-left-color: #dc3545;
+            background: #fff5f5;
+        }
+        
+        .acao-item.em-alerta {
+            border-left-color: #fd7e14;
+            background: #fff8f0;
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <div class="header-section">
+        <div class="container">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="mb-0"><i class="fas fa-chart-line me-2"></i>Painel de Qualidade</h1>
+                    <p class="mb-0 mt-2">Visualize e gerencie todas as ferramentas de qualidade</p>
+                </div>
+                <div>
+                    <a href="ferramentas-qualidade.html" class="btn btn-light">
+                        <i class="fas fa-plus me-2"></i>Criar Nova Ferramenta
+                    </a>
+                    <a href="portal.html" class="btn btn-outline-light ms-2">
+                        <i class="fas fa-home me-2"></i>Portal
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- Estatísticas -->
+        <div class="stats-grid" id="statsGrid">
+            <div class="stat-card">
+                <h3 id="totalFerramentas">0</h3>
+                <p>Total de Ferramentas</p>
+            </div>
+            <div class="stat-card">
+                <h3 id="totalAcoes">0</h3>
+                <p>Total de Ações</p>
+            </div>
+            <div class="stat-card">
+                <h3 id="acoesPendentes">0</h3>
+                <p>Ações Pendentes</p>
+            </div>
+            <div class="stat-card">
+                <h3 id="acoesVencidas">0</h3>
+                <p>Ações Vencidas</p>
+            </div>
+        </div>
+
+        <!-- Filtros -->
+        <div class="filters-section">
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label">Buscar</label>
+                    <input type="text" class="form-control" id="inputBusca" placeholder="Título ou descrição...">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Tipo de Ferramenta</label>
+                    <select class="form-select" id="filtroTipo">
+                        <option value="">Todos</option>
+                        <option value="5porques">5 Porquês</option>
+                        <option value="5w2h">5W2H</option>
+                        <option value="plano_acao">Plano de Ação</option>
+                        <option value="ishikawa">Ishikawa</option>
+                        <option value="pdca">PDCA</option>
+                        <option value="brainstorm">Brainstorming</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Responsável</label>
+                    <select class="form-select" id="filtroResponsavel">
+                        <option value="">Todos</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Status do Alerta</label>
+                    <select class="form-select" id="filtroStatus">
+                        <option value="">Todos</option>
+                        <option value="pendente">Pendente</option>
+                        <option value="em_alerta">Em Alerta</option>
+                        <option value="vencido">Vencido</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Arquivadas</label>
+                    <select class="form-select" id="filtroArquivado">
+                        <option value="false">Não</option>
+                        <option value="true">Sim</option>
+                    </select>
+                </div>
+                <div class="col-md-1 d-flex align-items-end">
+                    <button class="btn btn-primary w-100" onclick="aplicarFiltros()">
+                        <i class="fas fa-filter"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Lista de Ferramentas -->
+        <div id="listaFerramentas">
+            <div class="text-center py-5">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Carregando...</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Paginação -->
+        <nav aria-label="Paginação">
+            <ul class="pagination justify-content-center" id="paginacao">
+            </ul>
+        </nav>
+    </div>
+
+    <!-- Modal de Detalhes -->
+    <div class="modal fade" id="modalDetalhes" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalDetalhesTitulo">Detalhes da Ferramenta</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" id="modalDetalhesBody">
+                    <div class="text-center py-5">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Carregando...</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" id="btnEditarFerramenta" style="display: none;" onclick="editarFerramentaModal()">
+                        <i class="fas fa-edit me-2"></i>Editar
+                    </button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let supabase = null;
+        let currentUser = null;
+        let ferramentas = [];
+        let usuarios = [];
+        let filtros = {
+            tipo_ferramenta: '',
+            arquivado: 'false',
+            responsavel_id: '',
+            status_alerta: '',
+            busca: '',
+            limit: 20,
+            offset: 0
+        };
+        let totalFerramentas = 0;
+        let currentPage = 1;
+
+        // Inicialização
+        document.addEventListener('DOMContentLoaded', async function() {
+            console.log('🚀 Iniciando Painel de Qualidade...');
+            
+            await inicializarSupabase();
+            await verificarAutenticacao();
+            await carregarUsuarios();
+            await carregarFerramentas();
+        });
+
+        // Inicializar Supabase
+        async function inicializarSupabase() {
+            try {
+                const response = await fetch('/api/supabase-config');
+                if (!response.ok) {
+                    throw new Error('Erro ao buscar configuração do Supabase');
+                }
+                
+                const config = await response.json();
+                
+                // Usar os campos corretos (supabaseUrl e supabaseAnonKey)
+                const url = config.supabaseUrl || config.url;
+                const key = config.supabaseAnonKey || config.key;
+                
+                if (url && key) {
+                    supabase = window.supabase.createClient(url, key);
+                    window.supabase = supabase; // Disponibilizar globalmente
+                    console.log('✅ Supabase inicializado');
+                } else {
+                    console.error('❌ Configuração do Supabase não encontrada');
+                    console.log('Config recebido:', config);
+                }
+            } catch (error) {
+                console.error('❌ Erro ao inicializar Supabase:', error);
+            }
+        }
+
+        // Verificar autenticação
+        async function verificarAutenticacao() {
+            try {
+                // Verificar se há usuário logado no localStorage
+                const loggedInUserData = localStorage.getItem('loggedInUser');
+                if (!loggedInUserData) {
+                    console.log('❌ Nenhum usuário logado encontrado');
+                    window.location.href = 'login.html';
+                    return;
+                }
+
+                const userData = JSON.parse(loggedInUserData);
+                if (!userData.authenticated) {
+                    console.log('❌ Usuário não autenticado');
+                    window.location.href = 'login.html';
+                    return;
+                }
+
+                // Verificar se Supabase está disponível
+                if (!supabase) {
+                    await inicializarSupabase();
+                }
+
+                if (supabase) {
+                    const { data: { session } } = await supabase.auth.getSession();
+                    if (!session) {
+                        console.log('❌ Sessão Supabase não encontrada');
+                        window.location.href = 'login.html';
+                        return;
+                    }
+                    currentUser = session.user;
+                    console.log('✅ Usuário autenticado:', currentUser.email);
+                } else {
+                    console.warn('⚠️ Supabase não disponível, usando autenticação via localStorage');
+                    currentUser = { id: userData.id, email: userData.email };
+                }
+            } catch (error) {
+                console.error('❌ Erro ao verificar autenticação:', error);
+                window.location.href = 'login.html';
+            }
+        }
+
+        // Obter headers de autenticação
+        async function getAuthHeaders() {
+            const headers = {
+                'Content-Type': 'application/json'
+            };
+            
+            // Tentar obter token do Supabase
+            if (supabase) {
+                try {
+                    const { data: { session } } = await supabase.auth.getSession();
+                    if (session && session.access_token) {
+                        headers['Authorization'] = `Bearer ${session.access_token}`;
+                    }
+                } catch (error) {
+                    console.warn('⚠️ Erro ao obter sessão:', error);
+                }
+            }
+            
+            // Tentar obter email do localStorage (loggedInUser primeiro, depois userData como fallback)
+            try {
+                let userEmail = null;
+                let userId = null;
+
+                // Tentar loggedInUser primeiro
+                const loggedInUserData = localStorage.getItem('loggedInUser');
+                if (loggedInUserData) {
+                    const parsed = JSON.parse(loggedInUserData);
+                    userEmail = parsed.email;
+                    userId = parsed.id;
+                }
+
+                // Fallback para userData
+                if (!userEmail) {
+                    const userData = localStorage.getItem('userData');
+                    if (userData) {
+                        const parsed = JSON.parse(userData);
+                        userEmail = parsed.email;
+                        userId = parsed.id;
+                    }
+                }
+
+                if (userEmail) {
+                    headers['X-User-Email'] = userEmail;
+                }
+                if (userId) {
+                    headers['X-User-Id'] = userId;
+                }
+            } catch (error) {
+                console.warn('⚠️ Erro ao obter email do localStorage:', error);
+            }
+            
+            return headers;
+        }
+
+        // Carregar usuários
+        async function carregarUsuarios() {
+            try {
+                const headers = await getAuthHeaders();
+                const response = await fetch('/api/ferramentas-qualidade/usuarios', {
+                    headers: headers,
+                    credentials: 'include'
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    usuarios = data.usuarios || [];
+                    
+                    const select = document.getElementById('filtroResponsavel');
+                    usuarios.forEach(usuario => {
+                        const option = document.createElement('option');
+                        option.value = usuario.id;
+                        option.textContent = usuario.nome || usuario.email;
+                        select.appendChild(option);
+                    });
+                }
+            } catch (error) {
+                console.error('❌ Erro ao carregar usuários:', error);
+            }
+        }
+
+        // Carregar ferramentas
+        async function carregarFerramentas() {
+            try {
+                const headers = await getAuthHeaders();
+                console.log('📤 Headers de autenticação:', {
+                    hasAuth: !!headers['Authorization'],
+                    hasEmail: !!headers['X-User-Email'],
+                    hasUserId: !!headers['X-User-Id'],
+                    email: headers['X-User-Email']
+                });
+                
+                const params = new URLSearchParams();
+                
+                Object.keys(filtros).forEach(key => {
+                    if (filtros[key]) {
+                        params.append(key, filtros[key]);
+                    }
+                });
+
+                const response = await fetch(`/api/ferramentas-qualidade/painel?${params}`, {
+                    headers: headers,
+                    credentials: 'include'
+                });
+
+                console.log('📥 Resposta da API:', {
+                    status: response.status,
+                    statusText: response.statusText,
+                    ok: response.ok
+                });
+
+                if (response.status === 401) {
+                    console.error('❌ Não autenticado');
+                    alert('Sessão expirada. Faça login novamente.');
+                    window.location.href = 'login.html';
+                    return;
+                }
+
+                if (response.status === 403) {
+                    alert('Você não tem permissão para acessar o painel de qualidade');
+                    window.location.href = 'portal.html';
+                    return;
+                }
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error('❌ Erro na resposta:', errorText);
+                    throw new Error(`Erro ${response.status}: ${errorText}`);
+                }
+
+                const data = await response.json();
+                ferramentas = data.ferramentas || [];
+                totalFerramentas = data.total || 0;
+
+                atualizarEstatisticas();
+                renderizarFerramentas();
+                renderizarPaginacao();
+            } catch (error) {
+                console.error('❌ Erro ao carregar ferramentas:', error);
+                document.getElementById('listaFerramentas').innerHTML = `
+                    <div class="alert alert-danger">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        Erro ao carregar ferramentas: ${error.message}
+                        <br><small>Verifique o console para mais detalhes.</small>
+                    </div>
+                `;
+            }
+        }
+
+        // Atualizar estatísticas
+        function atualizarEstatisticas() {
+            document.getElementById('totalFerramentas').textContent = totalFerramentas;
+            
+            let totalAcoes = 0;
+            let acoesPendentes = 0;
+            let acoesVencidas = 0;
+
+            ferramentas.forEach(ferramenta => {
+                if (ferramenta.tipo_ferramenta === 'plano_acao') {
+                    totalAcoes += ferramenta.total_acoes || 0;
+                    acoesPendentes += ferramenta.acoes_pendentes || 0;
+                    acoesVencidas += ferramenta.acoes_vencidas || 0;
+                }
+            });
+
+            document.getElementById('totalAcoes').textContent = totalAcoes;
+            document.getElementById('acoesPendentes').textContent = acoesPendentes;
+            document.getElementById('acoesVencidas').textContent = acoesVencidas;
+        }
+
+        // Renderizar ferramentas
+        function renderizarFerramentas() {
+            const container = document.getElementById('listaFerramentas');
+            
+            if (ferramentas.length === 0) {
+                container.innerHTML = `
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        Nenhuma ferramenta encontrada com os filtros aplicados.
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = ferramentas.map(ferramenta => {
+                const tipoLabels = {
+                    '5porques': '5 Porquês',
+                    '5w2h': '5W2H',
+                    'plano_acao': 'Plano de Ação',
+                    'ishikawa': 'Ishikawa',
+                    'pdca': 'PDCA',
+                    'brainstorm': 'Brainstorming'
+                };
+
+                const tipoLabel = tipoLabels[ferramenta.tipo_ferramenta] || ferramenta.tipo_ferramenta;
+                const criador = ferramenta.criado_por_user?.nome || ferramenta.criado_por_user?.email || 'Desconhecido';
+                const dataCriacao = new Date(ferramenta.criado_em).toLocaleDateString('pt-BR');
+                
+                let prioridadeClass = '';
+                if (ferramenta.acoes_vencidas > 0) {
+                    prioridadeClass = 'prioridade-alta';
+                } else if (ferramenta.acoes_pendentes > 0) {
+                    prioridadeClass = 'prioridade-media';
+                } else {
+                    prioridadeClass = 'prioridade-baixa';
+                }
+
+                let alertasHTML = '';
+                if (ferramenta.tipo_ferramenta === 'plano_acao') {
+                    const alertas = ferramenta.alertas || [];
+                    if (alertas.length > 0) {
+                        const vencidos = alertas.filter(a => a.status === 'vencido').length;
+                        const emAlerta = alertas.filter(a => a.status === 'em_alerta').length;
+                        const pendentes = alertas.filter(a => a.status === 'pendente').length;
+
+                        alertasHTML = `
+                            <div class="d-flex gap-2 mt-2">
+                                ${vencidos > 0 ? `<span class="badge-alerta badge-vencido">${vencidos} Vencidas</span>` : ''}
+                                ${emAlerta > 0 ? `<span class="badge-alerta badge-em-alerta">${emAlerta} Em Alerta</span>` : ''}
+                                ${pendentes > 0 ? `<span class="badge-alerta badge-pendente">${pendentes} Pendentes</span>` : ''}
+                            </div>
+                        `;
+                    }
+                }
+
+                return `
+                    <div class="ferramenta-card ${prioridadeClass}">
+                        <div class="ferramenta-actions">
+                            <button class="btn btn-sm btn-primary" onclick="event.stopPropagation(); editarFerramenta('${ferramenta.id}')" title="Editar">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="btn btn-sm btn-danger" onclick="event.stopPropagation(); excluirFerramenta('${ferramenta.id}', '${escapeHtml(ferramenta.titulo)}')" title="Excluir">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                        <div class="ferramenta-content" onclick="abrirDetalhes('${ferramenta.id}')">
+                            <div class="ferramenta-header">
+                                <div>
+                                    <span class="ferramenta-tipo ${ferramenta.tipo_ferramenta}">${tipoLabel}</span>
+                                    <h5 class="ferramenta-titulo">${escapeHtml(ferramenta.titulo)}</h5>
+                                </div>
+                                ${ferramenta.acoes_vencidas > 0 ? '<i class="fas fa-exclamation-circle text-danger" style="font-size: 1.5rem;"></i>' : ''}
+                            </div>
+                            
+                            <div class="ferramenta-info">
+                                <div class="ferramenta-info-item">
+                                    <i class="fas fa-user"></i>
+                                    <span>${escapeHtml(criador)}</span>
+                                </div>
+                                <div class="ferramenta-info-item">
+                                    <i class="fas fa-calendar"></i>
+                                    <span>${dataCriacao}</span>
+                                </div>
+                                ${ferramenta.tipo_ferramenta === 'plano_acao' ? `
+                                    <div class="ferramenta-info-item">
+                                        <i class="fas fa-tasks"></i>
+                                        <span>${ferramenta.total_acoes || 0} ações</span>
+                                    </div>
+                                ` : ''}
+                            </div>
+                            
+                            ${alertasHTML}
+                            
+                            ${ferramenta.observacoes ? `
+                                <div class="mt-2 text-muted">
+                                    <small>${escapeHtml(ferramenta.observacoes.substring(0, 100))}${ferramenta.observacoes.length > 100 ? '...' : ''}</small>
+                                </div>
+                            ` : ''}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Renderizar paginação
+        function renderizarPaginacao() {
+            const totalPages = Math.ceil(totalFerramentas / filtros.limit);
+            const container = document.getElementById('paginacao');
+            
+            if (totalPages <= 1) {
+                container.innerHTML = '';
+                return;
+            }
+
+            let html = '';
+            
+            // Botão anterior
+            html += `
+                <li class="page-item ${currentPage === 1 ? 'disabled' : ''}">
+                    <a class="page-link" href="#" onclick="mudarPagina(${currentPage - 1}); return false;">Anterior</a>
+                </li>
+            `;
+
+            // Páginas
+            for (let i = 1; i <= totalPages; i++) {
+                if (i === 1 || i === totalPages || (i >= currentPage - 2 && i <= currentPage + 2)) {
+                    html += `
+                        <li class="page-item ${i === currentPage ? 'active' : ''}">
+                            <a class="page-link" href="#" onclick="mudarPagina(${i}); return false;">${i}</a>
+                        </li>
+                    `;
+                } else if (i === currentPage - 3 || i === currentPage + 3) {
+                    html += '<li class="page-item disabled"><span class="page-link">...</span></li>';
+                }
+            }
+
+            // Botão próximo
+            html += `
+                <li class="page-item ${currentPage === totalPages ? 'disabled' : ''}">
+                    <a class="page-link" href="#" onclick="mudarPagina(${currentPage + 1}); return false;">Próximo</a>
+                </li>
+            `;
+
+            container.innerHTML = html;
+        }
+
+        // Mudar página
+        function mudarPagina(pagina) {
+            if (pagina < 1) return;
+            const totalPages = Math.ceil(totalFerramentas / filtros.limit);
+            if (pagina > totalPages) return;
+            
+            currentPage = pagina;
+            filtros.offset = (pagina - 1) * filtros.limit;
+            carregarFerramentas();
+        }
+
+        // Aplicar filtros
+        function aplicarFiltros() {
+            filtros.tipo_ferramenta = document.getElementById('filtroTipo').value;
+            filtros.arquivado = document.getElementById('filtroArquivado').value;
+            filtros.responsavel_id = document.getElementById('filtroResponsavel').value;
+            filtros.status_alerta = document.getElementById('filtroStatus').value;
+            filtros.busca = document.getElementById('inputBusca').value.trim();
+            filtros.offset = 0;
+            currentPage = 1;
+            
+            carregarFerramentas();
+        }
+
+        // Abrir detalhes
+        async function abrirDetalhes(id) {
+            const modal = new bootstrap.Modal(document.getElementById('modalDetalhes'));
+            document.getElementById('modalDetalhesTitulo').textContent = 'Carregando...';
+            document.getElementById('modalDetalhesBody').innerHTML = `
+                <div class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Carregando...</span>
+                    </div>
+                </div>
+            `;
+            modal.show();
+
+            try {
+                const headers = await getAuthHeaders();
+                const response = await fetch(`/api/ferramentas-qualidade/painel/${id}`, {
+                    headers: headers,
+                    credentials: 'include'
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Erro ${response.status}`);
+                }
+
+                const data = await response.json();
+                const ferramenta = data.ferramenta;
+
+                document.getElementById('modalDetalhesTitulo').textContent = ferramenta.titulo;
+                
+                // Mostrar botão de editar
+                const btnEditar = document.getElementById('btnEditarFerramenta');
+                btnEditar.style.display = 'inline-block';
+                btnEditar.setAttribute('data-id', ferramenta.id);
+                
+                let html = `
+                    <div class="mb-3">
+                        <span class="badge bg-primary">${ferramenta.tipo_ferramenta.toUpperCase()}</span>
+                        <span class="badge bg-secondary ms-2">Criado em ${new Date(ferramenta.criado_em).toLocaleDateString('pt-BR')}</span>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <strong>Criado por:</strong> ${ferramenta.criado_por_user?.nome || ferramenta.criado_por_user?.email || 'Desconhecido'}
+                        ${ferramenta.criado_por_user?.departamento ? `<br><small class="text-muted">${ferramenta.criado_por_user.departamento}</small>` : ''}
+                    </div>
+                `;
+
+                // Se for Plano de Ação, mostrar ações
+                if (ferramenta.tipo_ferramenta === 'plano_acao' && ferramenta.dados?.acoes) {
+                    html += '<h6 class="mt-4 mb-3">Ações do Plano:</h6>';
+                    html += '<div class="list-group">';
+                    
+                    ferramenta.dados.acoes.forEach((acao, index) => {
+                        const alerta = ferramenta.alertas?.find(a => a.acao_id === acao.id) || null;
+                        let statusClass = '';
+                        let statusBadge = '';
+                        
+                        if (alerta) {
+                            if (alerta.status === 'vencido') {
+                                statusClass = 'vencido';
+                                statusBadge = '<span class="badge bg-danger ms-2">Vencido</span>';
+                            } else if (alerta.status === 'em_alerta') {
+                                statusClass = 'em-alerta';
+                                statusBadge = '<span class="badge bg-warning text-dark ms-2">Em Alerta</span>';
+                            } else {
+                                statusBadge = '<span class="badge bg-info ms-2">Pendente</span>';
+                            }
+                        }
+
+                        const responsavel = usuarios.find(u => u.id === acao.responsavel) || null;
+                        const responsavelNome = responsavel ? responsavel.nome || responsavel.email : 'Não definido';
+
+                        html += `
+                            <div class="acao-item ${statusClass}">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div class="flex-grow-1">
+                                        <strong>${index + 1}. ${escapeHtml(acao.acao || 'Sem descrição')}</strong>
+                                        ${statusBadge}
+                                        <div class="mt-2">
+                                            <small class="text-muted">
+                                                <strong>Responsável:</strong> ${escapeHtml(responsavelNome)}<br>
+                                                ${acao.prioridade ? `<strong>Prioridade:</strong> ${acao.prioridade}<br>` : ''}
+                                                ${acao.finalizacao ? `<strong>Prazo:</strong> ${new Date(acao.finalizacao).toLocaleDateString('pt-BR')}<br>` : ''}
+                                                ${acao.progresso ? `<strong>Progresso:</strong> ${acao.progresso}%<br>` : ''}
+                                            </small>
+                                        </div>
+                                        ${acao.obs ? `<div class="mt-2"><small>${escapeHtml(acao.obs)}</small></div>` : ''}
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    });
+                    
+                    html += '</div>';
+                } else {
+                    // Mostrar dados da ferramenta
+                    html += '<pre class="bg-light p-3 rounded">' + escapeHtml(JSON.stringify(ferramenta.dados, null, 2)) + '</pre>';
+                }
+
+                if (ferramenta.observacoes) {
+                    html += `
+                        <div class="mt-3">
+                            <strong>Observações:</strong>
+                            <p class="text-muted">${escapeHtml(ferramenta.observacoes)}</p>
+                        </div>
+                    `;
+                }
+
+                document.getElementById('modalDetalhesBody').innerHTML = html;
+            } catch (error) {
+                console.error('❌ Erro ao carregar detalhes:', error);
+                document.getElementById('modalDetalhesBody').innerHTML = `
+                    <div class="alert alert-danger">
+                        Erro ao carregar detalhes: ${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        // Editar ferramenta do modal
+        function editarFerramentaModal() {
+            const btnEditar = document.getElementById('btnEditarFerramenta');
+            const id = btnEditar.getAttribute('data-id');
+            if (id) {
+                editarFerramenta(id);
+            }
+        }
+        
+        // Editar ferramenta
+        function editarFerramenta(id) {
+            // Redirecionar para a página de ferramentas com o ID na URL
+            window.location.href = `ferramentas-qualidade.html?id=${id}`;
+        }
+        
+        // Excluir ferramenta
+        async function excluirFerramenta(id, titulo) {
+            if (!confirm(`Tem certeza que deseja excluir a ferramenta "${titulo}"?\n\nEsta ação não pode ser desfeita.`)) {
+                return;
+            }
+            
+            try {
+                const headers = await getAuthHeaders();
+                const response = await fetch(`/api/ferramentas-qualidade/${id}`, {
+                    method: 'DELETE',
+                    headers: headers,
+                    credentials: 'include'
+                });
+                
+                if (response.status === 401) {
+                    alert('Sessão expirada. Faça login novamente.');
+                    window.location.href = 'login.html';
+                    return;
+                }
+                
+                if (response.status === 403) {
+                    alert('Você não tem permissão para excluir esta ferramenta.');
+                    return;
+                }
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert('✅ Ferramenta excluída com sucesso!');
+                    // Recarregar a lista
+                    carregarFerramentas();
+                } else {
+                    alert('❌ Erro ao excluir: ' + (data.error || 'Erro desconhecido'));
+                }
+            } catch (error) {
+                console.error('❌ Erro ao excluir ferramenta:', error);
+                alert('❌ Erro ao excluir ferramenta: ' + error.message);
+            }
+        }
+        
+        // Escape HTML
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Permitir Enter na busca
+        document.getElementById('inputBusca')?.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                aplicarFiltros();
+            }
+        });
+    </script>
+</body>
+</html>
+

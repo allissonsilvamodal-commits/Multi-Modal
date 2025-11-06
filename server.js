@@ -8271,6 +8271,1561 @@ app.get('/health', (req, res) => {
   });
 });
 
+// Endpoint para criar tabelas de ferramentas de qualidade (admin only)
+app.post('/api/ferramentas-qualidade/criar-tabelas', requireAuth, async (req, res) => {
+  try {
+    // Verificar se é admin
+    const usuario = req.session?.usuario;
+    if (!usuario) {
+      return res.status(401).json({ success: false, error: 'Não autenticado' });
+    }
+
+    // Verificar se é admin
+    const { data: userProfile } = await supabaseAdmin
+      .from('user_profiles')
+      .select('role')
+      .eq('id', usuario)
+      .maybeSingle();
+
+    if (!userProfile || userProfile.role !== 'admin') {
+      return res.status(403).json({ success: false, error: 'Acesso negado. Apenas administradores.' });
+    }
+
+    const fs = require('fs');
+    const path = require('path');
+    
+    // Ler o arquivo SQL
+    const sqlPath = path.join(__dirname, 'sql', 'criar-ferramentas-qualidade.sql');
+    const sqlCompleto = fs.readFileSync(sqlPath, 'utf8');
+    
+    // Dividir em comandos (separados por ;)
+    const comandos = sqlCompleto
+      .split(';')
+      .map(cmd => cmd.trim())
+      .filter(cmd => cmd.length > 0 && !cmd.startsWith('--') && !cmd.match(/^\s*$/));
+
+    let sucessos = 0;
+    let erros = [];
+
+    for (let i = 0; i < comandos.length; i++) {
+      const comando = comandos[i] + ';';
+      
+      try {
+        const { error: rpcError } = await supabaseAdmin.rpc('exec_sql', {
+          sql_query: comando
+        });
+
+        if (rpcError) {
+          // Se a função não existe, retornar instruções
+          if (rpcError.message?.includes('function') || rpcError.code === '42883') {
+            return res.status(400).json({
+              success: false,
+              error: 'Função RPC exec_sql não encontrada no Supabase',
+              instrucoes: 'Execute o SQL manualmente no Supabase Dashboard',
+              sql: sqlCompleto
+            });
+          }
+          erros.push({ comando: i + 1, erro: rpcError.message });
+        } else {
+          sucessos++;
+        }
+      } catch (err) {
+        erros.push({ comando: i + 1, erro: err.message });
+      }
+    }
+
+    if (erros.length > 0) {
+      return res.status(500).json({
+        success: false,
+        error: 'Alguns comandos falharam',
+        sucessos,
+        erros
+      });
+    }
+
+    res.json({
+      success: true,
+      mensagem: `Tabelas criadas com sucesso! ${sucessos} comandos executados.`
+    });
+  } catch (error) {
+    console.error('❌ Erro ao criar tabelas:', error);
+    res.status(500).json({ success: false, error: 'Erro ao criar tabelas: ' + error.message });
+  }
+});
+
+// ========== FERRAMENTAS DE QUALIDADE ==========
+
+// Função para verificar e criar tabelas se necessário
+async function verificarTabelasFerramentasQualidade() {
+  try {
+    // Verificar se a tabela de alertas existe
+    const { error: checkError } = await supabaseAdmin
+      .from('ferramentas_qualidade_alertas')
+      .select('id')
+      .limit(1);
+    
+    if (checkError && (checkError.code === '42P01' || checkError.code === 'PGRST116')) {
+      console.warn('⚠️ Tabela ferramentas_qualidade_alertas não existe');
+      console.log('ℹ️ Execute o script SQL: sql/criar-ferramentas-qualidade.sql');
+      return false;
+    }
+    
+    return true;
+  } catch (error) {
+    console.warn('⚠️ Erro ao verificar tabelas:', error.message);
+    return false;
+  }
+}
+
+// Verificar tabelas ao iniciar
+verificarTabelasFerramentasQualidade().then(existe => {
+  if (existe) {
+    console.log('✅ Tabelas de ferramentas de qualidade verificadas');
+  } else {
+    console.log('⚠️ Execute o script SQL para criar as tabelas: sql/criar-ferramentas-qualidade.sql');
+  }
+});
+
+// Endpoint para listar usuários (para dropdowns)
+app.get('/api/ferramentas-qualidade/usuarios', async (req, res) => {
+  try {
+    // Tentar autenticação, mas não bloquear se falhar
+    const userResult = await getUserFromRequest(req);
+    
+    // Buscar usuários ativos, excluindo motoristas
+    const { data: motoristas } = await supabaseAdmin
+      .from('motoristas')
+      .select('auth_user_id')
+      .not('auth_user_id', 'is', null);
+
+    const motoristaIds = new Set((motoristas || []).map(m => m.auth_user_id));
+
+    const { data: usuarios, error } = await supabaseAdmin
+      .from('user_profiles')
+      .select('id, nome, email, departamento, cargo, role')
+      .eq('active', true)
+      .order('nome');
+
+    if (error) throw error;
+
+    // Filtrar motoristas
+    const usuariosFiltrados = (usuarios || []).filter(u => !motoristaIds.has(u.id));
+
+    res.json({
+      success: true,
+      usuarios: usuariosFiltrados.map(u => ({
+        id: u.id,
+        nome: u.nome || u.email || 'Sem nome',
+        email: u.email,
+        departamento: u.departamento,
+        cargo: u.cargo,
+        role: u.role
+      }))
+    });
+  } catch (error) {
+    console.error('❌ Erro ao buscar usuários:', error);
+    res.status(500).json({ success: false, error: 'Erro ao buscar usuários' });
+  }
+});
+
+// Buscar superior de um usuário (por departamento ou hierarquia)
+async function buscarSuperiorUsuario(userId) {
+  try {
+    const { data: usuario } = await supabaseAdmin
+      .from('user_profiles')
+      .select('departamento, cargo')
+      .eq('id', userId)
+      .maybeSingle();
+
+    if (!usuario || !usuario.departamento) return null;
+
+    // Buscar gerente/supervisor do mesmo departamento
+    const { data: superior } = await supabaseAdmin
+      .from('user_profiles')
+      .select('id, nome, email')
+      .eq('departamento', usuario.departamento)
+      .in('role', ['admin', 'manager'])
+      .neq('id', userId)
+      .eq('active', true)
+      .limit(1)
+      .maybeSingle();
+
+    return superior || null;
+  } catch (error) {
+    console.error('❌ Erro ao buscar superior:', error);
+    return null;
+  }
+}
+
+// Endpoint para listar ferramentas do usuário
+app.get('/api/ferramentas-qualidade', async (req, res) => {
+  try {
+    const userResult = await getUserFromRequest(req);
+    const userId = userResult?.user?.id;
+
+    // Se não tiver usuário autenticado, retornar lista vazia
+    if (!userId) {
+      return res.json({
+        success: true,
+        ferramentas: []
+      });
+    }
+
+    const { arquivado, tipo } = req.query;
+
+    let query = supabaseAdmin
+      .from('ferramentas_qualidade')
+      .select('*')
+      .eq('criado_por', userId)
+      .order('criado_em', { ascending: false });
+
+    if (arquivado !== undefined) {
+      query = query.eq('arquivado', arquivado === 'true');
+    }
+
+    if (tipo) {
+      query = query.eq('tipo_ferramenta', tipo);
+    }
+
+    const { data: ferramentas, error } = await query;
+
+    if (error) throw error;
+
+    res.json({
+      success: true,
+      ferramentas: ferramentas || []
+    });
+  } catch (error) {
+    console.error('❌ Erro ao listar ferramentas:', error);
+    res.status(500).json({ success: false, error: 'Erro ao listar ferramentas' });
+  }
+});
+
+// IMPORTANTE: Rotas específicas devem vir ANTES das rotas com parâmetros dinâmicos
+// Endpoint para buscar ações do usuário logado (DEVE VIR ANTES DE /:id)
+app.get('/api/ferramentas-qualidade/minhas-acoes', async (req, res) => {
+  try {
+    let userResult;
+    try {
+      userResult = await getUserFromRequest(req);
+    } catch (authError) {
+      console.warn('⚠️ Erro ao obter usuário da requisição:', authError);
+      // Se houver erro na autenticação, retornar lista vazia
+      return res.json({ success: true, acoes: [] });
+    }
+    
+    // Se não tiver usuário autenticado, retornar lista vazia (não erro)
+    if (!userResult || !userResult.user || !userResult.user.id) {
+      console.log('⚠️ Usuário não autenticado, retornando lista vazia');
+      return res.json({ success: true, acoes: [] });
+    }
+
+    const userId = userResult.user.id;
+    const { status, busca } = req.query;
+
+    console.log('📋 Buscando ações para usuário:', userId);
+
+    try {
+      // Buscar alertas do usuário (onde ele é responsável)
+      let query = supabaseAdmin
+        .from('ferramentas_qualidade_alertas')
+        .select('*')
+        .eq('responsavel_id', userId)
+        .order('prazo', { ascending: true });
+
+      if (status) {
+        query = query.eq('status', status);
+      }
+
+      const { data: alertas, error: alertasError } = await query;
+
+      if (alertasError) {
+        console.error('❌ Erro ao buscar alertas:', alertasError);
+        console.error('❌ Código do erro:', alertasError.code);
+        console.error('❌ Mensagem do erro:', alertasError.message);
+        // Se a tabela não existir, retornar lista vazia
+        if (alertasError.code === '42P01' || 
+            alertasError.code === 'PGRST116' ||
+            alertasError.message?.includes('does not exist') ||
+            alertasError.message?.includes('relation') ||
+            alertasError.message?.includes('tabela') ||
+            alertasError.message?.includes('table')) {
+          console.warn('⚠️ Tabela ferramentas_qualidade_alertas não existe ainda');
+          return res.json({ success: true, acoes: [] });
+        }
+        throw alertasError;
+      }
+
+      if (!alertas || alertas.length === 0) {
+        console.log('✅ Nenhum alerta encontrado para o usuário');
+        return res.json({ success: true, acoes: [] });
+      }
+
+      console.log(`📊 Encontrados ${alertas.length} alertas para o usuário`);
+
+      // Buscar dados das ferramentas e ações
+      const acoesCompletas = await Promise.all(alertas.map(async (alerta) => {
+        try {
+          // Buscar ferramenta
+          const { data: ferramenta, error: ferramentaError } = await supabaseAdmin
+            .from('ferramentas_qualidade')
+            .select('id, tipo_ferramenta, titulo, dados')
+            .eq('id', alerta.ferramenta_id)
+            .single();
+
+          if (ferramentaError) {
+            console.warn(`⚠️ Erro ao buscar ferramenta ${alerta.ferramenta_id}:`, ferramentaError);
+            return null;
+          }
+
+          if (!ferramenta || !ferramenta.dados) {
+            console.warn(`⚠️ Ferramenta ${alerta.ferramenta_id} não encontrada ou sem dados`);
+            return null;
+          }
+
+          // Buscar ação específica dentro dos dados da ferramenta
+          let acao = null;
+          if (ferramenta.tipo_ferramenta === 'plano_acao' && ferramenta.dados.acoes) {
+            acao = ferramenta.dados.acoes.find(a => a.id === alerta.acao_id);
+          }
+
+          if (!acao) {
+            console.warn(`⚠️ Ação ${alerta.acao_id} não encontrada na ferramenta ${alerta.ferramenta_id}`);
+            return null;
+          }
+
+          // Aplicar filtro de busca se necessário
+          if (busca) {
+            const buscaLower = busca.toLowerCase();
+            const matchAcao = (acao.acao || '').toLowerCase().includes(buscaLower);
+            const matchFerramenta = (ferramenta.titulo || '').toLowerCase().includes(buscaLower);
+            if (!matchAcao && !matchFerramenta) {
+              return null;
+            }
+          }
+
+          return {
+            acao_id: alerta.acao_id,
+            ferramenta_id: ferramenta.id,
+            ferramenta_tipo: ferramenta.tipo_ferramenta,
+            ferramenta_titulo: ferramenta.titulo,
+            acao: acao.acao,
+            responsavel: acao.responsavel,
+            gestor_imediato: acao.gestor_imediato,
+            prioridade: acao.prioridade,
+            progresso: acao.progresso || 0,
+            inicio: acao.inicio,
+            revisao: acao.revisao,
+            finalizacao: acao.finalizacao,
+            status: alerta.status,
+            prazo: alerta.prazo,
+            obs: acao.obs,
+            acao_contingencia: acao.acao_contingencia
+          };
+        } catch (err) {
+          console.warn('⚠️ Erro ao buscar dados da ação:', err);
+          return null;
+        }
+      }));
+
+      // Filtrar nulls
+      const acoesFiltradas = acoesCompletas.filter(a => a !== null);
+
+      console.log(`✅ Retornando ${acoesFiltradas.length} ações para o usuário`);
+
+      res.json({
+        success: true,
+        acoes: acoesFiltradas
+      });
+    } catch (queryError) {
+      console.error('❌ Erro na query de alertas:', queryError);
+      console.error('❌ Stack:', queryError.stack);
+      // Se for erro de tabela não existir, retornar vazio
+      if (queryError.code === '42P01' || 
+          queryError.code === 'PGRST116' ||
+          queryError.message?.includes('does not exist') ||
+          queryError.message?.includes('relation') ||
+          queryError.message?.includes('tabela') ||
+          queryError.message?.includes('table')) {
+        return res.json({ success: true, acoes: [] });
+      }
+      // Para qualquer outro erro, retornar lista vazia também
+      console.warn('⚠️ Erro desconhecido na query, retornando lista vazia');
+      return res.json({ success: true, acoes: [] });
+    }
+  } catch (error) {
+    console.error('❌ Erro geral ao buscar ações do usuário:', error);
+    console.error('❌ Stack:', error.stack);
+    // Sempre retornar lista vazia em caso de erro, não erro 500
+    res.json({ 
+      success: true, 
+      acoes: [],
+      warning: 'Erro ao carregar ações, retornando lista vazia'
+    });
+  }
+});
+
+// Endpoint para buscar TODAS as ferramentas (com permissões) - PAINEL
+app.get('/api/ferramentas-qualidade/painel', async (req, res) => {
+  try {
+    const userResult = await getUserFromRequest(req);
+    const userId = userResult?.user?.id;
+
+    if (!userId) {
+      return res.status(401).json({ success: false, error: 'Não autenticado' });
+    }
+
+    // Verificar permissão para visualizar painel
+    const { data: userProfile } = await supabaseAdmin
+      .from('user_profiles')
+      .select('role')
+      .eq('id', userId)
+      .maybeSingle();
+
+    const isAdmin = userProfile?.role === 'admin';
+
+    // Verificar permissão - qualquer permissão de qualidade permite visualizar o painel
+    const { data: permissoes } = await supabaseAdmin
+      .from('permissoes_portal')
+      .select('permissao_id')
+      .eq('usuario_id', userId)
+      .eq('tipo', 'qualidade');
+
+    const temPermissao = isAdmin || (permissoes && permissoes.length > 0);
+
+    if (!temPermissao) {
+      return res.status(403).json({ 
+        success: false, 
+        error: 'Você não tem permissão para visualizar o painel de qualidade' 
+      });
+    }
+
+    // Parâmetros de filtro
+    const { 
+      tipo_ferramenta, 
+      arquivado, 
+      responsavel_id, 
+      status_alerta,
+      busca,
+      limit = 50,
+      offset = 0
+    } = req.query;
+
+    // Construir query base
+    let query = supabaseAdmin
+      .from('ferramentas_qualidade')
+      .select('*')
+      .order('criado_em', { ascending: false });
+
+    // Aplicar filtros
+    if (arquivado !== undefined) {
+      query = query.eq('arquivado', arquivado === 'true');
+    } else {
+      query = query.eq('arquivado', false); // Por padrão, não mostrar arquivadas
+    }
+
+    if (tipo_ferramenta) {
+      query = query.eq('tipo_ferramenta', tipo_ferramenta);
+    }
+
+    if (busca) {
+      query = query.or(`titulo.ilike.%${busca}%,observacoes.ilike.%${busca}%`);
+    }
+
+    // Limitar e paginar
+    query = query.range(parseInt(offset), parseInt(offset) + parseInt(limit) - 1);
+
+    const { data: ferramentas, error } = await query;
+
+    if (error) throw error;
+
+    // Buscar dados dos criadores
+    const criadoresIds = [...new Set((ferramentas || []).map(f => f.criado_por).filter(Boolean))];
+    const criadoresMap = {};
+    
+    if (criadoresIds.length > 0) {
+      const { data: criadores } = await supabaseAdmin
+        .from('user_profiles')
+        .select('id, nome, email, departamento, cargo')
+        .in('id', criadoresIds);
+      
+      if (criadores) {
+        criadores.forEach(c => {
+          criadoresMap[c.id] = c;
+        });
+      }
+    }
+
+    // Buscar alertas relacionados se necessário
+    let ferramentasComAlertas = [];
+    if (ferramentas && ferramentas.length > 0) {
+      const ferramentaIds = ferramentas.map(f => f.id);
+      
+      // Buscar alertas
+      const { data: alertas } = await supabaseAdmin
+        .from('ferramentas_qualidade_alertas')
+        .select('*')
+        .in('ferramenta_id', ferramentaIds);
+
+      // Agrupar alertas por ferramenta
+      const alertasPorFerramenta = {};
+      if (alertas) {
+        alertas.forEach(alerta => {
+          if (!alertasPorFerramenta[alerta.ferramenta_id]) {
+            alertasPorFerramenta[alerta.ferramenta_id] = [];
+          }
+          alertasPorFerramenta[alerta.ferramenta_id].push(alerta);
+        });
+      }
+
+      // Combinar ferramentas com alertas e dados do criador
+      ferramentasComAlertas = ferramentas.map(ferramenta => {
+        // Adicionar dados do criador
+        ferramenta.criado_por_user = criadoresMap[ferramenta.criado_por] || null;
+        
+        const alertasFerramenta = alertasPorFerramenta[ferramenta.id] || [];
+        
+        // Filtrar por responsável se necessário
+        if (responsavel_id) {
+          const alertasFiltrados = alertasFerramenta.filter(a => 
+            a.responsavel_id === responsavel_id || a.superior_id === responsavel_id
+          );
+          if (alertasFiltrados.length === 0 && ferramenta.tipo_ferramenta !== 'plano_acao') {
+            return null; // Não tem ações deste responsável
+          }
+          ferramenta.alertas = alertasFiltrados;
+        } else {
+          ferramenta.alertas = alertasFerramenta;
+        }
+
+        // Filtrar por status de alerta se necessário
+        if (status_alerta) {
+          const alertasComStatus = ferramenta.alertas.filter(a => a.status === status_alerta);
+          if (alertasComStatus.length === 0 && ferramenta.tipo_ferramenta === 'plano_acao') {
+            return null; // Não tem alertas com este status
+          }
+          ferramenta.alertas = alertasComStatus;
+        }
+
+        // Calcular estatísticas
+        ferramenta.total_acoes = ferramenta.tipo_ferramenta === 'plano_acao' 
+          ? (ferramenta.dados?.acoes?.length || 0) 
+          : 0;
+        ferramenta.acoes_pendentes = ferramenta.alertas.filter(a => 
+          a.status === 'pendente' || a.status === 'em_alerta'
+        ).length;
+        ferramenta.acoes_vencidas = ferramenta.alertas.filter(a => a.status === 'vencido').length;
+
+        return ferramenta;
+      }).filter(f => f !== null);
+    }
+
+    // Contar total (para paginação)
+    let countQuery = supabaseAdmin
+      .from('ferramentas_qualidade')
+      .select('*', { count: 'exact', head: true })
+      .eq('arquivado', arquivado !== undefined ? arquivado === 'true' : false);
+
+    if (tipo_ferramenta) {
+      countQuery = countQuery.eq('tipo_ferramenta', tipo_ferramenta);
+    }
+
+    if (busca) {
+      countQuery = countQuery.or(`titulo.ilike.%${busca}%,observacoes.ilike.%${busca}%`);
+    }
+
+    const { count } = await countQuery;
+
+    res.json({
+      success: true,
+      ferramentas: ferramentasComAlertas,
+      total: count || 0,
+      limit: parseInt(limit),
+      offset: parseInt(offset)
+    });
+  } catch (error) {
+    console.error('❌ Erro ao buscar ferramentas do painel:', error);
+    res.status(500).json({ success: false, error: 'Erro ao buscar ferramentas: ' + error.message });
+  }
+});
+
+// Endpoint para buscar ferramenta específica do painel (sem restrição de criador)
+app.get('/api/ferramentas-qualidade/painel/:id', async (req, res) => {
+  try {
+    const userResult = await getUserFromRequest(req);
+    const userId = userResult?.user?.id;
+
+    if (!userId) {
+      return res.status(401).json({ success: false, error: 'Não autenticado' });
+    }
+
+    // Verificar permissão
+    const { data: userProfile } = await supabaseAdmin
+      .from('user_profiles')
+      .select('role')
+      .eq('id', userId)
+      .maybeSingle();
+
+    const isAdmin = userProfile?.role === 'admin';
+
+    // Verificar permissão - qualquer permissão de qualidade permite visualizar o painel
+    const { data: permissoes } = await supabaseAdmin
+      .from('permissoes_portal')
+      .select('permissao_id')
+      .eq('usuario_id', userId)
+      .eq('tipo', 'qualidade');
+
+    const temPermissao = isAdmin || (permissoes && permissoes.length > 0);
+
+    if (!temPermissao) {
+      return res.status(403).json({ 
+        success: false, 
+        error: 'Você não tem permissão para visualizar o painel de qualidade' 
+      });
+    }
+
+    const { id } = req.params;
+
+    // Buscar ferramenta
+    const { data: ferramenta, error } = await supabaseAdmin
+      .from('ferramentas_qualidade')
+      .select('*')
+      .eq('id', id)
+      .maybeSingle();
+
+    if (error) throw error;
+    if (!ferramenta) {
+      return res.status(404).json({ success: false, error: 'Ferramenta não encontrada' });
+    }
+
+    // Buscar dados do criador
+    if (ferramenta.criado_por) {
+      const { data: criador } = await supabaseAdmin
+        .from('user_profiles')
+        .select('id, nome, email, departamento, cargo')
+        .eq('id', ferramenta.criado_por)
+        .maybeSingle();
+      ferramenta.criado_por_user = criador || null;
+    }
+
+    // Buscar alertas relacionados
+    const { data: alertas } = await supabaseAdmin
+      .from('ferramentas_qualidade_alertas')
+      .select('*')
+      .eq('ferramenta_id', id);
+
+    // Buscar dados dos responsáveis e superiores
+    const responsaveisIds = [...new Set([
+      ...(alertas || []).map(a => a.responsavel_id).filter(Boolean),
+      ...(alertas || []).map(a => a.superior_id).filter(Boolean)
+    ])];
+
+    const responsaveisMap = {};
+    if (responsaveisIds.length > 0) {
+      const { data: responsaveis } = await supabaseAdmin
+        .from('user_profiles')
+        .select('id, nome, email')
+        .in('id', responsaveisIds);
+      
+      if (responsaveis) {
+        responsaveis.forEach(r => {
+          responsaveisMap[r.id] = r;
+        });
+      }
+    }
+
+    // Adicionar dados dos responsáveis aos alertas
+    ferramenta.alertas = (alertas || []).map(alerta => {
+      return {
+        ...alerta,
+        responsavel: responsaveisMap[alerta.responsavel_id] || null,
+        superior: responsaveisMap[alerta.superior_id] || null
+      };
+    });
+
+    res.json({
+      success: true,
+      ferramenta
+    });
+  } catch (error) {
+    console.error('❌ Erro ao buscar ferramenta do painel:', error);
+    res.status(500).json({ success: false, error: 'Erro ao buscar ferramenta' });
+  }
+});
+
+// Endpoint para buscar ferramenta específica (do usuário logado)
+app.get('/api/ferramentas-qualidade/:id', async (req, res) => {
+  try {
+    const userResult = await getUserFromRequest(req);
+    if (!userResult || !userResult.user) {
+      return res.status(401).json({ success: false, error: 'Não autenticado' });
+    }
+
+    const { id } = req.params;
+    const userId = userResult.user.id;
+
+    const { data: ferramenta, error } = await supabaseAdmin
+      .from('ferramentas_qualidade')
+      .select('*')
+      .eq('id', id)
+      .eq('criado_por', userId)
+      .maybeSingle();
+
+    if (error) throw error;
+    if (!ferramenta) {
+      return res.status(404).json({ success: false, error: 'Ferramenta não encontrada' });
+    }
+
+    res.json({
+      success: true,
+      ferramenta
+    });
+  } catch (error) {
+    console.error('❌ Erro ao buscar ferramenta:', error);
+    res.status(500).json({ success: false, error: 'Erro ao buscar ferramenta' });
+  }
+});
+
+// Endpoint para salvar/atualizar ferramenta
+app.post('/api/ferramentas-qualidade', async (req, res) => {
+  try {
+    const userResult = await getUserFromRequest(req);
+    const userId = userResult?.user?.id;
+
+    // Se não tiver usuário autenticado, retornar erro
+    if (!userId) {
+      return res.status(401).json({ success: false, error: 'É necessário estar autenticado para salvar ferramentas' });
+    }
+
+    const { id, tipo_ferramenta, titulo, dados, tags, observacoes } = req.body;
+
+    if (!tipo_ferramenta || !titulo || !dados) {
+      return res.status(400).json({ success: false, error: 'Campos obrigatórios faltando' });
+    }
+
+    // Processar alertas para Plano de Ação
+    let temPrazos = false;
+    let proximoVencimento = null;
+    let alertas = [];
+
+    if (tipo_ferramenta === 'plano_acao' && dados.acoes && Array.isArray(dados.acoes)) {
+      const hoje = new Date();
+      hoje.setHours(0, 0, 0, 0);
+
+      for (const acao of dados.acoes) {
+        // Usar finalizacao como prazo (ou prazo se existir)
+        const prazoData = acao.prazo || acao.finalizacao;
+        if (prazoData && acao.responsavel_id) {
+          temPrazos = true;
+          const prazoDate = new Date(prazoData);
+          prazoDate.setHours(0, 0, 0, 0);
+
+          if (!proximoVencimento || prazoDate < proximoVencimento) {
+            proximoVencimento = prazoDate;
+          }
+
+          // Buscar superior do responsável
+          const superior = await buscarSuperiorUsuario(acao.responsavel_id);
+
+          // Determinar status do prazo
+          let status = 'pendente';
+          const diasRestantes = Math.floor((prazoDate - hoje) / (1000 * 60 * 60 * 24));
+          if (diasRestantes < 0) {
+            status = 'vencido';
+          } else if (diasRestantes <= 3) {
+            status = 'em_alerta';
+          }
+
+          alertas.push({
+            ferramenta_id: id || 'temp', // Será atualizado após criar a ferramenta
+            acao_id: acao.id || Date.now().toString(),
+            responsavel_id: acao.responsavel_id,
+            superior_id: superior?.id || null,
+            prazo: prazoData,
+            status,
+            alertado_responsavel: false,
+            alertado_superior: false
+          });
+        }
+      }
+    }
+
+    let ferramenta;
+
+    if (id) {
+      // Atualizar ferramenta existente
+      const { data: ferramentaExistente } = await supabaseAdmin
+        .from('ferramentas_qualidade')
+        .select('id, criado_por')
+        .eq('id', id)
+        .maybeSingle();
+
+      if (!ferramentaExistente || ferramentaExistente.criado_por !== userId) {
+        return res.status(403).json({ success: false, error: 'Sem permissão para atualizar esta ferramenta' });
+      }
+
+      const { data, error } = await supabaseAdmin
+        .from('ferramentas_qualidade')
+        .update({
+          titulo,
+          dados,
+          tags: tags || [],
+          observacoes,
+          tem_prazos: temPrazos,
+          proximo_vencimento: proximoVencimento,
+          atualizado_em: new Date().toISOString()
+        })
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      ferramenta = data;
+
+      // Remover alertas antigos e criar novos
+      await supabaseAdmin
+        .from('ferramentas_qualidade_alertas')
+        .delete()
+        .eq('ferramenta_id', id);
+
+    } else {
+      // Criar nova ferramenta
+      const { data, error } = await supabaseAdmin
+        .from('ferramentas_qualidade')
+        .insert({
+          tipo_ferramenta,
+          titulo,
+          dados,
+          criado_por: userId,
+          tags: tags || [],
+          observacoes,
+          tem_prazos: temPrazos,
+          proximo_vencimento: proximoVencimento
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      ferramenta = data;
+    }
+
+    // Criar alertas
+    if (alertas.length > 0) {
+      const alertasParaInserir = alertas.map(a => ({
+        ...a,
+        ferramenta_id: ferramenta.id
+      }));
+
+      try {
+        const { error: alertasError } = await supabaseAdmin
+          .from('ferramentas_qualidade_alertas')
+          .insert(alertasParaInserir);
+
+        if (alertasError) {
+          console.warn('⚠️ Erro ao criar alertas:', alertasError);
+          // Não bloquear o salvamento se falhar ao criar alertas
+        }
+      } catch (err) {
+        console.warn('⚠️ Erro ao inserir alertas (tabela pode não existir):', err.message);
+        // Não bloquear o salvamento se falhar ao criar alertas
+      }
+    }
+
+    res.json({
+      success: true,
+      ferramenta
+    });
+  } catch (error) {
+    console.error('❌ Erro ao salvar ferramenta:', error);
+    res.status(500).json({ success: false, error: 'Erro ao salvar ferramenta' });
+  }
+});
+
+// Endpoint para excluir ferramenta
+app.delete('/api/ferramentas-qualidade/:id', async (req, res) => {
+  try {
+    const userResult = await getUserFromRequest(req);
+    if (!userResult || !userResult.user) {
+      return res.status(401).json({ success: false, error: 'Não autenticado' });
+    }
+
+    const { id } = req.params;
+    const userId = userResult.user.id;
+
+    // Verificar se a ferramenta existe e se o usuário tem permissão
+    const { data: ferramenta, error: fetchError } = await supabaseAdmin
+      .from('ferramentas_qualidade')
+      .select('id, criado_por')
+      .eq('id', id)
+      .single();
+
+    if (fetchError || !ferramenta) {
+      return res.status(404).json({ success: false, error: 'Ferramenta não encontrada' });
+    }
+
+    // Verificar se o usuário é o criador ou tem permissão de admin
+    const { data: userProfile } = await supabaseAdmin
+      .from('user_profiles')
+      .select('role')
+      .eq('id', userId)
+      .single();
+
+    const isAdmin = userProfile?.role === 'admin';
+    const isOwner = ferramenta.criado_por === userId;
+
+    if (!isAdmin && !isOwner) {
+      return res.status(403).json({ success: false, error: 'Você não tem permissão para excluir esta ferramenta' });
+    }
+
+    // Excluir alertas relacionados primeiro (devido à foreign key com CASCADE)
+    await supabaseAdmin
+      .from('ferramentas_qualidade_alertas')
+      .delete()
+      .eq('ferramenta_id', id);
+
+    // Excluir a ferramenta
+    const { error: deleteError } = await supabaseAdmin
+      .from('ferramentas_qualidade')
+      .delete()
+      .eq('id', id);
+
+    if (deleteError) throw deleteError;
+
+    res.json({ success: true, message: 'Ferramenta excluída com sucesso' });
+  } catch (error) {
+    console.error('❌ Erro ao excluir ferramenta:', error);
+    res.status(500).json({ success: false, error: 'Erro ao excluir ferramenta' });
+  }
+});
+
+// Endpoint para arquivar ferramenta
+app.put('/api/ferramentas-qualidade/:id/arquivar', async (req, res) => {
+  try {
+    const userResult = await getUserFromRequest(req);
+    if (!userResult || !userResult.user) {
+      return res.status(401).json({ success: false, error: 'Não autenticado' });
+    }
+
+    const { id } = req.params;
+    const userId = userResult.user.id;
+    const { arquivado } = req.body;
+
+    const { data, error } = await supabaseAdmin
+      .from('ferramentas_qualidade')
+      .update({ arquivado: arquivado !== false })
+      .eq('id', id)
+      .eq('criado_por', userId)
+      .select()
+      .single();
+
+    if (error) throw error;
+    if (!data) {
+      return res.status(404).json({ success: false, error: 'Ferramenta não encontrada' });
+    }
+
+    res.json({
+      success: true,
+      ferramenta: data
+    });
+  } catch (error) {
+    console.error('❌ Erro ao arquivar ferramenta:', error);
+    res.status(500).json({ success: false, error: 'Erro ao arquivar ferramenta' });
+  }
+});
+
+// Endpoint para atualizar status de uma ação
+app.put('/api/ferramentas-qualidade/acoes/:acaoId/atualizar', async (req, res) => {
+  try {
+    const userResult = await getUserFromRequest(req);
+    if (!userResult || !userResult.user) {
+      return res.status(401).json({ success: false, error: 'Não autenticado' });
+    }
+
+    const userId = userResult.user.id;
+    const { acaoId } = req.params;
+    const { ferramenta_id, progresso, status, obs } = req.body;
+
+    // Verificar se o usuário é responsável por esta ação
+    const { data: alerta, error: alertaError } = await supabaseAdmin
+      .from('ferramentas_qualidade_alertas')
+      .select('*')
+      .eq('ferramenta_id', ferramenta_id)
+      .eq('acao_id', acaoId)
+      .eq('responsavel_id', userId)
+      .single();
+
+    if (alertaError || !alerta) {
+      return res.status(403).json({ success: false, error: 'Você não tem permissão para atualizar esta ação' });
+    }
+
+    // Buscar a ferramenta
+    const { data: ferramenta, error: ferramentaError } = await supabaseAdmin
+      .from('ferramentas_qualidade')
+      .select('dados')
+      .eq('id', ferramenta_id)
+      .single();
+
+    if (ferramentaError || !ferramenta) {
+      return res.status(404).json({ success: false, error: 'Ferramenta não encontrada' });
+    }
+
+    // Atualizar a ação dentro dos dados da ferramenta
+    const dados = ferramenta.dados || {};
+    if (dados.acoes && Array.isArray(dados.acoes)) {
+      const acaoIndex = dados.acoes.findIndex(a => a.id === acaoId);
+      if (acaoIndex !== -1) {
+        dados.acoes[acaoIndex].progresso = progresso !== undefined ? progresso : dados.acoes[acaoIndex].progresso;
+        dados.acoes[acaoIndex].status = status || dados.acoes[acaoIndex].status;
+        dados.acoes[acaoIndex].obs = obs !== undefined ? obs : dados.acoes[acaoIndex].obs;
+
+        // Se progresso for 100%, marcar como finalizado
+        if (progresso === 100) {
+          dados.acoes[acaoIndex].status = 'finalizado';
+        }
+      }
+    }
+
+    // Atualizar a ferramenta
+    const { error: updateError } = await supabaseAdmin
+      .from('ferramentas_qualidade')
+      .update({ dados: dados })
+      .eq('id', ferramenta_id);
+
+    if (updateError) throw updateError;
+
+    // Atualizar o status do alerta se necessário
+    let novoStatusAlerta = alerta.status;
+    if (status === 'finalizado' || progresso === 100) {
+      novoStatusAlerta = 'finalizado';
+    } else if (status) {
+      novoStatusAlerta = status;
+    }
+
+    if (novoStatusAlerta !== alerta.status) {
+      await supabaseAdmin
+        .from('ferramentas_qualidade_alertas')
+        .update({ status: novoStatusAlerta })
+        .eq('id', alerta.id);
+    }
+
+    res.json({
+      success: true,
+      message: 'Ação atualizada com sucesso'
+    });
+  } catch (error) {
+    console.error('❌ Erro ao atualizar ação:', error);
+    res.status(500).json({ success: false, error: 'Erro ao atualizar ação' });
+  }
+});
+
+// Endpoint para listar alertas do usuário
+app.get('/api/ferramentas-qualidade/alertas', async (req, res) => {
+  try {
+    const userResult = await getUserFromRequest(req);
+    const userId = userResult?.user?.id;
+
+    // Se não tiver usuário autenticado, retornar lista vazia
+    if (!userId) {
+      return res.json({
+        success: true,
+        alertas: []
+      });
+    }
+
+    const { status } = req.query;
+
+    try {
+      // Buscar alertas do usuário
+      let query = supabaseAdmin
+        .from('ferramentas_qualidade_alertas')
+        .select('*');
+
+      // Filtrar por responsável ou superior
+      query = query.or(`responsavel_id.eq.${userId},superior_id.eq.${userId}`);
+      query = query.order('prazo', { ascending: true });
+
+      const { data: alertas, error } = await query;
+
+      if (error) {
+        console.error('❌ Erro ao buscar alertas:', error);
+        console.error('❌ Código do erro:', error.code);
+        console.error('❌ Mensagem do erro:', error.message);
+        console.error('❌ Detalhes do erro:', error.details);
+        
+        // Se a tabela não existir, retornar lista vazia ao invés de erro
+        if (error.code === '42P01' || 
+            error.code === 'PGRST116' ||
+            error.message?.includes('does not exist') ||
+            error.message?.includes('relation') ||
+            error.message?.includes('tabela') ||
+            error.message?.includes('table')) {
+          console.warn('⚠️ Tabela ferramentas_qualidade_alertas não existe ainda');
+          return res.json({
+            success: true,
+            alertas: []
+          });
+        }
+        throw error;
+      }
+
+      // Se não houver alertas, retornar vazio
+      if (!alertas || alertas.length === 0) {
+        return res.json({
+          success: true,
+          alertas: []
+        });
+      }
+
+      // Buscar dados adicionais das ferramentas e usuários
+      const alertasCompletos = await Promise.all((alertas || []).map(async (alerta) => {
+        try {
+          const [ferramenta, responsavel, superior] = await Promise.all([
+            alerta.ferramenta_id ? supabaseAdmin.from('ferramentas_qualidade').select('tipo_ferramenta, titulo').eq('id', alerta.ferramenta_id).maybeSingle() : Promise.resolve({ data: null }),
+            alerta.responsavel_id ? supabaseAdmin.from('user_profiles').select('id, nome, email').eq('id', alerta.responsavel_id).maybeSingle() : Promise.resolve({ data: null }),
+            alerta.superior_id ? supabaseAdmin.from('user_profiles').select('id, nome, email').eq('id', alerta.superior_id).maybeSingle() : Promise.resolve({ data: null })
+          ]);
+
+          return {
+            ...alerta,
+            ferramenta: ferramenta.data || {},
+            responsavel: responsavel.data || {},
+            superior: superior.data || null
+          };
+        } catch (err) {
+          console.warn('⚠️ Erro ao buscar dados do alerta:', err);
+          return {
+            ...alerta,
+            ferramenta: {},
+            responsavel: {},
+            superior: null
+          };
+        }
+      }));
+
+      let queryFiltered = alertasCompletos;
+
+      if (status) {
+        queryFiltered = queryFiltered.filter(a => a.status === status);
+      }
+
+      res.json({
+        success: true,
+        alertas: queryFiltered
+      });
+    } catch (queryError) {
+      console.error('❌ Erro na query de alertas:', queryError);
+      // Se for erro de tabela não existir, retornar vazio
+      if (queryError.code === '42P01' || 
+          queryError.code === 'PGRST116' ||
+          queryError.message?.includes('does not exist') ||
+          queryError.message?.includes('relation') ||
+          queryError.message?.includes('tabela') ||
+          queryError.message?.includes('table')) {
+        return res.json({
+          success: true,
+          alertas: []
+        });
+      }
+      throw queryError;
+    }
+  } catch (error) {
+    console.error('❌ Erro geral ao listar alertas:', error);
+    console.error('❌ Stack:', error.stack);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Erro ao listar alertas',
+      details: process.env.DEBUG_MODE ? error.message : undefined
+    });
+  }
+});
+
+// Função para verificar e atualizar status dos alertas automaticamente
+async function verificarEAtualizarAlertas() {
+  try {
+    const hoje = new Date();
+    hoje.setHours(0, 0, 0, 0);
+
+    // Buscar alertas pendentes ou em alerta que precisam ser atualizados
+    const { data: alertas, error } = await supabaseAdmin
+      .from('ferramentas_qualidade_alertas')
+      .select('*')
+      .in('status', ['pendente', 'em_alerta']);
+
+    if (error) {
+      // Se a tabela não existir, apenas logar e retornar
+      if (error.code === '42P01' || error.code === 'PGRST116') {
+        return { atualizados: 0, verificados: 0 };
+      }
+      throw error;
+    }
+
+    if (!alertas || alertas.length === 0) {
+      return { atualizados: 0, verificados: 0 };
+    }
+
+    let atualizados = 0;
+    for (const alerta of alertas) {
+      const prazoDate = new Date(alerta.prazo);
+      prazoDate.setHours(0, 0, 0, 0);
+      const diasRestantes = Math.floor((prazoDate - hoje) / (1000 * 60 * 60 * 24));
+      
+      let novoStatus = alerta.status;
+      
+      // Atualizar status baseado em dias restantes
+      if (diasRestantes < 0) {
+        novoStatus = 'vencido';
+      } else if (diasRestantes <= 3 && novoStatus === 'pendente') {
+        novoStatus = 'em_alerta';
+      }
+
+      // Se o status mudou, atualizar
+      if (novoStatus !== alerta.status) {
+        const updateData = {
+          status: novoStatus,
+          updated_at: new Date().toISOString()
+        };
+
+        // Marcar como alertado se ainda não foi
+        if (novoStatus === 'vencido' && !alerta.alertado_responsavel) {
+          updateData.alertado_responsavel = true;
+          updateData.data_alert_responsavel = new Date().toISOString();
+        }
+
+        if (novoStatus === 'vencido' && alerta.superior_id && !alerta.alertado_superior) {
+          updateData.alertado_superior = true;
+          updateData.data_alert_superior = new Date().toISOString();
+        }
+
+        const { error: updateError } = await supabaseAdmin
+          .from('ferramentas_qualidade_alertas')
+          .update(updateData)
+          .eq('id', alerta.id);
+
+        if (!updateError) {
+          atualizados++;
+        }
+      }
+    }
+
+    return { atualizados, verificados: alertas.length };
+  } catch (error) {
+    console.error('❌ Erro ao verificar alertas:', error);
+    return { atualizados: 0, verificados: 0 };
+  }
+}
+
+// Verificar alertas a cada 1 hora
+setInterval(async () => {
+  const resultado = await verificarEAtualizarAlertas();
+  if (resultado.atualizados > 0) {
+    console.log(`✅ Alertas atualizados: ${resultado.atualizados} de ${resultado.verificados}`);
+  }
+}, 60 * 60 * 1000); // 1 hora
+
+// Endpoint para verificar e atualizar alertas
+app.post('/api/ferramentas-qualidade/alertas/verificar', async (req, res) => {
+  try {
+    const resultado = await verificarEAtualizarAlertas();
+    res.json({
+      success: true,
+      alertasVerificados: resultado.verificados,
+      alertasAtualizados: resultado.atualizados
+    });
+  } catch (error) {
+    console.error('❌ Erro ao verificar alertas:', error);
+    res.status(500).json({ success: false, error: 'Erro ao verificar alertas' });
+  }
+});
+
+// ========== PAINEL DE QUALIDADE ==========
+// Endpoint para buscar TODAS as ferramentas (com permissões)
+app.get('/api/ferramentas-qualidade/painel', async (req, res) => {
+  try {
+    const userResult = await getUserFromRequest(req);
+    const userId = userResult?.user?.id;
+
+    if (!userId) {
+      return res.status(401).json({ success: false, error: 'Não autenticado' });
+    }
+
+    // Verificar permissão para visualizar painel
+    const { data: userProfile } = await supabaseAdmin
+      .from('user_profiles')
+      .select('role')
+      .eq('id', userId)
+      .maybeSingle();
+
+    const isAdmin = userProfile?.role === 'admin';
+
+    // Verificar permissão - qualquer permissão de qualidade permite visualizar o painel
+    const { data: permissoes } = await supabaseAdmin
+      .from('permissoes_portal')
+      .select('permissao_id')
+      .eq('usuario_id', userId)
+      .eq('tipo', 'qualidade');
+
+    const temPermissao = isAdmin || (permissoes && permissoes.length > 0);
+
+    if (!temPermissao) {
+      return res.status(403).json({ 
+        success: false, 
+        error: 'Você não tem permissão para visualizar o painel de qualidade' 
+      });
+    }
+
+    // Parâmetros de filtro
+    const { 
+      tipo_ferramenta, 
+      arquivado, 
+      responsavel_id, 
+      status_alerta,
+      busca,
+      limit = 50,
+      offset = 0
+    } = req.query;
+
+    // Construir query base
+    let query = supabaseAdmin
+      .from('ferramentas_qualidade')
+      .select('*')
+      .order('criado_em', { ascending: false });
+
+    // Aplicar filtros
+    if (arquivado !== undefined) {
+      query = query.eq('arquivado', arquivado === 'true');
+    } else {
+      query = query.eq('arquivado', false); // Por padrão, não mostrar arquivadas
+    }
+
+    if (tipo_ferramenta) {
+      query = query.eq('tipo_ferramenta', tipo_ferramenta);
+    }
+
+    if (busca) {
+      query = query.or(`titulo.ilike.%${busca}%,observacoes.ilike.%${busca}%`);
+    }
+
+    // Limitar e paginar
+    query = query.range(parseInt(offset), parseInt(offset) + parseInt(limit) - 1);
+
+    const { data: ferramentas, error } = await query;
+
+    if (error) throw error;
+
+    // Buscar dados dos criadores
+    const criadoresIds = [...new Set((ferramentas || []).map(f => f.criado_por).filter(Boolean))];
+    const criadoresMap = {};
+    
+    if (criadoresIds.length > 0) {
+      const { data: criadores } = await supabaseAdmin
+        .from('user_profiles')
+        .select('id, nome, email, departamento, cargo')
+        .in('id', criadoresIds);
+      
+      if (criadores) {
+        criadores.forEach(c => {
+          criadoresMap[c.id] = c;
+        });
+      }
+    }
+
+    // Buscar alertas relacionados se necessário
+    let ferramentasComAlertas = [];
+    if (ferramentas && ferramentas.length > 0) {
+      const ferramentaIds = ferramentas.map(f => f.id);
+      
+      // Buscar alertas
+      const { data: alertas } = await supabaseAdmin
+        .from('ferramentas_qualidade_alertas')
+        .select('*')
+        .in('ferramenta_id', ferramentaIds);
+
+      // Agrupar alertas por ferramenta
+      const alertasPorFerramenta = {};
+      if (alertas) {
+        alertas.forEach(alerta => {
+          if (!alertasPorFerramenta[alerta.ferramenta_id]) {
+            alertasPorFerramenta[alerta.ferramenta_id] = [];
+          }
+          alertasPorFerramenta[alerta.ferramenta_id].push(alerta);
+        });
+      }
+
+      // Combinar ferramentas com alertas e dados do criador
+      ferramentasComAlertas = ferramentas.map(ferramenta => {
+        // Adicionar dados do criador
+        ferramenta.criado_por_user = criadoresMap[ferramenta.criado_por] || null;
+        
+        const alertasFerramenta = alertasPorFerramenta[ferramenta.id] || [];
+        
+        // Filtrar por responsável se necessário
+        if (responsavel_id) {
+          const alertasFiltrados = alertasFerramenta.filter(a => 
+            a.responsavel_id === responsavel_id || a.superior_id === responsavel_id
+          );
+          if (alertasFiltrados.length === 0 && ferramenta.tipo_ferramenta !== 'plano_acao') {
+            return null; // Não tem ações deste responsável
+          }
+          ferramenta.alertas = alertasFiltrados;
+        } else {
+          ferramenta.alertas = alertasFerramenta;
+        }
+
+        // Filtrar por status de alerta se necessário
+        if (status_alerta) {
+          const alertasComStatus = ferramenta.alertas.filter(a => a.status === status_alerta);
+          if (alertasComStatus.length === 0 && ferramenta.tipo_ferramenta === 'plano_acao') {
+            return null; // Não tem alertas com este status
+          }
+          ferramenta.alertas = alertasComStatus;
+        }
+
+        // Calcular estatísticas
+        ferramenta.total_acoes = ferramenta.tipo_ferramenta === 'plano_acao' 
+          ? (ferramenta.dados?.acoes?.length || 0) 
+          : 0;
+        ferramenta.acoes_pendentes = ferramenta.alertas.filter(a => 
+          a.status === 'pendente' || a.status === 'em_alerta'
+        ).length;
+        ferramenta.acoes_vencidas = ferramenta.alertas.filter(a => a.status === 'vencido').length;
+
+        return ferramenta;
+      }).filter(f => f !== null);
+    }
+
+    // Contar total (para paginação)
+    let countQuery = supabaseAdmin
+      .from('ferramentas_qualidade')
+      .select('*', { count: 'exact', head: true })
+      .eq('arquivado', arquivado !== undefined ? arquivado === 'true' : false);
+
+    if (tipo_ferramenta) {
+      countQuery = countQuery.eq('tipo_ferramenta', tipo_ferramenta);
+    }
+
+    if (busca) {
+      countQuery = countQuery.or(`titulo.ilike.%${busca}%,observacoes.ilike.%${busca}%`);
+    }
+
+    const { count } = await countQuery;
+
+    res.json({
+      success: true,
+      ferramentas: ferramentasComAlertas,
+      total: count || 0,
+      limit: parseInt(limit),
+      offset: parseInt(offset)
+    });
+  } catch (error) {
+    console.error('❌ Erro ao buscar ferramentas do painel:', error);
+    res.status(500).json({ success: false, error: 'Erro ao buscar ferramentas' });
+  }
+});
+
+// Endpoint para buscar ferramenta específica do painel (sem restrição de criador)
+app.get('/api/ferramentas-qualidade/painel/:id', async (req, res) => {
+  try {
+    const userResult = await getUserFromRequest(req);
+    const userId = userResult?.user?.id;
+
+    if (!userId) {
+      return res.status(401).json({ success: false, error: 'Não autenticado' });
+    }
+
+    // Verificar permissão
+    const { data: userProfile } = await supabaseAdmin
+      .from('user_profiles')
+      .select('role')
+      .eq('id', userId)
+      .maybeSingle();
+
+    const isAdmin = userProfile?.role === 'admin';
+
+    // Verificar permissão - qualquer permissão de qualidade permite visualizar o painel
+    const { data: permissoes } = await supabaseAdmin
+      .from('permissoes_portal')
+      .select('permissao_id')
+      .eq('usuario_id', userId)
+      .eq('tipo', 'qualidade');
+
+    const temPermissao = isAdmin || (permissoes && permissoes.length > 0);
+
+    if (!temPermissao) {
+      return res.status(403).json({ 
+        success: false, 
+        error: 'Você não tem permissão para visualizar o painel de qualidade' 
+      });
+    }
+
+    const { id } = req.params;
+
+    // Buscar ferramenta
+    const { data: ferramenta, error } = await supabaseAdmin
+      .from('ferramentas_qualidade')
+      .select('*')
+      .eq('id', id)
+      .maybeSingle();
+
+    if (error) throw error;
+    if (!ferramenta) {
+      return res.status(404).json({ success: false, error: 'Ferramenta não encontrada' });
+    }
+
+    // Buscar dados do criador
+    if (ferramenta.criado_por) {
+      const { data: criador } = await supabaseAdmin
+        .from('user_profiles')
+        .select('id, nome, email, departamento, cargo')
+        .eq('id', ferramenta.criado_por)
+        .maybeSingle();
+      ferramenta.criado_por_user = criador || null;
+    }
+
+    // Buscar alertas relacionados
+    const { data: alertas } = await supabaseAdmin
+      .from('ferramentas_qualidade_alertas')
+      .select('*')
+      .eq('ferramenta_id', id);
+
+    // Buscar dados dos responsáveis e superiores
+    const responsaveisIds = [...new Set([
+      ...(alertas || []).map(a => a.responsavel_id).filter(Boolean),
+      ...(alertas || []).map(a => a.superior_id).filter(Boolean)
+    ])];
+
+    const responsaveisMap = {};
+    if (responsaveisIds.length > 0) {
+      const { data: responsaveis } = await supabaseAdmin
+        .from('user_profiles')
+        .select('id, nome, email')
+        .in('id', responsaveisIds);
+      
+      if (responsaveis) {
+        responsaveis.forEach(r => {
+          responsaveisMap[r.id] = r;
+        });
+      }
+    }
+
+    // Adicionar dados dos responsáveis aos alertas
+    ferramenta.alertas = (alertas || []).map(alerta => {
+      return {
+        ...alerta,
+        responsavel: responsaveisMap[alerta.responsavel_id] || null,
+        superior: responsaveisMap[alerta.superior_id] || null
+      };
+    });
+
+    res.json({
+      success: true,
+      ferramenta
+    });
+  } catch (error) {
+    console.error('❌ Erro ao buscar ferramenta do painel:', error);
+    res.status(500).json({ success: false, error: 'Erro ao buscar ferramenta' });
+  }
+});
+
 // ========== MIDDLEWARE DE ERRO ==========
 app.use((err, req, res, next) => {
   console.error('❌ Erro não tratado:', err);
@@ -8427,442 +9982,6 @@ app.listen(PORT, '0.0.0.0', async () => {
     }
   } catch (error) {
     console.log('⚠️ Erro ao testar configurações do Supabase');
-  }
-});
-
-// ========== FERRAMENTAS DE QUALIDADE ==========
-
-// Endpoint para listar usuários (para dropdowns)
-app.get('/api/ferramentas-qualidade/usuarios', async (req, res) => {
-  try {
-    const userResult = await getUserFromRequest(req);
-    if (!userResult || !userResult.user) {
-      return res.status(401).json({ success: false, error: 'Não autenticado' });
-    }
-
-    // Buscar usuários ativos, excluindo motoristas
-    const { data: motoristas } = await supabaseAdmin
-      .from('motoristas')
-      .select('auth_user_id')
-      .not('auth_user_id', 'is', null);
-
-    const motoristaIds = new Set((motoristas || []).map(m => m.auth_user_id));
-
-    const { data: usuarios, error } = await supabaseAdmin
-      .from('user_profiles')
-      .select('id, nome, email, departamento, cargo, role')
-      .eq('active', true)
-      .order('nome');
-
-    if (error) throw error;
-
-    // Filtrar motoristas
-    const usuariosFiltrados = (usuarios || []).filter(u => !motoristaIds.has(u.id));
-
-    res.json({
-      success: true,
-      usuarios: usuariosFiltrados.map(u => ({
-        id: u.id,
-        nome: u.nome || u.email || 'Sem nome',
-        email: u.email,
-        departamento: u.departamento,
-        cargo: u.cargo,
-        role: u.role
-      }))
-    });
-  } catch (error) {
-    console.error('❌ Erro ao buscar usuários:', error);
-    res.status(500).json({ success: false, error: 'Erro ao buscar usuários' });
-  }
-});
-
-// Buscar superior de um usuário (por departamento ou hierarquia)
-async function buscarSuperiorUsuario(userId) {
-  try {
-    const { data: usuario } = await supabaseAdmin
-      .from('user_profiles')
-      .select('departamento, cargo')
-      .eq('id', userId)
-      .maybeSingle();
-
-    if (!usuario || !usuario.departamento) return null;
-
-    // Buscar gerente/supervisor do mesmo departamento
-    const { data: superior } = await supabaseAdmin
-      .from('user_profiles')
-      .select('id, nome, email')
-      .eq('departamento', usuario.departamento)
-      .in('role', ['admin', 'manager'])
-      .neq('id', userId)
-      .eq('active', true)
-      .limit(1)
-      .maybeSingle();
-
-    return superior || null;
-  } catch (error) {
-    console.error('❌ Erro ao buscar superior:', error);
-    return null;
-  }
-}
-
-// Endpoint para listar ferramentas do usuário
-app.get('/api/ferramentas-qualidade', async (req, res) => {
-  try {
-    const userResult = await getUserFromRequest(req);
-    if (!userResult || !userResult.user) {
-      return res.status(401).json({ success: false, error: 'Não autenticado' });
-    }
-
-    const userId = userResult.user.id;
-    const { arquivado, tipo } = req.query;
-
-    let query = supabaseAdmin
-      .from('ferramentas_qualidade')
-      .select('*')
-      .eq('criado_por', userId)
-      .order('criado_em', { ascending: false });
-
-    if (arquivado !== undefined) {
-      query = query.eq('arquivado', arquivado === 'true');
-    }
-
-    if (tipo) {
-      query = query.eq('tipo_ferramenta', tipo);
-    }
-
-    const { data: ferramentas, error } = await query;
-
-    if (error) throw error;
-
-    res.json({
-      success: true,
-      ferramentas: ferramentas || []
-    });
-  } catch (error) {
-    console.error('❌ Erro ao listar ferramentas:', error);
-    res.status(500).json({ success: false, error: 'Erro ao listar ferramentas' });
-  }
-});
-
-// Endpoint para buscar ferramenta específica
-app.get('/api/ferramentas-qualidade/:id', async (req, res) => {
-  try {
-    const userResult = await getUserFromRequest(req);
-    if (!userResult || !userResult.user) {
-      return res.status(401).json({ success: false, error: 'Não autenticado' });
-    }
-
-    const { id } = req.params;
-    const userId = userResult.user.id;
-
-    const { data: ferramenta, error } = await supabaseAdmin
-      .from('ferramentas_qualidade')
-      .select('*')
-      .eq('id', id)
-      .eq('criado_por', userId)
-      .maybeSingle();
-
-    if (error) throw error;
-    if (!ferramenta) {
-      return res.status(404).json({ success: false, error: 'Ferramenta não encontrada' });
-    }
-
-    res.json({
-      success: true,
-      ferramenta
-    });
-  } catch (error) {
-    console.error('❌ Erro ao buscar ferramenta:', error);
-    res.status(500).json({ success: false, error: 'Erro ao buscar ferramenta' });
-  }
-});
-
-// Endpoint para salvar/atualizar ferramenta
-app.post('/api/ferramentas-qualidade', async (req, res) => {
-  try {
-    const userResult = await getUserFromRequest(req);
-    if (!userResult || !userResult.user) {
-      return res.status(401).json({ success: false, error: 'Não autenticado' });
-    }
-
-    const userId = userResult.user.id;
-    const { id, tipo_ferramenta, titulo, dados, tags, observacoes } = req.body;
-
-    if (!tipo_ferramenta || !titulo || !dados) {
-      return res.status(400).json({ success: false, error: 'Campos obrigatórios faltando' });
-    }
-
-    // Processar alertas para Plano de Ação
-    let temPrazos = false;
-    let proximoVencimento = null;
-    let alertas = [];
-
-    if (tipo_ferramenta === 'plano_acao' && dados.acoes && Array.isArray(dados.acoes)) {
-      const hoje = new Date();
-      hoje.setHours(0, 0, 0, 0);
-
-      for (const acao of dados.acoes) {
-        if (acao.prazo && acao.responsavel_id) {
-          temPrazos = true;
-          const prazoDate = new Date(acao.prazo);
-          prazoDate.setHours(0, 0, 0, 0);
-
-          if (!proximoVencimento || prazoDate < proximoVencimento) {
-            proximoVencimento = prazoDate;
-          }
-
-          // Buscar superior do responsável
-          const superior = await buscarSuperiorUsuario(acao.responsavel_id);
-
-          // Determinar status do prazo
-          let status = 'pendente';
-          const diasRestantes = Math.floor((prazoDate - hoje) / (1000 * 60 * 60 * 24));
-          if (diasRestantes < 0) {
-            status = 'vencido';
-          } else if (diasRestantes <= 3) {
-            status = 'em_alerta';
-          }
-
-          alertas.push({
-            ferramenta_id: id || 'temp', // Será atualizado após criar a ferramenta
-            acao_id: acao.id || Date.now().toString(),
-            responsavel_id: acao.responsavel_id,
-            superior_id: superior?.id || null,
-            prazo: acao.prazo,
-            status,
-            alertado_responsavel: false,
-            alertado_superior: false
-          });
-        }
-      }
-    }
-
-    let ferramenta;
-
-    if (id) {
-      // Atualizar ferramenta existente
-      const { data: ferramentaExistente } = await supabaseAdmin
-        .from('ferramentas_qualidade')
-        .select('id, criado_por')
-        .eq('id', id)
-        .maybeSingle();
-
-      if (!ferramentaExistente || ferramentaExistente.criado_por !== userId) {
-        return res.status(403).json({ success: false, error: 'Sem permissão para atualizar esta ferramenta' });
-      }
-
-      const { data, error } = await supabaseAdmin
-        .from('ferramentas_qualidade')
-        .update({
-          titulo,
-          dados,
-          tags: tags || [],
-          observacoes,
-          tem_prazos: temPrazos,
-          proximo_vencimento: proximoVencimento,
-          atualizado_em: new Date().toISOString()
-        })
-        .eq('id', id)
-        .select()
-        .single();
-
-      if (error) throw error;
-      ferramenta = data;
-
-      // Remover alertas antigos e criar novos
-      await supabaseAdmin
-        .from('ferramentas_qualidade_alertas')
-        .delete()
-        .eq('ferramenta_id', id);
-
-    } else {
-      // Criar nova ferramenta
-      const { data, error } = await supabaseAdmin
-        .from('ferramentas_qualidade')
-        .insert({
-          tipo_ferramenta,
-          titulo,
-          dados,
-          criado_por: userId,
-          tags: tags || [],
-          observacoes,
-          tem_prazos: temPrazos,
-          proximo_vencimento: proximoVencimento
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
-      ferramenta = data;
-    }
-
-    // Criar alertas
-    if (alertas.length > 0) {
-      const alertasParaInserir = alertas.map(a => ({
-        ...a,
-        ferramenta_id: ferramenta.id
-      }));
-
-      const { error: alertasError } = await supabaseAdmin
-        .from('ferramentas_qualidade_alertas')
-        .insert(alertasParaInserir);
-
-      if (alertasError) {
-        console.warn('⚠️ Erro ao criar alertas:', alertasError);
-      }
-    }
-
-    res.json({
-      success: true,
-      ferramenta
-    });
-  } catch (error) {
-    console.error('❌ Erro ao salvar ferramenta:', error);
-    res.status(500).json({ success: false, error: 'Erro ao salvar ferramenta' });
-  }
-});
-
-// Endpoint para arquivar ferramenta
-app.put('/api/ferramentas-qualidade/:id/arquivar', async (req, res) => {
-  try {
-    const userResult = await getUserFromRequest(req);
-    if (!userResult || !userResult.user) {
-      return res.status(401).json({ success: false, error: 'Não autenticado' });
-    }
-
-    const { id } = req.params;
-    const userId = userResult.user.id;
-    const { arquivado } = req.body;
-
-    const { data, error } = await supabaseAdmin
-      .from('ferramentas_qualidade')
-      .update({ arquivado: arquivado !== false })
-      .eq('id', id)
-      .eq('criado_por', userId)
-      .select()
-      .single();
-
-    if (error) throw error;
-    if (!data) {
-      return res.status(404).json({ success: false, error: 'Ferramenta não encontrada' });
-    }
-
-    res.json({
-      success: true,
-      ferramenta: data
-    });
-  } catch (error) {
-    console.error('❌ Erro ao arquivar ferramenta:', error);
-    res.status(500).json({ success: false, error: 'Erro ao arquivar ferramenta' });
-  }
-});
-
-// Endpoint para listar alertas do usuário
-app.get('/api/ferramentas-qualidade/alertas', async (req, res) => {
-  try {
-    const userResult = await getUserFromRequest(req);
-    if (!userResult || !userResult.user) {
-      return res.status(401).json({ success: false, error: 'Não autenticado' });
-    }
-
-    const userId = userResult.user.id;
-    const { status } = req.query;
-
-    const { data: alertas, error } = await supabaseAdmin
-      .from('ferramentas_qualidade_alertas')
-      .select('*')
-      .or(`responsavel_id.eq.${userId},superior_id.eq.${userId}`)
-      .order('prazo', { ascending: true });
-
-    if (error) throw error;
-
-    // Buscar dados adicionais das ferramentas e usuários
-    const alertasCompletos = await Promise.all((alertas || []).map(async (alerta) => {
-      const [ferramenta, responsavel, superior] = await Promise.all([
-        supabaseAdmin.from('ferramentas_qualidade').select('tipo_ferramenta, titulo').eq('id', alerta.ferramenta_id).maybeSingle(),
-        supabaseAdmin.from('user_profiles').select('id, nome, email').eq('id', alerta.responsavel_id).maybeSingle(),
-        alerta.superior_id ? supabaseAdmin.from('user_profiles').select('id, nome, email').eq('id', alerta.superior_id).maybeSingle() : Promise.resolve({ data: null })
-      ]);
-
-      return {
-        ...alerta,
-        ferramenta: ferramenta.data || {},
-        responsavel: responsavel.data || {},
-        superior: superior.data || null
-      };
-    }));
-
-    let query = alertasCompletos;
-
-    if (status) {
-      query = query.filter(a => a.status === status);
-    }
-
-    res.json({
-      success: true,
-      alertas: query
-    });
-  } catch (error) {
-    console.error('❌ Erro ao listar alertas:', error);
-    res.status(500).json({ success: false, error: 'Erro ao listar alertas' });
-  }
-});
-
-// Endpoint para verificar e atualizar alertas
-app.post('/api/ferramentas-qualidade/alertas/verificar', async (req, res) => {
-  try {
-    const hoje = new Date();
-    hoje.setHours(0, 0, 0, 0);
-
-    // Buscar alertas pendentes ou em alerta que ainda não venceram
-    const { data: alertas, error } = await supabaseAdmin
-      .from('ferramentas_qualidade_alertas')
-      .select('*')
-      .in('status', ['pendente', 'em_alerta'])
-      .lte('prazo', hoje.toISOString().split('T')[0]);
-
-    if (error) throw error;
-
-    let atualizados = 0;
-    for (const alerta of alertas || []) {
-      const prazoDate = new Date(alerta.prazo);
-      prazoDate.setHours(0, 0, 0, 0);
-      const diasAtrasados = Math.floor((hoje - prazoDate) / (1000 * 60 * 60 * 24));
-
-      if (diasAtrasados > 0) {
-        const updateData = {
-          status: 'vencido',
-          updated_at: new Date().toISOString()
-        };
-
-        // Marcar como alertado se ainda não foi
-        if (!alerta.alertado_responsavel) {
-          updateData.alertado_responsavel = true;
-          updateData.data_alert_responsavel = new Date().toISOString();
-        }
-
-        if (alerta.superior_id && !alerta.alertado_superior) {
-          updateData.alertado_superior = true;
-          updateData.data_alert_superior = new Date().toISOString();
-        }
-
-        await supabaseAdmin
-          .from('ferramentas_qualidade_alertas')
-          .update(updateData)
-          .eq('id', alerta.id);
-
-        atualizados++;
-      }
-    }
-
-    res.json({
-      success: true,
-      alertasVerificados: alertas?.length || 0,
-      alertasAtualizados: atualizados
-    });
-  } catch (error) {
-    console.error('❌ Erro ao verificar alertas:', error);
-    res.status(500).json({ success: false, error: 'Erro ao verificar alertas' });
   }
 });
 

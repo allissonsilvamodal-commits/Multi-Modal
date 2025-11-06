@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minhas Ações - Intranet</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body {
+            background: #f8f9fa;
+            font-family: Arial, sans-serif;
+        }
+        
+        .header-section {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 2rem 0;
+            margin-bottom: 2rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .acao-card {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            border-left: 4px solid #667eea;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        .acao-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        
+        .acao-card.pendente {
+            border-left-color: #ffc107;
+        }
+        
+        .acao-card.em-alerta {
+            border-left-color: #fd7e14;
+        }
+        
+        .acao-card.vencido {
+            border-left-color: #dc3545;
+        }
+        
+        .acao-card.finalizado {
+            border-left-color: #28a745;
+            opacity: 0.8;
+        }
+        
+        .acao-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 1rem;
+        }
+        
+        .acao-titulo {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #333;
+            margin: 0;
+        }
+        
+        .badge-status {
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.875rem;
+            font-weight: 600;
+        }
+        
+        .badge-status.pendente {
+            background: #fff3cd;
+            color: #856404;
+        }
+        
+        .badge-status.em-alerta {
+            background: #ffeaa7;
+            color: #d63031;
+        }
+        
+        .badge-status.vencido {
+            background: #fab1a0;
+            color: #c0392b;
+        }
+        
+        .badge-status.finalizado {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .acao-info {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+        
+        .info-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: #6c757d;
+            font-size: 0.9rem;
+        }
+        
+        .info-item i {
+            color: #667eea;
+        }
+        
+        .progress-container {
+            margin: 1rem 0;
+        }
+        
+        .progress-label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.5rem;
+            font-size: 0.875rem;
+            color: #6c757d;
+        }
+        
+        .acao-actions {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 1rem;
+            flex-wrap: wrap;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        
+        .stat-card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 12px;
+            text-align: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        .stat-card h3 {
+            font-size: 2rem;
+            font-weight: 700;
+            margin: 0;
+            color: #667eea;
+        }
+        
+        .stat-card p {
+            margin: 0.5rem 0 0 0;
+            color: #6c757d;
+            font-size: 0.9rem;
+        }
+        
+        .filters-section {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 12px;
+            margin-bottom: 2rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 4rem 2rem;
+            color: #6c757d;
+        }
+        
+        .empty-state i {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+            color: #dee2e6;
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <div class="header-section">
+        <div class="container">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="mb-0"><i class="fas fa-tasks me-2"></i>Minhas Ações</h1>
+                    <p class="mb-0 mt-2">Gerencie suas ações vinculadas em ferramentas de qualidade</p>
+                </div>
+                <div>
+                    <a href="portal.html" class="btn btn-light">
+                        <i class="fas fa-home me-2"></i>Portal
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- Estatísticas -->
+        <div class="stats-grid" id="statsGrid">
+            <div class="stat-card">
+                <h3 id="totalAcoes">0</h3>
+                <p>Total de Ações</p>
+            </div>
+            <div class="stat-card">
+                <h3 id="acoesPendentes">0</h3>
+                <p>Pendentes</p>
+            </div>
+            <div class="stat-card">
+                <h3 id="acoesEmAlerta">0</h3>
+                <p>Em Alerta</p>
+            </div>
+            <div class="stat-card">
+                <h3 id="acoesVencidas">0</h3>
+                <p>Vencidas</p>
+            </div>
+        </div>
+
+        <!-- Filtros -->
+        <div class="filters-section">
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label class="form-label">Status</label>
+                    <select class="form-select" id="filtroStatus">
+                        <option value="">Todos</option>
+                        <option value="pendente">Pendente</option>
+                        <option value="em_alerta">Em Alerta</option>
+                        <option value="vencido">Vencido</option>
+                        <option value="finalizado">Finalizado</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Buscar</label>
+                    <input type="text" class="form-control" id="inputBusca" placeholder="Título da ação ou ferramenta...">
+                </div>
+                <div class="col-md-4 d-flex align-items-end">
+                    <button class="btn btn-primary w-100" onclick="aplicarFiltros()">
+                        <i class="fas fa-filter me-2"></i>Filtrar
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Lista de Ações -->
+        <div id="listaAcoes">
+            <div class="text-center py-5">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Carregando...</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Atualizar Status -->
+    <div class="modal fade" id="modalAtualizarStatus" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Atualizar Status da Ação</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="acaoAtualId">
+                    <input type="hidden" id="ferramentaAtualId">
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Progresso (%)</label>
+                        <input type="number" class="form-control" id="inputProgresso" min="0" max="100" value="0">
+                        <div class="form-text">Informe o percentual de conclusão da ação</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Status</label>
+                        <select class="form-select" id="selectStatus">
+                            <option value="pendente">Pendente</option>
+                            <option value="em_alerta">Em Alerta</option>
+                            <option value="finalizado">Finalizado</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Observações</label>
+                        <textarea class="form-control" id="textareaObs" rows="3" placeholder="Adicione observações sobre o andamento da ação..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" onclick="salvarAtualizacaoStatus()">
+                        <i class="fas fa-save me-2"></i>Salvar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let supabase = null;
+        let currentUser = null;
+        let acoes = [];
+        let filtros = {
+            status: '',
+            busca: ''
+        };
+
+        // Inicialização
+        document.addEventListener('DOMContentLoaded', async function() {
+            console.log('🚀 Iniciando Minhas Ações...');
+            
+            await inicializarSupabase();
+            await verificarAutenticacao();
+            await carregarAcoes();
+        });
+
+        // Inicializar Supabase
+        async function inicializarSupabase() {
+            try {
+                const response = await fetch('/api/supabase-config');
+                if (!response.ok) {
+                    throw new Error('Erro ao buscar configuração do Supabase');
+                }
+                
+                const config = await response.json();
+                const url = config.supabaseUrl || config.url;
+                const key = config.supabaseAnonKey || config.key;
+                
+                if (url && key) {
+                    supabase = window.supabase.createClient(url, key);
+                    window.supabase = supabase;
+                    console.log('✅ Supabase inicializado');
+                } else {
+                    console.error('❌ Configuração do Supabase não encontrada');
+                }
+            } catch (error) {
+                console.error('❌ Erro ao inicializar Supabase:', error);
+            }
+        }
+
+        // Verificar autenticação
+        async function verificarAutenticacao() {
+            try {
+                const loggedInUserData = localStorage.getItem('loggedInUser');
+                if (!loggedInUserData) {
+                    window.location.href = 'login.html';
+                    return;
+                }
+
+                const userData = JSON.parse(loggedInUserData);
+                if (!userData.authenticated) {
+                    window.location.href = 'login.html';
+                    return;
+                }
+
+                if (supabase) {
+                    const { data: { session } } = await supabase.auth.getSession();
+                    if (!session) {
+                        window.location.href = 'login.html';
+                        return;
+                    }
+                    currentUser = session.user;
+                    console.log('✅ Usuário autenticado:', currentUser.email);
+                } else {
+                    currentUser = { id: userData.id, email: userData.email };
+                }
+            } catch (error) {
+                console.error('❌ Erro ao verificar autenticação:', error);
+                window.location.href = 'login.html';
+            }
+        }
+
+        // Obter headers de autenticação
+        async function getAuthHeaders() {
+            const headers = {
+                'Content-Type': 'application/json'
+            };
+            
+            if (supabase) {
+                try {
+                    const { data: { session } } = await supabase.auth.getSession();
+                    if (session && session.access_token) {
+                        headers['Authorization'] = `Bearer ${session.access_token}`;
+                    }
+                } catch (error) {
+                    console.warn('⚠️ Erro ao obter sessão:', error);
+                }
+            }
+            
+            try {
+                const loggedInUserData = localStorage.getItem('loggedInUser');
+                if (loggedInUserData) {
+                    const parsed = JSON.parse(loggedInUserData);
+                    if (parsed.email) headers['X-User-Email'] = parsed.email;
+                    if (parsed.id) headers['X-User-Id'] = parsed.id;
+                }
+            } catch (error) {
+                console.warn('⚠️ Erro ao obter email do localStorage:', error);
+            }
+            
+            return headers;
+        }
+
+        // Carregar ações do usuário
+        async function carregarAcoes() {
+            try {
+                const headers = await getAuthHeaders();
+                const params = new URLSearchParams();
+                
+                if (filtros.status) params.append('status', filtros.status);
+                if (filtros.busca) params.append('busca', filtros.busca);
+
+                const response = await fetch(`/api/ferramentas-qualidade/minhas-acoes?${params}`, {
+                    headers: headers,
+                    credentials: 'include'
+                });
+
+                if (response.status === 401) {
+                    alert('Sessão expirada. Faça login novamente.');
+                    window.location.href = 'login.html';
+                    return;
+                }
+
+                if (!response.ok) {
+                    throw new Error(`Erro ${response.status}`);
+                }
+
+                const data = await response.json();
+                acoes = data.acoes || [];
+
+                atualizarEstatisticas();
+                renderizarAcoes();
+            } catch (error) {
+                console.error('❌ Erro ao carregar ações:', error);
+                document.getElementById('listaAcoes').innerHTML = `
+                    <div class="alert alert-danger">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        Erro ao carregar ações: ${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        // Atualizar estatísticas
+        function atualizarEstatisticas() {
+            document.getElementById('totalAcoes').textContent = acoes.length;
+            document.getElementById('acoesPendentes').textContent = acoes.filter(a => a.status === 'pendente').length;
+            document.getElementById('acoesEmAlerta').textContent = acoes.filter(a => a.status === 'em_alerta').length;
+            document.getElementById('acoesVencidas').textContent = acoes.filter(a => a.status === 'vencido').length;
+        }
+
+        // Renderizar ações
+        function renderizarAcoes() {
+            const container = document.getElementById('listaAcoes');
+            
+            if (acoes.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-check-circle"></i>
+                        <h4>Nenhuma ação encontrada</h4>
+                        <p>Você não possui ações vinculadas no momento.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = acoes.map(acao => {
+                const statusClass = acao.status || 'pendente';
+                const prazo = acao.prazo ? new Date(acao.prazo) : null;
+                const prazoFormatado = prazo ? prazo.toLocaleDateString('pt-BR') : 'Não definido';
+                const diasRestantes = prazo ? Math.ceil((prazo - new Date()) / (1000 * 60 * 60 * 24)) : null;
+                
+                let prazoBadge = '';
+                if (prazo && diasRestantes !== null) {
+                    if (diasRestantes < 0) {
+                        prazoBadge = `<span class="badge bg-danger ms-2">Vencido há ${Math.abs(diasRestantes)} dias</span>`;
+                    } else if (diasRestantes <= 3) {
+                        prazoBadge = `<span class="badge bg-warning text-dark ms-2">${diasRestantes} dias restantes</span>`;
+                    } else {
+                        prazoBadge = `<span class="badge bg-info ms-2">${diasRestantes} dias restantes</span>`;
+                    }
+                }
+
+                const progresso = acao.progresso || 0;
+                const progressoClass = progresso === 100 ? 'bg-success' : progresso >= 50 ? 'bg-info' : 'bg-warning';
+
+                return `
+                    <div class="acao-card ${statusClass}">
+                        <div class="acao-header">
+                            <div>
+                                <h5 class="acao-titulo">${escapeHtml(acao.acao || 'Sem descrição')}</h5>
+                                <div class="mt-2">
+                                    <span class="badge-status ${statusClass}">${getStatusLabel(acao.status)}</span>
+                                    ${prazoBadge}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="acao-info">
+                            <div class="info-item">
+                                <i class="fas fa-toolbox"></i>
+                                <span><strong>Ferramenta:</strong> ${escapeHtml(acao.ferramenta_titulo || 'N/A')}</span>
+                            </div>
+                            <div class="info-item">
+                                <i class="fas fa-calendar-alt"></i>
+                                <span><strong>Prazo:</strong> ${prazoFormatado}</span>
+                            </div>
+                            <div class="info-item">
+                                <i class="fas fa-user-tie"></i>
+                                <span><strong>Prioridade:</strong> ${getPrioridadeLabel(acao.prioridade)}</span>
+                            </div>
+                        </div>
+                        
+                        ${progresso > 0 ? `
+                            <div class="progress-container">
+                                <div class="progress-label">
+                                    <span>Progresso</span>
+                                    <span><strong>${progresso}%</strong></span>
+                                </div>
+                                <div class="progress">
+                                    <div class="progress-bar ${progressoClass}" role="progressbar" style="width: ${progresso}%" aria-valuenow="${progresso}" aria-valuemin="0" aria-valuemax="100"></div>
+                                </div>
+                            </div>
+                        ` : ''}
+                        
+                        ${acao.obs ? `
+                            <div class="mt-2">
+                                <small class="text-muted"><strong>Observações:</strong> ${escapeHtml(acao.obs)}</small>
+                            </div>
+                        ` : ''}
+                        
+                        <div class="acao-actions">
+                            <button class="btn btn-primary btn-sm" onclick="abrirModalAtualizar('${acao.acao_id}', '${acao.ferramenta_id}', ${progresso}, '${acao.status}', '${escapeHtml(acao.obs || '')}')">
+                                <i class="fas fa-edit me-2"></i>Atualizar Status
+                            </button>
+                            <a href="ferramentas-qualidade.html?id=${acao.ferramenta_id}" class="btn btn-outline-secondary btn-sm">
+                                <i class="fas fa-external-link-alt me-2"></i>Ver Ferramenta
+                            </a>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Abrir modal de atualizar status
+        function abrirModalAtualizar(acaoId, ferramentaId, progresso, status, obs) {
+            document.getElementById('acaoAtualId').value = acaoId;
+            document.getElementById('ferramentaAtualId').value = ferramentaId;
+            document.getElementById('inputProgresso').value = progresso || 0;
+            document.getElementById('selectStatus').value = status || 'pendente';
+            document.getElementById('textareaObs').value = obs || '';
+            
+            const modal = new bootstrap.Modal(document.getElementById('modalAtualizarStatus'));
+            modal.show();
+        }
+
+        // Salvar atualização de status
+        async function salvarAtualizacaoStatus() {
+            try {
+                const acaoId = document.getElementById('acaoAtualId').value;
+                const ferramentaId = document.getElementById('ferramentaAtualId').value;
+                const progresso = parseInt(document.getElementById('inputProgresso').value);
+                const status = document.getElementById('selectStatus').value;
+                const obs = document.getElementById('textareaObs').value;
+
+                const headers = await getAuthHeaders();
+                const response = await fetch(`/api/ferramentas-qualidade/acoes/${acaoId}/atualizar`, {
+                    method: 'PUT',
+                    headers: headers,
+                    credentials: 'include',
+                    body: JSON.stringify({
+                        ferramenta_id: ferramentaId,
+                        progresso: progresso,
+                        status: status,
+                        obs: obs
+                    })
+                });
+
+                if (response.status === 401) {
+                    alert('Sessão expirada. Faça login novamente.');
+                    window.location.href = 'login.html';
+                    return;
+                }
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Erro ao atualizar ação');
+                }
+
+                const data = await response.json();
+                if (data.success) {
+                    alert('✅ Status atualizado com sucesso!');
+                    bootstrap.Modal.getInstance(document.getElementById('modalAtualizarStatus')).hide();
+                    await carregarAcoes();
+                } else {
+                    throw new Error(data.error || 'Erro ao atualizar ação');
+                }
+            } catch (error) {
+                console.error('❌ Erro ao salvar atualização:', error);
+                alert('❌ Erro ao atualizar status: ' + error.message);
+            }
+        }
+
+        // Aplicar filtros
+        function aplicarFiltros() {
+            filtros.status = document.getElementById('filtroStatus').value;
+            filtros.busca = document.getElementById('inputBusca').value.trim().toLowerCase();
+            carregarAcoes();
+        }
+
+        // Funções auxiliares
+        function getStatusLabel(status) {
+            const labels = {
+                'pendente': 'Pendente',
+                'em_alerta': 'Em Alerta',
+                'vencido': 'Vencido',
+                'finalizado': 'Finalizado'
+            };
+            return labels[status] || status;
+        }
+
+        function getPrioridadeLabel(prioridade) {
+            const labels = {
+                'alta': 'Alta',
+                'media': 'Média',
+                'baixa': 'Baixa'
+            };
+            return labels[prioridade] || prioridade || 'Não definida';
+        }
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Permitir Enter na busca
+        document.getElementById('inputBusca')?.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                aplicarFiltros();
+            }
+        });
+    </script>
+</body>
+</html>
+

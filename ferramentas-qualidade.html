@@ -9,81 +9,62 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="js/permissions.js"></script>
     <style>
-        :root {
-            --primary: #667eea;
-            --secondary: #764ba2;
-            --success: #10b981;
-            --warning: #f59e0b;
-            --danger: #ef4444;
-        }
-        
         body {
-            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            min-height: 100vh;
+            background: #f8f9fa;
+            font-family: Arial, sans-serif;
+            padding: 20px;
         }
         
         .header-section {
-            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            background: #667eea;
             color: white;
-            padding: 2rem 0;
+            padding: 1.5rem 0;
             margin-bottom: 2rem;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
         }
         
         .tool-card {
             background: white;
-            border-radius: 16px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
-            padding: 2rem;
+            border-radius: 8px;
+            padding: 1.5rem;
             margin-bottom: 2rem;
-            transition: all 0.3s ease;
-            border: 1px solid #e5e7eb;
-        }
-        
-        .tool-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 8px 30px rgba(0,0,0,0.15);
-            border-color: var(--primary);
+            border: 1px solid #dee2e6;
         }
         
         .tool-icon {
-            width: 60px;
-            height: 60px;
-            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
-            border-radius: 12px;
+            width: 50px;
+            height: 50px;
+            background: #667eea;
+            border-radius: 8px;
             display: flex;
             align-items: center;
             justify-content: center;
             color: white;
-            font-size: 1.5rem;
+            font-size: 1.25rem;
             margin-bottom: 1rem;
         }
         
         .nav-tabs .nav-link {
-            color: #6b7280;
+            color: #495057;
             border: none;
-            border-bottom: 3px solid transparent;
-            padding: 0.75rem 1.5rem;
-            font-weight: 500;
-            transition: all 0.3s ease;
+            border-bottom: 2px solid transparent;
+            padding: 0.5rem 1rem;
         }
         
         .nav-tabs .nav-link:hover {
-            color: var(--primary);
-            border-bottom-color: rgba(102, 126, 234, 0.3);
+            color: #667eea;
+            border-bottom-color: #667eea;
         }
         
         .nav-tabs .nav-link.active {
-            color: var(--primary);
-            border-bottom-color: var(--primary);
+            color: #667eea;
+            border-bottom-color: #667eea;
             background: transparent;
         }
         
         .form-section {
-            background: #f9fafb;
-            border-radius: 12px;
-            padding: 1.5rem;
+            background: #f8f9fa;
+            border-radius: 4px;
+            padding: 1rem;
             margin-bottom: 1rem;
         }
         
@@ -91,58 +72,225 @@
             position: relative;
             min-height: 500px;
             overflow: auto;
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 20px;
         }
         
         .ishikawa-diagram {
             position: relative;
-            margin: 50px auto;
+            margin: 20px auto;
             width: 100%;
-            max-width: 1000px;
-        }
-        
-        .fishbone-spine {
-            stroke: #333;
-            stroke-width: 3;
-        }
-        
-        .fishbone-branch {
-            stroke: #667eea;
-            stroke-width: 2;
-        }
-        
-        .fishbone-label {
-            font-size: 14px;
-            fill: #333;
-            font-weight: 500;
-        }
-        
-        .action-item {
+            max-width: 1400px;
             background: white;
-            border-left: 4px solid var(--primary);
-            padding: 1rem;
-            margin-bottom: 1rem;
             border-radius: 8px;
             box-shadow: 0 2px 8px rgba(0,0,0,0.1);
         }
         
-        .action-item.completed {
-            border-left-color: var(--success);
+        .fishbone-spine {
+            stroke: #2c3e50;
+            stroke-width: 5;
+            stroke-linecap: round;
+            filter: drop-shadow(0 2px 3px rgba(0,0,0,0.2));
+        }
+        
+        .fishbone-branch {
+            stroke-width: 3;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            filter: drop-shadow(0 1px 2px rgba(0,0,0,0.15));
+        }
+        
+        .fishbone-branch.metodo { stroke: #3498db; }
+        .fishbone-branch.maoobra { stroke: #e74c3c; }
+        .fishbone-branch.material { stroke: #f39c12; }
+        .fishbone-branch.maquina { stroke: #9b59b6; }
+        .fishbone-branch.meioambiente { stroke: #27ae60; }
+        .fishbone-branch.medicao { stroke: #16a085; }
+        
+        .fishbone-sub-branch {
+            stroke: #7f8c8d;
+            stroke-width: 2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
             opacity: 0.8;
         }
         
-        .btn-export {
-            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
-            border: none;
-            color: white;
-            padding: 0.5rem 1.5rem;
+        .fishbone-label {
+            font-size: 15px;
+            fill: #2c3e50;
+            font-weight: 700;
+            font-family: 'Segoe UI', Arial, sans-serif;
+            text-shadow: 0 1px 2px rgba(255,255,255,0.8);
+        }
+        
+        .fishbone-causa-text {
+            font-size: 11px;
+            fill: #34495e;
+            font-family: 'Segoe UI', Arial, sans-serif;
+            font-weight: 500;
+        }
+        
+        .fishbone-effect-box {
+            fill: #e74c3c;
+            stroke: #c0392b;
+            stroke-width: 3;
+            filter: drop-shadow(0 3px 6px rgba(0,0,0,0.3));
+        }
+        
+        .fishbone-effect-text {
+            fill: white;
+            font-size: 17px;
+            font-weight: bold;
+            font-family: 'Segoe UI', Arial, sans-serif;
+            text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+        }
+        
+        .fishbone-category-box {
+            stroke: #2c3e50;
+            stroke-width: 2;
+            rx: 6;
+            ry: 6;
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
+        }
+        
+        .fishbone-category-box.metodo { fill: #3498db; }
+        .fishbone-category-box.maoobra { fill: #e74c3c; }
+        .fishbone-category-box.material { fill: #f39c12; }
+        .fishbone-category-box.maquina { fill: #9b59b6; }
+        .fishbone-category-box.meioambiente { fill: #27ae60; }
+        .fishbone-category-box.medicao { fill: #16a085; }
+        
+        .fishbone-category-text {
+            fill: white;
+            font-size: 13px;
+            font-weight: bold;
+            font-family: 'Segoe UI', Arial, sans-serif;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+        }
+        
+        .fishbone-head {
+            fill: #e74c3c;
+            stroke: #c0392b;
+            stroke-width: 3;
+        }
+        
+        .fishbone-eye {
+            fill: white;
+            filter: drop-shadow(0 1px 2px rgba(0,0,0,0.3));
+        }
+        
+        .fishbone-fin {
+            fill: #e74c3c;
+            stroke: #c0392b;
+            stroke-width: 2;
+            opacity: 0.9;
+        }
+        
+        .action-item {
+            background: white;
+            border-left: 4px solid #667eea;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            border-radius: 4px;
+            border: 1px solid #dee2e6;
+        }
+        
+        .action-item.completed {
+            border-left-color: #28a745;
+            opacity: 0.8;
+        }
+        
+        .acao-card {
+            background: white;
+            border: 1px solid #dee2e6;
             border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
             transition: all 0.3s ease;
         }
         
-        .btn-export:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
-            color: white;
+        .acao-card:hover {
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+        }
+        
+        .acao-card.prioridade-alta {
+            border-left: 4px solid #dc3545;
+        }
+        
+        .acao-card.prioridade-media {
+            border-left: 4px solid #ffc107;
+        }
+        
+        .acao-card.prioridade-baixa {
+            border-left: 4px solid #0dcaf0;
+        }
+        
+        .acao-card.finalizado {
+            background: #f8f9fa;
+            opacity: 0.9;
+        }
+        
+        .acao-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 1rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid #f0f0f0;
+        }
+        
+        .acao-info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+        
+        .acao-info-item {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .acao-info-item label {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: #6c757d;
+            margin-bottom: 0.25rem;
+            text-transform: uppercase;
+        }
+        
+        .acao-info-item input,
+        .acao-info-item select,
+        .acao-info-item textarea {
+            font-size: 0.9rem;
+        }
+        
+        .acao-descricao {
+            margin-bottom: 1rem;
+        }
+        
+        .badge-status {
+            padding: 0.35rem 0.65rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+        
+        .progress-container {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .progress-container input {
+            width: 80px;
+        }
+        
+        .progress-container .progress {
+            flex: 1;
+            height: 20px;
         }
     </style>
 </head>
@@ -224,6 +372,10 @@
                     
                     <div class="form-section">
                         <div class="mb-3">
+                            <label class="form-label fw-bold">Título:</label>
+                            <input type="text" class="form-control" id="titulo5porques" placeholder="Ex: Análise de defeitos em produção">
+                        </div>
+                        <div class="mb-3">
                             <label class="form-label fw-bold">Problema Identificado:</label>
                             <input type="text" class="form-control" id="problema5porques" placeholder="Descreva o problema inicial">
                         </div>
@@ -259,6 +411,9 @@
                         </div>
                         
                         <div class="d-flex gap-2">
+                            <button class="btn btn-success" onclick="salvar5Porques()">
+                                <i class="fas fa-save me-2"></i>Salvar
+                            </button>
                             <button class="btn btn-primary" onclick="exportar5Porques()">
                                 <i class="fas fa-download me-2"></i>Exportar PDF
                             </button>
@@ -331,6 +486,10 @@
                     
                     <div class="form-section mb-4">
                         <div class="mb-3">
+                            <label class="form-label fw-bold">Título do Diagrama:</label>
+                            <input type="text" class="form-control" id="tituloIshikawa" placeholder="Ex: Análise de causas de defeitos">
+                        </div>
+                        <div class="mb-3">
                             <label class="form-label fw-bold">Problema (Efeito):</label>
                             <input type="text" class="form-control" id="problemaIshikawa" placeholder="Descreva o problema principal">
                         </div>
@@ -366,7 +525,10 @@
                             <button class="btn btn-primary" onclick="visualizarIshikawa()">
                                 <i class="fas fa-eye me-2"></i>Visualizar Diagrama
                             </button>
-                            <button class="btn btn-success" onclick="exportarIshikawa()">
+                            <button class="btn btn-success" onclick="salvarIshikawa()">
+                                <i class="fas fa-save me-2"></i>Salvar
+                            </button>
+                            <button class="btn btn-info" onclick="exportarIshikawa()">
                                 <i class="fas fa-download me-2"></i>Exportar PDF
                             </button>
                             <button class="btn btn-secondary" onclick="limparIshikawa()">
@@ -389,8 +551,8 @@
                             <i class="fas fa-tasks"></i>
                         </div>
                         <div class="ms-3">
-                            <h3>Plano de Ação</h3>
-                            <p class="text-muted mb-0">Organize ações, responsáveis, prazos e status de execução</p>
+                            <h3>Plano de Ação Completo</h3>
+                            <p class="text-muted mb-0">Gestão completa de ações com gestor, responsáveis, prazos, progresso e contingências</p>
                         </div>
                     </div>
                     
@@ -427,7 +589,7 @@
                                 <i class="fas fa-save me-2"></i>Salvar
                             </button>
                             <button class="btn btn-primary" onclick="exportarPlanoAcao()">
-                                <i class="fas fa-download me-2"></i>Exportar PDF
+                                <i class="fas fa-download me-2"></i>Exportar PDF/Excel
                             </button>
                             <button class="btn btn-secondary" onclick="limparPlanoAcao()">
                                 <i class="fas fa-redo me-2"></i>Limpar Tudo
@@ -451,6 +613,10 @@
                     </div>
                     
                     <div class="form-section">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Título:</label>
+                            <input type="text" class="form-control" id="tituloPDCA" placeholder="Ex: Melhoria do processo de entrega">
+                        </div>
                         <div class="row mb-4">
                             <div class="col-md-6">
                                 <div class="card h-100 border-primary">
@@ -534,6 +700,9 @@
                         </div>
                         
                         <div class="d-flex gap-2">
+                            <button class="btn btn-success" onclick="salvarPDCA()">
+                                <i class="fas fa-save me-2"></i>Salvar
+                            </button>
                             <button class="btn btn-primary" onclick="exportarPDCA()">
                                 <i class="fas fa-download me-2"></i>Exportar PDF
                             </button>
@@ -600,6 +769,9 @@
                         </div>
                         
                         <div class="d-flex gap-2">
+                            <button class="btn btn-success" onclick="salvarBrainstorm()">
+                                <i class="fas fa-save me-2"></i>Salvar
+                            </button>
                             <button class="btn btn-primary" onclick="exportarBrainstorm()">
                                 <i class="fas fa-download me-2"></i>Exportar PDF
                             </button>
@@ -672,29 +844,128 @@
         let ideiasSelecionadas = [];
         let linhas5W2H = [];
         let usuariosPlataforma = [];
-        let ferramentaAtualId = null; // ID da ferramenta sendo editada
+        let ferramentaAtualId = null;
+        let supabase = null;
+        
+        // Inicializar Supabase
+        async function inicializarSupabase() {
+            try {
+                const response = await fetch('/api/supabase-config');
+                if (!response.ok) {
+                    throw new Error('Erro ao buscar configuração do Supabase');
+                }
+                
+                const config = await response.json();
+                supabase = window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey);
+                window.supabase = supabase;
+                console.log('✅ Supabase inicializado');
+                return true;
+            } catch (error) {
+                console.warn('⚠️ Erro ao inicializar Supabase:', error);
+                return false;
+            }
+        }
+        
+        // Obter headers de autenticação
+        async function getAuthHeaders() {
+            const headers = {
+                'Content-Type': 'application/json'
+            };
+            
+            // Tentar obter token do Supabase
+            if (supabase) {
+                try {
+                    const { data: { session } } = await supabase.auth.getSession();
+                    if (session && session.access_token) {
+                        headers['Authorization'] = `Bearer ${session.access_token}`;
+                    }
+                } catch (error) {
+                    console.warn('⚠️ Erro ao obter sessão:', error);
+                }
+            }
+            
+            // Tentar obter email do localStorage
+            try {
+                const userData = localStorage.getItem('userData');
+                if (userData) {
+                    const parsed = JSON.parse(userData);
+                    if (parsed.email) {
+                        headers['X-User-Email'] = parsed.email;
+                    }
+                }
+            } catch (error) {
+                console.warn('⚠️ Erro ao obter email do localStorage:', error);
+            }
+            
+            return headers;
+        }
         
         // Carregar usuários ao iniciar
         async function carregarUsuarios() {
             try {
+                const headers = await getAuthHeaders();
                 const response = await fetch('/api/ferramentas-qualidade/usuarios', {
+                    headers: headers,
                     credentials: 'include'
                 });
+                
+                if (!response.ok) {
+                    console.warn('⚠️ API de usuários não disponível, tentando alternativa...');
+                    // Tentar buscar via Supabase diretamente se disponível
+                    if (window.supabase) {
+                        try {
+                            const { data: usuarios, error } = await window.supabase
+                                .from('user_profiles')
+                                .select('id, nome, email, departamento, cargo')
+                                .eq('active', true)
+                                .order('nome');
+                            
+                            if (!error && usuarios) {
+                                usuariosPlataforma = usuarios.map(u => ({
+                                    id: u.id,
+                                    nome: u.nome || u.email || 'Sem nome',
+                                    email: u.email,
+                                    departamento: u.departamento,
+                                    cargo: u.cargo
+                                }));
+                                console.log('✅ Usuários carregados via Supabase:', usuariosPlataforma.length);
+                                return;
+                            }
+                        } catch (supabaseError) {
+                            console.warn('⚠️ Erro ao buscar usuários via Supabase:', supabaseError);
+                        }
+                    }
+                    return;
+                }
+                
                 const data = await response.json();
                 if (data.success) {
                     usuariosPlataforma = data.usuarios || [];
+                    console.log('✅ Usuários carregados:', usuariosPlataforma.length);
                 }
             } catch (error) {
-                console.error('❌ Erro ao carregar usuários:', error);
+                console.warn('⚠️ Erro ao carregar usuários:', error);
+                // Continuar sem usuários se houver erro
+                usuariosPlataforma = [];
             }
         }
         
         // Carregar alertas ao iniciar
         async function carregarAlertas() {
             try {
+                const headers = await getAuthHeaders();
                 const response = await fetch('/api/ferramentas-qualidade/alertas', {
+                    headers: headers,
                     credentials: 'include'
                 });
+                
+                if (!response.ok) {
+                    // API não disponível, apenas ocultar badge
+                    const badge = document.getElementById('badgeAlertas');
+                    if (badge) badge.style.display = 'none';
+                    return;
+                }
+                
                 const data = await response.json();
                 if (data.success && data.alertas) {
                     const alertasVencidos = data.alertas.filter(a => a.status === 'vencido' || a.status === 'em_alerta');
@@ -709,27 +980,139 @@
                     }
                 }
             } catch (error) {
-                console.error('❌ Erro ao carregar alertas:', error);
+                console.warn('⚠️ Erro ao carregar alertas:', error);
+                // Ocultar badge em caso de erro
+                const badge = document.getElementById('badgeAlertas');
+                if (badge) badge.style.display = 'none';
             }
         }
         
         // Inicialização
         document.addEventListener('DOMContentLoaded', async () => {
+            // Inicializar Supabase primeiro
+            await inicializarSupabase();
+            
+            // Carregar usuários (tentará API primeiro, depois Supabase direto)
             await carregarUsuarios();
+            
+            // Carregar alertas (não crítico, apenas oculta badge se falhar)
             await carregarAlertas();
-            setInterval(carregarAlertas, 60000); // Verificar alertas a cada minuto
+            setInterval(carregarAlertas, 60000);
             
-            // Adicionar primeira linha ao 5W2H
-            adicionarLinha5W2H();
+            // Verificar se há ID na URL para carregar ferramenta
+            const urlParams = new URLSearchParams(window.location.search);
+            const ferramentaId = urlParams.get('id');
+            if (ferramentaId) {
+                console.log('📥 Carregando ferramenta da URL:', ferramentaId);
+                await carregarFerramenta(ferramentaId);
+            } else {
+                // Comportamento normal: adicionar linha inicial do 5W2H
+                adicionarLinha5W2H();
+            }
             
-            // Carregar ferramentas quando a tab de arquivos for aberta
+            // Listener para aba de arquivos
             const tabArquivos = document.querySelector('[data-bs-target="#tab-arquivos"]');
             if (tabArquivos) {
                 tabArquivos.addEventListener('shown.bs.tab', () => {
                     carregarFerramentasArquivadas();
                 });
             }
+            
+            // Listener para aba de Plano de Ação - garantir que usuários estejam carregados
+            const tabPlanoAcao = document.querySelector('[data-bs-target="#tab-plano-acao"]');
+            if (tabPlanoAcao) {
+                tabPlanoAcao.addEventListener('shown.bs.tab', async () => {
+                    // Se não houver usuários carregados, tentar recarregar
+                    if (usuariosPlataforma.length === 0) {
+                        console.log('🔄 Recarregando usuários ao abrir Plano de Ação...');
+                        await carregarUsuarios();
+                        // Re-renderizar ações para atualizar os selects
+                        if (acoesPlano.length > 0) {
+                            renderizarAcoes();
+                        }
+                    }
+                });
+            }
+            
+            // Listener para aba de 5W2H - garantir que usuários estejam carregados
+            const tab5W2H = document.querySelector('[data-bs-target="#tab-5w2h"]');
+            if (tab5W2H) {
+                tab5W2H.addEventListener('shown.bs.tab', async () => {
+                    // Se não houver usuários carregados, tentar recarregar
+                    if (usuariosPlataforma.length === 0) {
+                        console.log('🔄 Recarregando usuários ao abrir 5W2H...');
+                        await carregarUsuarios();
+                        // Re-renderizar linhas para atualizar os selects
+                        if (linhas5W2H.length > 0) {
+                            renderizarLinhas5W2H();
+                        }
+                    }
+                });
+            }
+            
+            // Permitir Enter no input de ideias
+            const inputIdeia = document.getElementById('novaIdeia');
+            if (inputIdeia) {
+                inputIdeia.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') {
+                        adicionarIdeia();
+                    }
+                });
+            }
         });
+        
+        // Função para formatar valor monetário
+        function formatarMoeda(inputId) {
+            const input = document.getElementById(inputId);
+            if (!input) return;
+            
+            let valor = input.value;
+            if (!valor) return;
+            
+            // Remover caracteres não numéricos exceto ponto e vírgula
+            valor = valor.toString().replace(/[^\d,.-]/g, '');
+            
+            // Converter vírgula para ponto se necessário
+            valor = valor.replace(',', '.');
+            
+            // Garantir que seja um número válido
+            const numValor = parseFloat(valor);
+            if (isNaN(numValor)) {
+                input.value = '';
+                return;
+            }
+            
+            // Atualizar o valor no input (mantém como número para cálculos)
+            input.value = numValor;
+        }
+        
+        // Função para formatar exibição de moeda
+        function formatarExibicaoMoeda(valor) {
+            if (!valor && valor !== 0) return '-';
+            const numValor = parseFloat(valor.toString().replace(/[^\d,.-]/g, '').replace(',', '.'));
+            if (isNaN(numValor)) return valor;
+            return new Intl.NumberFormat('pt-BR', {
+                style: 'currency',
+                currency: 'BRL'
+            }).format(numValor);
+        }
+        
+        // Função para formatar data (versão completa para 5W2H)
+        function formatarData5W2H(data) {
+            if (!data) return '-';
+            try {
+                // Se for uma string no formato YYYY-MM-DD (do input date), converter
+                if (typeof data === 'string' && data.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                    const [ano, mes, dia] = data.split('-');
+                    return `${dia}/${mes}/${ano}`;
+                }
+                const dataObj = new Date(data);
+                if (isNaN(dataObj.getTime())) return data;
+                return dataObj.toLocaleDateString('pt-BR');
+            } catch (e) {
+                return data;
+            }
+        }
         
         // Função auxiliar para calcular dias restantes
         function calcularDiasRestantes(prazo) {
@@ -777,6 +1160,7 @@
         }
 
         function limpar5Porques() {
+            document.getElementById('titulo5porques').value = '';
             document.getElementById('problema5porques').value = '';
             document.getElementById('porque1').value = '';
             document.getElementById('porque2').value = '';
@@ -784,6 +1168,57 @@
             document.getElementById('porque4').value = '';
             document.getElementById('porque5').value = '';
             document.getElementById('causaRaiz').value = '';
+            ferramentaAtualId = null;
+        }
+        
+        async function salvar5Porques() {
+            const titulo = document.getElementById('titulo5porques').value;
+            const problema = document.getElementById('problema5porques').value;
+            
+            if (!titulo && !problema) {
+                alert('Por favor, preencha pelo menos o título ou o problema.');
+                return;
+            }
+            
+            const dados = {
+                problema: problema,
+                porques: [
+                    document.getElementById('porque1').value,
+                    document.getElementById('porque2').value,
+                    document.getElementById('porque3').value,
+                    document.getElementById('porque4').value,
+                    document.getElementById('porque5').value
+                ],
+                causa_raiz: document.getElementById('causaRaiz').value
+            };
+            
+            const tituloFinal = titulo || `5 Porquês: ${problema || 'Sem título'}`;
+            
+            try {
+                const headers = await getAuthHeaders();
+                const response = await fetch('/api/ferramentas-qualidade', {
+                    method: 'POST',
+                    headers: headers,
+                    credentials: 'include',
+                    body: JSON.stringify({
+                        id: ferramentaAtualId,
+                        tipo_ferramenta: '5porques',
+                        titulo: tituloFinal,
+                        dados: dados
+                    })
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    ferramentaAtualId = data.ferramenta.id;
+                    alert('✅ 5 Porquês salvo com sucesso!');
+                } else {
+                    alert('❌ Erro ao salvar: ' + (data.error || 'Erro desconhecido'));
+                }
+            } catch (error) {
+                console.error('❌ Erro ao salvar 5 Porquês:', error);
+                alert('❌ Erro ao salvar 5 Porquês: ' + error.message);
+            }
         }
 
         // ========== 5W2H ==========
@@ -812,6 +1247,26 @@
             const linha = linhas5W2H.find(l => l.id === id);
             if (linha) {
                 linha[campo] = valor;
+                
+                // Se o campo for "who", sincronizar select e input
+                if (campo === 'who') {
+                    const selectElement = document.getElementById(`who-select-${id}`);
+                    const inputElement = document.getElementById(`who-input-${id}`);
+                    
+                    // Se um usuário foi selecionado no dropdown, limpar o input de texto
+                    if (selectElement && selectElement.value === valor && usuariosPlataforma.find(u => u.id === valor)) {
+                        if (inputElement) {
+                            inputElement.value = '';
+                        }
+                    }
+                    
+                    // Se um texto foi digitado no input, limpar o select
+                    if (inputElement && inputElement.value === valor && !usuariosPlataforma.find(u => u.id === valor)) {
+                        if (selectElement) {
+                            selectElement.value = '';
+                        }
+                    }
+                }
             }
         }
         
@@ -851,15 +1306,30 @@
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label small">QUANDO (When)?</label>
-                                <input type="text" class="form-control form-control-sm" 
-                                       value="${linha.when || ''}" 
+                                <input type="date" class="form-control form-control-sm" 
+                                       id="when-${linha.id}"
+                                       value="${linha.when ? (typeof linha.when === 'string' && linha.when.match(/^\d{4}-\d{2}-\d{2}$/) ? linha.when : new Date(linha.when).toISOString().split('T')[0]) : ''}" 
                                        onchange="atualizarLinha5W2H(${linha.id}, 'when', this.value)">
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label small">QUEM (Who)?</label>
-                                <input type="text" class="form-control form-control-sm" 
-                                       value="${linha.who || ''}" 
+                                <select class="form-select form-select-sm" 
+                                        id="who-select-${linha.id}"
                                        onchange="atualizarLinha5W2H(${linha.id}, 'who', this.value)">
+                                    <option value="">Selecione um usuário...</option>
+                                    ${usuariosPlataforma.map(u => `
+                                        <option value="${u.id}" ${linha.who === u.id ? 'selected' : ''}>
+                                            ${u.nome}${u.departamento ? ' - ' + u.departamento : ''}
+                                        </option>
+                                    `).join('')}
+                                </select>
+                                ${!linha.who || !usuariosPlataforma.find(u => u.id === linha.who) ? `
+                                    <input type="text" class="form-control form-control-sm mt-1" 
+                                           id="who-input-${linha.id}"
+                                           value="${(linha.who && !usuariosPlataforma.find(u => u.id === linha.who) ? linha.who : '').replace(/"/g, "&quot;")}" 
+                                           placeholder="Ou digite o nome do responsável"
+                                           onchange="atualizarLinha5W2H(${linha.id}, 'who', this.value)">
+                                ` : ''}
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label small">COMO (How)?</label>
@@ -869,13 +1339,25 @@
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label small">QUANTO (How much)?</label>
-                                <input type="text" class="form-control form-control-sm" 
-                                       value="${linha.howMuch || ''}" 
-                                       onchange="atualizarLinha5W2H(${linha.id}, 'howMuch', this.value)">
+                                <div class="input-group input-group-sm">
+                                    <span class="input-group-text">R$</span>
+                                    <input type="number" class="form-control" 
+                                           id="howMuch-${linha.id}"
+                                           step="0.01" 
+                                           min="0" 
+                                           placeholder="0,00"
+                                           value="${linha.howMuch ? parseFloat(linha.howMuch.toString().replace(/[^\d,.-]/g, '').replace(',', '.')) || '' : ''}" 
+                                           onchange="atualizarLinha5W2H(${linha.id}, 'howMuch', this.value)"
+                                           onblur="formatarMoeda('howMuch-${linha.id}')">
+                                </div>
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label small">QUANTIDADE (How many)?</label>
-                                <input type="text" class="form-control form-control-sm" 
+                                <input type="number" class="form-control form-control-sm" 
+                                       id="howMany-${linha.id}"
+                                       step="1" 
+                                       min="0" 
+                                       placeholder="0"
                                        value="${linha.howMany || ''}" 
                                        onchange="atualizarLinha5W2H(${linha.id}, 'howMany', this.value)">
                             </div>
@@ -894,9 +1376,10 @@
             }
             
             try {
+                const headers = await getAuthHeaders();
                 const response = await fetch('/api/ferramentas-qualidade', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: headers,
                     credentials: 'include',
                     body: JSON.stringify({
                         id: ferramentaAtualId,
@@ -928,10 +1411,10 @@
                     <td>${linha.what || '-'}</td>
                     <td>${linha.why || '-'}</td>
                     <td>${linha.where || '-'}</td>
-                    <td>${linha.when || '-'}</td>
-                    <td>${linha.who || '-'}</td>
+                    <td>${formatarData5W2H(linha.when)}</td>
+                    <td>${(linha.who && usuariosPlataforma.find(u => u.id === linha.who) ? usuariosPlataforma.find(u => u.id === linha.who).nome : linha.who) || '-'}</td>
                     <td>${linha.how || '-'}</td>
-                    <td>${linha.howMuch || '-'}</td>
+                    <td>${formatarExibicaoMoeda(linha.howMuch)}</td>
                     <td>${linha.howMany || '-'}</td>
                 </tr>
             `).join('');
@@ -966,7 +1449,7 @@
             linhas5W2H = [];
             ferramentaAtualId = null;
             renderizarLinhas5W2H();
-            adicionarLinha5W2H(); // Adicionar primeira linha vazia
+            adicionarLinha5W2H();
         }
 
         // ========== ISHIKAWA ==========
@@ -980,92 +1463,277 @@
             const container = document.getElementById('ishikawa-diagram-container');
             container.style.display = 'block';
             
-            // Criar SVG do diagrama
             const svg = document.getElementById('ishikawa-svg');
             svg.innerHTML = '';
             
-            const width = 1000;
-            const height = 600;
+            const width = 1400;
+            const height = 800;
             svg.setAttribute('width', width);
             svg.setAttribute('height', height);
+            svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
             
-            // Espinha principal (horizontal)
+            // Fundo branco para o SVG
+            const bg = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+            bg.setAttribute('width', width);
+            bg.setAttribute('height', height);
+            bg.setAttribute('fill', 'white');
+            svg.appendChild(bg);
+            
+            const centerY = height / 2;
+            const spineStartX = 200;
+            const spineEndX = width - 120;
+            
+            // Desenhar espinha principal (horizontal da esquerda para direita)
             const spine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-            spine.setAttribute('x1', '50');
-            spine.setAttribute('y1', height / 2);
-            spine.setAttribute('x2', width - 50);
-            spine.setAttribute('y2', height / 2);
+            spine.setAttribute('x1', spineStartX);
+            spine.setAttribute('y1', centerY);
+            spine.setAttribute('x2', spineEndX);
+            spine.setAttribute('y2', centerY);
             spine.setAttribute('class', 'fishbone-spine');
             svg.appendChild(spine);
             
-            // Efeito (problema)
+            // Desenhar cabeça do peixe (forma mais realista com polígono)
+            const headWidth = 160;
+            const headHeight = 90;
+            const headX = spineEndX;
+            const headY = centerY - headHeight / 2;
+            
+            // Cabeça do peixe em forma de losango/polígono
+            const fishHead = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+            const headPoints = [
+                `${headX},${centerY}`, // Ponto na espinha (esquerda)
+                `${headX + headWidth},${headY}`, // Topo direito
+                `${headX + headWidth + 15},${centerY}`, // Ponto mais à direita (boca)
+                `${headX + headWidth},${headY + headHeight}` // Fundo direito
+            ].join(' ');
+            fishHead.setAttribute('points', headPoints);
+            fishHead.setAttribute('class', 'fishbone-effect-box');
+            svg.appendChild(fishHead);
+            
+            // Adicionar boca do peixe
+            const mouth = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+            const mouthPoints = [
+                `${headX + headWidth + 15},${centerY}`,
+                `${headX + headWidth + 25},${centerY - 8}`,
+                `${headX + headWidth + 25},${centerY + 8}`
+            ].join(' ');
+            mouth.setAttribute('points', mouthPoints);
+            mouth.setAttribute('fill', '#c0392b');
+            mouth.setAttribute('stroke', '#a93226');
+            mouth.setAttribute('stroke-width', '2');
+            svg.appendChild(mouth);
+            
+            // Adicionar olho do peixe com destaque
+            const eyeOuter = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+            eyeOuter.setAttribute('cx', headX + headWidth - 25);
+            eyeOuter.setAttribute('cy', centerY - 18);
+            eyeOuter.setAttribute('r', 10);
+            eyeOuter.setAttribute('fill', '#ffffff');
+            eyeOuter.setAttribute('class', 'fishbone-eye');
+            svg.appendChild(eyeOuter);
+            
+            const eyeInner = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+            eyeInner.setAttribute('cx', headX + headWidth - 25);
+            eyeInner.setAttribute('cy', centerY - 18);
+            eyeInner.setAttribute('r', 6);
+            eyeInner.setAttribute('fill', '#2c3e50');
+            svg.appendChild(eyeInner);
+            
+            const eyePupil = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+            eyePupil.setAttribute('cx', headX + headWidth - 25);
+            eyePupil.setAttribute('cy', centerY - 18);
+            eyePupil.setAttribute('r', 3);
+            eyePupil.setAttribute('fill', '#000000');
+            svg.appendChild(eyePupil);
+            
+            // Adicionar brilho no olho
+            const eyeShine = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+            eyeShine.setAttribute('cx', headX + headWidth - 23);
+            eyeShine.setAttribute('cy', centerY - 20);
+            eyeShine.setAttribute('r', 2);
+            eyeShine.setAttribute('fill', '#ffffff');
+            svg.appendChild(eyeShine);
+            
+            // Adicionar nadadeira superior
+            const finTop = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+            const finTopPoints = [
+                `${headX + headWidth - 20},${headY}`,
+                `${headX + headWidth - 5},${headY - 25}`,
+                `${headX + headWidth + 10},${headY - 15}`
+            ].join(' ');
+            finTop.setAttribute('points', finTopPoints);
+            finTop.setAttribute('class', 'fishbone-fin');
+            svg.appendChild(finTop);
+            
+            // Adicionar nadadeira inferior
+            const finBottom = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+            const finBottomPoints = [
+                `${headX + headWidth - 20},${headY + headHeight}`,
+                `${headX + headWidth - 5},${headY + headHeight + 25}`,
+                `${headX + headWidth + 10},${headY + headHeight + 15}`
+            ].join(' ');
+            finBottom.setAttribute('points', finBottomPoints);
+            finBottom.setAttribute('class', 'fishbone-fin');
+            svg.appendChild(finBottom);
+            
+            // Texto do problema dentro da cabeça
             const textoEfeito = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-            textoEfeito.setAttribute('x', width - 100);
-            textoEfeito.setAttribute('y', height / 2 - 20);
-            textoEfeito.setAttribute('class', 'fishbone-label');
-            textoEfeito.setAttribute('font-size', '18');
-            textoEfeito.setAttribute('font-weight', 'bold');
-            textoEfeito.textContent = problema;
+            textoEfeito.setAttribute('x', headX + headWidth / 2 + 5);
+            textoEfeito.setAttribute('y', centerY);
+            textoEfeito.setAttribute('class', 'fishbone-effect-text');
+            textoEfeito.setAttribute('text-anchor', 'middle');
+            textoEfeito.setAttribute('dominant-baseline', 'middle');
+            // Quebrar texto em múltiplas linhas se necessário (ajustado para cabeça maior)
+            const palavras = problema.split(' ');
+            let linhas = [];
+            let linhaAtual = '';
+            palavras.forEach(palavra => {
+                if ((linhaAtual + palavra).length > 20) {
+                    if (linhaAtual) linhas.push(linhaAtual);
+                    linhaAtual = palavra;
+                } else {
+                    linhaAtual += (linhaAtual ? ' ' : '') + palavra;
+                }
+            });
+            if (linhaAtual) linhas.push(linhaAtual);
+            
+            linhas.forEach((linha, i) => {
+                const tspan = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
+                tspan.setAttribute('x', headX + headWidth / 2 + 5);
+                tspan.setAttribute('dy', i === 0 ? (linhas.length === 1 ? 0 : -8) : 18);
+                tspan.textContent = linha;
+                textoEfeito.appendChild(tspan);
+            });
             svg.appendChild(textoEfeito);
             
-            // Categorias 6M
-            const categorias = [
-                { nome: 'Método', id: 'ishikawa-metodo', y: 100 },
-                { nome: 'Mão de Obra', id: 'ishikawa-maoobra', y: 200 },
-                { nome: 'Material', id: 'ishikawa-material', y: 300 },
-                { nome: 'Máquina', id: 'ishikawa-maquina', y: 400 },
-                { nome: 'Meio Ambiente', id: 'ishikawa-meioambiente', y: 500 },
-                { nome: 'Medição', id: 'ishikawa-medicao', y: height - 50 }
+            // Categorias organizadas em 3 de cada lado (superior e inferior)
+            const categoriasSuperiores = [
+                { nome: 'Método', id: 'ishikawa-metodo', pos: 0 },
+                { nome: 'Mão de Obra', id: 'ishikawa-maoobra', pos: 1 },
+                { nome: 'Material', id: 'ishikawa-material', pos: 2 }
             ];
             
-            categorias.forEach((cat, index) => {
-                const x = 150 + (index % 2 === 0 ? 0 : width - 300);
-                const y = cat.y;
+            const categoriasInferiores = [
+                { nome: 'Máquina', id: 'ishikawa-maquina', pos: 0 },
+                { nome: 'Meio Ambiente', id: 'ishikawa-meioambiente', pos: 1 },
+                { nome: 'Medição', id: 'ishikawa-medicao', pos: 2 }
+            ];
+            
+            const branchSpacing = (spineEndX - spineStartX) / 4;
+            const branchLength = 200;
+            
+            // Função para obter classe de categoria
+            function getCategoriaClass(nome) {
+                const mapa = {
+                    'Método': 'metodo',
+                    'Mão de Obra': 'maoobra',
+                    'Material': 'material',
+                    'Máquina': 'maquina',
+                    'Meio Ambiente': 'meioambiente',
+                    'Medição': 'medicao'
+                };
+                return mapa[nome] || 'metodo';
+            }
+            
+            // Função para desenhar categoria
+            function desenharCategoria(cat, branchX, branchY, isSuperior) {
+                const categoriaClass = getCategoriaClass(cat.nome);
                 
-                // Ramo diagonal
+                // Desenhar ramo principal (vertical conectando à espinha)
                 const branch = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-                branch.setAttribute('x1', x);
-                branch.setAttribute('y1', y);
-                branch.setAttribute('x2', width / 2);
-                branch.setAttribute('y2', height / 2);
-                branch.setAttribute('class', 'fishbone-branch');
+                branch.setAttribute('x1', branchX);
+                branch.setAttribute('y1', branchY);
+                branch.setAttribute('x2', branchX);
+                branch.setAttribute('y2', centerY);
+                branch.setAttribute('class', `fishbone-branch ${categoriaClass}`);
                 svg.appendChild(branch);
                 
-                // Label da categoria
+                // Desenhar linha horizontal no final do ramo (perpendicular à espinha)
+                const branchEnd = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                branchEnd.setAttribute('x1', branchX - 130);
+                branchEnd.setAttribute('y1', branchY);
+                branchEnd.setAttribute('x2', branchX);
+                branchEnd.setAttribute('y2', branchY);
+                branchEnd.setAttribute('class', `fishbone-branch ${categoriaClass}`);
+                svg.appendChild(branchEnd);
+                
+                // Caixa para categoria com cor específica
+                const categoryBox = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                categoryBox.setAttribute('x', branchX - 140);
+                categoryBox.setAttribute('y', branchY - 17);
+                categoryBox.setAttribute('width', 120);
+                categoryBox.setAttribute('height', 34);
+                categoryBox.setAttribute('class', `fishbone-category-box ${categoriaClass}`);
+                svg.appendChild(categoryBox);
+                
+                // Texto da categoria
                 const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-                label.setAttribute('x', x - 50);
-                label.setAttribute('y', y);
-                label.setAttribute('class', 'fishbone-label');
-                label.setAttribute('font-size', '14');
-                label.setAttribute('font-weight', 'bold');
+                label.setAttribute('x', branchX - 80);
+                label.setAttribute('y', branchY + 4);
+                label.setAttribute('class', 'fishbone-category-text');
+                label.setAttribute('text-anchor', 'middle');
+                label.setAttribute('dominant-baseline', 'middle');
                 label.textContent = cat.nome;
                 svg.appendChild(label);
                 
-                // Causas (pequenos ramos)
+                // Causas (sub-ramos diagonais)
                 const causas = document.getElementById(cat.id).value.split('\n').filter(c => c.trim());
-                causas.forEach((causa, i) => {
-                    const causaX = x - 100 - (i * 80);
-                    const causaY = y + (i % 2 === 0 ? -20 : 20);
+                if (causas.length > 0) {
+                    const causaSpacing = branchLength / (causas.length + 1);
                     
-                    // Pequeno ramo
+                causas.forEach((causa, i) => {
+                        const causaY = centerY + (isSuperior ? -causaSpacing * (i + 1) : causaSpacing * (i + 1));
+                        const causaX = branchX - 130;
+                    
+                        // Sub-ramo (linha diagonal conectando causa ao ramo horizontal)
                     const causaBranch = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-                    causaBranch.setAttribute('x1', causaX);
+                        causaBranch.setAttribute('x1', causaX - 80);
                     causaBranch.setAttribute('y1', causaY);
-                    causaBranch.setAttribute('x2', x);
-                    causaBranch.setAttribute('y2', y);
-                    causaBranch.setAttribute('stroke', '#999');
-                    causaBranch.setAttribute('stroke-width', '1');
+                        causaBranch.setAttribute('x2', causaX);
+                        causaBranch.setAttribute('y2', branchY);
+                        causaBranch.setAttribute('class', 'fishbone-sub-branch');
                     svg.appendChild(causaBranch);
                     
                     // Texto da causa
                     const causaTexto = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-                    causaTexto.setAttribute('x', causaX - 10);
+                        causaTexto.setAttribute('x', causaX - 90);
                     causaTexto.setAttribute('y', causaY);
-                    causaTexto.setAttribute('font-size', '10');
+                        causaTexto.setAttribute('class', 'fishbone-causa-text');
                     causaTexto.setAttribute('text-anchor', 'end');
-                    causaTexto.textContent = causa.substring(0, 30);
+                        causaTexto.setAttribute('dominant-baseline', 'middle');
+                        // Quebrar texto longo
+                        const textoCurto = causa.length > 25 ? causa.substring(0, 22) + '...' : causa;
+                        causaTexto.textContent = textoCurto;
                     svg.appendChild(causaTexto);
                 });
+                }
+            }
+            
+            // Adicionar seta na ponta da espinha (cauda do peixe)
+            const tailArrow = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+            const tailPoints = [
+                `${spineStartX},${centerY}`,
+                `${spineStartX - 20},${centerY - 15}`,
+                `${spineStartX - 20},${centerY + 15}`
+            ].join(' ');
+            tailArrow.setAttribute('points', tailPoints);
+            tailArrow.setAttribute('fill', '#2c3e50');
+            tailArrow.setAttribute('stroke', '#1a252f');
+            tailArrow.setAttribute('stroke-width', '2');
+            svg.appendChild(tailArrow);
+            
+            // Desenhar categorias superiores (acima da espinha)
+            categoriasSuperiores.forEach((cat, index) => {
+                const branchX = spineStartX + (index + 1) * branchSpacing;
+                const branchY = centerY - branchLength;
+                desenharCategoria(cat, branchX, branchY, true);
+            });
+            
+            // Desenhar categorias inferiores (abaixo da espinha)
+            categoriasInferiores.forEach((cat, index) => {
+                const branchX = spineStartX + (index + 1) * branchSpacing;
+                const branchY = centerY + branchLength;
+                desenharCategoria(cat, branchX, branchY, false);
             });
         }
 
@@ -1113,22 +1781,111 @@
             imprimirConteudo(conteudo, 'Diagrama de Ishikawa');
         }
 
+        async function salvarIshikawa() {
+            const titulo = document.getElementById('tituloIshikawa').value;
+            const problema = document.getElementById('problemaIshikawa').value;
+            
+            if (!titulo && !problema) {
+                alert('Por favor, preencha pelo menos o título ou o problema.');
+                return;
+            }
+            
+            const categorias = [
+                { nome: 'Método', id: 'ishikawa-metodo' },
+                { nome: 'Mão de Obra', id: 'ishikawa-maoobra' },
+                { nome: 'Material', id: 'ishikawa-material' },
+                { nome: 'Máquina', id: 'ishikawa-maquina' },
+                { nome: 'Meio Ambiente', id: 'ishikawa-meioambiente' },
+                { nome: 'Medição', id: 'ishikawa-medicao' }
+            ];
+            
+            const dados = {
+                problema: problema,
+                categorias: categorias.map(cat => ({
+                    nome: cat.nome,
+                    causas: document.getElementById(cat.id).value.split('\n').filter(c => c.trim())
+                }))
+            };
+            
+            const tituloFinal = titulo || `Diagrama de Ishikawa: ${problema || 'Sem título'}`;
+            
+            try {
+                const headers = await getAuthHeaders();
+                const response = await fetch('/api/ferramentas-qualidade', {
+                    method: 'POST',
+                    headers: headers,
+                    credentials: 'include',
+                    body: JSON.stringify({
+                        id: ferramentaAtualId,
+                        tipo_ferramenta: 'ishikawa',
+                        titulo: tituloFinal,
+                        dados: dados
+                    })
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    ferramentaAtualId = data.ferramenta.id;
+                    alert('✅ Diagrama de Ishikawa salvo com sucesso!');
+                } else {
+                    alert('❌ Erro ao salvar: ' + (data.error || 'Erro desconhecido'));
+                }
+            } catch (error) {
+                console.error('❌ Erro ao salvar diagrama de Ishikawa:', error);
+                alert('❌ Erro ao salvar diagrama de Ishikawa: ' + error.message);
+            }
+        }
+
         function limparIshikawa() {
+            document.getElementById('tituloIshikawa').value = '';
             document.getElementById('problemaIshikawa').value = '';
             ['ishikawa-metodo', 'ishikawa-maoobra', 'ishikawa-material', 'ishikawa-maquina', 'ishikawa-meioambiente', 'ishikawa-medicao'].forEach(id => {
                 document.getElementById(id).value = '';
             });
             document.getElementById('ishikawa-diagram-container').style.display = 'none';
+            ferramentaAtualId = null;
         }
 
         // ========== PLANO DE AÇÃO ==========
+        function escaparHtml(texto) {
+            if (!texto) return '';
+            const div = document.createElement('div');
+            div.textContent = texto;
+            return div.innerHTML;
+        }
+        
+        function calcularDiasEntreDatas(dataInicio, dataFim) {
+            if (!dataInicio || !dataFim) return null;
+            const inicio = new Date(dataInicio);
+            const fim = new Date(dataFim);
+            inicio.setHours(0, 0, 0, 0);
+            fim.setHours(0, 0, 0, 0);
+            const diff = Math.floor((fim - inicio) / (1000 * 60 * 60 * 24));
+            return diff;
+        }
+        
+        function formatarData(data) {
+            if (!data) return '-';
+            const d = new Date(data);
+            const dia = String(d.getDate()).padStart(2, '0');
+            const mes = String(d.getMonth() + 1).padStart(2, '0');
+            return `${dia}-${mes}`;
+        }
+        
         function adicionarAcao() {
             const acao = {
                 id: Date.now().toString(),
                 descricao: '',
+                gestor_imediato: '',
                 responsavel_id: '',
-                prazo: '',
-                status: 'pendente'
+                prioridade: 'MÉDIA',
+                progresso: 0,
+                inicio: '',
+                revisao: '',
+                finalizacao: '',
+                status: 'PENDENTE',
+                obs: '',
+                acao_contingencia: ''
             };
             
             acoesPlano.push(acao);
@@ -1146,6 +1903,9 @@
             const acao = acoesPlano.find(a => a.id === id);
             if (acao) {
                 acao[campo] = valor;
+                if (campo === 'progresso') {
+                    acao.progresso = parseInt(valor) || 0;
+                }
                 renderizarAcoes();
                 atualizarAlertasPlano();
             }
@@ -1156,58 +1916,148 @@
             container.innerHTML = '';
             
             if (acoesPlano.length === 0) {
-                container.innerHTML = '<p class="text-muted text-center py-3">Nenhuma ação cadastrada. Clique em "Adicionar Ação" para começar.</p>';
+                container.innerHTML = '<div class="text-center text-muted py-5"><i class="fas fa-tasks fa-3x mb-3"></i><p>Nenhuma ação cadastrada. Clique em "Adicionar Ação" para começar.</p></div>';
                 return;
             }
             
-            acoesPlano.forEach(acao => {
-                const dias = calcularDiasRestantes(acao.prazo);
-                const statusPrazo = formatarStatusPrazo(dias);
-                const responsavelNome = usuariosPlataforma.find(u => u.id === acao.responsavel_id)?.nome || 'Selecione...';
+            acoesPlano.forEach((acao, index) => {
+                const dias = calcularDiasEntreDatas(acao.inicio, acao.finalizacao);
+                const responsavelNome = usuariosPlataforma.find(u => u.id === acao.responsavel_id)?.nome || acao.responsavel_id || '';
+                const statusClass = acao.status === 'FINALIZADO' ? 'success' : acao.status === 'EM ANDAMENTO' ? 'warning' : 'secondary';
+                const prioridadeClass = acao.prioridade === 'ALTA' ? 'alta' : acao.prioridade === 'MÉDIA' ? 'media' : 'baixa';
+                const finalizadoClass = acao.status === 'FINALIZADO' ? 'finalizado' : '';
                 
-                const div = document.createElement('div');
-                div.className = `action-item ${acao.status === 'concluida' ? 'completed' : ''} ${dias !== null && dias < 0 ? 'border-danger' : dias !== null && dias <= 3 ? 'border-warning' : ''}`;
-                div.innerHTML = `
-                    <div class="row align-items-center">
-                        <div class="col-md-4">
-                            <input type="text" class="form-control form-control-sm" 
-                                   value="${acao.descricao || ''}" 
-                                   placeholder="Descrição da ação"
-                                   onchange="atualizarAcao('${acao.id}', 'descricao', this.value)">
+                const card = document.createElement('div');
+                card.className = `acao-card prioridade-${prioridadeClass} ${finalizadoClass}`;
+                card.innerHTML = `
+                    <div class="acao-header">
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="badge bg-secondary">#${index + 1}</span>
+                            <span class="badge bg-${statusClass} badge-status">${acao.status || 'PENDENTE'}</span>
+                            <span class="badge bg-${acao.prioridade === 'ALTA' ? 'danger' : acao.prioridade === 'MÉDIA' ? 'warning' : 'info'}">${acao.prioridade || 'MÉDIA'}</span>
                         </div>
-                        <div class="col-md-3">
-                            <select class="form-select form-select-sm" 
+                        <button class="btn btn-sm btn-danger" onclick="removerAcao('${acao.id}')" title="Remover ação">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                    
+                    <div class="acao-descricao">
+                        <label class="form-label fw-bold">AÇÃO</label>
+                        <textarea class="form-control" rows="2" 
+                                  placeholder="Descreva a ação a ser realizada..." 
+                                  onchange="atualizarAcao('${acao.id}', 'descricao', this.value)">${(acao.descricao || '').replace(/'/g, "&#39;").replace(/"/g, "&quot;")}</textarea>
+                    </div>
+                    
+                    <div class="acao-info-grid">
+                        <div class="acao-info-item">
+                            <label>GESTOR IMEDIATO</label>
+                            <input type="text" class="form-control" 
+                                   value="${(acao.gestor_imediato || '').replace(/"/g, "&quot;")}" 
+                                   placeholder="Nome do gestor"
+                                   onchange="atualizarAcao('${acao.id}', 'gestor_imediato', this.value)">
+                        </div>
+                        
+                        <div class="acao-info-item">
+                            <label>RESPONSÁVEL</label>
+                            <select class="form-select" 
                                     onchange="atualizarAcao('${acao.id}', 'responsavel_id', this.value)">
-                                <option value="">Selecione o responsável...</option>
+                                <option value="">Selecione ou digite abaixo...</option>
                                 ${usuariosPlataforma.map(u => `
                                     <option value="${u.id}" ${acao.responsavel_id === u.id ? 'selected' : ''}>
                                         ${u.nome}${u.departamento ? ' - ' + u.departamento : ''}
                                     </option>
                                 `).join('')}
                             </select>
+                            ${!acao.responsavel_id || !usuariosPlataforma.find(u => u.id === acao.responsavel_id) ? `
+                                <input type="text" class="form-control mt-1" 
+                                       value="${(acao.responsavel_id && !usuariosPlataforma.find(u => u.id === acao.responsavel_id) ? acao.responsavel_id : '').replace(/"/g, "&quot;")}" 
+                                       placeholder="Ou digite o nome do responsável"
+                                       onchange="atualizarAcao('${acao.id}', 'responsavel_id', this.value)">
+                            ` : ''}
                         </div>
-                        <div class="col-md-2">
-                            <input type="date" class="form-control form-control-sm" 
-                                   value="${acao.prazo || ''}" 
-                                   onchange="atualizarAcao('${acao.id}', 'prazo', this.value)">
-                        </div>
-                        <div class="col-md-2">
-                            <small class="${statusPrazo.classe}">${statusPrazo.texto}</small><br>
-                            <select class="form-select form-select-sm mt-1" 
-                                    onchange="atualizarAcao('${acao.id}', 'status', this.value)">
-                                <option value="pendente" ${acao.status === 'pendente' ? 'selected' : ''}>Pendente</option>
-                                <option value="em_andamento" ${acao.status === 'em_andamento' ? 'selected' : ''}>Em Andamento</option>
-                                <option value="concluida" ${acao.status === 'concluida' ? 'selected' : ''}>Concluída</option>
+                        
+                        <div class="acao-info-item">
+                            <label>PRIORIDADE</label>
+                            <select class="form-select" 
+                                    onchange="atualizarAcao('${acao.id}', 'prioridade', this.value)">
+                                <option value="BAIXA" ${acao.prioridade === 'BAIXA' ? 'selected' : ''}>BAIXA</option>
+                                <option value="MÉDIA" ${acao.prioridade === 'MÉDIA' ? 'selected' : ''}>MÉDIA</option>
+                                <option value="ALTA" ${acao.prioridade === 'ALTA' ? 'selected' : ''}>ALTA</option>
                             </select>
                         </div>
-                        <div class="col-md-1">
-                            <button class="btn btn-danger btn-sm" onclick="removerAcao('${acao.id}')">
-                                <i class="fas fa-trash"></i>
-                            </button>
+                        
+                        <div class="acao-info-item">
+                            <label>PROGRESSO</label>
+                            <div class="progress-container">
+                                <input type="number" class="form-control" min="0" max="100" 
+                                       value="${acao.progresso || 0}" 
+                                       onchange="atualizarAcao('${acao.id}', 'progresso', this.value)">
+                                <span>%</span>
+                                <div class="progress">
+                                    <div class="progress-bar ${acao.progresso >= 100 ? 'bg-success' : acao.progresso >= 50 ? 'bg-warning' : 'bg-info'}" 
+                                         role="progressbar" style="width: ${acao.progresso || 0}%">
+                                        ${acao.progresso || 0}%
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="acao-info-item">
+                            <label>ÍNICIO</label>
+                            <input type="date" class="form-control" 
+                                   value="${acao.inicio || ''}" 
+                                   onchange="atualizarAcao('${acao.id}', 'inicio', this.value)">
+                        </div>
+                        
+                        <div class="acao-info-item">
+                            <label>REVISÃO</label>
+                            <input type="date" class="form-control" 
+                                   value="${acao.revisao || ''}" 
+                                   onchange="atualizarAcao('${acao.id}', 'revisao', this.value)">
+                        </div>
+                        
+                        <div class="acao-info-item">
+                            <label>FINALIZAÇÃO</label>
+                            <input type="date" class="form-control" 
+                                   value="${acao.finalizacao || ''}" 
+                                   onchange="atualizarAcao('${acao.id}', 'finalizacao', this.value)">
+                        </div>
+                        
+                        <div class="acao-info-item">
+                            <label>DIAS</label>
+                            <input type="text" class="form-control" 
+                                   value="${dias !== null ? dias + ' dias' : '-'}" 
+                                   readonly 
+                                   style="background: #f8f9fa;">
+                        </div>
+                        
+                        <div class="acao-info-item">
+                            <label>STATUS</label>
+                            <select class="form-select" 
+                                    onchange="atualizarAcao('${acao.id}', 'status', this.value)">
+                                <option value="PENDENTE" ${acao.status === 'PENDENTE' ? 'selected' : ''}>PENDENTE</option>
+                                <option value="EM ANDAMENTO" ${acao.status === 'EM ANDAMENTO' ? 'selected' : ''}>EM ANDAMENTO</option>
+                                <option value="FINALIZADO" ${acao.status === 'FINALIZADO' ? 'selected' : ''}>FINALIZADO</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-2">
+                            <label class="form-label fw-bold">OBS</label>
+                            <textarea class="form-control" rows="2" 
+                                      placeholder="Observações adicionais..." 
+                                      onchange="atualizarAcao('${acao.id}', 'obs', this.value)">${(acao.obs || '').replace(/'/g, "&#39;").replace(/"/g, "&quot;")}</textarea>
+                        </div>
+                        <div class="col-md-6 mb-2">
+                            <label class="form-label fw-bold">AÇÃO DE CONTINGÊNCIA</label>
+                            <textarea class="form-control" rows="2" 
+                                      placeholder="Descreva a ação de contingência..." 
+                                      onchange="atualizarAcao('${acao.id}', 'acao_contingencia', this.value)">${(acao.acao_contingencia || '').replace(/'/g, "&#39;").replace(/"/g, "&quot;")}</textarea>
                         </div>
                     </div>
                 `;
-                container.appendChild(div);
+                container.appendChild(card);
             });
         }
         
@@ -1217,9 +2067,9 @@
             if (!alertasContainer || !alertasDiv) return;
             
             const alertas = acoesPlano
-                .filter(a => a.prazo && a.responsavel_id)
+                .filter(a => a.finalizacao && a.responsavel_id)
                 .map(a => {
-                    const dias = calcularDiasRestantes(a.prazo);
+                    const dias = calcularDiasRestantes(a.finalizacao);
                     const responsavel = usuariosPlataforma.find(u => u.id === a.responsavel_id);
                     return { ...a, dias, responsavel };
                 })
@@ -1236,7 +2086,7 @@
                 return `
                     <div class="alert alert-${a.dias < 0 ? 'danger' : 'warning'} mb-2 py-2">
                         <strong>${a.descricao || 'Ação sem descrição'}</strong> - 
-                        Responsável: ${a.responsavel?.nome || 'Não definido'} - 
+                        Responsável: ${a.responsavel?.nome || a.responsavel_id || 'Não definido'} - 
                         <span class="${status.classe}">${status.texto}</span>
                     </div>
                 `;
@@ -1253,9 +2103,10 @@
             }
             
             try {
+                const headers = await getAuthHeaders();
                 const response = await fetch('/api/ferramentas-qualidade', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: headers,
                     credentials: 'include',
                     body: JSON.stringify({
                         id: ferramentaAtualId,
@@ -1266,25 +2117,43 @@
                             acoes: acoesPlano.map(a => ({
                                 id: a.id,
                                 descricao: a.descricao,
+                                gestor_imediato: a.gestor_imediato,
                                 responsavel_id: a.responsavel_id,
-                                prazo: a.prazo,
-                                status: a.status
+                                prioridade: a.prioridade,
+                                progresso: a.progresso,
+                                inicio: a.inicio,
+                                revisao: a.revisao,
+                                finalizacao: a.finalizacao,
+                                status: a.status,
+                                obs: a.obs,
+                                acao_contingencia: a.acao_contingencia
                             }))
                         }
                     })
                 });
                 
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error('❌ Erro na resposta da API:', response.status, errorText);
+                    throw new Error(`Erro ${response.status}: ${response.statusText}`);
+                }
+                
                 const data = await response.json();
                 if (data.success) {
                     ferramentaAtualId = data.ferramenta.id;
                     alert('✅ Plano de Ação salvo com sucesso!');
-                    await carregarAlertas(); // Recarregar alertas
+                    // Tentar recarregar alertas (não crítico se falhar)
+                    try {
+                        await carregarAlertas();
+                    } catch (alertError) {
+                        console.warn('⚠️ Erro ao recarregar alertas:', alertError);
+                    }
                 } else {
                     alert('❌ Erro ao salvar: ' + (data.error || 'Erro desconhecido'));
                 }
             } catch (error) {
                 console.error('❌ Erro ao salvar plano de ação:', error);
-                alert('❌ Erro ao salvar plano de ação.');
+                alert('❌ Erro ao salvar plano de ação: ' + error.message + '\n\nVerifique se o servidor está rodando e se você está autenticado.');
             }
         }
 
@@ -1294,16 +2163,21 @@
             
             let htmlAcoes = acoesPlano.map((acao, index) => {
                 const responsavel = usuariosPlataforma.find(u => u.id === acao.responsavel_id);
-                const dias = calcularDiasRestantes(acao.prazo);
-                const statusPrazo = formatarStatusPrazo(dias);
+                const dias = calcularDiasEntreDatas(acao.inicio, acao.finalizacao);
                 return `
                     <tr>
-                        <td>${index + 1}</td>
                         <td>${acao.descricao || '-'}</td>
-                        <td>${responsavel?.nome || '-'}</td>
-                        <td>${acao.prazo || '-'}</td>
-                        <td><span class="${statusPrazo.classe}">${statusPrazo.texto}</span></td>
-                        <td>${acao.status === 'pendente' ? 'Pendente' : acao.status === 'em_andamento' ? 'Em Andamento' : 'Concluída'}</td>
+                        <td>${acao.gestor_imediato || '-'}</td>
+                        <td>${responsavel?.nome || acao.responsavel_id || '-'}</td>
+                        <td>${acao.prioridade || '-'}</td>
+                        <td>${acao.progresso || 0}%</td>
+                        <td>${formatarData(acao.inicio)}</td>
+                        <td>${formatarData(acao.revisao)}</td>
+                        <td>${formatarData(acao.finalizacao)}</td>
+                        <td>${dias !== null ? dias : '-'}</td>
+                        <td>${acao.status || '-'}</td>
+                        <td>${acao.obs || '-'}</td>
+                        <td>${acao.acao_contingencia || '-'}</td>
                     </tr>
                 `;
             }).join('');
@@ -1312,19 +2186,25 @@
                 <h2>${titulo}</h2>
                 <h3>Objetivo:</h3>
                 <p>${objetivo || '-'}</p>
-                <table class="table table-bordered">
+                <table class="table table-bordered" style="font-size: 10px;">
                     <thead>
                         <tr>
-                            <th>#</th>
-                            <th>Ação</th>
-                            <th>Responsável</th>
-                            <th>Prazo</th>
-                            <th>Status do Prazo</th>
-                            <th>Status</th>
+                            <th>AÇÃO</th>
+                            <th>GESTOR IMEDIATO</th>
+                            <th>RESPONSÁVEL</th>
+                            <th>PRIORIDADE</th>
+                            <th>PROGRESSO</th>
+                            <th>ÍNICIO</th>
+                            <th>REVISÃO</th>
+                            <th>FINALIZAÇÃO</th>
+                            <th>DIAS</th>
+                            <th>STATUS</th>
+                            <th>OBS</th>
+                            <th>AÇÃO DE CONTINGÊNCIA</th>
                         </tr>
                     </thead>
                     <tbody>
-                        ${htmlAcoes || '<tr><td colspan="6">Nenhuma ação cadastrada</td></tr>'}
+                        ${htmlAcoes || '<tr><td colspan="12">Nenhuma ação cadastrada</td></tr>'}
                     </tbody>
                 </table>
             `;
@@ -1422,7 +2302,9 @@
         
         async function carregarFerramenta(id) {
             try {
+                const headers = await getAuthHeaders();
                 const response = await fetch(`/api/ferramentas-qualidade/${id}`, {
+                    headers: headers,
                     credentials: 'include'
                 });
                 const data = await response.json();
@@ -1431,25 +2313,100 @@
                     const f = data.ferramenta;
                     ferramentaAtualId = f.id;
                     
-                    // Determinar qual tab abrir e carregar dados
                     if (f.tipo_ferramenta === '5w2h') {
                         document.getElementById('titulo5w2h').value = f.titulo || '';
                         linhas5W2H = f.dados?.linhas || [];
+                        // Garantir que usuários estejam carregados antes de renderizar
+                        if (usuariosPlataforma.length === 0) {
+                            await carregarUsuarios();
+                        }
                         renderizarLinhas5W2H();
-                        // Abrir tab 5W2H
                         const tab5w2h = document.querySelector('[data-bs-target="#tab-5w2h"]');
                         if (tab5w2h) tab5w2h.click();
+                    } else if (f.tipo_ferramenta === '5porques') {
+                        // Extrair título (remover prefixo "5 Porquês: " se existir)
+                        const titulo = f.titulo?.replace(/^5 Porquês:\s*/i, '') || '';
+                        document.getElementById('titulo5porques').value = titulo;
+                        document.getElementById('problema5porques').value = f.dados?.problema || '';
+                        if (f.dados?.porques) {
+                            f.dados.porques.forEach((porque, index) => {
+                                const campo = document.getElementById(`porque${index + 1}`);
+                                if (campo) campo.value = porque || '';
+                            });
+                        }
+                        document.getElementById('causaRaiz').value = f.dados?.causa_raiz || '';
+                        const tab5Porques = document.querySelector('[data-bs-target="#tab-5porques"]');
+                        if (tab5Porques) tab5Porques.click();
+                    } else if (f.tipo_ferramenta === 'pdca') {
+                        // Extrair título (remover prefixo "PDCA: " se existir)
+                        const titulo = f.titulo?.replace(/^PDCA:\s*/i, '') || '';
+                        document.getElementById('tituloPDCA').value = titulo;
+                        if (f.dados) {
+                            document.getElementById('pdca-problema').value = f.dados.problema || '';
+                            document.getElementById('pdca-objetivo').value = f.dados.objetivo || '';
+                            document.getElementById('pdca-plano').value = f.dados.plano || '';
+                            document.getElementById('pdca-executado').value = f.dados.executado || '';
+                            document.getElementById('pdca-dificuldades').value = f.dados.dificuldades || '';
+                            document.getElementById('pdca-resultados').value = f.dados.resultados || '';
+                            document.getElementById('pdca-comparacao').value = f.dados.comparacao || '';
+                            document.getElementById('pdca-padronizacao').value = f.dados.padronizacao || '';
+                            document.getElementById('pdca-proximos').value = f.dados.proximos || '';
+                            document.getElementById('pdca-proximo-ciclo').value = f.dados.proximoCiclo || '';
+                        }
+                        const tabPDCA = document.querySelector('[data-bs-target="#tab-pdca"]');
+                        if (tabPDCA) tabPDCA.click();
+                    } else if (f.tipo_ferramenta === 'brainstorm') {
+                        // Extrair título (remover prefixo "Brainstorming: " se existir)
+                        const titulo = f.titulo?.replace(/^Brainstorming:\s*/i, '') || '';
+                        document.getElementById('temaBrainstorm').value = f.dados?.tema || titulo || '';
+                        document.getElementById('objetivoBrainstorm').value = f.dados?.objetivo || '';
+                        ideiasBrainstorm = f.dados?.ideias || [];
+                        ideiasSelecionadas = f.dados?.ideias_selecionadas || [];
+                        renderizarIdeias();
+                        renderizarIdeiasSelecionadas();
+                        const tabBrainstorm = document.querySelector('[data-bs-target="#tab-brainstorm"]');
+                        if (tabBrainstorm) tabBrainstorm.click();
+                    } else if (f.tipo_ferramenta === 'ishikawa') {
+                        // Extrair título (remover prefixo "Diagrama de Ishikawa: " se existir)
+                        const titulo = f.titulo?.replace(/^Diagrama de Ishikawa:\s*/i, '') || '';
+                        document.getElementById('tituloIshikawa').value = titulo;
+                        document.getElementById('problemaIshikawa').value = f.dados?.problema || '';
+                        if (f.dados?.categorias) {
+                            // Mapear nomes das categorias para IDs dos campos
+                            const mapeamentoCategorias = {
+                                'Método': 'ishikawa-metodo',
+                                'Mão de Obra': 'ishikawa-maoobra',
+                                'Material': 'ishikawa-material',
+                                'Máquina': 'ishikawa-maquina',
+                                'Meio Ambiente': 'ishikawa-meioambiente',
+                                'Medição': 'ishikawa-medicao'
+                            };
+                            
+                            f.dados.categorias.forEach(cat => {
+                                const campoId = mapeamentoCategorias[cat.nome];
+                                if (campoId) {
+                                    const campo = document.getElementById(campoId);
+                                    if (campo) {
+                                        campo.value = cat.causas?.join('\n') || '';
+                                    }
+                                }
+                            });
+                        }
+                        // Visualizar automaticamente se houver problema
+                        if (f.dados?.problema) {
+                            visualizarIshikawa();
+                        }
+                        const tabIshikawa = document.querySelector('[data-bs-target="#tab-ishikawa"]');
+                        if (tabIshikawa) tabIshikawa.click();
                     } else if (f.tipo_ferramenta === 'plano_acao') {
                         document.getElementById('tituloPlano').value = f.titulo || '';
                         document.getElementById('objetivoPlano').value = f.dados?.objetivo || '';
                         acoesPlano = f.dados?.acoes || [];
                         renderizarAcoes();
                         atualizarAlertasPlano();
-                        // Abrir tab plano de ação
                         const tabPlano = document.querySelector('[data-bs-target="#tab-plano-acao"]');
                         if (tabPlano) tabPlano.click();
                     }
-                    // Adicionar outros tipos conforme necessário
                 }
             } catch (error) {
                 console.error('❌ Erro ao carregar ferramenta:', error);
@@ -1459,9 +2416,10 @@
         
         async function arquivarFerramenta(id, arquivar) {
             try {
+                const headers = await getAuthHeaders();
                 const response = await fetch(`/api/ferramentas-qualidade/${id}/arquivar`, {
                     method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: headers,
                     credentials: 'include',
                     body: JSON.stringify({ arquivado: arquivar })
                 });
@@ -1523,10 +2481,61 @@
         }
 
         function limparPDCA() {
+            document.getElementById('tituloPDCA').value = '';
             ['pdca-problema', 'pdca-objetivo', 'pdca-plano', 'pdca-executado', 'pdca-dificuldades', 
              'pdca-resultados', 'pdca-comparacao', 'pdca-padronizacao', 'pdca-proximos', 'pdca-proximo-ciclo'].forEach(id => {
                 document.getElementById(id).value = '';
             });
+            ferramentaAtualId = null;
+        }
+        
+        async function salvarPDCA() {
+            const titulo = document.getElementById('tituloPDCA').value;
+            const dados = {
+                problema: document.getElementById('pdca-problema').value,
+                objetivo: document.getElementById('pdca-objetivo').value,
+                plano: document.getElementById('pdca-plano').value,
+                executado: document.getElementById('pdca-executado').value,
+                dificuldades: document.getElementById('pdca-dificuldades').value,
+                resultados: document.getElementById('pdca-resultados').value,
+                comparacao: document.getElementById('pdca-comparacao').value,
+                padronizacao: document.getElementById('pdca-padronizacao').value,
+                proximos: document.getElementById('pdca-proximos').value,
+                proximoCiclo: document.getElementById('pdca-proximo-ciclo').value
+            };
+            
+            if (!titulo && !dados.problema) {
+                alert('Por favor, preencha pelo menos o título ou o problema.');
+                return;
+            }
+            
+            const tituloFinal = titulo || `PDCA: ${dados.problema || 'Sem título'}`;
+            
+            try {
+                const headers = await getAuthHeaders();
+                const response = await fetch('/api/ferramentas-qualidade', {
+                    method: 'POST',
+                    headers: headers,
+                    credentials: 'include',
+                    body: JSON.stringify({
+                        id: ferramentaAtualId,
+                        tipo_ferramenta: 'pdca',
+                        titulo: tituloFinal,
+                        dados: dados
+                    })
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    ferramentaAtualId = data.ferramenta.id;
+                    alert('✅ PDCA salvo com sucesso!');
+                } else {
+                    alert('❌ Erro ao salvar: ' + (data.error || 'Erro desconhecido'));
+                }
+            } catch (error) {
+                console.error('❌ Erro ao salvar PDCA:', error);
+                alert('❌ Erro ao salvar PDCA: ' + error.message);
+            }
         }
 
         // ========== BRAINSTORMING ==========
@@ -1642,8 +2651,53 @@
             document.getElementById('objetivoBrainstorm').value = '';
             ideiasBrainstorm = [];
             ideiasSelecionadas = [];
+            ferramentaAtualId = null;
             renderizarIdeias();
             renderizarIdeiasSelecionadas();
+        }
+        
+        async function salvarBrainstorm() {
+            const tema = document.getElementById('temaBrainstorm').value;
+            
+            if (!tema) {
+                alert('Por favor, preencha o tema/problema.');
+                return;
+            }
+            
+            const dados = {
+                tema: tema,
+                objetivo: document.getElementById('objetivoBrainstorm').value,
+                ideias: ideiasBrainstorm,
+                ideias_selecionadas: ideiasSelecionadas
+            };
+            
+            const tituloFinal = `Brainstorming: ${tema}`;
+            
+            try {
+                const headers = await getAuthHeaders();
+                const response = await fetch('/api/ferramentas-qualidade', {
+                    method: 'POST',
+                    headers: headers,
+                    credentials: 'include',
+                    body: JSON.stringify({
+                        id: ferramentaAtualId,
+                        tipo_ferramenta: 'brainstorm',
+                        titulo: tituloFinal,
+                        dados: dados
+                    })
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    ferramentaAtualId = data.ferramenta.id;
+                    alert('✅ Brainstorming salvo com sucesso!');
+                } else {
+                    alert('❌ Erro ao salvar: ' + (data.error || 'Erro desconhecido'));
+                }
+            } catch (error) {
+                console.error('❌ Erro ao salvar Brainstorming:', error);
+                alert('❌ Erro ao salvar Brainstorming: ' + error.message);
+            }
         }
 
         // ========== FUNÇÃO AUXILIAR PARA IMPRIMIR ==========
@@ -1654,39 +2708,33 @@
                 return;
             }
             
+            const scriptTag = '<scr' + 'ipt>';
+            const scriptClose = '</scr' + 'ipt>';
+            
+            const html = '<!DOCTYPE html>' +
+                '<html>' +
+                '<head>' +
+                '<title>' + (titulo || 'Documento') + '</title>' +
+                '<style>' +
+                'body { font-family: Arial, sans-serif; padding: 20px; }' +
+                'table { border-collapse: collapse; width: 100%; margin: 20px 0; }' +
+                'th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }' +
+                'th { background-color: #f2f2f2; }' +
+                '</style>' +
+                '</head>' +
+                '<body>' +
+                conteudo +
+                scriptTag +
+                'window.onload = function() { window.print(); }' +
+                scriptClose +
+                '</body>' +
+                '</html>';
+            
             janela.document.open();
-            janela.document.write('<!DOCTYPE html>');
-            janela.document.write('<html>');
-            janela.document.write('<head>');
-            janela.document.write('<title>' + (titulo || 'Documento') + '</title>');
-            janela.document.write('<style>');
-            janela.document.write('body { font-family: Arial, sans-serif; padding: 20px; }');
-            janela.document.write('table { border-collapse: collapse; width: 100%; margin: 20px 0; }');
-            janela.document.write('th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }');
-            janela.document.write('th { background-color: #f2f2f2; }');
-            janela.document.write('</style>');
-            janela.document.write('</head>');
-            janela.document.write('<body>');
-            janela.document.write(conteudo);
-            janela.document.write('<script>');
-            janela.document.write('window.onload = function() { window.print(); }');
-            janela.document.write('</script>');
-            janela.document.write('</body>');
-            janela.document.write('</html>');
+            janela.document.write(html);
             janela.document.close();
         }
 
-        // Permitir Enter no input de ideias
-        document.addEventListener('DOMContentLoaded', function() {
-            const inputIdeia = document.getElementById('novaIdeia');
-            if (inputIdeia) {
-                inputIdeia.addEventListener('keypress', function(e) {
-                    if (e.key === 'Enter') {
-                        adicionarIdeia();
-                    }
-                });
-            }
-        });
     </script>
     
     <!-- Chat IA -->
@@ -1694,4 +2742,3 @@
     <script src="js/chat-ia.js"></script>
 </body>
 </html>
-

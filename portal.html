@@ -116,9 +116,37 @@
             transition: var(--transition);
             position: relative;
         }
+        
+        .navbar-nav .nav-link,
+        .navbar-nav .nav-link:link,
+        .navbar-nav .nav-link:visited {
+            color: rgba(255, 255, 255, 0.8) !important;
+        }
+        
+        .navbar-nav .nav-link:hover,
+        .navbar-nav .nav-link:focus {
+            color: rgba(255, 255, 255, 1) !important;
+        }
+        
+        .navbar-nav .nav-link .badge-notification {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background: linear-gradient(135deg, #dc3545, #c0392b);
+            color: white;
+            padding: 0.15rem 0.5rem;
+            border-radius: 10px;
+            font-size: 0.7rem;
+            font-weight: 700;
+            box-shadow: 0 2px 8px rgba(220, 53, 69, 0.4);
+            animation: pulse 2s infinite;
+            min-width: 18px;
+            text-align: center;
+        }
 
-        .navbar-nav .nav-link:hover {
-            color: var(--text-primary) !important;
+        .navbar-nav .nav-link:hover,
+        .navbar-nav .nav-link:focus {
+            color: rgba(255, 255, 255, 1) !important;
             text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
         }
 
@@ -477,16 +505,23 @@
             line-height: 1.4;
         }
 
-        .access-badge {
+        .notification-badge {
             position: absolute;
             top: 1rem;
             right: 1rem;
-            background: linear-gradient(135deg, var(--warning), #ff8c00);
-            color: var(--dark);
+            background: linear-gradient(135deg, #dc3545, #c0392b);
+            color: white;
             padding: 0.25rem 0.75rem;
             border-radius: 20px;
             font-size: 0.75rem;
-            font-weight: 600;
+            font-weight: 700;
+            box-shadow: 0 2px 8px rgba(220, 53, 69, 0.4);
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
         }
 
         /* Botões futurísticos */
@@ -662,6 +697,12 @@
                     <li class="nav-item">
                         <a class="nav-link" href="#departments">
                             <i class="fas fa-building me-1"></i>Departamentos
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="minhas-acoes.html">
+                            <i class="fas fa-tasks me-1"></i>Minhas Ações
+                            <span class="badge-notification" id="badgeAcoesNavbar" style="display: none;">0</span>
                         </a>
                     </li>
                     <li class="nav-item">
@@ -920,6 +961,9 @@
             // Carregar dados
             await carregarDados();
             
+            // Carregar contador de ações pendentes
+            await carregarContadorAcoes();
+            
             // Inicializar gráficos (agora é async)
             await inicializarGraficos();
             
@@ -1054,6 +1098,79 @@
             }
         }
 
+        // Carregar contador de ações pendentes
+        async function carregarContadorAcoes() {
+            try {
+                if (!currentUser || !currentUser.id) return;
+                
+                // Buscar headers de autenticação
+                let headers = { 'Content-Type': 'application/json' };
+                if (supabase) {
+                    try {
+                        const { data: { session } } = await supabase.auth.getSession();
+                        if (session && session.access_token) {
+                            headers['Authorization'] = `Bearer ${session.access_token}`;
+                        }
+                    } catch (error) {
+                        console.warn('⚠️ Erro ao obter sessão:', error);
+                    }
+                }
+                
+                const loggedInUserData = localStorage.getItem('loggedInUser');
+                if (loggedInUserData) {
+                    const parsed = JSON.parse(loggedInUserData);
+                    if (parsed.email) headers['X-User-Email'] = parsed.email;
+                    if (parsed.id) headers['X-User-Id'] = parsed.id;
+                }
+                
+                const response = await fetch('/api/ferramentas-qualidade/minhas-acoes?status=pendente', {
+                    headers: headers,
+                    credentials: 'include'
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    const acoesPendentes = (data.acoes || []).length;
+                    
+                    // Atualizar badge no navbar
+                    const badgeNavbar = document.getElementById('badgeAcoesNavbar');
+                    if (badgeNavbar) {
+                        if (acoesPendentes > 0) {
+                            badgeNavbar.textContent = acoesPendentes;
+                            badgeNavbar.style.display = 'inline-block';
+                        } else {
+                            badgeNavbar.style.display = 'none';
+                        }
+                    }
+                    
+                    // Atualizar badge no módulo "Minhas Ações" (se existir)
+                    const moduloMinhasAcoes = document.querySelector('[href="minhas-acoes.html"]');
+                    if (moduloMinhasAcoes && acoesPendentes > 0) {
+                        const moduleItem = moduloMinhasAcoes.closest('.module-item');
+                        if (moduleItem) {
+                            // Remover badge existente se houver
+                            const badgeExistente = moduleItem.querySelector('.notification-badge');
+                            if (badgeExistente) {
+                                badgeExistente.remove();
+                            }
+                            
+                            // Adicionar novo badge
+                            const badge = document.createElement('div');
+                            badge.className = 'notification-badge';
+                            badge.textContent = acoesPendentes;
+                            badge.title = `${acoesPendentes} ação(ões) pendente(s)`;
+                            moduleItem.appendChild(badge);
+                        }
+                    }
+                }
+            } catch (error) {
+                console.warn('⚠️ Erro ao carregar contador de ações:', error);
+            }
+        }
+        
+        // Atualizar contador periodicamente
+        setInterval(carregarContadorAcoes, 60000); // A cada 1 minuto
+        
         // ========== CARREGAR DADOS ==========
         async function carregarDados() {
             try {
@@ -1447,6 +1564,22 @@
                         icon: 'fas fa-tools',
                         url: 'ferramentas-qualidade.html',
                         permission: 'qualidade',
+                        adminOnly: false
+                    },
+                    {
+                        name: 'Painel de Qualidade',
+                        description: 'Visualizar e gerenciar todas as ferramentas criadas',
+                        icon: 'fas fa-chart-line',
+                        url: 'painel-qualidade.html',
+                        permission: 'qualidade',
+                        adminOnly: false
+                    },
+                    {
+                        name: 'Minhas Ações',
+                        description: 'Visualizar e atualizar status das ações vinculadas a você',
+                        icon: 'fas fa-tasks',
+                        url: 'minhas-acoes.html',
+                        permission: null, // Todos podem acessar
                         adminOnly: false
                     },
                     {
