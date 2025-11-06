@@ -3929,6 +3929,63 @@ app.get('/contatos.csv', requireAuth, (req, res) => {
   res.sendFile(csvPath);
 });
 
+// Rota para obter perfil do usuário autenticado
+app.get('/api/user/profile', async (req, res) => {
+  try {
+    const userResult = await getUserFromRequest(req);
+    
+    if (!userResult || !userResult.user) {
+      return res.status(401).json({ 
+        success: false, 
+        error: 'Não autenticado' 
+      });
+    }
+
+    const user = userResult.user;
+    const userId = user.id || user.user_id;
+
+    // Buscar perfil completo na tabela user_profiles
+    const { data: profile, error: profileError } = await supabaseAdmin
+      .from('user_profiles')
+      .select('id, nome, email, role, departamento, cargo, telefone')
+      .eq('id', userId)
+      .single();
+
+    if (profileError && profileError.code !== 'PGRST116') {
+      console.warn('⚠️ Erro ao buscar perfil:', profileError);
+    }
+
+    // Se encontrou perfil, retornar dados completos
+    if (profile && !profileError) {
+      return res.json({
+        success: true,
+        id: profile.id,
+        nome: profile.nome,
+        email: profile.email || user.email,
+        role: profile.role,
+        departamento: profile.departamento,
+        cargo: profile.cargo,
+        telefone: profile.telefone
+      });
+    }
+
+    // Fallback: retornar dados básicos do usuário autenticado
+    return res.json({
+      success: true,
+      id: userId,
+      nome: user.user_metadata?.nome || user.email?.split('@')[0] || 'Usuário',
+      email: user.email,
+      role: user.user_metadata?.role || 'user'
+    });
+  } catch (error) {
+    console.error('❌ Erro ao buscar perfil do usuário:', error);
+    return res.status(500).json({ 
+      success: false, 
+      error: 'Erro ao buscar perfil do usuário' 
+    });
+  }
+});
+
 // ========== ROTAS DA API ==========
 app.get('/api/user/info', requireAuth, async (req, res) => {
   try {
@@ -8381,7 +8438,7 @@ async function verificarTabelasFerramentasQualidade() {
 verificarTabelasFerramentasQualidade().then(existe => {
   if (existe) {
     console.log('✅ Tabelas de ferramentas de qualidade verificadas');
-  } else {
+    } else {
     console.log('⚠️ Execute o script SQL para criar as tabelas: sql/criar-ferramentas-qualidade.sql');
   }
 });
@@ -8391,7 +8448,7 @@ app.get('/api/ferramentas-qualidade/usuarios', async (req, res) => {
   try {
     // Tentar autenticação, mas não bloquear se falhar
     const userResult = await getUserFromRequest(req);
-    
+
     // Buscar usuários ativos, excluindo motoristas
     const { data: motoristas } = await supabaseAdmin
       .from('motoristas')
@@ -8953,6 +9010,209 @@ app.get('/api/ferramentas-qualidade/painel/:id', async (req, res) => {
   }
 });
 
+// IMPORTANTE: Rotas específicas devem vir ANTES das rotas com parâmetros dinâmicos
+// Endpoint para listar alertas do usuário (DEVE VIR ANTES DE /:id)
+app.get('/api/ferramentas-qualidade/alertas', async (req, res) => {
+  try {
+    // Tratar autenticação com try-catch
+    let userId = null;
+    try {
+      const userResult = await getUserFromRequest(req);
+      userId = userResult?.user?.id;
+    } catch (authError) {
+      console.warn('⚠️ Erro ao obter usuário da requisição:', authError);
+      // Continuar sem usuário, retornará lista vazia
+    }
+
+    // Se não tiver usuário autenticado, retornar lista vazia
+    if (!userId) {
+      return res.json({
+        success: true,
+        alertas: []
+      });
+    }
+
+    const { status } = req.query;
+
+    try {
+      // Buscar alertas do usuário
+      // Usar duas queries separadas para evitar problemas com .or()
+      let alertasResponsavel, alertasSuperior;
+      
+      try {
+        [alertasResponsavel, alertasSuperior] = await Promise.all([
+          supabaseAdmin
+            .from('ferramentas_qualidade_alertas')
+            .select('*')
+            .eq('responsavel_id', userId)
+            .order('prazo', { ascending: true }),
+          supabaseAdmin
+            .from('ferramentas_qualidade_alertas')
+            .select('*')
+            .eq('superior_id', userId)
+            .order('prazo', { ascending: true })
+        ]);
+      } catch (promiseError) {
+        console.error('❌ Erro no Promise.all ao buscar alertas:', promiseError);
+        console.error('❌ Stack:', promiseError.stack);
+        // Retornar lista vazia em caso de erro no Promise.all
+        return res.json({
+          success: true,
+          alertas: []
+        });
+      }
+
+      // Verificar erros nas queries PRIMEIRO, antes de processar dados
+      if (alertasResponsavel.error || alertasSuperior.error) {
+        const error = alertasResponsavel.error || alertasSuperior.error;
+        console.error('❌ Erro ao buscar alertas:', error);
+        console.error('❌ Código do erro:', error.code);
+        console.error('❌ Mensagem do erro:', error.message);
+        console.error('❌ Detalhes do erro:', error.details);
+        
+        // Se a tabela não existir, retornar lista vazia ao invés de erro
+        if (error.code === '42P01' || 
+            error.code === 'PGRST116' ||
+            error.message?.includes('does not exist') ||
+            error.message?.includes('relation') ||
+            error.message?.includes('tabela') ||
+            error.message?.includes('table')) {
+          console.warn('⚠️ Tabela ferramentas_qualidade_alertas não existe ainda');
+          return res.json({
+            success: true,
+            alertas: []
+          });
+        }
+        // Retornar lista vazia em caso de outros erros também
+        console.warn('⚠️ Retornando lista vazia devido a erro na query');
+        return res.json({
+          success: true,
+          alertas: []
+        });
+      }
+
+      // Combinar resultados e remover duplicatas
+      const alertasMap = new Map();
+      
+      if (alertasResponsavel.data && Array.isArray(alertasResponsavel.data)) {
+        alertasResponsavel.data.forEach(alerta => {
+          alertasMap.set(alerta.id, alerta);
+        });
+      }
+      
+      if (alertasSuperior.data && Array.isArray(alertasSuperior.data)) {
+        alertasSuperior.data.forEach(alerta => {
+          alertasMap.set(alerta.id, alerta);
+        });
+      }
+      
+      const alertas = Array.from(alertasMap.values());
+      
+      // Ordenar por prazo (com tratamento de erros)
+      try {
+        alertas.sort((a, b) => {
+          try {
+            const prazoA = a.prazo ? new Date(a.prazo) : new Date(0);
+            const prazoB = b.prazo ? new Date(b.prazo) : new Date(0);
+            return prazoA - prazoB;
+          } catch (err) {
+            return 0; // Manter ordem original em caso de erro
+          }
+        });
+      } catch (sortError) {
+        console.warn('⚠️ Erro ao ordenar alertas:', sortError);
+        // Continuar mesmo com erro na ordenação
+      }
+
+      // Se não houver alertas, retornar vazio
+      if (!alertas || alertas.length === 0) {
+        return res.json({
+          success: true,
+          alertas: []
+        });
+      }
+
+      // Buscar dados adicionais das ferramentas e usuários
+      let alertasCompletos = [];
+      
+      try {
+        alertasCompletos = await Promise.all((alertas || []).map(async (alerta) => {
+          try {
+            const [ferramenta, responsavel, superior] = await Promise.all([
+              alerta.ferramenta_id ? supabaseAdmin.from('ferramentas_qualidade').select('tipo_ferramenta, titulo').eq('id', alerta.ferramenta_id).maybeSingle() : Promise.resolve({ data: null }),
+              alerta.responsavel_id ? supabaseAdmin.from('user_profiles').select('id, nome, email').eq('id', alerta.responsavel_id).maybeSingle() : Promise.resolve({ data: null }),
+              alerta.superior_id ? supabaseAdmin.from('user_profiles').select('id, nome, email').eq('id', alerta.superior_id).maybeSingle() : Promise.resolve({ data: null })
+            ]);
+
+            return {
+              ...alerta,
+              ferramenta: ferramenta.data || {},
+              responsavel: responsavel.data || {},
+              superior: superior.data || null
+            };
+          } catch (err) {
+            console.warn('⚠️ Erro ao buscar dados do alerta:', err);
+            return {
+              ...alerta,
+              ferramenta: {},
+              responsavel: {},
+              superior: null
+            };
+          }
+        }));
+      } catch (enrichError) {
+        console.warn('⚠️ Erro ao enriquecer dados dos alertas:', enrichError);
+        // Usar alertas básicos sem dados adicionais
+        alertasCompletos = alertas.map(alerta => ({
+          ...alerta,
+          ferramenta: {},
+          responsavel: {},
+          superior: null
+        }));
+      }
+
+      let queryFiltered = alertasCompletos;
+
+      if (status) {
+        queryFiltered = queryFiltered.filter(a => a.status === status);
+      }
+
+      res.json({
+        success: true,
+        alertas: queryFiltered
+      });
+    } catch (queryError) {
+      console.error('❌ Erro na query de alertas:', queryError);
+      // Se for erro de tabela não existir, retornar vazio
+      if (queryError.code === '42P01' || 
+          queryError.code === 'PGRST116' ||
+          queryError.message?.includes('does not exist') ||
+          queryError.message?.includes('relation') ||
+          queryError.message?.includes('tabela') ||
+          queryError.message?.includes('table')) {
+        return res.json({
+          success: true,
+          alertas: []
+        });
+      }
+      // Retornar lista vazia em caso de outros erros também
+      console.warn('⚠️ Retornando lista vazia devido a erro na query');
+      return res.json({
+        success: true,
+        alertas: []
+      });
+    }
+  } catch (error) {
+    console.error('❌ Erro geral ao listar alertas:', error);
+    console.error('❌ Stack:', error.stack);
+    // Retornar lista vazia ao invés de erro 500
+    res.json({
+      success: true,
+      alertas: []
+    });
+  }
+});
+
 // Endpoint para buscar ferramenta específica (do usuário logado)
 app.get('/api/ferramentas-qualidade/:id', async (req, res) => {
   try {
@@ -9119,12 +9379,12 @@ app.post('/api/ferramentas-qualidade', async (req, res) => {
       }));
 
       try {
-        const { error: alertasError } = await supabaseAdmin
-          .from('ferramentas_qualidade_alertas')
-          .insert(alertasParaInserir);
+      const { error: alertasError } = await supabaseAdmin
+        .from('ferramentas_qualidade_alertas')
+        .insert(alertasParaInserir);
 
-        if (alertasError) {
-          console.warn('⚠️ Erro ao criar alertas:', alertasError);
+      if (alertasError) {
+        console.warn('⚠️ Erro ao criar alertas:', alertasError);
           // Não bloquear o salvamento se falhar ao criar alertas
         }
       } catch (err) {
@@ -9320,183 +9580,6 @@ app.put('/api/ferramentas-qualidade/acoes/:acaoId/atualizar', async (req, res) =
   }
 });
 
-// Endpoint para listar alertas do usuário
-app.get('/api/ferramentas-qualidade/alertas', async (req, res) => {
-  try {
-    // Tratar autenticação com try-catch
-    let userId = null;
-    try {
-      const userResult = await getUserFromRequest(req);
-      userId = userResult?.user?.id;
-    } catch (authError) {
-      console.warn('⚠️ Erro ao obter usuário da requisição:', authError);
-      // Continuar sem usuário, retornará lista vazia
-    }
-
-    // Se não tiver usuário autenticado, retornar lista vazia
-    if (!userId) {
-      return res.json({
-        success: true,
-        alertas: []
-      });
-    }
-
-    const { status } = req.query;
-
-    try {
-      // Buscar alertas do usuário
-      // Usar duas queries separadas para evitar problemas com .or()
-      const [alertasResponsavel, alertasSuperior] = await Promise.all([
-        supabaseAdmin
-          .from('ferramentas_qualidade_alertas')
-          .select('*')
-          .eq('responsavel_id', userId)
-          .order('prazo', { ascending: true }),
-        supabaseAdmin
-          .from('ferramentas_qualidade_alertas')
-          .select('*')
-          .eq('superior_id', userId)
-          .order('prazo', { ascending: true })
-      ]);
-
-      // Verificar erros nas queries PRIMEIRO, antes de processar dados
-      if (alertasResponsavel.error || alertasSuperior.error) {
-        const error = alertasResponsavel.error || alertasSuperior.error;
-        console.error('❌ Erro ao buscar alertas:', error);
-        console.error('❌ Código do erro:', error.code);
-        console.error('❌ Mensagem do erro:', error.message);
-        console.error('❌ Detalhes do erro:', error.details);
-        
-        // Se a tabela não existir, retornar lista vazia ao invés de erro
-        if (error.code === '42P01' || 
-            error.code === 'PGRST116' ||
-            error.message?.includes('does not exist') ||
-            error.message?.includes('relation') ||
-            error.message?.includes('tabela') ||
-            error.message?.includes('table')) {
-          console.warn('⚠️ Tabela ferramentas_qualidade_alertas não existe ainda');
-          return res.json({
-            success: true,
-            alertas: []
-          });
-        }
-        // Retornar lista vazia em caso de outros erros também
-        console.warn('⚠️ Retornando lista vazia devido a erro na query');
-        return res.json({
-          success: true,
-          alertas: []
-        });
-      }
-
-      // Combinar resultados e remover duplicatas
-      const alertasMap = new Map();
-      
-      if (alertasResponsavel.data && Array.isArray(alertasResponsavel.data)) {
-        alertasResponsavel.data.forEach(alerta => {
-          alertasMap.set(alerta.id, alerta);
-        });
-      }
-      
-      if (alertasSuperior.data && Array.isArray(alertasSuperior.data)) {
-        alertasSuperior.data.forEach(alerta => {
-          alertasMap.set(alerta.id, alerta);
-        });
-      }
-      
-      const alertas = Array.from(alertasMap.values());
-      
-      // Ordenar por prazo (com tratamento de erros)
-      try {
-        alertas.sort((a, b) => {
-          try {
-            const prazoA = a.prazo ? new Date(a.prazo) : new Date(0);
-            const prazoB = b.prazo ? new Date(b.prazo) : new Date(0);
-            return prazoA - prazoB;
-          } catch (err) {
-            return 0; // Manter ordem original em caso de erro
-          }
-        });
-      } catch (sortError) {
-        console.warn('⚠️ Erro ao ordenar alertas:', sortError);
-        // Continuar mesmo com erro na ordenação
-      }
-
-      // Se não houver alertas, retornar vazio
-      if (!alertas || alertas.length === 0) {
-        return res.json({
-          success: true,
-          alertas: []
-        });
-      }
-
-      // Buscar dados adicionais das ferramentas e usuários
-      const alertasCompletos = await Promise.all((alertas || []).map(async (alerta) => {
-        try {
-          const [ferramenta, responsavel, superior] = await Promise.all([
-            alerta.ferramenta_id ? supabaseAdmin.from('ferramentas_qualidade').select('tipo_ferramenta, titulo').eq('id', alerta.ferramenta_id).maybeSingle() : Promise.resolve({ data: null }),
-            alerta.responsavel_id ? supabaseAdmin.from('user_profiles').select('id, nome, email').eq('id', alerta.responsavel_id).maybeSingle() : Promise.resolve({ data: null }),
-            alerta.superior_id ? supabaseAdmin.from('user_profiles').select('id, nome, email').eq('id', alerta.superior_id).maybeSingle() : Promise.resolve({ data: null })
-          ]);
-
-          return {
-            ...alerta,
-            ferramenta: ferramenta.data || {},
-            responsavel: responsavel.data || {},
-            superior: superior.data || null
-          };
-        } catch (err) {
-          console.warn('⚠️ Erro ao buscar dados do alerta:', err);
-          return {
-            ...alerta,
-            ferramenta: {},
-            responsavel: {},
-            superior: null
-          };
-        }
-      }));
-
-      let queryFiltered = alertasCompletos;
-
-      if (status) {
-        queryFiltered = queryFiltered.filter(a => a.status === status);
-      }
-
-      res.json({
-        success: true,
-        alertas: queryFiltered
-      });
-    } catch (queryError) {
-      console.error('❌ Erro na query de alertas:', queryError);
-      // Se for erro de tabela não existir, retornar vazio
-      if (queryError.code === '42P01' || 
-          queryError.code === 'PGRST116' ||
-          queryError.message?.includes('does not exist') ||
-          queryError.message?.includes('relation') ||
-          queryError.message?.includes('tabela') ||
-          queryError.message?.includes('table')) {
-        return res.json({
-          success: true,
-          alertas: []
-        });
-      }
-      // Retornar lista vazia em caso de outros erros também
-      console.warn('⚠️ Retornando lista vazia devido a erro na query');
-      return res.json({
-        success: true,
-        alertas: []
-      });
-    }
-  } catch (error) {
-    console.error('❌ Erro geral ao listar alertas:', error);
-    console.error('❌ Stack:', error.stack);
-    // Retornar lista vazia ao invés de erro 500
-    res.json({
-      success: true,
-      alertas: []
-    });
-  }
-});
-
 // Função para verificar e atualizar status dos alertas automaticamente
 async function verificarEAtualizarAlertas() {
   try {
@@ -9560,7 +9643,7 @@ async function verificarEAtualizarAlertas() {
           .eq('id', alerta.id);
 
         if (!updateError) {
-          atualizados++;
+        atualizados++;
         }
       }
     }

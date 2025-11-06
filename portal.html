@@ -461,6 +461,16 @@
             border-color: rgba(102, 126, 234, 0.5);
         }
 
+        .sub-module-item {
+            position: relative;
+        }
+
+        .sub-module-item:hover {
+            background: rgba(255, 255, 255, 0.08) !important;
+            border-color: rgba(102, 126, 234, 0.3) !important;
+            transform: translateY(-2px);
+        }
+
         .module-icon {
             width: 60px;
             height: 60px;
@@ -1552,11 +1562,29 @@
                 modules: [
                     {
                         name: 'Treinamentos',
-                        description: 'Instruções de trabalho e declarações',
+                        description: 'Instruções de trabalho, declarações e ferramentas de qualidade',
                         icon: 'fas fa-book-open',
-                        url: 'treinamentos.html',
+                        url: null, // Não tem URL própria, apenas sub-módulos
                         permission: 'qualidade',
-                        adminOnly: false
+                        adminOnly: false,
+                        subModules: [
+                            {
+                                name: 'Instruções de Trabalho e Declarações',
+                                description: 'Treinamentos, instruções e declarações de conformidade',
+                                icon: 'fas fa-file-contract',
+                                url: 'treinamentos.html',
+                                permission: 'qualidade',
+                                adminOnly: false
+                            },
+                            {
+                                name: 'Ferramentas de Qualidade',
+                                description: 'Aprenda a usar todas as ferramentas de qualidade',
+                                icon: 'fas fa-graduation-cap',
+                                url: 'treinamento-ferramentas-qualidade.html',
+                                permission: 'qualidade',
+                                adminOnly: false
+                            }
+                        ]
                     },
                     {
                         name: 'Ferramentas de Qualidade',
@@ -1683,17 +1711,56 @@
                     </div>
                     <div class="department-content">
                             <div class="module-grid">
-                            ${modulosDisponiveis.map(modulo => `
-                                    <div class="module-item">
-                                        <div class="module-icon">
-                                        <i class="${modulo.icon}"></i>
-                                    </div>
-                                        <div class="module-name">${modulo.name}</div>
-                                        <div class="module-description">${modulo.description}</div>
-                                        ${modulo.adminOnly ? '<div class="access-badge">Admin</div>' : ''}
-                                        <a href="${modulo.url}" class="stretched-link"></a>
-                                    </div>
-                            `).join('')}
+                            ${modulosDisponiveis.map(modulo => {
+                                // Se o módulo tem sub-módulos, renderizar de forma diferente
+                                if (modulo.subModules && Array.isArray(modulo.subModules)) {
+                                    // Filtrar sub-módulos baseado em permissões
+                                    const subModulosDisponiveis = modulo.subModules.filter(subMod => {
+                                        if (subMod.adminOnly && !currentUser.isAdmin) return false;
+                                        if (currentUser.isAdmin) return true;
+                                        if (subMod.permission) {
+                                            const permissoesBasicas = ['operacoes', 'coletas', 'crm', 'vendas', 'cadastro', 'relatorios'];
+                                            return permissoesBasicas.includes(subMod.permission) || permissoes.includes(subMod.permission);
+                                        }
+                                        return true;
+                                    });
+                                    
+                                    return `
+                                        <div class="module-item" style="grid-column: 1 / -1;">
+                                            <div class="module-icon">
+                                                <i class="${modulo.icon}"></i>
+                                            </div>
+                                            <div class="module-name">${modulo.name}</div>
+                                            <div class="module-description">${modulo.description}</div>
+                                            <div class="sub-modules-grid mt-3" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem; margin-top: 1rem;">
+                                                ${subModulosDisponiveis.map(subMod => `
+                                                    <div class="sub-module-item" style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 10px; padding: 1rem; transition: all 0.3s;">
+                                                        <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem;">
+                                                            <i class="${subMod.icon}" style="font-size: 1.2rem; color: var(--primary);"></i>
+                                                            <div class="module-name" style="font-size: 1rem; margin: 0;">${subMod.name}</div>
+                                                        </div>
+                                                        <div class="module-description" style="font-size: 0.85rem; margin-bottom: 0.5rem;">${subMod.description}</div>
+                                                        <a href="${subMod.url}" class="stretched-link"></a>
+                                                    </div>
+                                                `).join('')}
+                                            </div>
+                                        </div>
+                                    `;
+                                } else {
+                                    // Módulo normal sem sub-módulos
+                                    return `
+                                        <div class="module-item">
+                                            <div class="module-icon">
+                                                <i class="${modulo.icon}"></i>
+                                            </div>
+                                            <div class="module-name">${modulo.name}</div>
+                                            <div class="module-description">${modulo.description}</div>
+                                            ${modulo.adminOnly ? '<div class="access-badge">Admin</div>' : ''}
+                                            ${modulo.url ? `<a href="${modulo.url}" class="stretched-link"></a>` : ''}
+                                        </div>
+                                    `;
+                                }
+                            }).join('')}
                             </div>
                         </div>
                     </div>

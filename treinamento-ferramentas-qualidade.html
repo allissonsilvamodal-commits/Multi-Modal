@@ -1,0 +1,2018 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Treinamento - Ferramentas de Qualidade | Multimodal</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <style>
+        :root {
+            --primary-color: #0066cc;
+            --secondary-color: #00a86b;
+            --accent-color: #ff6b35;
+            --dark-bg: #1a1a2e;
+            --light-bg: #f8f9fa;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding-top: 80px;
+        }
+
+        .training-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .training-header {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+
+        .training-header h1 {
+            color: var(--primary-color);
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+
+        .progress-container {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 30px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .tool-card {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            transition: transform 0.3s, box-shadow 0.3s;
+            cursor: pointer;
+        }
+
+        .tool-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+        }
+
+        .tool-card.completed {
+            border-left: 5px solid var(--secondary-color);
+        }
+
+        .tool-card.in-progress {
+            border-left: 5px solid var(--accent-color);
+        }
+
+        .tool-icon {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            color: white;
+            margin-bottom: 20px;
+        }
+
+        .swot-icon { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+        .brainstorm-icon { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
+        .forca-impacto-icon { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); }
+        .ishikawa-icon { background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); }
+        .5porques-icon { background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); }
+        .5w2h-icon { background: linear-gradient(135deg, #30cfd0 0%, #330867 100%); }
+        .pdca-icon { background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%); }
+        .plano-acao-icon { background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%); }
+        .relatorio-icon { background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%); }
+
+        .tool-content {
+            display: none;
+        }
+
+        .tool-content.active {
+            display: block;
+        }
+
+        .step-indicator {
+            display: flex;
+            justify-content: space-between;
+            margin: 30px 0;
+            position: relative;
+        }
+
+        .step-indicator::before {
+            content: '';
+            position: absolute;
+            top: 20px;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: #e0e0e0;
+            z-index: 0;
+        }
+
+        .step {
+            background: white;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: #999;
+            border: 3px solid #e0e0e0;
+            position: relative;
+            z-index: 1;
+        }
+
+        .step.active {
+            background: var(--primary-color);
+            color: white;
+            border-color: var(--primary-color);
+        }
+
+        .step.completed {
+            background: var(--secondary-color);
+            color: white;
+            border-color: var(--secondary-color);
+        }
+
+        .example-box {
+            background: #f8f9fa;
+            border-left: 4px solid var(--primary-color);
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 5px;
+        }
+
+        .example-box h5 {
+            color: var(--primary-color);
+            margin-bottom: 15px;
+        }
+
+        .interactive-demo {
+            background: white;
+            border: 2px dashed #ddd;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+            min-height: 200px;
+        }
+
+        .quiz-container {
+            background: white;
+            border-radius: 10px;
+            padding: 25px;
+            margin: 20px 0;
+        }
+
+        .quiz-question {
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: var(--primary-color);
+        }
+
+        .quiz-option {
+            padding: 12px;
+            margin: 10px 0;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .quiz-option:hover {
+            border-color: var(--primary-color);
+            background: #f0f7ff;
+        }
+
+        .quiz-option.correct {
+            border-color: var(--secondary-color);
+            background: #e8f5e9;
+        }
+
+        .quiz-option.incorrect {
+            border-color: #f44336;
+            background: #ffebee;
+        }
+
+        .badge-custom {
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .nav-tabs-custom {
+            border-bottom: 2px solid #e0e0e0;
+            margin-bottom: 25px;
+        }
+
+        .nav-tabs-custom .nav-link {
+            border: none;
+            color: #666;
+            font-weight: 600;
+            padding: 15px 25px;
+            border-bottom: 3px solid transparent;
+        }
+
+        .nav-tabs-custom .nav-link.active {
+            color: var(--primary-color);
+            border-bottom-color: var(--primary-color);
+            background: transparent;
+        }
+
+        .video-placeholder {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            height: 300px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 3rem;
+        }
+
+        .certificate-btn {
+            background: linear-gradient(135deg, var(--secondary-color) 0%, #00d4aa 100%);
+            border: none;
+            padding: 15px 40px;
+            border-radius: 50px;
+            color: white;
+            font-weight: 600;
+            font-size: 1.1rem;
+            transition: transform 0.3s;
+        }
+
+        .certificate-btn:hover {
+            transform: scale(1.05);
+            color: white;
+        }
+
+        .floating-menu {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            z-index: 1000;
+        }
+
+        .floating-btn {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            font-size: 1.5rem;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            transition: transform 0.3s;
+        }
+
+        .floating-btn:hover {
+            transform: scale(1.1);
+        }
+
+        @media (max-width: 768px) {
+            .step-indicator {
+                flex-wrap: wrap;
+            }
+
+            .step {
+                margin: 5px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="portal.html">
+                <i class="bi bi-speedometer2"></i> Multimodal - Treinamento
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="portal.html">
+                            <i class="bi bi-house"></i> Portal
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="ferramentas-qualidade.html">
+                            <i class="bi bi-tools"></i> Ferramentas
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="training-container">
+        <!-- Header -->
+        <div class="training-header">
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <h1><i class="bi bi-mortarboard"></i> Treinamento Completo: Ferramentas de Qualidade</h1>
+                    <p class="text-muted mb-0">Aprenda a utilizar todas as ferramentas de qualidade de forma eficiente e prática</p>
+                </div>
+                <div class="col-md-4 text-end">
+                    <span class="badge bg-primary badge-custom">
+                        <i class="bi bi-clock"></i> Duração: ~2 horas
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Progress -->
+        <div class="progress-container">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="mb-0">Seu Progresso</h5>
+                <span id="progressPercentage" class="badge bg-success">0%</span>
+            </div>
+            <div class="progress" style="height: 25px;">
+                <div id="progressBar" class="progress-bar progress-bar-striped progress-bar-animated" 
+                     role="progressbar" style="width: 0%"></div>
+            </div>
+        </div>
+
+        <!-- Tools Overview -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <h3 class="text-white mb-4"><i class="bi bi-list-check"></i> Ferramentas Disponíveis</h3>
+            </div>
+        </div>
+
+        <!-- Tool Cards -->
+        <div id="toolsContainer" class="row">
+            <!-- Cards serão inseridos aqui via JavaScript -->
+        </div>
+
+        <!-- Tool Details Modal -->
+        <div class="modal fade" id="toolModal" tabindex="-1">
+            <div class="modal-dialog modal-xl">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="toolModalTitle"></h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body" id="toolModalBody">
+                        <!-- Conteúdo será inserido via JavaScript -->
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                        <button type="button" class="btn btn-primary" onclick="markAsCompleted()">
+                            <i class="bi bi-check-circle"></i> Marcar como Concluído
+                        </button>
+                        <a href="ferramentas-qualidade.html" class="btn btn-success">
+                            <i class="bi bi-play-circle"></i> Praticar Agora
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Floating Menu -->
+        <div class="floating-menu">
+            <button class="floating-btn" onclick="scrollToTop()" title="Voltar ao topo">
+                <i class="bi bi-arrow-up"></i>
+            </button>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script>
+        // ========== INICIALIZAÇÃO SUPABASE ==========
+        let supabase = null;
+        
+        async function inicializarSupabase() {
+            try {
+                console.log('🔧 Inicializando Supabase...');
+                
+                // Buscar configuração do servidor
+                const response = await fetch('/api/supabase-config');
+                if (!response.ok) {
+                    console.warn('⚠️ Não foi possível buscar configuração do Supabase');
+                    return false;
+                }
+                
+                const config = await response.json();
+                console.log('📋 Configuração Supabase carregada');
+                
+                // Inicializar cliente Supabase
+                supabase = window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey);
+                window.supabase = supabase;
+                
+                console.log('✅ Supabase inicializado com sucesso');
+                return true;
+            } catch (error) {
+                console.warn('⚠️ Erro ao inicializar Supabase:', error);
+                return false;
+            }
+        }
+        
+        // Inicializar Supabase ao carregar a página
+        document.addEventListener('DOMContentLoaded', async function() {
+            await inicializarSupabase();
+        });
+
+        // Dados das ferramentas
+        const tools = [
+            {
+                id: 'swot',
+                name: 'Análise SWOT',
+                icon: 'bi-diagram-3',
+                color: 'swot-icon',
+                description: 'Identifique Forças, Fraquezas, Oportunidades e Ameaças',
+                order: 1,
+                content: {
+                    overview: 'A Análise SWOT é uma ferramenta estratégica que permite identificar e analisar os fatores internos (Forças e Fraquezas) e externos (Oportunidades e Ameaças) que afetam uma organização, projeto ou situação.',
+                    whenToUse: [
+                        'Planejamento estratégico',
+                        'Análise de mercado',
+                        'Tomada de decisão',
+                        'Avaliação de projetos',
+                        'Identificação de riscos e oportunidades'
+                    ],
+                    steps: [
+                        {
+                            title: '1. Defina o Objetivo',
+                            description: 'Estabeleça claramente o que você está analisando (empresa, projeto, produto, etc.)'
+                        },
+                        {
+                            title: '2. Identifique Forças',
+                            description: 'Liste os pontos positivos internos: recursos, capacidades, vantagens competitivas'
+                        },
+                        {
+                            title: '3. Identifique Fraquezas',
+                            description: 'Liste os pontos negativos internos: limitações, deficiências, áreas de melhoria'
+                        },
+                        {
+                            title: '4. Identifique Oportunidades',
+                            description: 'Liste fatores externos positivos: tendências de mercado, novas tecnologias, mudanças regulatórias'
+                        },
+                        {
+                            title: '5. Identifique Ameaças',
+                            description: 'Liste fatores externos negativos: concorrência, mudanças econômicas, riscos regulatórios'
+                        },
+                        {
+                            title: '6. Analise e Priorize',
+                            description: 'Priorize os itens mais importantes e desenvolva estratégias baseadas na análise'
+                        }
+                    ],
+                    example: {
+                        title: 'Exemplo: Análise SWOT de uma Startup de Tecnologia',
+                        content: {
+                            forcas: [
+                                'Equipe técnica altamente qualificada',
+                                'Produto inovador com tecnologia proprietária',
+                                'Baixos custos operacionais iniciais'
+                            ],
+                            fraquezas: [
+                                'Falta de capital para marketing',
+                                'Pequeno portfólio de clientes',
+                                'Dependência de poucos investidores'
+                            ],
+                            oportunidades: [
+                                'Mercado em crescimento',
+                                'Demanda por soluções tecnológicas',
+                                'Parcerias estratégicas disponíveis'
+                            ],
+                            ameacas: [
+                                'Concorrência de grandes empresas',
+                                'Mudanças regulatórias',
+                                'Escassez de talentos no mercado'
+                            ]
+                        }
+                    },
+                    tips: [
+                        'Seja honesto e objetivo na análise',
+                        'Involva diferentes perspectivas da equipe',
+                        'Priorize os fatores mais impactantes',
+                        'Revise periodicamente a análise',
+                        'Use a análise para desenvolver estratégias específicas'
+                    ],
+                    quiz: {
+                        question: 'Qual é o principal objetivo da Análise SWOT?',
+                        options: [
+                            'Identificar apenas problemas internos',
+                            'Analisar fatores internos e externos para tomada de decisão estratégica',
+                            'Criar um plano de marketing',
+                            'Calcular custos operacionais'
+                        ],
+                        correct: 1
+                    }
+                }
+            },
+            {
+                id: 'brainstorm',
+                name: 'Brainstorming',
+                icon: 'bi-lightbulb',
+                color: 'brainstorm-icon',
+                description: 'Gere ideias criativas e soluções inovadoras',
+                order: 2,
+                content: {
+                    overview: 'O Brainstorming é uma técnica de geração de ideias em grupo que estimula a criatividade e permite explorar múltiplas soluções para um problema.',
+                    whenToUse: [
+                        'Geração de ideias para novos produtos',
+                        'Resolução de problemas complexos',
+                        'Planejamento de projetos',
+                        'Identificação de melhorias',
+                        'Inovação e criatividade'
+                    ],
+                    steps: [
+                        {
+                            title: '1. Defina o Problema',
+                            description: 'Estabeleça claramente o problema ou desafio a ser resolvido'
+                        },
+                        {
+                            title: '2. Prepare o Ambiente',
+                            description: 'Crie um ambiente confortável e sem julgamentos para os participantes'
+                        },
+                        {
+                            title: '3. Estabeleça Regras',
+                            description: 'Nenhuma crítica durante a geração de ideias, quantidade sobre qualidade, ideias podem ser combinadas'
+                        },
+                        {
+                            title: '4. Gere Ideias',
+                            description: 'Permita que todos participem livremente, anotando todas as ideias'
+                        },
+                        {
+                            title: '5. Organize e Categorize',
+                            description: 'Agrupe ideias similares e identifique padrões'
+                        },
+                        {
+                            title: '6. Avalie e Priorize',
+                            description: 'Avalie as ideias mais promissoras e priorize para implementação'
+                        }
+                    ],
+                    example: {
+                        title: 'Exemplo: Brainstorming para Reduzir Custos Operacionais',
+                        ideas: [
+                            'Automatizar processos manuais',
+                            'Negociar melhores condições com fornecedores',
+                            'Implementar trabalho remoto',
+                            'Reduzir desperdícios de materiais',
+                            'Otimizar rotas de entrega',
+                            'Investir em treinamento para reduzir erros',
+                            'Compartilhar recursos entre departamentos',
+                            'Implementar sistema de gestão de energia'
+                        ]
+                    },
+                    tips: [
+                        'Não julgue ideias durante a geração',
+                        'Encoraje ideias "malucas" - podem levar a soluções inovadoras',
+                        'Use técnicas visuais (mapas mentais, post-its)',
+                        'Limite o tempo para manter o foco',
+                        'Documente todas as ideias, mesmo as que parecem impraticáveis'
+                    ],
+                    quiz: {
+                        question: 'Qual regra é fundamental no Brainstorming?',
+                        options: [
+                            'Criticar ideias imediatamente',
+                            'Focar apenas em ideias práticas',
+                            'Não julgar ideias durante a geração',
+                            'Limitar o número de participantes'
+                        ],
+                        correct: 2
+                    }
+                }
+            },
+            {
+                id: 'forca-impacto',
+                name: 'Matriz Força x Impacto',
+                icon: 'bi-grid-3x3',
+                color: 'forca-impacto-icon',
+                description: 'Priorize ações baseado em facilidade e impacto',
+                order: 3,
+                content: {
+                    overview: 'A Matriz Força x Impacto é uma ferramenta de priorização que ajuda a identificar quais ações devem ser implementadas primeiro, considerando a facilidade de execução (Força) e o impacto esperado.',
+                    whenToUse: [
+                        'Priorização de ações do Brainstorming',
+                        'Decisão sobre onde investir recursos',
+                        'Planejamento de melhorias',
+                        'Alocação de esforços da equipe',
+                        'Identificação de quick wins'
+                    ],
+                    steps: [
+                        {
+                            title: '1. Liste as Ações',
+                            description: 'Colete todas as ações ou ideias a serem priorizadas'
+                        },
+                        {
+                            title: '2. Avalie a Força (Facilidade)',
+                            description: 'Atribua uma pontuação de 1-5 para facilidade de implementação (1=muito difícil, 5=muito fácil)'
+                        },
+                        {
+                            title: '3. Avalie o Impacto',
+                            description: 'Atribua uma pontuação de 1-5 para o impacto esperado (1=baixo impacto, 5=alto impacto)'
+                        },
+                        {
+                            title: '4. Posicione no Gráfico',
+                            description: 'Coloque cada ação no gráfico baseado nas pontuações'
+                        },
+                        {
+                            title: '5. Identifique Quadrantes',
+                            description: 'Quick Wins (alta força, alto impacto), Grandes Projetos (baixa força, alto impacto), etc.'
+                        },
+                        {
+                            title: '6. Priorize',
+                            description: 'Comece pelos Quick Wins, depois Grandes Projetos, evite ações de baixo impacto'
+                        }
+                    ],
+                    example: {
+                        title: 'Exemplo: Priorização de Melhorias',
+                        quadrants: {
+                            quickWins: ['Automatizar relatórios', 'Treinamento básico da equipe'],
+                            grandesProjetos: ['Implementar novo sistema ERP', 'Reestruturação organizacional'],
+                            preencherTempo: ['Atualizar documentação', 'Organizar arquivos'],
+                            evitar: ['Mudanças cosméticas sem impacto', 'Projetos complexos com pouco retorno']
+                        }
+                    },
+                    tips: [
+                        'Foque primeiro nos Quick Wins para ganhar momentum',
+                        'Grandes Projetos requerem planejamento cuidadoso',
+                        'Evite ações de baixo impacto, mesmo que fáceis',
+                        'Revise as pontuações com a equipe',
+                        'Considere recursos disponíveis ao priorizar'
+                    ],
+                    quiz: {
+                        question: 'Onde devemos focar primeiro na Matriz Força x Impacto?',
+                        options: [
+                            'Ações difíceis com baixo impacto',
+                            'Quick Wins (alta força, alto impacto)',
+                            'Ações fáceis com baixo impacto',
+                            'Apenas grandes projetos'
+                        ],
+                        correct: 1
+                    }
+                }
+            },
+            {
+                id: 'ishikawa',
+                name: 'Diagrama de Ishikawa',
+                icon: 'bi-diagram-2',
+                color: 'ishikawa-icon',
+                description: 'Identifique causas raiz de problemas',
+                order: 4,
+                content: {
+                    overview: 'O Diagrama de Ishikawa (Espinha de Peixe) é uma ferramenta visual que ajuda a identificar e organizar sistematicamente as possíveis causas de um problema.',
+                    whenToUse: [
+                        'Análise de problemas complexos',
+                        'Identificação de causas raiz',
+                        'Melhoria de processos',
+                        'Análise de não conformidades',
+                        'Prevenção de problemas recorrentes'
+                    ],
+                    steps: [
+                        {
+                            title: '1. Defina o Problema',
+                            description: 'Escreva o problema claramente no lado direito do diagrama'
+                        },
+                        {
+                            title: '2. Desenhe a Espinha Principal',
+                            description: 'Desenhe uma linha horizontal apontando para o problema'
+                        },
+                        {
+                            title: '3. Identifique Categorias',
+                            description: 'Use as 6M: Método, Máquina, Material, Mão de Obra, Meio Ambiente, Medição'
+                        },
+                        {
+                            title: '4. Liste Causas por Categoria',
+                            description: 'Brainstorming de possíveis causas em cada categoria'
+                        },
+                        {
+                            title: '5. Analise Sub-causas',
+                            description: 'Para cada causa, identifique sub-causas mais específicas'
+                        },
+                        {
+                            title: '6. Priorize Causas',
+                            description: 'Identifique as causas mais prováveis e impactantes'
+                        }
+                    ],
+                    example: {
+                        title: 'Exemplo: Problema - "Atraso na Entrega de Produtos"',
+                        categories: {
+                            metodo: ['Processo de embalagem lento', 'Falta de procedimentos claros'],
+                            maquina: ['Equipamentos desatualizados', 'Falhas frequentes'],
+                            material: ['Falta de materiais', 'Qualidade inadequada'],
+                            maoObra: ['Falta de treinamento', 'Subdimensionamento da equipe'],
+                            meioAmbiente: ['Espaço físico inadequado', 'Condições climáticas'],
+                            medicao: ['Falta de indicadores', 'Sistema de rastreamento inadequado']
+                        }
+                    },
+                    tips: [
+                        'Use as 6M como guia, mas adapte às suas necessidades',
+                        'Seja específico nas causas',
+                        'Involva pessoas que conhecem o processo',
+                        'Não pare na primeira causa encontrada',
+                        'Valide as causas com dados quando possível'
+                    ],
+                    quiz: {
+                        question: 'Quais são as categorias padrão do Diagrama de Ishikawa?',
+                        options: [
+                            'Custo, Qualidade, Tempo',
+                            'As 6M: Método, Máquina, Material, Mão de Obra, Meio Ambiente, Medição',
+                            'Pessoas, Processos, Tecnologia',
+                            'Entrada, Processamento, Saída'
+                        ],
+                        correct: 1
+                    }
+                }
+            },
+            {
+                id: '5porques',
+                name: '5 Porquês',
+                icon: 'bi-question-circle',
+                color: '5porques-icon',
+                description: 'Descubra a causa raiz através de perguntas',
+                order: 5,
+                content: {
+                    overview: 'A técnica dos 5 Porquês é um método simples e eficaz para identificar a causa raiz de um problema através de perguntas sucessivas.',
+                    whenToUse: [
+                        'Problemas simples a moderados',
+                        'Identificação rápida de causas raiz',
+                        'Análise inicial de problemas',
+                        'Quando dados quantitativos são limitados',
+                        'Comunicação clara com equipes'
+                    ],
+                    steps: [
+                        {
+                            title: '1. Defina o Problema',
+                            description: 'Descreva claramente o problema observado'
+                        },
+                        {
+                            title: '2. Pergunte "Por quê?"',
+                            description: 'Pergunte por que o problema ocorreu e anote a resposta'
+                        },
+                        {
+                            title: '3. Repita o Processo',
+                            description: 'Para cada resposta, pergunte "Por quê?" novamente'
+                        },
+                        {
+                            title: '4. Continue até a Causa Raiz',
+                            description: 'Repita até encontrar a causa raiz (geralmente 5 vezes)'
+                        },
+                        {
+                            title: '5. Valide a Causa Raiz',
+                            description: 'Verifique se a causa raiz encontrada realmente explica o problema'
+                        },
+                        {
+                            title: '6. Desenvolva Soluções',
+                            description: 'Crie ações corretivas baseadas na causa raiz identificada'
+                        }
+                    ],
+                    example: {
+                        title: 'Exemplo: Problema - "Cliente reclamou de produto defeituoso"',
+                        chain: [
+                            'Por quê? → Produto saiu com defeito da produção',
+                            'Por quê? → Máquina não estava calibrada corretamente',
+                            'Por quê? → Manutenção preventiva não foi realizada',
+                            'Por quê? → Cronograma de manutenção não foi seguido',
+                            'Por quê? → Falta de processo documentado e responsável designado',
+                            'CAUSA RAIZ: Ausência de processo formal de manutenção preventiva'
+                        ]
+                    },
+                    tips: [
+                        'Não pare na primeira resposta óbvia',
+                        'Seja específico nas respostas',
+                        'Pode precisar de mais ou menos de 5 perguntas',
+                        'Involva pessoas que conhecem o processo',
+                        'Documente todo o processo de análise'
+                    ],
+                    quiz: {
+                        question: 'Quantas vezes devemos perguntar "Por quê?" na técnica dos 5 Porquês?',
+                        options: [
+                            'Exatamente 5 vezes, sempre',
+                            'Até encontrar a causa raiz (geralmente 5 vezes)',
+                            'Apenas 3 vezes',
+                            'Quantas vezes forem necessárias, sem limite'
+                        ],
+                        correct: 1
+                    }
+                }
+            },
+            {
+                id: '5w2h',
+                name: '5W2H',
+                icon: 'bi-card-checklist',
+                color: '5w2h-icon',
+                description: 'Planeje ações de forma completa e estruturada',
+                order: 6,
+                content: {
+                    overview: 'O 5W2H é uma ferramenta de planejamento que garante que todas as informações essenciais sejam consideradas ao planejar uma ação ou projeto.',
+                    whenToUse: [
+                        'Planejamento de ações corretivas',
+                        'Definição de projetos',
+                        'Comunicação de planos',
+                        'Documentação de processos',
+                        'Planejamento de melhorias'
+                    ],
+                    steps: [
+                        {
+                            title: '1. WHAT (O quê?)',
+                            description: 'Defina claramente o que será feito'
+                        },
+                        {
+                            title: '2. WHY (Por quê?)',
+                            description: 'Explique a razão e o objetivo da ação'
+                        },
+                        {
+                            title: '3. WHO (Quem?)',
+                            description: 'Identifique quem será responsável e quem participará'
+                        },
+                        {
+                            title: '4. WHERE (Onde?)',
+                            description: 'Especifique onde a ação será realizada'
+                        },
+                        {
+                            title: '5. WHEN (Quando?)',
+                            description: 'Defina prazos e cronograma'
+                        },
+                        {
+                            title: '6. HOW (Como?)',
+                            description: 'Descreva os métodos e processos a serem utilizados'
+                        },
+                        {
+                            title: '7. HOW MUCH (Quanto?)',
+                            description: 'Estime custos e recursos necessários'
+                        }
+                    ],
+                    example: {
+                        title: 'Exemplo: Implementação de Treinamento',
+                        content: {
+                            what: 'Implementar programa de treinamento em qualidade',
+                            why: 'Reduzir erros e melhorar satisfação do cliente',
+                            who: 'Equipe de RH e gestores de qualidade',
+                            where: 'Sala de treinamento da empresa',
+                            when: 'Início em 01/02/2024, duração de 3 meses',
+                            how: 'Aulas presenciais, materiais online, avaliações práticas',
+                            howMuch: 'R$ 15.000 em materiais e instrutores'
+                        }
+                    },
+                    tips: [
+                        'Seja específico em cada resposta',
+                        'Garanta que todas as perguntas sejam respondidas',
+                        'Use como checklist antes de iniciar ações',
+                        'Revise periodicamente durante a execução',
+                        'Documente para referência futura'
+                    ],
+                    quiz: {
+                        question: 'Quantas perguntas compõem o 5W2H?',
+                        options: [
+                            '5 perguntas',
+                            '7 perguntas (5W + 2H)',
+                            '6 perguntas',
+                            '8 perguntas'
+                        ],
+                        correct: 1
+                    }
+                }
+            },
+            {
+                id: 'pdca',
+                name: 'PDCA',
+                icon: 'bi-arrow-repeat',
+                color: 'pdca-icon',
+                description: 'Ciclo contínuo de melhoria',
+                order: 7,
+                content: {
+                    overview: 'O PDCA (Plan-Do-Check-Act) é um método iterativo de gestão para controle e melhoria contínua de processos e produtos.',
+                    whenToUse: [
+                        'Implementação de melhorias',
+                        'Resolução de problemas',
+                        'Gestão de processos',
+                        'Controle de qualidade',
+                        'Melhoria contínua'
+                    ],
+                    steps: [
+                        {
+                            title: 'PLAN (Planejar)',
+                            description: 'Defina objetivos, identifique problemas, analise causas, desenvolva plano de ação'
+                        },
+                        {
+                            title: 'DO (Fazer)',
+                            description: 'Execute o plano, implemente as ações, colete dados durante a execução'
+                        },
+                        {
+                            title: 'CHECK (Verificar)',
+                            description: 'Analise os resultados, compare com objetivos, identifique desvios e aprendizados'
+                        },
+                        {
+                            title: 'ACT (Agir)',
+                            description: 'Padronize se funcionou, corrija se não funcionou, inicie novo ciclo de melhoria'
+                        }
+                    ],
+                    example: {
+                        title: 'Exemplo: Redução de Tempo de Processamento',
+                        cycle: {
+                            plan: 'Objetivo: Reduzir tempo de processamento de 2h para 1h. Plano: Automatizar etapa manual',
+                            do: 'Implementar automação, treinar equipe, executar processo automatizado por 2 semanas',
+                            check: 'Tempo médio caiu para 1h15min. Verificar se objetivo foi alcançado e identificar melhorias',
+                            act: 'Padronizar automação. Novo ciclo: objetivo de reduzir para 45min através de otimização'
+                        }
+                    },
+                    tips: [
+                        'PDCA é um ciclo contínuo, não um processo linear',
+                        'Documente cada etapa para aprendizado',
+                        'Use dados para tomar decisões',
+                        'Não tenha medo de ajustar o plano',
+                        'Celebre pequenas melhorias'
+                    ],
+                    quiz: {
+                        question: 'Qual é a ordem correta do ciclo PDCA?',
+                        options: [
+                            'Do, Plan, Act, Check',
+                            'Plan, Do, Check, Act',
+                            'Check, Plan, Do, Act',
+                            'Act, Plan, Do, Check'
+                        ],
+                        correct: 1
+                    }
+                }
+            },
+            {
+                id: 'plano-acao',
+                name: 'Plano de Ação',
+                icon: 'bi-clipboard-check',
+                color: 'plano-acao-icon',
+                description: 'Organize e acompanhe ações de melhoria',
+                order: 8,
+                content: {
+                    overview: 'O Plano de Ação é uma ferramenta de gestão que organiza tarefas, responsabilidades, prazos e recursos necessários para alcançar objetivos específicos.',
+                    whenToUse: [
+                        'Implementação de melhorias identificadas',
+                        'Execução de ações corretivas',
+                        'Gestão de projetos',
+                        'Acompanhamento de metas',
+                        'Organização de tarefas da equipe'
+                    ],
+                    steps: [
+                        {
+                            title: '1. Liste as Ações',
+                            description: 'Identifique todas as ações necessárias para alcançar o objetivo'
+                        },
+                        {
+                            title: '2. Defina Responsáveis',
+                            description: 'Atribua cada ação a um responsável específico'
+                        },
+                        {
+                            title: '3. Estabeleça Prazos',
+                            description: 'Defina datas de início e conclusão para cada ação'
+                        },
+                        {
+                            title: '4. Aloque Recursos',
+                            description: 'Identifique recursos necessários (pessoas, materiais, orçamento)'
+                        },
+                        {
+                            title: '5. Defina Indicadores',
+                            description: 'Estabeleça como medir o sucesso de cada ação'
+                        },
+                        {
+                            title: '6. Acompanhe Regularmente',
+                            description: 'Revise o progresso periodicamente e ajuste quando necessário'
+                        }
+                    ],
+                    example: {
+                        title: 'Exemplo: Plano de Ação para Melhoria de Qualidade',
+                        actions: [
+                            {
+                                acao: 'Implementar treinamento em qualidade',
+                                responsavel: 'João Silva',
+                                prazo: '15/02/2024',
+                                status: 'Em andamento'
+                            },
+                            {
+                                acao: 'Atualizar procedimentos operacionais',
+                                responsavel: 'Maria Santos',
+                                prazo: '28/02/2024',
+                                status: 'Planejado'
+                            },
+                            {
+                                acao: 'Instalar sistema de monitoramento',
+                                responsavel: 'Pedro Costa',
+                                prazo: '10/03/2024',
+                                status: 'Planejado'
+                            }
+                        ]
+                    },
+                    tips: [
+                        'Seja específico nas ações',
+                        'Defina responsáveis claros',
+                        'Estabeleça prazos realistas',
+                        'Revise regularmente o progresso',
+                        'Ajuste o plano quando necessário'
+                    ],
+                    quiz: {
+                        question: 'Qual elemento NÃO é essencial em um Plano de Ação?',
+                        options: [
+                            'Ações específicas',
+                            'Responsáveis designados',
+                            'Prazos definidos',
+                            'Previsão do tempo (não é essencial)'
+                        ],
+                        correct: 3
+                    }
+                }
+            },
+            {
+                id: 'relatorio',
+                name: 'Relatório com IA',
+                icon: 'bi-file-earmark-text',
+                color: 'relatorio-icon',
+                description: 'Gere relatórios completos e profissionais',
+                order: 9,
+                content: {
+                    overview: 'O Relatório com IA consolida todas as análises realizadas nas ferramentas anteriores, gerando um documento completo e profissional com insights e recomendações.',
+                    whenToUse: [
+                        'Consolidação de análises',
+                        'Apresentação para gestão',
+                        'Documentação de projetos',
+                        'Comunicação de resultados',
+                        'Histórico de melhorias'
+                    ],
+                    steps: [
+                        {
+                            title: '1. Colete Dados',
+                            description: 'Reúna informações de todas as ferramentas utilizadas'
+                        },
+                        {
+                            title: '2. Defina Contexto',
+                            description: 'Descreva o problema inicial e objetivos do projeto'
+                        },
+                        {
+                            title: '3. Gere Relatório com IA',
+                            description: 'Use a IA para consolidar e analisar todas as informações'
+                        },
+                        {
+                            title: '4. Revise e Ajuste',
+                            description: 'Revise o relatório gerado e faça ajustes necessários'
+                        },
+                        {
+                            title: '5. Adicione Visualizações',
+                            description: 'Inclua gráficos, tabelas e diagramas quando relevante'
+                        },
+                        {
+                            title: '6. Compartilhe',
+                            description: 'Distribua o relatório para stakeholders e equipe'
+                        }
+                    ],
+                    example: {
+                        title: 'Estrutura de um Relatório Completo',
+                        sections: [
+                            'Resumo Executivo',
+                            'Contexto e Problema Identificado',
+                            'Análise Realizada (SWOT, Ishikawa, etc.)',
+                            'Causa Raiz Identificada',
+                            'Ações Planejadas e Executadas',
+                            'Resultados Obtidos',
+                            'Próximos Passos e Recomendações'
+                        ]
+                    },
+                    tips: [
+                        'Seja objetivo e claro',
+                        'Use dados e evidências',
+                        'Inclua visualizações quando possível',
+                        'Destaque resultados e aprendizados',
+                        'Forneça recomendações acionáveis'
+                    ],
+                    quiz: {
+                        question: 'Qual é o principal objetivo de um Relatório com IA?',
+                        options: [
+                            'Substituir todas as análises anteriores',
+                            'Consolidar e apresentar todas as análises de forma profissional',
+                            'Apenas documentar problemas',
+                            'Gerar gráficos bonitos'
+                        ],
+                        correct: 1
+                    }
+                }
+            }
+        ];
+
+        // Estado do treinamento
+        let trainingState = {
+            completed: JSON.parse(localStorage.getItem('trainingCompleted') || '[]'),
+            progress: parseInt(localStorage.getItem('trainingProgress') || '0')
+        };
+
+        // Inicialização
+        document.addEventListener('DOMContentLoaded', function() {
+            renderTools();
+            updateProgress();
+            checkCompletion(); // Verificar se já completou tudo ao carregar
+        });
+
+        // Verificar conclusão ao carregar
+        function checkCompletion() {
+            if (trainingState.completed.length === tools.length) {
+                // Se já completou tudo, mostrar botão de certificado
+                mostrarBotaoCertificado();
+            }
+        }
+
+        // Renderizar ferramentas
+        function renderTools() {
+            const container = document.getElementById('toolsContainer');
+            container.innerHTML = '';
+
+            tools.forEach(tool => {
+                const isCompleted = trainingState.completed.includes(tool.id);
+                const card = document.createElement('div');
+                card.className = `col-md-6 col-lg-4 mb-4`;
+                card.innerHTML = `
+                    <div class="tool-card ${isCompleted ? 'completed' : ''}" onclick="openTool('${tool.id}')">
+                        <div class="tool-icon ${tool.color}">
+                            <i class="bi ${tool.icon}"></i>
+                        </div>
+                        <h4>${tool.name}</h4>
+                        <p class="text-muted">${tool.description}</p>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="badge bg-${isCompleted ? 'success' : 'secondary'}">
+                                ${isCompleted ? '<i class="bi bi-check-circle"></i> Concluído' : 'Pendente'}
+                            </span>
+                            <button class="btn btn-sm btn-outline-primary">
+                                <i class="bi bi-arrow-right"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        // Abrir ferramenta
+        let currentToolId = null; // Armazenar ID da ferramenta atual
+        
+        function openTool(toolId) {
+            const tool = tools.find(t => t.id === toolId);
+            if (!tool) return;
+
+            currentToolId = toolId; // Armazenar o ID atual
+            
+            const modal = new bootstrap.Modal(document.getElementById('toolModal'));
+            document.getElementById('toolModalTitle').textContent = tool.name;
+            
+            const body = document.getElementById('toolModalBody');
+            body.innerHTML = generateToolContent(tool);
+            
+            modal.show();
+        }
+
+        // Gerar conteúdo da ferramenta
+        function generateToolContent(tool) {
+            const content = tool.content;
+            return `
+                <ul class="nav nav-tabs nav-tabs-custom" role="tablist">
+                    <li class="nav-item">
+                        <a class="nav-link active" data-bs-toggle="tab" href="#overview-${tool.id}">Visão Geral</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" data-bs-toggle="tab" href="#steps-${tool.id}">Passo a Passo</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" data-bs-toggle="tab" href="#example-${tool.id}">Exemplo</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" data-bs-toggle="tab" href="#tips-${tool.id}">Dicas</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" data-bs-toggle="tab" href="#quiz-${tool.id}">Quiz</a>
+                    </li>
+                </ul>
+
+                <div class="tab-content mt-4">
+                    <!-- Overview -->
+                    <div class="tab-pane fade show active" id="overview-${tool.id}">
+                        <h5 class="mb-3">Sobre a Ferramenta</h5>
+                        <p>${content.overview}</p>
+                        
+                        <h5 class="mt-4 mb-3">Quando Usar</h5>
+                        <ul class="list-group">
+                            ${content.whenToUse.map(item => `
+                                <li class="list-group-item">
+                                    <i class="bi bi-check-circle text-success"></i> ${item}
+                                </li>
+                            `).join('')}
+                        </ul>
+                    </div>
+
+                    <!-- Steps -->
+                    <div class="tab-pane fade" id="steps-${tool.id}">
+                        <h5 class="mb-3">Passo a Passo</h5>
+                        <div class="step-indicator">
+                            ${content.steps.map((step, index) => `
+                                <div class="step ${index === 0 ? 'active' : ''}">${index + 1}</div>
+                            `).join('')}
+                        </div>
+                        ${content.steps.map((step, index) => `
+                            <div class="example-box">
+                                <h5>${step.title}</h5>
+                                <p>${step.description}</p>
+                            </div>
+                        `).join('')}
+                    </div>
+
+                    <!-- Example -->
+                    <div class="tab-pane fade" id="example-${tool.id}">
+                        <h5 class="mb-3">${content.example.title}</h5>
+                        ${generateExample(tool.id, content.example)}
+                    </div>
+
+                    <!-- Tips -->
+                    <div class="tab-pane fade" id="tips-${tool.id}">
+                        <h5 class="mb-3">Dicas Importantes</h5>
+                        <div class="row">
+                            ${content.tips.map((tip, index) => `
+                                <div class="col-md-6 mb-3">
+                                    <div class="card">
+                                        <div class="card-body">
+                                            <h6><i class="bi bi-lightbulb text-warning"></i> Dica ${index + 1}</h6>
+                                            <p class="mb-0">${tip}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+
+                    <!-- Quiz -->
+                    <div class="tab-pane fade" id="quiz-${tool.id}">
+                        <div class="quiz-container">
+                            <h5 class="quiz-question">${content.quiz.question}</h5>
+                            ${content.quiz.options.map((option, index) => `
+                                <div class="quiz-option" onclick="checkAnswer(${index}, ${content.quiz.correct}, '${tool.id}')">
+                                    ${String.fromCharCode(65 + index)}. ${option}
+                                </div>
+                            `).join('')}
+                            <div id="quiz-result-${tool.id}" class="mt-3"></div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Gerar exemplo específico
+        function generateExample(toolId, example) {
+            if (toolId === 'swot') {
+                return `
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6 class="text-success"><i class="bi bi-arrow-up-circle"></i> Forças</h6>
+                            <ul>
+                                ${example.content.forcas.map(f => `<li>${f}</li>`).join('')}
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <h6 class="text-danger"><i class="bi bi-arrow-down-circle"></i> Fraquezas</h6>
+                            <ul>
+                                ${example.content.fraquezas.map(f => `<li>${f}</li>`).join('')}
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <h6 class="text-info"><i class="bi bi-arrow-up-right-circle"></i> Oportunidades</h6>
+                            <ul>
+                                ${example.content.oportunidades.map(o => `<li>${o}</li>`).join('')}
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <h6 class="text-warning"><i class="bi bi-exclamation-triangle"></i> Ameaças</h6>
+                            <ul>
+                                ${example.content.ameacas.map(a => `<li>${a}</li>`).join('')}
+                            </ul>
+                        </div>
+                    </div>
+                `;
+            } else if (toolId === 'brainstorm') {
+                return `
+                    <div class="row">
+                        ${example.ideas.map(idea => `
+                            <div class="col-md-6 mb-2">
+                                <div class="card">
+                                    <div class="card-body">
+                                        <i class="bi bi-lightbulb text-warning"></i> ${idea}
+                                    </div>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+            } else if (toolId === 'forca-impacto') {
+                return `
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6 class="text-success">Quick Wins</h6>
+                            <ul>
+                                ${example.quadrants.quickWins.map(q => `<li>${q}</li>`).join('')}
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <h6 class="text-primary">Grandes Projetos</h6>
+                            <ul>
+                                ${example.quadrants.grandesProjetos.map(g => `<li>${g}</li>`).join('')}
+                            </ul>
+                        </div>
+                    </div>
+                `;
+            } else if (toolId === 'ishikawa') {
+                return `
+                    <div class="row">
+                        ${Object.entries(example.categories).map(([cat, items]) => `
+                            <div class="col-md-6 mb-3">
+                                <h6>${cat.charAt(0).toUpperCase() + cat.slice(1)}</h6>
+                                <ul>
+                                    ${items.map(item => `<li>${item}</li>`).join('')}
+                                </ul>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+            } else if (toolId === '5porques') {
+                return `
+                    <div class="example-box">
+                        ${example.chain.map(step => `<p><strong>${step}</strong></p>`).join('')}
+                    </div>
+                `;
+            } else if (toolId === '5w2h') {
+                return `
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>O quê?</strong> ${example.content.what}</p>
+                            <p><strong>Por quê?</strong> ${example.content.why}</p>
+                            <p><strong>Quem?</strong> ${example.content.who}</p>
+                            <p><strong>Onde?</strong> ${example.content.where}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Quando?</strong> ${example.content.when}</p>
+                            <p><strong>Como?</strong> ${example.content.how}</p>
+                            <p><strong>Quanto?</strong> ${example.content.howMuch}</p>
+                        </div>
+                    </div>
+                `;
+            } else if (toolId === 'pdca') {
+                return `
+                    <div class="row">
+                        ${Object.entries(example.cycle).map(([phase, desc]) => `
+                            <div class="col-md-6 mb-3">
+                                <div class="card">
+                                    <div class="card-header bg-primary text-white">
+                                        <strong>${phase.toUpperCase()}</strong>
+                                    </div>
+                                    <div class="card-body">
+                                        ${desc}
+                                    </div>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+            } else if (toolId === 'plano-acao') {
+                return `
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Ação</th>
+                                <th>Responsável</th>
+                                <th>Prazo</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${example.actions.map(action => `
+                                <tr>
+                                    <td>${action.acao}</td>
+                                    <td>${action.responsavel}</td>
+                                    <td>${action.prazo}</td>
+                                    <td><span class="badge bg-info">${action.status}</span></td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                `;
+            } else {
+                return `
+                    <div class="example-box">
+                        ${example.sections.map(section => `<p><i class="bi bi-check"></i> ${section}</p>`).join('')}
+                    </div>
+                `;
+            }
+        }
+
+        // Verificar resposta do quiz
+        function checkAnswer(selected, correct, toolId) {
+            const options = document.querySelectorAll(`#quiz-${toolId} .quiz-option`);
+            const resultDiv = document.getElementById(`quiz-result-${toolId}`);
+            
+            options.forEach((opt, index) => {
+                opt.classList.remove('correct', 'incorrect');
+                if (index === correct) {
+                    opt.classList.add('correct');
+                } else if (index === selected && index !== correct) {
+                    opt.classList.add('incorrect');
+                }
+            });
+
+            if (selected === correct) {
+                resultDiv.innerHTML = `
+                    <div class="alert alert-success">
+                        <i class="bi bi-check-circle"></i> <strong>Correto!</strong> Parabéns!
+                    </div>
+                `;
+            } else {
+                resultDiv.innerHTML = `
+                    <div class="alert alert-danger">
+                        <i class="bi bi-x-circle"></i> <strong>Incorreto.</strong> Tente novamente!
+                    </div>
+                `;
+            }
+        }
+
+        // Marcar como concluído
+        function markAsCompleted() {
+            if (!currentToolId) {
+                console.error('❌ ID da ferramenta não encontrado');
+                return;
+            }
+            
+            const tool = tools.find(t => t.id === currentToolId);
+            if (!tool) {
+                console.error('❌ Ferramenta não encontrada:', currentToolId);
+                return;
+            }
+            
+            if (!trainingState.completed.includes(tool.id)) {
+                trainingState.completed.push(tool.id);
+                localStorage.setItem('trainingCompleted', JSON.stringify(trainingState.completed));
+                updateProgress();
+                renderTools();
+                
+                const modal = bootstrap.Modal.getInstance(document.getElementById('toolModal'));
+                if (modal) modal.hide();
+                
+                // Verificar se completou tudo
+                if (trainingState.completed.length === tools.length) {
+                    setTimeout(() => {
+                        showCertificate();
+                    }, 500);
+                } else {
+                    // Mostrar mensagem de sucesso
+                    mostrarAlerta(`✅ ${tool.name} marcado como concluído!`, 'success');
+                }
+            } else {
+                mostrarAlerta('Esta ferramenta já foi concluída!', 'info');
+            }
+        }
+
+        // Função auxiliar para mostrar alertas
+        function mostrarAlerta(mensagem, tipo) {
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `alert alert-${tipo} alert-dismissible fade show position-fixed`;
+            alertDiv.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+            alertDiv.innerHTML = `
+                ${mensagem}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            document.body.appendChild(alertDiv);
+            
+            setTimeout(() => {
+                alertDiv.remove();
+            }, 5000);
+        }
+
+        // Atualizar progresso
+        function updateProgress() {
+            const total = tools.length;
+            const completed = trainingState.completed.length;
+            const percentage = Math.round((completed / total) * 100);
+            
+            trainingState.progress = percentage;
+            localStorage.setItem('trainingProgress', percentage.toString());
+            
+            document.getElementById('progressBar').style.width = percentage + '%';
+            document.getElementById('progressPercentage').textContent = percentage + '%';
+        }
+
+        // Mostrar certificado
+        function showCertificate() {
+            // Criar modal de certificado
+            const certificateHTML = `
+                <div class="modal fade" id="certificateModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
+                    <div class="modal-dialog modal-xl modal-dialog-centered" style="max-width: 1000px;">
+                        <div class="modal-content" style="border-radius: 0; overflow: hidden; border: none; box-shadow: 0 20px 60px rgba(0,0,0,0.3);">
+                            <div class="modal-body p-0">
+                                <!-- Wrapper com borda mesclada -->
+                                <div style="background: linear-gradient(135deg, #0066cc 0%, #dc3545 33%, #28a745 66%, #0066cc 100%); padding: 10px; height: 100vh; max-height: 842px; position: relative;">
+                                    <div id="certificateContent" style="background: #ffffff; padding: 0; text-align: center; height: 100%; position: relative; overflow: hidden;">
+                                        <!-- Conteúdo do certificado -->
+                                        <div style="position: relative; z-index: 2; padding: 40px 40px 35px; max-width: 900px; margin: 0 auto; height: 100%; display: flex; flex-direction: column; justify-content: space-between;">
+                                        <div>
+                                            <!-- Logo Multimodal -->
+                                            <div style="margin-bottom: 15px;">
+                                                <!-- Se houver logo em /uploads/logo.png ou similar, usar: -->
+                                                <!-- <img src="/uploads/logo-multimodal.png" alt="Grupo Multimodal" style="max-height: 60px; width: auto;"> -->
+                                                <!-- Logo SVG temporária (substituir por imagem real quando disponível) -->
+                                                <div style="display: inline-block; text-align: left;">
+                                                    <svg width="200" height="60" viewBox="0 0 280 90" style="margin: 0 auto;">
+                                                        <!-- Setas/Chevrons Multimodal -->
+                                                        <g transform="translate(15, 10)">
+                                                            <!-- Seta vermelha (topo) -->
+                                                            <path d="M 0 0 L 14 9 L 0 18 Z" fill="#dc3545" />
+                                                            <path d="M 14 0 L 28 9 L 14 18 Z" fill="#dc3545" />
+                                                            <!-- Seta verde (meio) -->
+                                                            <path d="M 0 18 L 14 27 L 0 36 Z" fill="#28a745" />
+                                                            <path d="M 14 18 L 28 27 L 14 36 Z" fill="#28a745" />
+                                                            <!-- Seta azul (baixo) -->
+                                                            <path d="M 0 36 L 14 45 L 0 54 Z" fill="#0066cc" />
+                                                            <path d="M 14 36 L 28 45 L 14 54 Z" fill="#0066cc" />
+                                                        </g>
+                                                        <!-- Texto Grupo Multimodal -->
+                                                        <text x="50" y="28" font-family="'Segoe UI', Arial, sans-serif" font-size="12" font-weight="600" fill="#1a1a2e" letter-spacing="0.5px">Grupo</text>
+                                                        <text x="50" y="48" font-family="'Segoe UI', Arial, sans-serif" font-size="20" font-weight="700" fill="#1a1a2e" letter-spacing="1.5px">Multimodal</text>
+                                                    </svg>
+                                                </div>
+                                            </div>
+                                            
+                                            <!-- Linha decorativa elegante -->
+                                            <div style="width: 200px; height: 2px; background: linear-gradient(90deg, transparent, #667eea 20%, #764ba2 50%, #667eea 80%, transparent); margin: 0 auto 15px; border-radius: 2px;"></div>
+                                            
+                                            <!-- Título principal -->
+                                            <div style="font-size: 0.55rem; color: #667eea; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 4px; font-weight: 700; font-family: 'Segoe UI', sans-serif;">
+                                                Certificado de Conclusão
+                                            </div>
+                                            
+                                            <h1 style="font-size: 2rem; font-weight: 800; margin-bottom: 8px; color: #1a1a2e; line-height: 1.1; font-family: 'Segoe UI', sans-serif; letter-spacing: -0.5px;">
+                                                Treinamento Completo
+                                            </h1>
+                                            
+                                            <h2 style="font-size: 1.3rem; font-weight: 600; margin-bottom: 20px; color: #667eea; font-family: 'Segoe UI', sans-serif; letter-spacing: 0.5px;">
+                                                Ferramentas de Qualidade
+                                            </h2>
+                                            
+                                            <!-- Texto de certificação -->
+                                            <div style="font-size: 0.9rem; margin-bottom: 15px; color: #444; line-height: 1.5; font-family: 'Georgia', serif; font-style: italic;">
+                                                Certificamos que
+                                            </div>
+                                            
+                                            <!-- Nome do usuário - destaque elegante -->
+                                            <div id="userName" style="font-size: 1.6rem; font-weight: 700; margin: 0 auto 18px; color: #1a1a2e; padding: 15px 35px; border: 3px double #667eea; border-radius: 6px; display: inline-block; min-width: 400px; background: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%); font-family: 'Segoe UI', sans-serif; letter-spacing: 0.5px; box-shadow: 0 3px 10px rgba(102, 126, 234, 0.12);">
+                                                [Carregando...]
+                                            </div>
+                                            
+                                            <!-- Descrição -->
+                                            <div style="font-size: 0.85rem; margin-bottom: 18px; color: #555; line-height: 1.5; max-width: 700px; margin-left: auto; margin-right: auto; font-family: 'Segoe UI', sans-serif;">
+                                                completou com sucesso o treinamento completo sobre<br>
+                                                <strong style="color: #667eea; font-size: 0.95rem; font-weight: 600;">Ferramentas de Qualidade</strong>, demonstrando conhecimento em:<br>
+                                                <span style="color: #333; font-size: 0.8rem; line-height: 1.5;">SWOT, Brainstorming, Matriz Força x Impacto, Ishikawa, 5 Porquês, 5W2H, PDCA, Plano de Ação e Relatórios com IA</span>
+                                            </div>
+                                            
+                                            <!-- Linha decorativa inferior -->
+                                            <div style="width: 200px; height: 2px; background: linear-gradient(90deg, transparent, #667eea 20%, #764ba2 50%, #667eea 80%, transparent); margin: 0 auto 15px; border-radius: 2px;"></div>
+                                        </div>
+                                        
+                                        <!-- Rodapé elegante -->
+                                        <div style="border-top: 2px double #e0e0e0; padding-top: 15px; margin-top: auto;">
+                                            <div style="font-size: 0.8rem; color: #666; margin-bottom: 8px; font-family: 'Segoe UI', sans-serif;">
+                                                Data de Conclusão: <strong style="color: #667eea; font-size: 0.85rem;" id="completionDate"></strong>
+                                            </div>
+                                            <div style="font-size: 0.75rem; color: #999; font-family: 'Segoe UI', sans-serif; letter-spacing: 0.5px;">
+                                                Multimodal - Sistema de Gestão da Qualidade
+                                            </div>
+                                        </div>
+                                    </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="modal-footer" style="background: #f8f9fa; border-top: 2px solid #e0e0e0; padding: 25px;">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                                    <i class="bi bi-x-circle"></i> Fechar
+                                </button>
+                                <button type="button" class="btn btn-primary" onclick="downloadCertificate()">
+                                    <i class="bi bi-download"></i> Baixar Certificado (PDF)
+                                </button>
+                                <button type="button" class="btn btn-success" onclick="shareCertificate()">
+                                    <i class="bi bi-share"></i> Compartilhar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Adicionar modal ao DOM se não existir
+            if (!document.getElementById('certificateModal')) {
+                document.body.insertAdjacentHTML('beforeend', certificateHTML);
+            }
+            
+            // Buscar nome do usuário ANTES de mostrar o modal
+            buscarNomeUsuario().then(() => {
+                // Preencher data
+                const hoje = new Date();
+                const dataFormatada = hoje.toLocaleDateString('pt-BR', { 
+                    day: '2-digit', 
+                    month: 'long', 
+                    year: 'numeric' 
+                });
+                const dateElement = document.getElementById('completionDate');
+                if (dateElement) {
+                    dateElement.textContent = dataFormatada;
+                }
+                
+                // Mostrar modal
+                const modal = new bootstrap.Modal(document.getElementById('certificateModal'));
+                modal.show();
+                
+                // Salvar que o certificado foi gerado
+                localStorage.setItem('certificateGenerated', 'true');
+                localStorage.setItem('certificateDate', hoje.toISOString());
+            });
+        }
+
+        // Buscar nome do usuário - PRIORIZAR user_profiles.nome
+        async function buscarNomeUsuario() {
+            const userNameEl = document.getElementById('userName');
+            if (!userNameEl) {
+                console.warn('⚠️ Elemento userName não encontrado');
+                return Promise.resolve();
+            }
+            
+            return new Promise(async (resolve) => {
+                try {
+                    // 1. PRIORIDADE: Buscar diretamente da tabela user_profiles via Supabase
+                    try {
+                        if (typeof supabase !== 'undefined' && supabase) {
+                            const { data: { user }, error: authError } = await supabase.auth.getUser();
+                            if (!authError && user && user.id) {
+                                // Buscar nome da tabela user_profiles
+                                const { data: profile, error: profileError } = await supabase
+                                    .from('user_profiles')
+                                    .select('nome')
+                                    .eq('id', user.id)
+                                    .single();
+                                
+                                if (!profileError && profile && profile.nome && profile.nome.trim() !== '') {
+                                    console.log('✅ Nome encontrado em user_profiles:', profile.nome);
+                                    userNameEl.textContent = profile.nome;
+                                    resolve();
+                                    return;
+                                }
+                            }
+                        }
+                    } catch (supabaseError) {
+                        console.warn('⚠️ Erro ao buscar do Supabase:', supabaseError);
+                    }
+                    
+                    // 2. Tentar buscar do loggedInUser no localStorage
+                    const loggedInUser = localStorage.getItem('loggedInUser');
+                    if (loggedInUser) {
+                        try {
+                            const user = JSON.parse(loggedInUser);
+                            // Buscar nome de várias formas possíveis
+                            if (user.nome && user.nome.trim() !== '') {
+                                userNameEl.textContent = user.nome;
+                                resolve();
+                                return;
+                            }
+                            if (user.name && user.name.trim() !== '') {
+                                userNameEl.textContent = user.name;
+                                resolve();
+                                return;
+                            }
+                        } catch (e) {
+                            console.warn('⚠️ Erro ao parsear loggedInUser:', e);
+                        }
+                    }
+                    
+                    // 3. Tentar buscar do sessionStorage
+                    const sessionUser = sessionStorage.getItem('currentUser');
+                    if (sessionUser) {
+                        try {
+                            const user = JSON.parse(sessionUser);
+                            if (user.nome && user.nome.trim() !== '') {
+                                userNameEl.textContent = user.nome;
+                                resolve();
+                                return;
+                            }
+                            if (user.name && user.name.trim() !== '') {
+                                userNameEl.textContent = user.name;
+                                resolve();
+                                return;
+                            }
+                        } catch (e) {}
+                    }
+                    
+                    // 4. Tentar buscar do userData no localStorage
+                    const userData = localStorage.getItem('userData');
+                    if (userData) {
+                        try {
+                            const user = JSON.parse(userData);
+                            if (user.nome && user.nome.trim() !== '') {
+                                userNameEl.textContent = user.nome;
+                                resolve();
+                                return;
+                            }
+                            if (user.name && user.name.trim() !== '') {
+                                userNameEl.textContent = user.name;
+                                resolve();
+                                return;
+                            }
+                        } catch (e) {}
+                    }
+                    
+                    // 5. Último fallback: usar email (mas não é ideal)
+                    if (loggedInUser) {
+                        try {
+                            const user = JSON.parse(loggedInUser);
+                            if (user.email) {
+                                const emailName = user.email.split('@')[0];
+                                userNameEl.textContent = emailName.charAt(0).toUpperCase() + emailName.slice(1);
+                                console.warn('⚠️ Usando email como nome (nome não encontrado em user_profiles)');
+                                resolve();
+                                return;
+                            }
+                        } catch (e) {}
+                    }
+                    
+                    // 6. Último fallback
+                    userNameEl.textContent = 'Usuário';
+                    console.warn('⚠️ Não foi possível encontrar o nome do usuário, usando padrão');
+                    resolve();
+                } catch (error) {
+                    console.error('❌ Erro ao buscar nome do usuário:', error);
+                    userNameEl.textContent = 'Usuário';
+                    resolve();
+                }
+            });
+        }
+
+        // Mostrar botão de certificado na página
+        function mostrarBotaoCertificado() {
+            const header = document.querySelector('.training-header');
+            if (header && !document.getElementById('certificateButton')) {
+                const buttonHTML = `
+                    <div class="col-md-4 text-end" id="certificateButtonContainer">
+                        <button class="certificate-btn" onclick="showCertificate()">
+                            <i class="bi bi-trophy"></i> Ver Certificado
+                        </button>
+                    </div>
+                `;
+                const row = header.querySelector('.row');
+                if (row) {
+                    const col = row.querySelector('.col-md-8');
+                    if (col) {
+                        col.className = 'col-md-8';
+                        row.insertAdjacentHTML('beforeend', buttonHTML);
+                    }
+                }
+            }
+        }
+
+        // Download do certificado em PDF
+        function downloadCertificate() {
+            const certificateContent = document.getElementById('certificateContent');
+            if (!certificateContent) return;
+            
+            // Criar janela de impressão com o certificado
+            const printWindow = window.open('', '_blank');
+            const userName = document.getElementById('userName')?.textContent || 'Usuário';
+            const completionDate = document.getElementById('completionDate')?.textContent || new Date().toLocaleDateString('pt-BR');
+            
+            printWindow.document.write(`
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <title>Certificado - Ferramentas de Qualidade</title>
+                    <meta charset="UTF-8">
+                    <style>
+                        @media print {
+                            @page { 
+                                size: A4 landscape; 
+                                margin: 0;
+                            }
+                            body { 
+                                margin: 0; 
+                                padding: 0; 
+                            }
+                        }
+                        body {
+                            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                            background: linear-gradient(135deg, #0066cc 0%, #dc3545 33%, #28a745 66%, #0066cc 100%);
+                            padding: 10px;
+                            text-align: center;
+                            color: #1a1a2e;
+                            height: 100vh;
+                            max-height: 842px;
+                            position: relative;
+                            margin: 0;
+                            overflow: hidden;
+                        }
+                        .certificate-wrapper {
+                            background: #ffffff;
+                            position: relative;
+                            height: 100%;
+                            padding: 40px 40px 35px;
+                            display: flex;
+                            flex-direction: column;
+                            justify-content: space-between;
+                        }
+                        .certificate-container {
+                            max-width: 900px;
+                            width: 100%;
+                            position: relative;
+                            z-index: 2;
+                            margin: 0 auto;
+                            height: 100%;
+                            display: flex;
+                            flex-direction: column;
+                            justify-content: space-between;
+                        }
+                        .logo-container {
+                            margin-bottom: 15px;
+                        }
+                        .decorative-line {
+                            width: 200px;
+                            height: 2px;
+                            background: linear-gradient(90deg, transparent, #667eea 20%, #764ba2 50%, #667eea 80%, transparent);
+                            margin: 0 auto 15px;
+                            border-radius: 2px;
+                        }
+                        .certificate-title {
+                            font-size: 0.55rem;
+                            color: #667eea;
+                            margin-bottom: 10px;
+                            text-transform: uppercase;
+                            letter-spacing: 4px;
+                            font-weight: 700;
+                        }
+                        h1 {
+                            font-size: 2rem;
+                            font-weight: 800;
+                            margin-bottom: 8px;
+                            color: #1a1a2e;
+                            line-height: 1.1;
+                            letter-spacing: -0.5px;
+                        }
+                        h2 {
+                            font-size: 1.3rem;
+                            font-weight: 600;
+                            margin-bottom: 20px;
+                            color: #667eea;
+                            letter-spacing: 0.5px;
+                        }
+                        .cert-text {
+                            font-size: 0.9rem;
+                            margin-bottom: 15px;
+                            color: #444;
+                            line-height: 1.5;
+                            font-family: 'Georgia', serif;
+                            font-style: italic;
+                        }
+                        .user-name {
+                            font-size: 1.6rem;
+                            font-weight: 700;
+                            margin: 0 auto 18px;
+                            color: #1a1a2e;
+                            padding: 15px 35px;
+                            border: 3px double #667eea;
+                            border-radius: 6px;
+                            display: inline-block;
+                            min-width: 400px;
+                            background: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%);
+                            letter-spacing: 0.5px;
+                            box-shadow: 0 3px 10px rgba(102, 126, 234, 0.12);
+                        }
+                        .description {
+                            font-size: 0.85rem;
+                            margin-bottom: 18px;
+                            color: #555;
+                            line-height: 1.5;
+                            max-width: 700px;
+                            margin-left: auto;
+                            margin-right: auto;
+                        }
+                        .description strong {
+                            color: #667eea;
+                            font-size: 0.95rem;
+                            font-weight: 600;
+                        }
+                        .footer {
+                            border-top: 2px double #e0e0e0;
+                            padding-top: 15px;
+                            margin-top: auto;
+                        }
+                        .date {
+                            font-size: 0.8rem;
+                            color: #666;
+                            margin-bottom: 8px;
+                        }
+                        .date strong {
+                            color: #667eea;
+                            font-size: 0.85rem;
+                        }
+                        .company {
+                            font-size: 0.75rem;
+                            color: #999;
+                            letter-spacing: 0.5px;
+                        }
+                        .seal {
+                            position: absolute;
+                            top: 20px;
+                            right: 20px;
+                            width: 60px;
+                            height: 60px;
+                            border: 2px solid #667eea;
+                            border-radius: 50%;
+                            background: rgba(255, 255, 255, 0.9);
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            z-index: 3;
+                            box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+                            font-size: 1.5rem;
+                        }
+                    </style>
+                </head>
+                <body>
+                    <div style="background: linear-gradient(135deg, #0066cc 0%, #dc3545 33%, #28a745 66%, #0066cc 100%); padding: 10px; height: 100vh; max-height: 842px;">
+                        <div class="certificate-wrapper">
+                            <div class="certificate-container">
+                            <div>
+                                <div class="logo-container">
+                                    <svg width="200" height="60" viewBox="0 0 280 90" style="margin: 0 auto;">
+                                        <g transform="translate(15, 10)">
+                                            <path d="M 0 0 L 14 9 L 0 18 Z" fill="#dc3545" />
+                                            <path d="M 14 0 L 28 9 L 14 18 Z" fill="#dc3545" />
+                                            <path d="M 0 18 L 14 27 L 0 36 Z" fill="#28a745" />
+                                            <path d="M 14 18 L 28 27 L 14 36 Z" fill="#28a745" />
+                                            <path d="M 0 36 L 14 45 L 0 54 Z" fill="#0066cc" />
+                                            <path d="M 14 36 L 28 45 L 14 54 Z" fill="#0066cc" />
+                                        </g>
+                                        <text x="50" y="28" font-family="'Segoe UI', Arial, sans-serif" font-size="12" font-weight="600" fill="#1a1a2e" letter-spacing="0.5px">Grupo</text>
+                                        <text x="50" y="48" font-family="'Segoe UI', Arial, sans-serif" font-size="20" font-weight="700" fill="#1a1a2e" letter-spacing="1.5px">Multimodal</text>
+                                    </svg>
+                                </div>
+                                <div class="decorative-line"></div>
+                                <div class="certificate-title">Certificado de Conclusão</div>
+                                <h1>Treinamento Completo</h1>
+                                <h2>Ferramentas de Qualidade</h2>
+                                <div class="cert-text">Certificamos que</div>
+                                <div class="user-name">${userName}</div>
+                                <div class="description">
+                                    completou com sucesso o treinamento completo sobre<br>
+                                    <strong>Ferramentas de Qualidade</strong>, demonstrando conhecimento em:<br>
+                                    <span style="color: #333; font-size: 0.8rem; line-height: 1.5;">SWOT, Brainstorming, Matriz Força x Impacto, Ishikawa, 5 Porquês, 5W2H, PDCA, Plano de Ação e Relatórios com IA</span>
+                                </div>
+                                <div class="decorative-line"></div>
+                            </div>
+                            <div class="footer">
+                                <div class="date">Data de Conclusão: <strong>${completionDate}</strong></div>
+                                <div class="company">Multimodal - Sistema de Gestão da Qualidade</div>
+                            </div>
+                        </div>
+                    </div>
+                </body>
+                </html>
+            `);
+            printWindow.document.close();
+            setTimeout(() => {
+                printWindow.print();
+            }, 500);
+        }
+
+        // Compartilhar certificado
+        function shareCertificate() {
+            if (navigator.share) {
+                navigator.share({
+                    title: 'Certificado - Ferramentas de Qualidade',
+                    text: 'Concluí o treinamento completo de Ferramentas de Qualidade!',
+                    url: window.location.href
+                }).catch(err => console.log('Erro ao compartilhar:', err));
+            } else {
+                // Fallback: copiar link
+                navigator.clipboard.writeText(window.location.href).then(() => {
+                    mostrarAlerta('Link copiado para a área de transferência!', 'success');
+                });
+            }
+        }
+
+        // Scroll to top
+        function scrollToTop() {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+    </script>
+</body>
+</html>
+
