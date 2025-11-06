@@ -8997,7 +8997,7 @@ app.post('/api/ferramentas-qualidade', async (req, res) => {
       return res.status(401).json({ success: false, error: 'É necessário estar autenticado para salvar ferramentas' });
     }
 
-    const { id, tipo_ferramenta, titulo, dados, tags, observacoes } = req.body;
+    const { id, tipo_ferramenta, titulo, dados, tags, observacoes, projeto_id } = req.body;
 
     if (!tipo_ferramenta || !titulo || !dados) {
       return res.status(400).json({ success: false, error: 'Campos obrigatórios faltando' });
@@ -9073,6 +9073,7 @@ app.post('/api/ferramentas-qualidade', async (req, res) => {
           observacoes,
           tem_prazos: temPrazos,
           proximo_vencimento: proximoVencimento,
+          projeto_id: projeto_id || null,
           atualizado_em: new Date().toISOString()
         })
         .eq('id', id)
@@ -9100,7 +9101,8 @@ app.post('/api/ferramentas-qualidade', async (req, res) => {
           tags: tags || [],
           observacoes,
           tem_prazos: temPrazos,
-          proximo_vencimento: proximoVencimento
+          proximo_vencimento: proximoVencimento,
+          projeto_id: projeto_id || null
         })
         .select()
         .single();
@@ -9321,8 +9323,15 @@ app.put('/api/ferramentas-qualidade/acoes/:acaoId/atualizar', async (req, res) =
 // Endpoint para listar alertas do usuário
 app.get('/api/ferramentas-qualidade/alertas', async (req, res) => {
   try {
-    const userResult = await getUserFromRequest(req);
-    const userId = userResult?.user?.id;
+    // Tratar autenticação com try-catch
+    let userId = null;
+    try {
+      const userResult = await getUserFromRequest(req);
+      userId = userResult?.user?.id;
+    } catch (authError) {
+      console.warn('⚠️ Erro ao obter usuário da requisição:', authError);
+      // Continuar sem usuário, retornará lista vazia
+    }
 
     // Se não tiver usuário autenticado, retornar lista vazia
     if (!userId) {
@@ -9336,17 +9345,23 @@ app.get('/api/ferramentas-qualidade/alertas', async (req, res) => {
 
     try {
       // Buscar alertas do usuário
-      let query = supabaseAdmin
-        .from('ferramentas_qualidade_alertas')
-        .select('*');
+      // Usar duas queries separadas para evitar problemas com .or()
+      const [alertasResponsavel, alertasSuperior] = await Promise.all([
+        supabaseAdmin
+          .from('ferramentas_qualidade_alertas')
+          .select('*')
+          .eq('responsavel_id', userId)
+          .order('prazo', { ascending: true }),
+        supabaseAdmin
+          .from('ferramentas_qualidade_alertas')
+          .select('*')
+          .eq('superior_id', userId)
+          .order('prazo', { ascending: true })
+      ]);
 
-      // Filtrar por responsável ou superior
-      query = query.or(`responsavel_id.eq.${userId},superior_id.eq.${userId}`);
-      query = query.order('prazo', { ascending: true });
-
-      const { data: alertas, error } = await query;
-
-      if (error) {
+      // Verificar erros nas queries PRIMEIRO, antes de processar dados
+      if (alertasResponsavel.error || alertasSuperior.error) {
+        const error = alertasResponsavel.error || alertasSuperior.error;
         console.error('❌ Erro ao buscar alertas:', error);
         console.error('❌ Código do erro:', error.code);
         console.error('❌ Mensagem do erro:', error.message);
@@ -9365,7 +9380,45 @@ app.get('/api/ferramentas-qualidade/alertas', async (req, res) => {
             alertas: []
           });
         }
-        throw error;
+        // Retornar lista vazia em caso de outros erros também
+        console.warn('⚠️ Retornando lista vazia devido a erro na query');
+        return res.json({
+          success: true,
+          alertas: []
+        });
+      }
+
+      // Combinar resultados e remover duplicatas
+      const alertasMap = new Map();
+      
+      if (alertasResponsavel.data && Array.isArray(alertasResponsavel.data)) {
+        alertasResponsavel.data.forEach(alerta => {
+          alertasMap.set(alerta.id, alerta);
+        });
+      }
+      
+      if (alertasSuperior.data && Array.isArray(alertasSuperior.data)) {
+        alertasSuperior.data.forEach(alerta => {
+          alertasMap.set(alerta.id, alerta);
+        });
+      }
+      
+      const alertas = Array.from(alertasMap.values());
+      
+      // Ordenar por prazo (com tratamento de erros)
+      try {
+        alertas.sort((a, b) => {
+          try {
+            const prazoA = a.prazo ? new Date(a.prazo) : new Date(0);
+            const prazoB = b.prazo ? new Date(b.prazo) : new Date(0);
+            return prazoA - prazoB;
+          } catch (err) {
+            return 0; // Manter ordem original em caso de erro
+          }
+        });
+      } catch (sortError) {
+        console.warn('⚠️ Erro ao ordenar alertas:', sortError);
+        // Continuar mesmo com erro na ordenação
       }
 
       // Se não houver alertas, retornar vazio
@@ -9426,15 +9479,20 @@ app.get('/api/ferramentas-qualidade/alertas', async (req, res) => {
           alertas: []
         });
       }
-      throw queryError;
+      // Retornar lista vazia em caso de outros erros também
+      console.warn('⚠️ Retornando lista vazia devido a erro na query');
+      return res.json({
+        success: true,
+        alertas: []
+      });
     }
   } catch (error) {
     console.error('❌ Erro geral ao listar alertas:', error);
     console.error('❌ Stack:', error.stack);
-    res.status(500).json({ 
-      success: false, 
-      error: 'Erro ao listar alertas',
-      details: process.env.DEBUG_MODE ? error.message : undefined
+    // Retornar lista vazia ao invés de erro 500
+    res.json({
+      success: true,
+      alertas: []
     });
   }
 });
@@ -9536,6 +9594,585 @@ app.post('/api/ferramentas-qualidade/alertas/verificar', async (req, res) => {
     res.status(500).json({ success: false, error: 'Erro ao verificar alertas' });
   }
 });
+
+// ========== ROTAS DE INTEGRAÇÃO COM IA PARA FERRAMENTAS DE QUALIDADE ==========
+
+// Rota para gerar análise SWOT com IA
+app.post('/api/ferramentas-qualidade/ia/swot', async (req, res) => {
+  try {
+    if (!openai) {
+      return res.status(503).json({ success: false, error: 'Serviço de IA não disponível' });
+    }
+
+    const { contexto } = req.body;
+    if (!contexto) {
+      return res.status(400).json({ success: false, error: 'Contexto é obrigatório' });
+    }
+
+    const prompt = `Com base no seguinte contexto/problema, gere uma análise SWOT completa com pelo menos 3 itens em cada quadrante:
+
+Contexto: ${contexto}
+
+Retorne APENAS um JSON válido no seguinte formato:
+{
+  "forcas": ["força 1", "força 2", "força 3"],
+  "fraquezas": ["fraqueza 1", "fraqueza 2", "fraqueza 3"],
+  "oportunidades": ["oportunidade 1", "oportunidade 2", "oportunidade 3"],
+  "ameacas": ["ameaça 1", "ameaça 2", "ameaça 3"]
+}
+
+Não inclua texto adicional, apenas o JSON.`;
+
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-3.5-turbo',
+      messages: [{ role: 'user', content: prompt }],
+      temperature: 0.7,
+      max_tokens: 1000
+    });
+
+    const resposta = completion.choices[0].message.content.trim();
+    let swot;
+    
+    // Tentar extrair JSON da resposta
+    try {
+      const jsonMatch = resposta.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        swot = JSON.parse(jsonMatch[0]);
+      } else {
+        swot = JSON.parse(resposta);
+      }
+    } catch (parseError) {
+      console.error('Erro ao parsear resposta da IA:', parseError);
+      console.error('Resposta recebida:', resposta);
+      return res.status(500).json({ 
+        success: false, 
+        error: 'Erro ao processar resposta da IA. A resposta pode não estar em formato JSON válido.' 
+      });
+    }
+
+    res.json({ success: true, swot });
+  } catch (error) {
+    console.error('❌ Erro ao gerar SWOT com IA:', error);
+    console.error('❌ Stack:', error.stack);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Erro ao gerar análise SWOT: ' + (error.message || 'Erro desconhecido') 
+    });
+  }
+});
+
+// Rota para analisar priorização com IA (Força x Impacto)
+app.post('/api/ferramentas-qualidade/ia/priorizacao', async (req, res) => {
+  try {
+    if (!openai) {
+      return res.status(503).json({ success: false, error: 'Serviço de IA não disponível' });
+    }
+
+    const { itens } = req.body;
+    if (!itens) {
+      return res.status(400).json({ success: false, error: 'Itens são obrigatórios' });
+    }
+
+    const prompt = `Analise os seguintes itens e atribua uma pontuação de 1 a 5 para FORÇA (facilidade de implementação) e IMPACTO (benefício esperado):
+
+Itens: ${itens}
+
+Retorne APENAS um JSON válido no seguinte formato:
+[
+  {"forca": 3, "impacto": 4},
+  {"forca": 4, "impacto": 3},
+  ...
+]
+
+Onde cada objeto corresponde a um item na ordem fornecida. Força e Impacto devem ser números de 1 a 5.`;
+
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-3.5-turbo',
+      messages: [{ role: 'user', content: prompt }],
+      temperature: 0.5,
+      max_tokens: 500
+    });
+
+    const resposta = completion.choices[0].message.content.trim();
+    let priorizacoes;
+    
+    try {
+      const jsonMatch = resposta.match(/\[[\s\S]*\]/);
+      if (jsonMatch) {
+        priorizacoes = JSON.parse(jsonMatch[0]);
+      } else {
+        priorizacoes = JSON.parse(resposta);
+      }
+    } catch (parseError) {
+      console.error('Erro ao parsear resposta da IA:', parseError);
+      console.error('Resposta recebida:', resposta);
+      return res.status(500).json({ 
+        success: false, 
+        error: 'Erro ao processar resposta da IA. A resposta pode não estar em formato JSON válido.' 
+      });
+    }
+
+    res.json({ success: true, priorizacoes });
+  } catch (error) {
+    console.error('❌ Erro ao analisar priorização com IA:', error);
+    console.error('❌ Stack:', error.stack);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Erro ao analisar priorização: ' + (error.message || 'Erro desconhecido') 
+    });
+  }
+});
+
+// Rota para assistente geral de ferramentas de qualidade
+app.post('/api/ferramentas-qualidade/ia/assistente', async (req, res) => {
+  try {
+    if (!openai) {
+      return res.status(503).json({ success: false, error: 'Serviço de IA não disponível' });
+    }
+
+    const { ferramenta, prompt } = req.body;
+    if (!prompt) {
+      return res.status(400).json({ success: false, error: 'Prompt é obrigatório' });
+    }
+
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-3.5-turbo',
+      messages: [
+        { role: 'system', content: 'Você é um assistente especializado em ferramentas de qualidade e melhoria contínua. Responda de forma clara, objetiva e prática.' },
+        { role: 'user', content: prompt }
+      ],
+      temperature: 0.7,
+      max_tokens: 800
+    });
+
+    const resposta = completion.choices[0].message.content.trim();
+    res.json({ success: true, resposta });
+  } catch (error) {
+    console.error('❌ Erro ao obter ajuda da IA:', error);
+    console.error('❌ Stack:', error.stack);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Erro ao obter ajuda: ' + (error.message || 'Erro desconhecido') 
+    });
+  }
+});
+
+// Rota para gerar relatório completo com IA
+app.post('/api/ferramentas-qualidade/ia/relatorio', async (req, res) => {
+  try {
+    if (!openai) {
+      return res.status(503).json({ success: false, error: 'Serviço de IA não disponível' });
+    }
+
+    let userResult;
+    try {
+      userResult = await getUserFromRequest(req);
+    } catch (authError) {
+      console.warn('⚠️ Erro ao obter usuário da requisição:', authError);
+      return res.status(401).json({ success: false, error: 'Não autenticado' });
+    }
+    
+    const userId = userResult?.user?.id;
+
+    if (!userId) {
+      return res.status(401).json({ success: false, error: 'Não autenticado' });
+    }
+
+    const { titulo, contexto } = req.body;
+
+    // Buscar todas as ferramentas do usuário para contexto
+    let ferramentas = [];
+    try {
+      const { data, error: ferramentasError } = await supabaseAdmin
+        .from('ferramentas_qualidade')
+        .select('tipo_ferramenta, titulo, dados')
+        .eq('criado_por', userId)
+        .order('criado_em', { ascending: false })
+        .limit(20);
+      
+      if (!ferramentasError && data) {
+        ferramentas = data;
+      }
+    } catch (dbError) {
+      console.warn('⚠️ Erro ao buscar ferramentas para contexto:', dbError);
+      // Continuar sem contexto de ferramentas
+    }
+
+    let contextoFerramentas = '';
+    if (ferramentas && ferramentas.length > 0) {
+      contextoFerramentas = ferramentas.map(f => {
+        let resumo = `\n- ${f.tipo_ferramenta}: ${f.titulo}`;
+        if (f.dados) {
+          if (f.tipo_ferramenta === 'swot' && f.dados.itens) {
+            resumo += `\n  Forças: ${f.dados.itens.forcas?.length || 0}, Fraquezas: ${f.dados.itens.fraquezas?.length || 0}`;
+          } else if (f.tipo_ferramenta === 'plano_acao' && f.dados.acoes) {
+            resumo += `\n  Ações: ${f.dados.acoes.length}`;
+          }
+        }
+        return resumo;
+      }).join('\n');
+    }
+
+    const prompt = `Gere um relatório completo e profissional de análise de qualidade com base nas seguintes informações:
+
+Título: ${titulo || 'Relatório de Análise'}
+Contexto Adicional: ${contexto || 'Nenhum contexto adicional fornecido'}
+
+Ferramentas Utilizadas:
+${contextoFerramentas || 'Nenhuma ferramenta encontrada'}
+
+O relatório deve incluir:
+1. Resumo Executivo
+2. Problema Identificado
+3. Análise Realizada (com base nas ferramentas)
+4. Causas Raiz Identificadas
+5. Ações Planejadas
+6. Resultados Esperados
+7. Próximos Passos
+
+Formate o relatório de forma profissional, usando markdown para títulos e listas.`;
+
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-3.5-turbo',
+      messages: [
+        { role: 'system', content: 'Você é um especialista em qualidade e melhoria contínua. Gere relatórios profissionais e estruturados.' },
+        { role: 'user', content: prompt }
+      ],
+      temperature: 0.7,
+      max_tokens: 2000
+    });
+
+    const relatorio = completion.choices[0].message.content.trim();
+    res.json({ success: true, relatorio });
+  } catch (error) {
+    console.error('❌ Erro ao gerar relatório com IA:', error);
+    console.error('❌ Stack:', error.stack);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Erro ao gerar relatório: ' + (error.message || 'Erro desconhecido') 
+    });
+  }
+});
+
+// Rota para feedback da IA
+app.post('/api/ferramentas-qualidade/ia/feedback', async (req, res) => {
+  try {
+    if (!openai) {
+      return res.status(503).json({ success: false, error: 'Serviço de IA não disponível' });
+    }
+
+    let userResult;
+    try {
+      userResult = await getUserFromRequest(req);
+    } catch (authError) {
+      console.warn('⚠️ Erro ao obter usuário da requisição:', authError);
+      return res.status(401).json({ success: false, error: 'Não autenticado' });
+    }
+    
+    const userId = userResult?.user?.id;
+
+    if (!userId) {
+      return res.status(401).json({ success: false, error: 'Não autenticado' });
+    }
+
+    const { feedback } = req.body;
+    if (!feedback) {
+      return res.status(400).json({ success: false, error: 'Feedback é obrigatório' });
+    }
+
+    // Buscar contexto das ferramentas do usuário
+    let ferramentas = [];
+    try {
+      const { data, error: ferramentasError } = await supabaseAdmin
+        .from('ferramentas_qualidade')
+        .select('tipo_ferramenta, titulo, dados')
+        .eq('criado_por', userId)
+        .order('criado_em', { ascending: false })
+        .limit(10);
+      
+      if (!ferramentasError && data) {
+        ferramentas = data;
+      }
+    } catch (dbError) {
+      console.warn('⚠️ Erro ao buscar ferramentas para contexto:', dbError);
+      // Continuar sem contexto de ferramentas
+    }
+
+    let contextoFerramentas = '';
+    if (ferramentas && ferramentas.length > 0) {
+      contextoFerramentas = ferramentas.map(f => `${f.tipo_ferramenta}: ${f.titulo}`).join(', ');
+    }
+
+    const prompt = `Com base no contexto das ferramentas de qualidade utilizadas (${contextoFerramentas || 'nenhuma'}), responda à seguinte pergunta/feedback:
+
+${feedback}
+
+Forneça uma resposta útil, prática e baseada em melhores práticas de qualidade e melhoria contínua.`;
+
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-3.5-turbo',
+      messages: [
+        { role: 'system', content: 'Você é um consultor especializado em qualidade e melhoria contínua. Forneça insights práticos e acionáveis.' },
+        { role: 'user', content: prompt }
+      ],
+      temperature: 0.7,
+      max_tokens: 1000
+    });
+
+    const resposta = completion.choices[0].message.content.trim();
+    res.json({ success: true, resposta });
+  } catch (error) {
+    console.error('❌ Erro ao obter feedback da IA:', error);
+    console.error('❌ Stack:', error.stack);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Erro ao obter feedback: ' + (error.message || 'Erro desconhecido') 
+    });
+  }
+});
+
+// ========== FIM DAS ROTAS DE FERRAMENTAS DE QUALIDADE ==========
+
+// ========== ROTAS DE PROJETOS/ANÁLISES DE QUALIDADE ==========
+
+// Criar novo projeto/análise
+app.post('/api/projetos-qualidade', async (req, res) => {
+  try {
+    const userResult = await getUserFromRequest(req);
+    const userId = userResult?.user?.id;
+
+    if (!userId) {
+      return res.status(401).json({ success: false, error: 'Não autenticado' });
+    }
+
+    const { titulo, descricao, problema, tags } = req.body;
+
+    if (!titulo) {
+      return res.status(400).json({ success: false, error: 'Título é obrigatório' });
+    }
+
+    const { data, error } = await supabaseAdmin
+      .from('projetos_qualidade')
+      .insert({
+        titulo,
+        descricao: descricao || null,
+        problema: problema || null,
+        criado_por: userId,
+        tags: tags || [],
+        status: 'em_andamento'
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    res.json({ success: true, projeto: data });
+  } catch (error) {
+    console.error('❌ Erro ao criar projeto:', error);
+    res.status(500).json({ success: false, error: 'Erro ao criar projeto: ' + error.message });
+  }
+});
+
+// Listar projetos do usuário
+app.get('/api/projetos-qualidade', async (req, res) => {
+  try {
+    const userResult = await getUserFromRequest(req);
+    const userId = userResult?.user?.id;
+
+    if (!userId) {
+      return res.status(401).json({ success: false, error: 'Não autenticado' });
+    }
+
+    const { status, busca } = req.query;
+
+    let query = supabaseAdmin
+      .from('projetos_qualidade')
+      .select('*')
+      .eq('criado_por', userId)
+      .order('criado_em', { ascending: false });
+
+    if (status) {
+      query = query.eq('status', status);
+    }
+
+    const { data: projetos, error } = await query;
+
+    if (error) throw error;
+
+    // Buscar contagem de ferramentas para cada projeto
+    const projetosComFerramentas = await Promise.all(projetos.map(async (projeto) => {
+      const { count } = await supabaseAdmin
+        .from('ferramentas_qualidade')
+        .select('*', { count: 'exact', head: true })
+        .eq('projeto_id', projeto.id);
+
+      return {
+        ...projeto,
+        total_ferramentas: count || 0
+      };
+    }));
+
+    // Filtrar por busca se fornecido
+    let projetosFiltrados = projetosComFerramentas;
+    if (busca) {
+      const buscaLower = busca.toLowerCase();
+      projetosFiltrados = projetosComFerramentas.filter(p => 
+        p.titulo.toLowerCase().includes(buscaLower) ||
+        (p.descricao && p.descricao.toLowerCase().includes(buscaLower)) ||
+        (p.problema && p.problema.toLowerCase().includes(buscaLower))
+      );
+    }
+
+    res.json({ success: true, projetos: projetosFiltrados });
+  } catch (error) {
+    console.error('❌ Erro ao listar projetos:', error);
+    res.status(500).json({ success: false, error: 'Erro ao listar projetos: ' + error.message });
+  }
+});
+
+// Buscar projeto específico com todas as ferramentas
+app.get('/api/projetos-qualidade/:id', async (req, res) => {
+  try {
+    const userResult = await getUserFromRequest(req);
+    const userId = userResult?.user?.id;
+
+    if (!userId) {
+      return res.status(401).json({ success: false, error: 'Não autenticado' });
+    }
+
+    const { id } = req.params;
+
+    // Buscar projeto
+    const { data: projeto, error: projetoError } = await supabaseAdmin
+      .from('projetos_qualidade')
+      .select('*')
+      .eq('id', id)
+      .eq('criado_por', userId)
+      .single();
+
+    if (projetoError || !projeto) {
+      return res.status(404).json({ success: false, error: 'Projeto não encontrado' });
+    }
+
+    // Buscar todas as ferramentas do projeto
+    const { data: ferramentas, error: ferramentasError } = await supabaseAdmin
+      .from('ferramentas_qualidade')
+      .select('*')
+      .eq('projeto_id', id)
+      .order('criado_em', { ascending: true });
+
+    if (ferramentasError) {
+      console.warn('⚠️ Erro ao buscar ferramentas:', ferramentasError);
+    }
+
+    res.json({
+      success: true,
+      projeto: {
+        ...projeto,
+        ferramentas: ferramentas || []
+      }
+    });
+  } catch (error) {
+    console.error('❌ Erro ao buscar projeto:', error);
+    res.status(500).json({ success: false, error: 'Erro ao buscar projeto: ' + error.message });
+  }
+});
+
+// Atualizar projeto
+app.put('/api/projetos-qualidade/:id', async (req, res) => {
+  try {
+    const userResult = await getUserFromRequest(req);
+    const userId = userResult?.user?.id;
+
+    if (!userId) {
+      return res.status(401).json({ success: false, error: 'Não autenticado' });
+    }
+
+    const { id } = req.params;
+    const { titulo, descricao, problema, status, tags, observacoes } = req.body;
+
+    // Verificar se o projeto pertence ao usuário
+    const { data: projetoExistente } = await supabaseAdmin
+      .from('projetos_qualidade')
+      .select('id, criado_por')
+      .eq('id', id)
+      .single();
+
+    if (!projetoExistente || projetoExistente.criado_por !== userId) {
+      return res.status(403).json({ success: false, error: 'Sem permissão para atualizar este projeto' });
+    }
+
+    const updateData = {
+      atualizado_em: new Date().toISOString()
+    };
+
+    if (titulo !== undefined) updateData.titulo = titulo;
+    if (descricao !== undefined) updateData.descricao = descricao;
+    if (problema !== undefined) updateData.problema = problema;
+    if (status !== undefined) {
+      updateData.status = status;
+      if (status === 'concluido') {
+        updateData.concluido_em = new Date().toISOString();
+      }
+    }
+    if (tags !== undefined) updateData.tags = tags;
+    if (observacoes !== undefined) updateData.observacoes = observacoes;
+
+    const { data, error } = await supabaseAdmin
+      .from('projetos_qualidade')
+      .update(updateData)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    res.json({ success: true, projeto: data });
+  } catch (error) {
+    console.error('❌ Erro ao atualizar projeto:', error);
+    res.status(500).json({ success: false, error: 'Erro ao atualizar projeto: ' + error.message });
+  }
+});
+
+// Deletar projeto
+app.delete('/api/projetos-qualidade/:id', async (req, res) => {
+  try {
+    const userResult = await getUserFromRequest(req);
+    const userId = userResult?.user?.id;
+
+    if (!userId) {
+      return res.status(401).json({ success: false, error: 'Não autenticado' });
+    }
+
+    const { id } = req.params;
+
+    // Verificar se o projeto pertence ao usuário
+    const { data: projetoExistente } = await supabaseAdmin
+      .from('projetos_qualidade')
+      .select('id, criado_por')
+      .eq('id', id)
+      .single();
+
+    if (!projetoExistente || projetoExistente.criado_por !== userId) {
+      return res.status(403).json({ success: false, error: 'Sem permissão para deletar este projeto' });
+    }
+
+    // Deletar projeto (as ferramentas terão projeto_id = null devido ao ON DELETE SET NULL)
+    const { error } = await supabaseAdmin
+      .from('projetos_qualidade')
+      .delete()
+      .eq('id', id);
+
+    if (error) throw error;
+
+    res.json({ success: true, message: 'Projeto deletado com sucesso' });
+  } catch (error) {
+    console.error('❌ Erro ao deletar projeto:', error);
+    res.status(500).json({ success: false, error: 'Erro ao deletar projeto: ' + error.message });
+  }
+});
+
+// ========== FIM DAS ROTAS DE PROJETOS ==========
 
 // ========== PAINEL DE QUALIDADE ==========
 // Endpoint para buscar TODAS as ferramentas (com permissões)

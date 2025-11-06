@@ -397,13 +397,6 @@ PORT=5680
 SESSION_SECRET=seu_secret_super_seguro
 DEBUG_MODE=false
 
-# CORS
-ALLOWED_ORIGINS=http://localhost:5680,http://127.0.0.1:5680
-
-# Usuários
-USUARIOS=admin:admin123,usuario1:senha123
-```
-
 ### 4. Configure o Supabase
 
 Execute os scripts SQL no Supabase para criar as tabelas:
