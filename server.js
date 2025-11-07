@@ -550,27 +550,20 @@ app.use((req, res, next) => {
 function parseUsuarios() {
   const usuarios = {};
   const usuariosEnv = process.env.USUARIOS;
-  
-  // 🔒 SEGURANÇA: Exigir configuração de USUARIOS no .env
+
   if (!usuariosEnv) {
-    if (process.env.NODE_ENV === 'production') {
-      console.error('❌ ERRO CRÍTICO: USUARIOS não configurado no .env');
-      console.error('📋 Configure USUARIOS no arquivo .env antes de iniciar em produção.');
-      process.exit(1);
-    } else {
-      console.warn('⚠️ USUARIOS não configurado no .env. Sistema pode não funcionar corretamente.');
-      console.warn('⚠️ Configure USUARIOS no .env no formato: usuario1:senha1,usuario2:senha2');
-      return usuarios; // Retornar objeto vazio em desenvolvimento
-    }
+    console.info('ℹ️ USUARIOS não definido no .env. Somente autenticação Supabase será utilizada.');
+    console.info('ℹ️ Caso deseje logins locais emergenciais, configure USUARIOS no formato usuario:senha.');
+    return usuarios;
   }
-  
+
   usuariosEnv.split(',').forEach(credencial => {
     const [usuario, senha] = credencial.split(':');
     if (usuario && senha) {
       usuarios[usuario.trim()] = senha.trim();
     }
   });
-  
+
   return usuarios;
 }
 
@@ -756,7 +749,6 @@ function salvarBackupContatos() {
     });
   });
 }
-
 // Restaurar contatos do backup
 function restaurarBackupContatos() {
   return new Promise((resolve, reject) => {
@@ -1446,7 +1438,6 @@ async function injectSignedUrls(records, options = {}) {
   }
   return results;
 }
-
 // ========== ROTAS DE AUTENTICAÇÃO ==========
 
 // ✅✅✅ ENDPOINT DE LOGIN COM FALLBACK PARA .ENV
@@ -2240,7 +2231,6 @@ app.get('/api/motoristas/oportunidades', async (req, res) => {
     res.status(500).json({ success: false, error: 'Erro ao carregar oportunidades. Tente novamente.' });
   }
 });
-
 app.get('/api/motoristas/viagens', async (req, res) => {
   try {
     const { user, error } = await getSupabaseUserFromRequest(req);
@@ -3772,7 +3762,6 @@ app.get('/api/check-auth', async (req, res) => {
     });
   }
 });
-
 // ========== ROTAS DE CONFIGURAÇÃO EVOLUTION ==========
 
 // 🔧 OBTER CONFIGURAÇÃO DO USUÁRIO LOGADO
@@ -4481,7 +4470,6 @@ app.post('/webhook/send-auth', requireAuth, async (req, res) => {
     });
   }
 });
-
 // ========== NOVA ROTA PARA ENVIO COM SUPABASE ==========
 app.post('/webhook/send-supabase', upload.single('media'), async (req, res) => {
   const { number, message, usuario, userId } = req.body;
@@ -5248,7 +5236,6 @@ app.post('/api/emergencia/acionar', async (req, res) => {
     });
   }
 });
-
 // ========== ROTAS DE GERENCIAMENTO DE CONTATOS ==========
 app.get('/webhook/importar-csv', requireAuth, async (req, res) => {
   console.log('🔄 Iniciando importação do CSV por:', req.session.usuario);
@@ -5973,7 +5960,6 @@ app.get('/api/coletas/exportar', requireAuth, async (req, res) => {
     res.status(500).json({ error: 'Erro ao exportar coletas' });
   }
 });
-
 // ========== ENDPOINTS PARA ANEXOS ==========
 
 // Upload de anexos
@@ -6768,7 +6754,6 @@ app.get('/api/relatorios/disparos/kpis', async (req, res) => {
     res.status(500).json({ error: 'Erro ao carregar KPIs de disparos' });
   }
 });
-
 app.get('/api/relatorios/disparos/series', async (req, res) => {
   try {
     const { inicio, fim, usuarioId, departamento } = req.query;
@@ -7510,7 +7495,6 @@ app.post('/api/chat/ia/avaliar', express.json(), async (req, res) => {
     });
   }
 });
-
 // ========== ENDPOINT PARA ANÁLISE DE CONVERSAS (ADMIN) ==========
 app.get('/api/chat/ia/analise', requireAuth, async (req, res) => {
   try {
@@ -8287,7 +8271,6 @@ app.get('/api/user-profile/:userId', async (req, res) => {
         res.status(500).json({ error: 'Erro ao buscar perfil' });
     }
 });
-
 // 🔧 ENDPOINT PARA LIMPAR RATE LIMITING (apenas para desenvolvimento)
 app.post('/api/clear-rate-limit', (req, res) => {
     try {
@@ -9009,7 +8992,6 @@ app.get('/api/ferramentas-qualidade/painel', async (req, res) => {
     res.status(500).json({ success: false, error: 'Erro ao buscar ferramentas: ' + error.message });
   }
 });
-
 // Endpoint para buscar ferramenta específica do painel (sem restrição de criador)
 app.get('/api/ferramentas-qualidade/painel/:id', async (req, res) => {
   try {
@@ -9807,7 +9789,6 @@ Retorne APENAS um JSON válido no seguinte formato:
   "oportunidades": ["oportunidade 1", "oportunidade 2", "oportunidade 3"],
   "ameacas": ["ameaça 1", "ameaça 2", "ameaça 3"]
 }
-
 Não inclua texto adicional, apenas o JSON.`;
 
     const completion = await openai.chat.completions.create({
@@ -10579,7 +10560,6 @@ app.get('/api/ferramentas-qualidade/painel', async (req, res) => {
     res.status(500).json({ success: false, error: 'Erro ao buscar ferramentas' });
   }
 });
-
 // Endpoint para buscar ferramenta específica do painel (sem restrição de criador)
 app.get('/api/ferramentas-qualidade/painel/:id', async (req, res) => {
   try {
