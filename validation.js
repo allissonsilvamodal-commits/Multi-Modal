@@ -84,14 +84,42 @@ function validateRequest(schema) {
   };
 }
 
-// Função para sanitizar dados
-function sanitizeInput(input) {
+// 🔒 SEGURANÇA: Função melhorada para sanitizar dados (proteção contra XSS)
+function sanitizeInput(input, options = {}) {
   if (typeof input === 'string') {
-    return input
-      .trim()
-      .replace(/[<>]/g, '') // Remove caracteres potencialmente perigosos
-      .substring(0, 1000); // Limita tamanho
+    let sanitized = input.trim();
+    
+    // Remover caracteres potencialmente perigosos para XSS
+    // Remove: < > " ' & / e caracteres de controle
+    sanitized = sanitized
+      .replace(/[<>'"&\/\\\x00-\x1F\x7F]/g, '') // Remove caracteres perigosos
+      .replace(/javascript:/gi, '') // Remove javascript: protocol
+      .replace(/on\w+\s*=/gi, '') // Remove event handlers (onclick, onerror, etc)
+      .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '') // Remove tags script
+      .replace(/<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi, ''); // Remove tags iframe
+    
+    // Limitar tamanho
+    const maxLength = options.maxLength || 1000;
+    sanitized = sanitized.substring(0, maxLength);
+    
+    return sanitized;
   }
+  
+  // Para objetos e arrays, sanitizar recursivamente
+  if (Array.isArray(input)) {
+    return input.map(item => sanitizeInput(item, options));
+  }
+  
+  if (input && typeof input === 'object') {
+    const sanitized = {};
+    for (const key in input) {
+      if (input.hasOwnProperty(key)) {
+        sanitized[key] = sanitizeInput(input[key], options);
+      }
+    }
+    return sanitized;
+  }
+  
   return input;
 }
 

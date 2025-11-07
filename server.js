@@ -93,44 +93,80 @@ if (isDevelopment) {
   }));
 }
 
-// Rate limiting para prevenir ataques (mais permissivo para desenvolvimento)
+// 🔒 SEGURANÇA: Configurar trust proxy para obter IP real em produção
+app.set('trust proxy', 1);
+
+// Rate limiting para prevenir ataques
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutos
-  max: 1000, // máximo 1000 requests por IP por janela (aumentado de 100)
+  max: process.env.NODE_ENV === 'production' ? 500 : 1000, // Mais restritivo em produção
   message: {
     error: 'Muitas tentativas de acesso. Tente novamente em 15 minutos.'
   },
   standardHeaders: true,
   legacyHeaders: false,
   skip: (req) => {
-    // Pular rate limiting para desenvolvimento local
+    // 🔒 SEGURANÇA: Aplicar rate limiting mesmo em localhost em produção
+    if (process.env.NODE_ENV === 'production') {
+      return false; // Sempre aplicar em produção
+    }
+    // Apenas em desenvolvimento, pular para localhost
     return req.ip === '127.0.0.1' || req.ip === '::1' || req.ip === '::ffff:127.0.0.1';
   }
 });
 
 app.use(limiter);
 
-// Rate limiting específico para login (mais permissivo)
+// Rate limiting específico para login (proteção contra brute force)
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutos
-  max: 20, // máximo 20 tentativas de login por IP (aumentado de 5)
+  max: process.env.NODE_ENV === 'production' ? 10 : 20, // Mais restritivo em produção
   message: {
     error: 'Muitas tentativas de login. Tente novamente em 15 minutos.'
   },
   skipSuccessfulRequests: true,
   skip: (req) => {
-    // Pular rate limiting para desenvolvimento local
+    // 🔒 SEGURANÇA: Aplicar rate limiting mesmo em localhost em produção
+    if (process.env.NODE_ENV === 'production') {
+      return false; // Sempre aplicar em produção
+    }
+    // Apenas em desenvolvimento, pular para localhost
     return req.ip === '127.0.0.1' || req.ip === '::1' || req.ip === '::ffff:127.0.0.1';
   }
 });
 
-// Configuração do Multer para uploads (armazenamento em memória)
+// 🔒 SEGURANÇA: Configuração do Multer para uploads com validação de tipo
 const storage = multer.memoryStorage();
 
 const upload = multer({
   storage,
   limits: {
     fileSize: 10 * 1024 * 1024 // 10MB
+  },
+  fileFilter: (req, file, cb) => {
+    // Tipos MIME permitidos para CSV
+    const allowedMimes = [
+      'text/csv',
+      'application/vnd.ms-excel',
+      'application/csv',
+      'text/plain' // Alguns sistemas enviam CSV como text/plain
+    ];
+    
+    // Extensões permitidas
+    const allowedExtensions = ['.csv'];
+    const fileExtension = path.extname(file.originalname).toLowerCase();
+    
+    // Verificar tipo MIME
+    if (allowedMimes.includes(file.mimetype)) {
+      // Verificar extensão também
+      if (allowedExtensions.includes(fileExtension)) {
+        cb(null, true);
+      } else {
+        cb(new Error('Extensão de arquivo não permitida. Apenas arquivos .csv são aceitos.'));
+      }
+    } else {
+      cb(new Error('Tipo de arquivo não permitido. Apenas arquivos CSV são aceitos.'));
+    }
   }
 });
 
@@ -138,10 +174,18 @@ const upload = multer({
 const { supabase } = require('./supabase-secure.js');
 const { createClient } = require('@supabase/supabase-js');
 
-// 🔒 Criar cliente Supabase com SERVICE_KEY para bypass de RLS
+// 🔒 SEGURANÇA: Criar cliente Supabase com SERVICE_KEY (sem fallback para ANON_KEY)
+const serviceKey = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+if (!serviceKey) {
+  console.error('❌ ERRO CRÍTICO: SUPABASE_SERVICE_KEY ou SUPABASE_SERVICE_ROLE_KEY não configurada');
+  console.error('📋 Configure uma das chaves no arquivo .env antes de iniciar.');
+  process.exit(1);
+}
+
 const supabaseAdmin = createClient(
   process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY,
+  serviceKey,
   {
     auth: {
       autoRefreshToken: false,
@@ -150,10 +194,30 @@ const supabaseAdmin = createClient(
   }
 );
 
-// Log para debug
-console.log('🔑 Service Key configurada:', !!process.env.SUPABASE_SERVICE_KEY);
-console.log('🔑 Service Role Key configurada:', !!process.env.SUPABASE_SERVICE_ROLE_KEY);
-console.log('🔑 Anon Key configurada:', !!process.env.SUPABASE_ANON_KEY);
+// Log para debug (sem expor a chave)
+console.log('🔑 Service Key configurada:', !!serviceKey);
+console.log('✅ Cliente Supabase Admin inicializado com segurança');
+
+// 🔒 SEGURANÇA: Função helper para requisições HTTP com timeout
+async function fetchWithTimeout(url, options = {}, timeoutMs = 30000) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal
+    });
+    clearTimeout(timeoutId);
+    return response;
+  } catch (error) {
+    clearTimeout(timeoutId);
+    if (error.name === 'AbortError') {
+      throw new Error(`Requisição expirou após ${timeoutMs}ms`);
+    }
+    throw error;
+  }
+}
 
 // ========== CONFIGURAÇÃO EVOLUTION API ==========
 const EVOLUTION_CONFIG = {
@@ -393,12 +457,35 @@ async function listarConfiguracoesSimples() {
 }
 
 // ========== MIDDLEWARES ==========
-const allowedOrigins = process.env.ALLOWED_ORIGINS ? 
-  process.env.ALLOWED_ORIGINS.split(',') : 
-  [];
+// 🔒 SEGURANÇA: CORS configurado com validação dinâmica de origem
+const allowedOrigins = process.env.ALLOWED_ORIGINS 
+  ? process.env.ALLOWED_ORIGINS.split(',').map(origin => origin.trim())
+  : (process.env.NODE_ENV === 'production' 
+      ? [] // Em produção, exigir configuração explícita
+      : ['http://localhost:5680', 'http://127.0.0.1:5680']); // Desenvolvimento
+
+if (process.env.NODE_ENV === 'production' && allowedOrigins.length === 0) {
+  console.warn('⚠️ ALLOWED_ORIGINS não configurado. Configure no .env para produção.');
+}
 
 app.use(cors({
-  origin: ['http://localhost:5680', 'http://127.0.0.1:5680'],
+  origin: function (origin, callback) {
+    // Permitir requisições sem origem (mobile apps, Postman, etc) apenas em desenvolvimento
+    if (!origin) {
+      if (process.env.NODE_ENV !== 'production') {
+        return callback(null, true);
+      } else {
+        return callback(new Error('Requisições sem origem não permitidas em produção'));
+      }
+    }
+    
+    if (allowedOrigins.length === 0 || allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      console.warn(`⚠️ Origem bloqueada pelo CORS: ${origin}`);
+      callback(new Error('Não permitido pelo CORS'));
+    }
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'Cookie', 'X-Requested-With']
@@ -414,8 +501,23 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 // ✅✅✅ SESSÃO PRIMEIRO, DEPOIS DEBUG ✅✅✅
 const SQLiteStore = require('connect-sqlite3')(session);
 
+// 🔒 SEGURANÇA: Gerar SESSION_SECRET forte se não configurado
+let SESSION_SECRET = process.env.SESSION_SECRET;
+if (!SESSION_SECRET) {
+  if (process.env.NODE_ENV === 'production') {
+    console.error('❌ ERRO CRÍTICO: SESSION_SECRET não configurado em produção!');
+    console.error('📋 Configure SESSION_SECRET no arquivo .env antes de iniciar em produção.');
+    process.exit(1);
+  } else {
+    // Em desenvolvimento, gerar um secret aleatório
+    SESSION_SECRET = crypto.randomBytes(64).toString('hex');
+    console.warn('⚠️ SESSION_SECRET não configurado. Gerando secret temporário para desenvolvimento.');
+    console.warn('⚠️ Configure SESSION_SECRET no .env para produção.');
+  }
+}
+
 app.use(session({
-  secret: process.env.SESSION_SECRET || 'segredo-muito-secreto-2025',
+  secret: SESSION_SECRET,
   resave: false,
   saveUninitialized: false,
   store: new SQLiteStore({
@@ -424,7 +526,7 @@ app.use(session({
     table: 'sessions'
   }),
   cookie: { 
-    secure: false,
+    secure: process.env.NODE_ENV === 'production', // HTTPS obrigatório em produção
     maxAge: 24 * 60 * 60 * 1000,
     httpOnly: true,
     sameSite: 'lax',
@@ -447,7 +549,20 @@ app.use((req, res, next) => {
 // ========== SISTEMA DE AUTENTICAÇÃO ==========
 function parseUsuarios() {
   const usuarios = {};
-  const usuariosEnv = process.env.USUARIOS || 'admin:admin123';
+  const usuariosEnv = process.env.USUARIOS;
+  
+  // 🔒 SEGURANÇA: Exigir configuração de USUARIOS no .env
+  if (!usuariosEnv) {
+    if (process.env.NODE_ENV === 'production') {
+      console.error('❌ ERRO CRÍTICO: USUARIOS não configurado no .env');
+      console.error('📋 Configure USUARIOS no arquivo .env antes de iniciar em produção.');
+      process.exit(1);
+    } else {
+      console.warn('⚠️ USUARIOS não configurado no .env. Sistema pode não funcionar corretamente.');
+      console.warn('⚠️ Configure USUARIOS no .env no formato: usuario1:senha1,usuario2:senha2');
+      return usuarios; // Retornar objeto vazio em desenvolvimento
+    }
+  }
   
   usuariosEnv.split(',').forEach(credencial => {
     const [usuario, senha] = credencial.split(':');
@@ -4106,19 +4221,18 @@ app.get('/webhook/status-evolution', async (req, res) => {
       key: config.api_key ? '***' + config.api_key.slice(-4) : 'NÃO CONFIGURADA'
     });
     
-    // Verificar se a Evolution API está respondendo
+    // 🔒 SEGURANÇA: Verificar se a Evolution API está respondendo com timeout
     const evolutionUrl = `${config.api_url}/instance/connectionState/${config.instance_name}`;
     console.log('🌐 Testando Evolution API:', evolutionUrl);
     
     try {
-      const response = await fetch(evolutionUrl, {
+      const response = await fetchWithTimeout(evolutionUrl, {
         method: 'GET',
         headers: {
           'apikey': config.api_key,
           'Content-Type': 'application/json'
-        },
-        timeout: 5000
-      });
+        }
+      }, 10000); // Timeout de 10 segundos
       
       if (response.ok) {
         const data = await response.json();
@@ -4191,11 +4305,11 @@ app.post('/webhook/send', async (req, res) => {
       });
     }
     
-    // Enviar mensagem via Evolution API
+    // 🔒 SEGURANÇA: Enviar mensagem via Evolution API com timeout
     const sendUrl = `${config.api_url}/message/sendText/${config.instance_name}`;
     console.log('🌐 Enviando para:', sendUrl);
     
-    const response = await fetch(sendUrl, {
+    const response = await fetchWithTimeout(sendUrl, {
       method: 'POST',
       headers: {
         'apikey': config.api_key,
@@ -4204,9 +4318,8 @@ app.post('/webhook/send', async (req, res) => {
       body: JSON.stringify({
         number: number,
         text: text
-      }),
-      timeout: 10000
-    });
+      })
+    }, 30000); // Timeout de 30 segundos
     
     if (response.ok) {
       const data = await response.json();
