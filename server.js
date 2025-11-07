@@ -472,7 +472,7 @@ app.use(cors({
   origin: function (origin, callback) {
     // Permitir requisições sem origem (mobile apps, Postman, etc) apenas em desenvolvimento
     if (!origin) {
-      if (process.env.NODE_ENV !== 'production') {
+      if (process.env.NODE_ENV !== 'production' || allowedOrigins.length === 0) {
         return callback(null, true);
       } else {
         return callback(new Error('Requisições sem origem não permitidas em produção'));
@@ -1439,7 +1439,6 @@ async function injectSignedUrls(records, options = {}) {
   return results;
 }
 // ========== ROTAS DE AUTENTICAÇÃO ==========
-
 // ✅✅✅ ENDPOINT DE LOGIN COM FALLBACK PARA .ENV
 app.post('/api/login', loginLimiter, express.json(), async (req, res) => {
   // Validar dados de entrada
@@ -3763,7 +3762,6 @@ app.get('/api/check-auth', async (req, res) => {
   }
 });
 // ========== ROTAS DE CONFIGURAÇÃO EVOLUTION ==========
-
 // 🔧 OBTER CONFIGURAÇÃO DO USUÁRIO LOGADO
 app.get('/api/evolution-config', requireAuth, async (req, res) => {
   try {
@@ -5961,7 +5959,6 @@ app.get('/api/coletas/exportar', requireAuth, async (req, res) => {
   }
 });
 // ========== ENDPOINTS PARA ANEXOS ==========
-
 // Upload de anexos
 app.post('/api/anexos', requireAuth, upload.single('file'), async (req, res) => {
   try {
