@@ -748,7 +748,7 @@
                     <i class="fas fa-chart-line"></i>
                     <span>Relatórios</span>
                 </a>
-                <a href="settings.html" class="menu-item">
+                <a href="javascript:void(0)" class="menu-item" data-bs-toggle="modal" data-bs-target="#configSistemaModal" data-config-trigger="true">
                     <i class="fas fa-cog"></i>
                     <span>Configurações</span>
                 </a>
@@ -1104,12 +1104,184 @@
           </div>
         </div>
         
+    <!-- Configuração do Sistema Modal -->
+    <div class="modal fade" id="configSistemaModal" tabindex="-1" aria-labelledby="configSistemaModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="configSistemaModalLabel"><i class="fas fa-sliders-h me-2"></i>Configuração do sistema de disparo</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+          </div>
+          <div class="modal-body">
+            <p class="text-muted mb-3">
+              Ajuste como o disparador se comporta. O sistema aplica um intervalo aleatório entre os envios e, ao atingir o volume configurado, pausa automaticamente para proteger seu número contra bloqueios.
+            </p>
+            <div class="row g-3">
+              <div class="col-md-4">
+                <label class="form-label">Delay mínimo (segundos)</label>
+                <input type="number" class="form-control form-control-modern" id="configDelayMin" min="1" max="600">
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">Delay máximo (segundos)</label>
+                <input type="number" class="form-control form-control-modern" id="configDelayMax" min="1" max="600">
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">Mensagens por bloco</label>
+                <input type="number" class="form-control form-control-modern" id="configMessageLimit" min="1" max="1000">
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">Janela do bloco (min)</label>
+                <input type="number" class="form-control form-control-modern" id="configWindowMinutes" min="1" max="120">
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">Pausa automática (min)</label>
+                <input type="number" class="form-control form-control-modern" id="configCooldownMinutes" min="1" max="240">
+              </div>
+              <div class="col-12">
+                <div class="form-check form-switch mt-2">
+                  <input class="form-check-input" type="checkbox" id="configSimulateTyping">
+                  <label class="form-check-label" for="configSimulateTyping">
+                    Simular digitação antes de cada envio
+                  </label>
+                </div>
+              </div>
+            </div>
+            <div class="alert alert-modern alert-modern-info mt-3" id="configResumo"></div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-modern btn-modern-secondary" data-bs-dismiss="modal">Fechar</button>
+            <button type="button" class="btn btn-modern btn-modern-primary" id="btnAplicarConfig">
+              <i class="fas fa-save me-2"></i>
+              Aplicar ajustes
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+        
     <!-- Scripts -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script>
         // ========== CONFIGURAÇÃO DO SUPABASE ==========
         let supabaseUrl, supabaseKey, supabase;
         
+        const CONFIG_DISPARO_STORAGE_KEY = 'painelDisparoConfig';
+        const DEFAULT_DISPARO_CONFIG = {
+            delayMin: 10,
+            delayMax: 30,
+            messageLimit: 50,
+            cooldownMinutes: 15,
+            windowMinutes: 5,
+            simulateTyping: true
+        };
+        let configDisparo = { ...DEFAULT_DISPARO_CONFIG };
+
+        function getConfigResumoTexto() {
+            const typingText = configDisparo.simulateTyping ? 'Simular digitação: ativado' : 'Simular digitação: desativado';
+            return `Intervalo entre disparos: ${configDisparo.delayMin}-${configDisparo.delayMax} segundos · Limite: ${configDisparo.messageLimit} mensagens a cada ${configDisparo.windowMinutes} minuto(s) · Pausa automática: ${configDisparo.cooldownMinutes} minuto(s) · ${typingText}`;
+        }
+
+        function lerNumeroSeguro(valor, padrao, minimo, maximo) {
+            let numero = parseInt(valor, 10);
+            if (!Number.isFinite(numero)) numero = padrao;
+            if (minimo !== undefined && numero < minimo) numero = minimo;
+            if (maximo !== undefined && numero > maximo) numero = maximo;
+            return numero;
+        }
+
+        function atualizarResumoConfig() {
+            const resumo = document.getElementById('configResumo');
+            if (resumo) {
+                resumo.innerHTML = `
+                    <strong>Intervalo entre disparos:</strong> ${configDisparo.delayMin}-${configDisparo.delayMax} segundos<br>
+                    <strong>Limite por bloco:</strong> ${configDisparo.messageLimit} mensagens a cada ${configDisparo.windowMinutes} minuto(s)<br>
+                    <strong>Pausa automática:</strong> ${configDisparo.cooldownMinutes} minuto(s) até a retomada
+                `;
+            }
+        }
+
+        function salvarConfigDisparo() {
+            localStorage.setItem(CONFIG_DISPARO_STORAGE_KEY, JSON.stringify(configDisparo));
+        }
+
+        function aplicarConfigDisparo(event, silencioso = false) {
+            if (event && typeof event.preventDefault === 'function') {
+                event.preventDefault();
+            }
+
+            const delayMinInput = document.getElementById('configDelayMin');
+            const delayMaxInput = document.getElementById('configDelayMax');
+            const messageLimitInput = document.getElementById('configMessageLimit');
+            const cooldownMinutesInput = document.getElementById('configCooldownMinutes');
+            const windowMinutesInput = document.getElementById('configWindowMinutes');
+            const simulateTypingInput = document.getElementById('configSimulateTyping');
+
+            const delayMin = lerNumeroSeguro(delayMinInput.value, configDisparo.delayMin, 1, 600);
+            let delayMax = lerNumeroSeguro(delayMaxInput.value, configDisparo.delayMax, delayMin, 600);
+            if (delayMax < delayMin) delayMax = delayMin;
+
+            const messageLimit = lerNumeroSeguro(messageLimitInput.value, configDisparo.messageLimit, 1, 1000);
+            const cooldownMinutes = lerNumeroSeguro(cooldownMinutesInput.value, configDisparo.cooldownMinutes, 1, 240);
+            const windowMinutes = lerNumeroSeguro(windowMinutesInput.value, configDisparo.windowMinutes, 1, 120);
+            const simulateTyping = simulateTypingInput?.checked ?? configDisparo.simulateTyping;
+
+            configDisparo = {
+                delayMin,
+                delayMax,
+                messageLimit,
+                cooldownMinutes,
+                windowMinutes,
+                simulateTyping
+            };
+
+            delayMinInput.value = configDisparo.delayMin;
+            delayMaxInput.value = configDisparo.delayMax;
+            messageLimitInput.value = configDisparo.messageLimit;
+            cooldownMinutesInput.value = configDisparo.cooldownMinutes;
+            windowMinutesInput.value = configDisparo.windowMinutes;
+            if (simulateTypingInput) simulateTypingInput.checked = !!configDisparo.simulateTyping;
+
+            salvarConfigDisparo();
+            atualizarResumoConfig();
+            if (!silencioso) {
+                mostrarSucesso('Configurações de disparo atualizadas com sucesso!');
+            }
+        }
+
+        function carregarConfigDisparo() {
+            try {
+                const stored = localStorage.getItem(CONFIG_DISPARO_STORAGE_KEY);
+                if (stored) {
+                    const parsed = JSON.parse(stored);
+                    configDisparo = {
+                        ...DEFAULT_DISPARO_CONFIG,
+                        ...parsed
+                    };
+                }
+            } catch (error) {
+                console.warn('⚠️ Não foi possível carregar config de disparo:', error);
+                configDisparo = { ...DEFAULT_DISPARO_CONFIG };
+            }
+
+            const delayMinInput = document.getElementById('configDelayMin');
+            const delayMaxInput = document.getElementById('configDelayMax');
+            const messageLimitInput = document.getElementById('configMessageLimit');
+            const cooldownMinutesInput = document.getElementById('configCooldownMinutes');
+            const windowMinutesInput = document.getElementById('configWindowMinutes');
+            const simulateTypingInput = document.getElementById('configSimulateTyping');
+
+            if (delayMinInput && delayMaxInput && messageLimitInput && cooldownMinutesInput && windowMinutesInput) {
+                delayMinInput.value = configDisparo.delayMin;
+                delayMaxInput.value = configDisparo.delayMax;
+                messageLimitInput.value = configDisparo.messageLimit;
+                cooldownMinutesInput.value = configDisparo.cooldownMinutes;
+                windowMinutesInput.value = configDisparo.windowMinutes;
+                if (simulateTypingInput) simulateTypingInput.checked = !!configDisparo.simulateTyping;
+                atualizarResumoConfig();
+                aplicarConfigDisparo(null, true);
+            }
+        }
+
 async function inicializarSupabase() {
     try {
         const response = await fetch('/api/supabase-config');
@@ -1222,6 +1394,8 @@ const estados = [
                 console.log('⚠️ Modo offline - usando dados mockados');
             }
             
+            carregarConfigDisparo();
+            
             await verificarAutenticacao();
             await carregarEstatisticas();
             await carregarFiltros();
@@ -1229,6 +1403,22 @@ const estados = [
             configurarUploadImagem();
             
             console.log('✅ Painel inicializado com sucesso!');
+
+            const configModalEl = document.getElementById('configSistemaModal');
+            if (configModalEl && window.bootstrap) {
+                const triggerElement = document.querySelector('[data-config-trigger="true"]');
+                configModalEl.addEventListener('shown.bs.modal', () => {
+                    const focusTarget = configModalEl.querySelector('#configDelayMin');
+                    if (focusTarget) {
+                        focusTarget.focus();
+                    }
+                });
+                configModalEl.addEventListener('hidden.bs.modal', () => {
+                    if (triggerElement) {
+                        triggerElement.focus();
+                    }
+                });
+            }
         });
 
         // ========== AUTENTICAÇÃO ==========
@@ -1534,6 +1724,17 @@ const estados = [
             document.getElementById('btnPararDisparo').addEventListener('click', pararDisparo);
             document.getElementById('btnBuscar').addEventListener('click', aplicarFiltros);
             document.getElementById('btnVerificarEvolution').addEventListener('click', verificarEvolutionAPI);
+            const btnAplicarConfig = document.getElementById('btnAplicarConfig');
+            if (btnAplicarConfig) {
+                btnAplicarConfig.addEventListener('click', aplicarConfigDisparo);
+            }
+            ['configDelayMin','configDelayMax','configMessageLimit','configCooldownMinutes','configWindowMinutes','configSimulateTyping'].forEach(id => {
+                const input = document.getElementById(id);
+                if (input) {
+                    input.addEventListener('change', () => aplicarConfigDisparo(null, true));
+                    input.addEventListener('blur', () => aplicarConfigDisparo(null, true));
+                }
+            });
 
             // Filtros
             document.getElementById('filtroClasse').addEventListener('change', aplicarFiltros);
@@ -2149,7 +2350,7 @@ const estados = [
         }
 
         // ========== TESTAR MENSAGEM ==========
-        function testarMensagem() {
+        async function testarMensagem() {
             const mensagem = document.getElementById('messageText').value;
             
             if (!mensagem.trim()) {
@@ -2166,14 +2367,23 @@ const estados = [
                 tipo_veiculo: 'Toco'
             };
 
-            const mensagemTeste = mensagem
+            const mensagemBase = mensagem
                 .replace(/\{\{name\}\}/g, exemplo.name)
                 .replace(/\{\{telefone\}\}/g, exemplo.telefone)
                 .replace(/\{\{estado\}\}/g, exemplo.estado)
                 .replace(/\{\{classe_veiculo\}\}/g, exemplo.classe_veiculo)
                 .replace(/\{\{tipo_veiculo\}\}/g, exemplo.tipo_veiculo);
 
-            mostrarSucesso(`Mensagem de teste:<br><br>"${mensagemTeste}"`);
+            const mensagemVariada = await gerarMensagemVariada(mensagemBase, {
+                nome: exemplo.name,
+                telefone: exemplo.telefone,
+                estado: exemplo.estado,
+                classeVeiculo: exemplo.classe_veiculo,
+                tipoVeiculo: exemplo.tipo_veiculo,
+                origem: 'teste'
+            });
+
+            mostrarSucesso(`Mensagem de teste:<br><br>"${mensagemVariada}"`);
         }
 
         // ========== TESTAR ENVIO REAL ==========
@@ -2193,12 +2403,20 @@ const estados = [
   }
   
             // Personalizar mensagem
-            const mensagemPersonalizada = mensagem
+            const mensagemBase = mensagem
                 .replace(/\{\{name\}\}/g, 'Motorista Teste')
                 .replace(/\{\{telefone\}\}/g, telefone)
                 .replace(/\{\{estado\}\}/g, 'SP')
                 .replace(/\{\{classe_veiculo\}\}/g, currentClass || 'leve')
                 .replace(/\{\{tipo_veiculo\}\}/g, 'Toco');
+            const mensagemPersonalizada = await gerarMensagemVariada(mensagemBase, {
+                nome: 'Motorista Teste',
+                telefone,
+                estado: 'SP',
+                classeVeiculo: currentClass || 'leve',
+                tipoVeiculo: 'Toco',
+                origem: 'teste-envio'
+            });
 
             try {
                 adicionarLog(`🔄 Enviando teste para ${telefone}...`, 'info');
@@ -2228,6 +2446,11 @@ const estados = [
                 formData.append('message', mensagemPersonalizada);
                 formData.append('usuario', userEmail);
                 formData.append('userId', userId);
+                formData.append('maxMessages', configDisparo.messageLimit);
+                formData.append('cooldownMinutes', configDisparo.cooldownMinutes);
+                formData.append('windowMinutes', configDisparo.windowMinutes);
+                formData.append('delayMin', configDisparo.delayMin);
+                formData.append('delayMax', configDisparo.delayMax);
                 if (imageFile) {
                     formData.append('media', imageFile);
                 }
@@ -2237,23 +2460,38 @@ const estados = [
                     body: formData
                 });
 
+                if (response.status === 429) {
+                    const data = await response.json().catch(() => ({}));
+                    const restanteMin = data.remainingMinutes ?? 15;
+                    adicionarLog(`⛔ Limite de envios atingido no teste. Aguarde ${restanteMin} minuto(s).`, 'warning');
+                    mostrarAviso(`Limite de envios atingido.<br>Aguarde ${restanteMin} minuto(s) antes de reenviar.`);
+                    return;
+                }
+
                 if (response.ok) {
                     const data = await response.json();
                     if (data.success) {
-                    adicionarLog(`✅ Teste enviado com sucesso para ${telefone}`, 'success');
-                    if (imageFile) {
-                        adicionarLog(`🖼️ Imagem enviada: ${imageFile.name}`, 'info');
-                    }
+                        adicionarLog(`✅ Teste enviado com sucesso para ${telefone}`, 'success');
+                        if (imageFile) {
+                            adicionarLog(`🖼️ Imagem enviada: ${imageFile.name}`, 'info');
+                        }
                         adicionarLog(`🏷️ Instância usada: ${data.instancia || 'N/A'}`, 'info');
                         mostrarSucesso(`Mensagem de teste enviada para ${telefone}`);
-            } else {
+                        if (data.cooldownTriggered) {
+                            const cooldownMsg = data.cooldownMinutes
+                                ? `⏳ Limite atingido. Pausa automática de ${data.cooldownMinutes} minuto(s) iniciada.`
+                                : '⏳ Limite atingido. Pausa automática iniciada.';
+                            adicionarLog(cooldownMsg, 'warning');
+                            mostrarAviso(`${cooldownMsg}<br>Retome os envios após a pausa.`);
+                        }
+                    } else {
                         adicionarLog(`❌ Erro no teste: ${data.error || data.message}`, 'danger');
                         if (data.solution) {
                             adicionarLog(`💡 Solução: ${data.solution}`, 'warning');
                         }
                         mostrarErro(`Erro ao enviar teste: ${data.error || data.message}`);
-          }
-        } else {
+                    }
+                } else {
                     const error = await response.text();
                     adicionarLog(`❌ Erro HTTP ${response.status}: ${error}`, 'danger');
                     mostrarErro(`Erro ao enviar teste: HTTP ${response.status}`);
@@ -2368,9 +2606,78 @@ const estados = [
 
         // ========== GERAR DELAY ALEATÓRIO ==========
         function gerarDelayAleatorio() {
-            const min = 20; // 20 segundos
-            const max = 80; // 80 segundos
-            return Math.floor(Math.random() * (max - min + 1)) + min;
+            const min = Math.max(1, parseInt(configDisparo.delayMin, 10) || DEFAULT_DISPARO_CONFIG.delayMin);
+            const maxConfig = Math.max(min, parseInt(configDisparo.delayMax, 10) || min);
+            if (maxConfig <= min) {
+                return min;
+            }
+            return Math.floor(Math.random() * (maxConfig - min + 1)) + min;
+        }
+
+        function obterUsuarioAtual() {
+            try {
+                const usuarioLocal = localStorage.getItem('loggedInUser');
+                if (usuarioLocal) {
+                    const parsed = JSON.parse(usuarioLocal);
+                    return {
+                        email: parsed.email || parsed.username || parsed.user || null,
+                        id: parsed.id || parsed.user_id || parsed.userId || null
+                    };
+                }
+            } catch (error) {
+                console.warn('⚠️ Não foi possível ler loggedInUser do localStorage:', error);
+            }
+
+            if (currentUser && typeof currentUser === 'string' && currentUser.includes('@')) {
+                return { email: currentUser };
+            }
+
+            return null;
+        }
+
+        async function gerarMensagemVariada(textoOriginal, contextoExtra = {}) {
+            if (!textoOriginal || !textoOriginal.trim()) {
+                return textoOriginal;
+            }
+
+            try {
+                const usuarioAtual = obterUsuarioAtual();
+                const headers = {
+                    'Content-Type': 'application/json'
+                };
+
+                if (usuarioAtual?.email) {
+                    headers['X-User-Email'] = usuarioAtual.email;
+                }
+                if (usuarioAtual?.id) {
+                    headers['X-User-Id'] = usuarioAtual.id;
+                }
+
+                const response = await fetch('/api/mensagens/variar', {
+                    method: 'POST',
+                    headers,
+                    credentials: 'include',
+                    body: JSON.stringify({
+                        mensagem: textoOriginal,
+                        contexto: contextoExtra
+                    })
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data && data.mensagem) {
+                        return data.mensagem;
+                    }
+                } else if (response.status === 401) {
+                    console.warn('⚠️ Sessão expirada ao variar mensagem. Usando texto original.');
+                } else {
+                    console.warn(`⚠️ Erro ao variar mensagem: HTTP ${response.status}`);
+                }
+            } catch (error) {
+                console.warn('⚠️ Não foi possível gerar variação da mensagem:', error);
+            }
+
+            return textoOriginal;
         }
 
         // ========== INICIAR DISPARO ==========
@@ -2410,9 +2717,13 @@ const estados = [
             if (imageFile) {
                 adicionarLog(`🖼️ Imagem anexada: ${imageFile.name}`, 'info');
             }
+            adicionarLog(`⚙️ Configuração: ${getConfigResumoTexto()}`, 'info');
 
             // Converter Set em Array para ter controle de índice
             const motoristasArray = Array.from(selectedMotoristas);
+
+            let motivoCancelamento = null;
+            let minutosCooldownRestante = configDisparo.cooldownMinutes;
 
             // Processar envios
             for (let i = 0; i < motoristasArray.length; i++) {
@@ -2439,12 +2750,21 @@ const estados = [
                     if (disparoCancelado) break;
                 }
 
-                const mensagemPersonalizada = mensagem
+                const mensagemBase = mensagem
                     .replace(/\{\{name\}\}/g, motorista.nome || 'Motorista')
                     .replace(/\{\{telefone\}\}/g, motorista.telefone1 || '')
                     .replace(/\{\{estado\}\}/g, motorista.estado || '')
                     .replace(/\{\{classe_veiculo\}\}/g, motorista.classe_veiculo || '')
                     .replace(/\{\{tipo_veiculo\}\}/g, motorista.tipo_veiculo || '');
+                const mensagemPersonalizada = await gerarMensagemVariada(mensagemBase, {
+                    nome: motorista.nome,
+                    telefone: motorista.telefone1,
+                    estado: motorista.estado,
+                    classeVeiculo: motorista.classe_veiculo,
+                    tipoVeiculo: motorista.tipo_veiculo,
+                    ordemEnvio: i + 1,
+                    totalSelecionados: motoristasArray.length
+                });
 
                 try {
                     // Buscar credenciais da Evolution API do usuário logado
@@ -2470,6 +2790,11 @@ const estados = [
                     formData.append('message', mensagemPersonalizada);
                     formData.append('usuario', userEmail);
                     formData.append('userId', userId);
+                    formData.append('maxMessages', configDisparo.messageLimit);
+                    formData.append('cooldownMinutes', configDisparo.cooldownMinutes);
+                    formData.append('windowMinutes', configDisparo.windowMinutes);
+                    formData.append('delayMin', configDisparo.delayMin);
+                    formData.append('delayMax', configDisparo.delayMax);
                     if (imageFile) {
                         formData.append('media', imageFile);
                     }
@@ -2479,9 +2804,23 @@ const estados = [
                         body: formData
                     });
 
+                    let data = null;
+
+                    if (response.status === 429) {
+                        data = await response.json().catch(() => ({}));
+                        totalFalhas++;
+                        const restanteMin = data.remainingMinutes ?? 15;
+                        adicionarLog(`⛔ Limite de envios atingido. Pausa obrigatória de ${restanteMin} minuto(s).`, 'warning');
+                        mostrarAviso(`Limite de envios atingido.<br>Aguarde ${restanteMin} minuto(s) antes de continuar.`);
+                        disparoCancelado = true;
+                        motivoCancelamento = 'cooldown';
+                        minutosCooldownRestante = restanteMin;
+                        break;
+                    }
+
                     if (response.ok) {
-                        const data = await response.json();
-                        if (data.success) {
+                        data = await response.json().catch(() => ({}));
+                        if (data?.success) {
                             totalEnviados++;
                             adicionarLog(`✅ Enviado para ${motorista.nome} (${motorista.telefone1})`, 'success');
                             if (imageFile) {
@@ -2490,21 +2829,31 @@ const estados = [
                             if (data.instancia) {
                                 adicionarLog(`🏷️ Usando instância: ${data.instancia}`, 'info');
                             }
+                            if (data.cooldownTriggered) {
+                                const cooldownMsg = data.cooldownMinutes
+                                    ? `⏳ Limite atingido. Pausa automática de ${data.cooldownMinutes} minuto(s) iniciada.`
+                                    : '⏳ Limite atingido. Pausa automática iniciada.';
+                                adicionarLog(cooldownMsg, 'warning');
+                                mostrarAviso(`${cooldownMsg}<br>Retome os envios após a pausa.`);
+                                disparoCancelado = true;
+                                motivoCancelamento = 'cooldown';
+                                minutosCooldownRestante = data.cooldownMinutes || minutosCooldownRestante;
+                                break;
+                            }
                         } else {
                             totalFalhas++;
-                            const errorMsg = data.error || data.message || 'Erro desconhecido';
+                            const errorMsg = data?.error || data?.message || 'Erro desconhecido';
                             adicionarLog(`❌ Falha para ${motorista.nome}: ${errorMsg}`, 'danger');
                             
-                            // Se é erro de credenciais, mostrar alerta especial
                             if (errorMsg.includes('Credenciais da Evolution API não configuradas')) {
                                 adicionarLog(`⚠️ CONFIGURE SUAS CREDENCIAIS em Settings > Evolution API`, 'warning');
                             }
                             
-                            if (data.solution) {
+                            if (data?.solution) {
                                 adicionarLog(`💡 ${data.solution}`, 'warning');
                             }
                             
-                            if (data.details) {
+                            if (data?.details) {
                                 adicionarLog(`📋 Detalhes: ${data.details}`, 'info');
                             }
                         }
@@ -2545,8 +2894,13 @@ const estados = [
 
             // Mostrar mensagem final baseado se foi cancelado ou concluído
             if (disparoCancelado) {
-                adicionarLog(`⏹️ Disparo interrompido! Enviados: ${totalEnviados}, Falhas: ${totalFalhas}`, 'warning');
-                mostrarAviso(`Disparo interrompido!<br>Enviados: ${totalEnviados}<br>Falhas: ${totalFalhas}`);
+                if (motivoCancelamento === 'cooldown') {
+                    adicionarLog(`⏹️ Disparo interrompido devido ao limite de mensagens. Aguarde ${minutosCooldownRestante} minuto(s) para retomar.`, 'warning');
+                    mostrarAviso(`Disparo interrompido devido ao limite de mensagens.<br>Aguarde ${minutosCooldownRestante} minuto(s) para retomar.`);
+                } else {
+                    adicionarLog(`⏹️ Disparo interrompido! Enviados: ${totalEnviados}, Falhas: ${totalFalhas}`, 'warning');
+                    mostrarAviso(`Disparo interrompido!<br>Enviados: ${totalEnviados}<br>Falhas: ${totalFalhas}`);
+                }
             } else {
                 adicionarLog(`🎉 Disparo concluído! Enviados: ${totalEnviados}, Falhas: ${totalFalhas}`, 'success');
                 mostrarSucesso(`Disparo concluído!<br>Enviados: ${totalEnviados}<br>Falhas: ${totalFalhas}`);

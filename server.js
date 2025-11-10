@@ -456,6 +456,166 @@ async function listarConfiguracoesSimples() {
   }
 }
 
+const DEFAULT_DISPARO_CONFIG = {
+  threshold: 50,
+  windowMs: 5 * 60 * 1000,
+  cooldownMs: 15 * 60 * 1000
+};
+
+const userDisparoConfig = new Map();
+const userDisparoState = new Map(); // userId => { count, lastReset, cooldownUntil }
+
+async function simulateTypingAction({ enabled, evolutionUrl, instanceName, apiKey, formattedNumber, message }) {
+  if (!enabled) {
+    return;
+  }
+
+  const charCount = (message || '').length;
+  let typingSeconds = Math.round(charCount / 12) + 2;
+  typingSeconds = Math.max(3, Math.min(typingSeconds, 15));
+
+  const typingUrl = `${evolutionUrl}/message/sendTyping/${instanceName}`;
+
+  try {
+    const response = await fetch(typingUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': apiKey
+      },
+      body: JSON.stringify({
+        number: formattedNumber,
+        time: typingSeconds
+      }),
+      timeout: 15000
+    });
+
+    if (!response.ok) {
+      console.warn(`⚠️ Evolution não aceitou simulação de digitação (${response.status}).`);
+    } else {
+      console.log(`⌨️ Simulação de digitação enviada por ${typingSeconds}s para ${formattedNumber}`);
+    }
+  } catch (error) {
+    console.warn('⚠️ Falha ao simular digitação:', error.message);
+  }
+
+  await new Promise(resolve => setTimeout(resolve, typingSeconds * 1000));
+}
+
+function getUserConfig(userId) {
+  if (!userId) {
+    return { ...DEFAULT_DISPARO_CONFIG };
+  }
+  const stored = userDisparoConfig.get(userId);
+  return { ...DEFAULT_DISPARO_CONFIG, ...(stored || {}) };
+}
+
+function setUserConfig(userId, overrides = {}) {
+  if (!userId || typeof overrides !== 'object') return;
+  const sanitized = {};
+  if (overrides.threshold && Number.isFinite(overrides.threshold)) {
+    const threshold = Math.max(1, Math.min(1000, Math.floor(overrides.threshold)));
+    sanitized.threshold = threshold;
+  }
+  if (overrides.windowMs && Number.isFinite(overrides.windowMs)) {
+    const windowMs = Math.max(60 * 1000, Math.min(120 * 60 * 1000, Math.floor(overrides.windowMs)));
+    sanitized.windowMs = windowMs;
+  }
+  if (overrides.cooldownMs && Number.isFinite(overrides.cooldownMs)) {
+    const cooldownMs = Math.max(60 * 1000, Math.min(240 * 60 * 1000, Math.floor(overrides.cooldownMs)));
+    sanitized.cooldownMs = cooldownMs;
+  }
+  if (Object.keys(sanitized).length === 0) return;
+
+  const current = userDisparoConfig.get(userId) || {};
+  const updated = { ...current, ...sanitized };
+  userDisparoConfig.set(userId, updated);
+  console.log(`⚙️ Configuração de disparo ajustada para usuário ${userId}:`, updated);
+}
+
+function getUserCooldownState(userId) {
+  if (!userId) return { blocked: false };
+  const now = Date.now();
+  const state = userDisparoState.get(userId);
+  if (state && state.cooldownUntil && now < state.cooldownUntil) {
+    return { blocked: true, remainingMs: state.cooldownUntil - now };
+  }
+  if (state && state.cooldownUntil && now >= state.cooldownUntil) {
+    state.cooldownUntil = 0;
+    state.count = 0;
+    state.lastReset = now;
+    userDisparoState.set(userId, state);
+  }
+  return { blocked: false };
+}
+
+function registerUserSend(userId) {
+  if (!userId) {
+    return {
+      cooldownTriggered: false,
+      cooldownUntil: null,
+      cooldownMinutes: Math.ceil(DEFAULT_DISPARO_CONFIG.cooldownMs / 60000)
+    };
+  }
+
+  const config = getUserConfig(userId);
+  const threshold = Math.max(1, Math.floor(config.threshold || DEFAULT_DISPARO_CONFIG.threshold));
+  const windowMs = Math.max(1, Math.floor(config.windowMs || DEFAULT_DISPARO_CONFIG.windowMs));
+  const cooldownMs = Math.max(1, Math.floor(config.cooldownMs || DEFAULT_DISPARO_CONFIG.cooldownMs));
+
+  const now = Date.now();
+  let state = userDisparoState.get(userId);
+  if (!state) {
+    state = { count: 0, lastReset: now, cooldownUntil: 0 };
+  }
+
+  if (state.cooldownUntil && now >= state.cooldownUntil) {
+    state.cooldownUntil = 0;
+  }
+
+  if (!state.lastReset || (windowMs && now - state.lastReset > windowMs)) {
+    state.count = 0;
+    state.lastReset = now;
+  }
+
+  state.count += 1;
+  let cooldownTriggered = false;
+  if (state.count >= threshold) {
+    state.cooldownUntil = now + cooldownMs;
+    cooldownTriggered = true;
+    state.count = 0;
+    state.lastReset = now;
+    console.log(`⏳ Cooldown de disparo ativado para usuário ${userId} até ${new Date(state.cooldownUntil).toISOString()}`);
+  }
+
+  userDisparoState.set(userId, state);
+  return {
+    cooldownTriggered,
+    cooldownUntil: state.cooldownUntil || null,
+    cooldownMinutes: Math.ceil(cooldownMs / 60000)
+  };
+}
+
+function getCooldownStatus(userId) {
+  const state = userDisparoState.get(userId);
+  if (!state || !state.cooldownUntil) {
+    return { active: false };
+  }
+  const now = Date.now();
+  if (now >= state.cooldownUntil) {
+    state.cooldownUntil = 0;
+    state.count = 0;
+    state.lastReset = now;
+    userDisparoState.set(userId, state);
+    return { active: false };
+  }
+  return {
+    active: true,
+    remainingMs: state.cooldownUntil - now,
+    cooldownUntil: state.cooldownUntil
+  };
+}
+
 // ========== MIDDLEWARES ==========
 // 🔒 SEGURANÇA: CORS configurado com validação dinâmica de origem
 const allowedOrigins = process.env.ALLOWED_ORIGINS 
@@ -894,6 +1054,98 @@ const TIPOS_CARROCERIA_MAP = {
   'nao_informado': 'nao_informado'
 };
 
+const VALID_UF = [
+  'AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'MG',
+  'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO'
+];
+
+const MOTORISTA_EMAIL_DOMAINS = [
+  'multimodal.app',
+  'logmultimodal.com.br',
+  'multimodal.com.br',
+  'multimodal.com'
+];
+
+const CARROCERIA_LABELS = {
+  bau: 'Baú',
+  bau_frigorifico: 'Baú Frigorífico',
+  bau_refrigerado: 'Baú Refrigerado',
+  sider: 'Sider',
+  cacamba: 'Caçamba',
+  graneleiro: 'Graneleiro',
+  plataforma: 'Plataforma',
+  prancha: 'Prancha',
+  bitrem: 'Bitrem',
+  carreta: 'Carreta',
+  carreta_ls: 'Carreta LS',
+  rodotrem: 'Rodotrem',
+  vanderleia: 'Vanderleia',
+  apenas_cavalo: 'Apenas cavalo',
+  cegonheiro: 'Cegonheiro',
+  gaiola: 'Gaiola',
+  tanque: 'Tanque',
+  grade_baixa: 'Grade baixa',
+  basculante: 'Basculante',
+  porta_container_20: 'Porta contêiner 20',
+  porta_container_40: 'Porta contêiner 40'
+};
+
+const VEHICLE_CLASS_OPTIONS = {
+  leve: {
+    label: 'Veículos leves (Fiorino, 3/4, Toco, VLC)',
+    keywords: ['leve', 'leves', '1', 'veiculo leve', 'veiculos leves'],
+    tiposVeiculo: ['Fiorino', '3/4', 'Toco', 'VLC'],
+    carrocerias: ['bau', 'bau_frigorifico', 'bau_refrigerado', 'cacamba', 'prancha']
+  },
+  medio: {
+    label: 'Veículos médios (Bitruck, Truck)',
+    keywords: ['medio', 'médio', 'medios', 'médios', '2', 'veiculo medio', 'veiculos medios'],
+    tiposVeiculo: ['Bitruck', 'Truck'],
+    carrocerias: ['bau', 'bau_frigorifico', 'sider', 'graneleiro', 'plataforma', 'basculante']
+  },
+  pesado: {
+    label: 'Pesados (Carreta, Bitrem, Rodotrem...)',
+    keywords: ['pesado', 'pesados', '3', 'veiculo pesado', 'veiculos pesados'],
+    tiposVeiculo: ['Bitrem', 'Carreta', 'Carreta LS', 'Rodotrem', 'Vanderleia'],
+    carrocerias: [
+      'bau', 'sider', 'graneleiro', 'grade_baixa', 'bitrem', 'carreta',
+      'carreta_ls', 'rodotrem', 'vanderleia', 'apenas_cavalo', 'cegonheiro',
+      'gaiola', 'tanque', 'porta_container_20', 'porta_container_40', 'basculante'
+    ]
+  }
+};
+
+function formatCarroceriaLabel(value) {
+  if (!value) return '';
+  return CARROCERIA_LABELS[value] || value.replace(/_/g, ' ').replace(/\b\w/g, letra => letra.toUpperCase());
+}
+
+function resolveVehicleClass(input) {
+  if (!input) return null;
+  const normalized = normalizeText(input);
+  for (const [value, info] of Object.entries(VEHICLE_CLASS_OPTIONS)) {
+    if (normalized === normalizeText(value)) return value;
+    if (info.keywords && info.keywords.some(keyword => normalizeText(keyword) === normalized)) {
+      return value;
+    }
+  }
+  return null;
+}
+
+function resolveVehicleType(classKey, input) {
+  if (!classKey || !VEHICLE_CLASS_OPTIONS[classKey] || !input) return null;
+  const normalized = normalizeText(input);
+  const match = VEHICLE_CLASS_OPTIONS[classKey].tiposVeiculo.find(tipo => normalizeText(tipo) === normalized);
+  return match || null;
+}
+
+function resolveCarroceria(classKey, input) {
+  if (!classKey || !VEHICLE_CLASS_OPTIONS[classKey] || !input) return null;
+  const normalized = normalizeTipoCarroceria(input);
+  if (!normalized || normalized === 'nao_informado') return null;
+  return VEHICLE_CLASS_OPTIONS[classKey].carrocerias.includes(normalized) ? normalized : null;
+}
+
 // Função para normalizar texto (remove acentos, converte para minúsculas)
 function normalizeText(text) {
   if (!text) return '';
@@ -1148,7 +1400,7 @@ function parseJsonArray(value) {
 async function getSupabaseUserFromRequest(req) {
   const authHeader = req.headers.authorization || '';
   if (!authHeader.toLowerCase().startsWith('bearer ')) {
-    return { error: { status: 401, message: 'Sessão não encontrada. Faça login com sua conta Google.' } };
+    return { error: { status: 401, message: 'Sessão não encontrada. Faça login pelo assistente do portal do motorista.' } };
   }
 
   const token = authHeader.slice(7).trim();
@@ -1438,6 +1690,227 @@ async function injectSignedUrls(records, options = {}) {
   }
   return results;
 }
+
+function buildMotoristaEmail(phone) {
+  const digits = normalizePhone(phone);
+  if (!digits) {
+    return `motorista@multimodal.app`;
+  }
+  return `motorista+${digits}@multimodal.app`;
+}
+
+function buildMotoristaEmailVariations(rawPhone) {
+  const digitsOnly = (rawPhone || '').toString().replace(/\D/g, '');
+  const candidates = new Set();
+  const phoneCandidates = new Set();
+
+  if (digitsOnly) {
+    phoneCandidates.add(digitsOnly);
+    if (digitsOnly.startsWith('55') && digitsOnly.length > 2) {
+      phoneCandidates.add(digitsOnly.slice(2));
+    }
+    if (digitsOnly.length > 11) {
+      phoneCandidates.add(digitsOnly.slice(-11));
+    }
+  }
+
+  phoneCandidates.add(normalizePhone(rawPhone));
+
+  Array.from(phoneCandidates)
+    .filter(Boolean)
+    .forEach(digits => {
+      MOTORISTA_EMAIL_DOMAINS.forEach(domain => {
+        candidates.add(`motorista+${digits}@${domain}`);
+      });
+    });
+
+  return Array.from(candidates);
+}
+
+function formatE164Phone(phone) {
+  const digits = normalizePhone(phone);
+  if (!digits) return '';
+  if (digits.startsWith('55')) {
+    return `+${digits}`;
+  }
+  return `+55${digits}`;
+}
+
+function createSupabaseAuthClient() {
+  return createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY, {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false
+    }
+  });
+}
+
+async function ensureMotoristaRecordForAuthUser({ authUserId, nome, telefone, estado, classeVeiculo, tipoVeiculo, tipoCarroceria }) {
+  if (!authUserId) {
+    throw new Error('authUserId é obrigatório para vincular motorista.');
+  }
+
+  const normalizedPhone = normalizePhone(telefone);
+  const normalizedTipoVeiculo = tipoVeiculo ? normalizeTipoVeiculo(tipoVeiculo) : null;
+  const normalizedTipoCarroceria = tipoCarroceria ? normalizeTipoCarroceria(tipoCarroceria) : null;
+  let existingMotorista = null;
+
+  const { data: motoristaByAuth, error: motoristaByAuthError } = await supabaseAdmin
+    .from('motoristas')
+    .select(MOTORISTA_SELECT_FIELDS)
+    .eq('auth_user_id', authUserId)
+    .maybeSingle();
+
+  if (motoristaByAuthError && motoristaByAuthError.code !== 'PGRST116') {
+    throw motoristaByAuthError;
+  }
+
+  if (motoristaByAuth) {
+    existingMotorista = motoristaByAuth;
+  } else if (normalizedPhone) {
+    const motoristasPorTelefone = await fetchMotoristasByPhone(normalizedPhone);
+    existingMotorista = motoristasPorTelefone.find(m => !m.auth_user_id || m.auth_user_id === authUserId) || null;
+  }
+
+  if (existingMotorista) {
+    const updatePayload = {};
+    if (nome && nome.trim() && (!existingMotorista.nome || existingMotorista.nome.trim() !== nome.trim())) {
+      updatePayload.nome = nome.trim();
+    }
+    if (normalizedPhone && normalizedPhone !== existingMotorista.telefone1) {
+      updatePayload.telefone1 = normalizedPhone;
+    }
+    if (!existingMotorista.auth_user_id) {
+      updatePayload.auth_user_id = authUserId;
+    }
+    if (estado && estado.length === 2 && estado !== existingMotorista.estado) {
+      updatePayload.estado = estado;
+    }
+    if (classeVeiculo && classeVeiculo !== existingMotorista.classe_veiculo) {
+      updatePayload.classe_veiculo = classeVeiculo;
+    }
+    if (normalizedTipoVeiculo && normalizedTipoVeiculo !== existingMotorista.tipo_veiculo) {
+      updatePayload.tipo_veiculo = normalizedTipoVeiculo;
+    }
+    if (normalizedTipoCarroceria && normalizedTipoCarroceria !== existingMotorista.tipo_carroceria) {
+      updatePayload.tipo_carroceria = normalizedTipoCarroceria;
+    }
+    if (!existingMotorista.created_by_departamento || existingMotorista.created_by_departamento !== 'portal-motorista') {
+      updatePayload.created_by_departamento = 'portal-motorista';
+    }
+
+    if (Object.keys(updatePayload).length > 0) {
+      const { data: atualizado, error: updateError } = await supabaseAdmin
+        .from('motoristas')
+        .update(updatePayload)
+        .eq('id', existingMotorista.id)
+        .select(MOTORISTA_SELECT_FIELDS)
+        .single();
+
+      if (updateError) {
+        throw updateError;
+      }
+
+      return atualizado;
+    }
+
+    return existingMotorista;
+  }
+
+  const insertPayload = {
+    nome: nome || 'Motorista',
+    telefone1: normalizedPhone || null,
+    auth_user_id: authUserId,
+    status: 'cadastro_pendente',
+    created_by_departamento: 'portal-motorista',
+    created_by: authUserId,
+    usuario_id: authUserId,
+    estado: estado && estado.length === 2 ? estado : null,
+    classe_veiculo: classeVeiculo || 'Não informado',
+    tipo_veiculo: normalizedTipoVeiculo || 'Não informado',
+    tipo_carroceria: normalizedTipoCarroceria || 'Não informado'
+  };
+
+  const { data: novoMotorista, error: insertError } = await supabaseAdmin
+    .from('motoristas')
+    .insert(insertPayload)
+    .select(MOTORISTA_SELECT_FIELDS)
+    .single();
+
+  if (insertError) {
+    throw insertError;
+  }
+
+  return novoMotorista;
+}
+
+async function requireMotoristaAuth(req) {
+  if (req.session && req.session.motorista && req.session.motorista.motoristaId) {
+    try {
+      const motoristaId = req.session.motorista.motoristaId;
+      const { data: motorista, error } = await supabaseAdmin
+        .from('motoristas')
+        .select(MOTORISTA_SELECT_FIELDS)
+        .eq('id', motoristaId)
+        .maybeSingle();
+
+      if (error && error.code !== 'PGRST116') {
+        throw error;
+      }
+
+      if (!motorista) {
+        delete req.session.motorista;
+        return { error: { status: 401, message: 'Sessão expirada. Faça login novamente.' } };
+      }
+
+      const email = req.session.motorista.email || buildMotoristaEmail(motorista.telefone1 || '');
+      return {
+        user: {
+          id: motorista.auth_user_id || req.session.motorista.authUserId || motorista.id,
+          email,
+          user_metadata: {
+            nome: motorista.nome
+          }
+        },
+        motorista,
+        token: null,
+        source: 'session'
+      };
+    } catch (error) {
+      console.error('❌ Erro ao validar sessão do motorista:', error);
+      delete req.session.motorista;
+      return { error: { status: 500, message: 'Erro ao validar sessão.' } };
+    }
+  }
+
+  const result = await getSupabaseUserFromRequest(req);
+  if (result.error) {
+    return { error: result.error };
+  }
+
+  let motorista = null;
+  if (result.user && result.user.id) {
+    const { data, error } = await supabaseAdmin
+      .from('motoristas')
+      .select(MOTORISTA_SELECT_FIELDS)
+      .eq('auth_user_id', result.user.id)
+      .maybeSingle();
+
+    if (error && error.code !== 'PGRST116') {
+      console.error('❌ Erro ao buscar motorista por auth_user_id:', error);
+      return { error: { status: 500, message: 'Erro ao recuperar dados do motorista.' } };
+    }
+
+    motorista = data || null;
+  }
+
+  return {
+    user: result.user,
+    motorista,
+    token: result.token || null,
+    source: 'token'
+  };
+}
 // ========== ROTAS DE AUTENTICAÇÃO ==========
 // ✅✅✅ ENDPOINT DE LOGIN COM FALLBACK PARA .ENV
 app.post('/api/login', loginLimiter, express.json(), async (req, res) => {
@@ -1598,45 +2071,759 @@ app.post('/api/logout', (req, res) => {
   });
 });
 
+app.post('/api/motoristas/logout', (req, res) => {
+  try {
+    if (req.session) {
+      if (req.session.motorista) {
+        console.log('🚪 Logout solicitada para motorista:', req.session.motorista.motoristaId);
+      }
+      delete req.session.motorista;
+      delete req.session.motoristaChat;
+      req.session.save((err) => {
+        if (err) {
+          console.error('❌ Erro ao salvar sessão durante logout do motorista:', err);
+          return res.status(500).json({ success: false, error: 'Erro ao encerrar sessão.' });
+        }
+        res.json({ success: true });
+      });
+      return;
+    }
+    res.json({ success: true });
+  } catch (error) {
+    console.error('❌ Erro ao processar logout do motorista:', error);
+    res.status(500).json({ success: false, error: 'Erro ao encerrar sessão.' });
+  }
+});
+
+app.post('/api/motoristas/chat-login', express.json(), async (req, res) => {
+  try {
+    if (!req.session) {
+      return res.status(500).json({ success: false, error: 'Sessão indisponível. Atualize a página.' });
+    }
+
+    const actionRaw = (req.body?.action || '').toString().toLowerCase();
+    const inputRaw = (req.body?.input || '').toString().trim();
+    const normalizedInput = inputRaw.toLowerCase();
+
+    if (req.session.motorista && actionRaw !== 'reset') {
+      return res.json({
+        success: true,
+        done: true,
+        state: 'completed',
+        reply: 'Você já está autenticado. Redirecionando para o portal do motorista...',
+        redirect: '/portal-motorista.html'
+      });
+    }
+
+    if (actionRaw === 'reset') {
+      delete req.session.motoristaChat;
+    }
+
+    if (actionRaw === 'start' || !req.session.motoristaChat) {
+      req.session.motoristaChat = {
+        step: 'awaiting_intent',
+        mode: null,
+        data: {},
+        attempts: {}
+      };
+
+      return res.json({
+        success: true,
+        state: 'awaiting_intent',
+        reply: 'Olá! Eu sou o assistente virtual da Multimodal. Você quer fazer login ou se cadastrar?',
+        options: [
+          { label: 'Fazer login', value: 'login' },
+          { label: 'Cadastrar', value: 'cadastro' },
+          { label: 'Falar com humano', value: 'humano' }
+        ]
+      });
+    }
+
+    const chatState = req.session.motoristaChat;
+
+    const sendMessage = ({ reply, options, state, error = false, done = false, redirect, supabase: supabasePayload, motorista }) => {
+      const payload = {
+        success: !error,
+        reply,
+        state: state || chatState.step,
+        done
+      };
+
+      if (options) {
+        payload.options = options;
+      }
+
+      if (redirect) {
+        payload.redirect = redirect;
+      }
+
+      if (supabasePayload) {
+        payload.supabase = supabasePayload;
+      }
+
+      if (motorista) {
+        payload.motorista = motorista;
+      }
+
+      if (error) {
+        payload.error = true;
+      }
+
+      return res.json(payload);
+    };
+
+    const showHelpMessage = () => {
+      return sendMessage({
+        reply: 'Se preferir atendimento humano, fale com nossa equipe pelo WhatsApp (81) 9 99736-9039 ou envie um e-mail para suporte@logmultimodal.com.br. Posso continuar te ajudando?',
+        options: [
+          { label: 'Fazer login', value: 'login' },
+          { label: 'Cadastrar', value: 'cadastro' }
+        ]
+      });
+    };
+
+    const matches = (value, ...keys) => keys.some(key => value.includes(key));
+
+    if (chatState.step === 'awaiting_intent') {
+      if (matches(normalizedInput, 'login', 'entrar', 'acessar', 'logar', 'já tenho', '1')) {
+        chatState.mode = 'login';
+        chatState.step = 'awaiting_login_phone';
+        return sendMessage({
+          state: chatState.step,
+          reply: 'Perfeito! Informe seu telefone com DDD (ex: 5511999998888) para buscarmos sua conta.'
+        });
+      }
+
+      if (matches(normalizedInput, 'cad', 'novo', 'registr', 'cadastrar', 'criar', '2')) {
+        chatState.mode = 'signup';
+        chatState.step = 'awaiting_signup_name';
+        return sendMessage({
+          state: chatState.step,
+          reply: 'Vamos começar! Qual é o seu nome completo?'
+        });
+      }
+
+      if (matches(normalizedInput, 'humano', 'suporte', 'atendente', 'ajuda')) {
+        return showHelpMessage();
+      }
+
+      return sendMessage({
+        reply: 'Não entendi. Você deseja fazer login ou se cadastrar?',
+        options: [
+          { label: 'Fazer login', value: 'login' },
+          { label: 'Cadastrar', value: 'cadastro' },
+          { label: 'Falar com humano', value: 'humano' }
+        ]
+      });
+    }
+
+    if (chatState.mode === 'login') {
+      if (chatState.step === 'awaiting_login_phone') {
+        const rawDigits = inputRaw.replace(/\D/g, '');
+        const normalizedPhone = normalizePhone(rawDigits);
+        if (!normalizedPhone || normalizedPhone.length < 10 || normalizedPhone.length > 11) {
+          return sendMessage({
+            reply: 'O telefone informado parece inválido. Envie novamente usando apenas números, incluindo o DDD.',
+            state: chatState.step,
+            error: true
+          });
+        }
+
+        chatState.step = 'awaiting_login_password';
+        const candidateEmails = buildMotoristaEmailVariations(rawDigits || normalizedPhone);
+        const phoneCandidates = Array.from(new Set([
+          normalizedPhone,
+          rawDigits || '',
+          rawDigits?.startsWith('55') && rawDigits.length > 2 ? rawDigits.slice(2) : null,
+          normalizedPhone.length > 7 ? normalizedPhone.slice(-7) : null
+        ].filter(Boolean)));
+
+        chatState.data.telefone = normalizedPhone;
+        chatState.data.telefoneCompleto = rawDigits || normalizedPhone;
+        chatState.data.emailCandidates = candidateEmails;
+        chatState.data.email = candidateEmails[0] || buildMotoristaEmail(normalizedPhone);
+
+        try {
+          for (const phoneCandidate of phoneCandidates) {
+            const motoristas = await fetchMotoristasByPhone(phoneCandidate);
+            const candidato = motoristas.find(m => m);
+            if (candidato) {
+              if (!chatState.data.motoristaId) {
+                chatState.data.motoristaId = candidato.id;
+              }
+              if (!chatState.data.motoristaNome && candidato.nome) {
+                chatState.data.motoristaNome = candidato.nome;
+              }
+              if (!chatState.data.supabaseUserId && candidato.auth_user_id) {
+                chatState.data.supabaseUserId = candidato.auth_user_id;
+              }
+            }
+            if (chatState.data.motoristaId && chatState.data.motoristaNome) {
+              break;
+            }
+          }
+        } catch (fallbackError) {
+          console.error('⚠️ Erro ao buscar motorista pelo telefone:', fallbackError);
+        }
+
+        return sendMessage({
+          state: chatState.step,
+          reply: 'Ótimo! Agora informe sua senha de acesso.'
+        });
+      }
+
+      if (chatState.step === 'awaiting_login_password') {
+        const senha = inputRaw;
+        if (!senha || senha.length < 6) {
+          return sendMessage({
+            reply: 'A senha deve ter pelo menos 6 caracteres. Tente novamente.',
+            state: chatState.step,
+            error: true
+          });
+        }
+
+        chatState.attempts.password = (chatState.attempts.password || 0) + 1;
+        if (chatState.attempts.password > 5) {
+          chatState.step = 'awaiting_intent';
+          chatState.mode = null;
+          chatState.data = {};
+          chatState.attempts = {};
+          return sendMessage({
+            state: 'awaiting_intent',
+            reply: 'Detectamos muitas tentativas inválidas. Vamos recomeçar? Você pode fazer login novamente ou solicitar cadastro.',
+            error: true,
+            options: [
+              { label: 'Fazer login', value: 'login' },
+              { label: 'Cadastrar', value: 'cadastro' },
+              { label: 'Falar com humano', value: 'humano' }
+            ]
+          });
+        }
+
+        const profileOverrides = {
+          estado: chatState.data.estado,
+          classeVeiculo: chatState.data.classeVeiculo,
+          tipoVeiculo: chatState.data.tipoVeiculo,
+          tipoCarroceria: chatState.data.tipoCarroceria
+        };
+        try {
+          const authClient = createSupabaseAuthClient();
+          const emailCandidates = Array.isArray(chatState.data.emailCandidates) && chatState.data.emailCandidates.length
+            ? chatState.data.emailCandidates
+            : [chatState.data.email || buildMotoristaEmail(chatState.data.telefone)];
+
+          let signInData = null;
+          let signInError = null;
+          let resolvedEmail = null;
+
+          for (const candidateEmail of emailCandidates) {
+            const { data, error } = await authClient.auth.signInWithPassword({
+              email: candidateEmail,
+              password: senha
+            });
+
+            if (data?.session && data?.user) {
+              signInData = data;
+              resolvedEmail = candidateEmail;
+              signInError = null;
+              break;
+            }
+
+            if (error && error.message && !error.message.toLowerCase().includes('invalid login credentials')) {
+              signInError = error;
+              break;
+            }
+
+            signInError = error;
+          }
+
+          if (signInError || !signInData?.session || !signInData?.user) {
+            return sendMessage({
+              reply: 'Não foi possível entrar com esse telefone e senha. Verifique as informações ou solicite suporte para redefinir o acesso.',
+              state: chatState.step,
+              error: true,
+              options: [
+                { label: 'Tentar novamente', value: 'login' },
+                { label: 'Quero me cadastrar', value: 'cadastro' },
+                { label: 'Falar com humano', value: 'humano' }
+              ]
+            });
+          }
+
+          const supabaseUser = signInData.user;
+          chatState.data.supabaseUserId = supabaseUser.id;
+          chatState.data.email = resolvedEmail || supabaseUser.email || chatState.data.email;
+
+          const motoristaRecord = await ensureMotoristaRecordForAuthUser({
+            authUserId: supabaseUser.id,
+            nome: chatState.data.motoristaNome || supabaseUser.user_metadata?.nome || supabaseUser.email,
+            telefone: chatState.data.telefone,
+            estado: profileOverrides.estado,
+            classeVeiculo: profileOverrides.classeVeiculo,
+            tipoVeiculo: profileOverrides.tipoVeiculo,
+            tipoCarroceria: profileOverrides.tipoCarroceria
+          });
+
+          req.session.motorista = {
+            motoristaId: motoristaRecord.id,
+            authUserId: supabaseUser.id,
+            telefone: chatState.data.telefone,
+            nome: motoristaRecord.nome,
+            email: supabaseUser.email
+          };
+
+          delete req.session.motoristaChat;
+
+          const supabasePayload = {
+            url: process.env.SUPABASE_URL,
+            anonKey: process.env.SUPABASE_ANON_KEY,
+            session: {
+              access_token: signInData.session.access_token,
+              refresh_token: signInData.session.refresh_token,
+              expires_in: signInData.session.expires_in,
+              token_type: signInData.session.token_type
+            },
+            user: {
+              id: supabaseUser.id,
+              email: supabaseUser.email
+            }
+          };
+
+          return sendMessage({
+            done: true,
+            state: 'completed',
+            reply: `Tudo certo, ${motoristaRecord.nome?.split(' ')[0] || 'motorista'}! Estamos preparando seu portal...`,
+            redirect: '/portal-motorista.html',
+            supabase: supabasePayload,
+            motorista: mapMotoristaResponse(motoristaRecord)
+          });
+        } catch (authError) {
+          console.error('❌ Erro ao autenticar motorista:', authError);
+          return sendMessage({
+            reply: 'Não conseguimos validar sua senha agora. Tente novamente em instantes ou procure o suporte.',
+            state: chatState.step,
+            error: true
+          });
+        }
+      }
+    }
+
+    if (chatState.mode === 'signup') {
+      if (chatState.step === 'awaiting_signup_name') {
+        if (!inputRaw || inputRaw.length < 3) {
+          return sendMessage({
+            reply: 'Informe seu nome completo para seguirmos.',
+            state: chatState.step,
+            error: true
+          });
+        }
+        chatState.data.nome = inputRaw.trim();
+        chatState.step = 'awaiting_signup_phone';
+        return sendMessage({
+          state: chatState.step,
+      reply: 'Informe seu telefone principal no formato 55DDDNXXXXXXXX (ex: 5581999998888).'
+        });
+      }
+
+      if (chatState.step === 'awaiting_signup_phone') {
+    const digits = inputRaw.replace(/\D/g, '');
+    if (!/^55\d{2}9\d{8}$/.test(digits)) {
+          return sendMessage({
+        reply: 'O número precisa seguir o padrão 55 + DDD + 9 + número (ex: 5581999998888).',
+            state: chatState.step,
+            error: true
+          });
+        }
+
+    const normalizedPhone = normalizePhone(digits);
+        const email = buildMotoristaEmail(normalizedPhone);
+        try {
+          const { data: existingUser } = await supabaseAdmin.auth.admin.getUserByEmail(email);
+          if (existingUser && existingUser.user) {
+            chatState.mode = 'login';
+            chatState.step = 'awaiting_login_password';
+            chatState.data.telefone = normalizedPhone;
+            chatState.data.email = email;
+            chatState.data.supabaseUserId = existingUser.user.id;
+        chatState.data.telefoneCompleto = digits;
+            return sendMessage({
+              state: chatState.step,
+              reply: 'Encontramos um cadastro com esse telefone. Informe sua senha para entrar.',
+              options: [
+                { label: 'Esqueci a senha', value: 'humano' }
+              ]
+            });
+          }
+        } catch (lookupError) {
+          if (lookupError && lookupError.message && !lookupError.message.includes('no user found')) {
+            console.error('❌ Erro ao verificar usuário existente:', lookupError);
+          }
+        }
+
+    chatState.data.telefone = normalizedPhone;
+    chatState.data.telefoneCompleto = digits;
+        chatState.data.email = email;
+    chatState.step = 'awaiting_signup_state';
+        return sendMessage({
+          state: chatState.step,
+      reply: 'Em qual estado (UF) você está baseado? Digite somente a sigla, por exemplo: PE.'
+        });
+      }
+
+  if (chatState.step === 'awaiting_signup_state') {
+    const uf = inputRaw.toString().trim().toUpperCase();
+    if (!VALID_UF.includes(uf)) {
+      return sendMessage({
+        reply: 'Use apenas a sigla do estado, por exemplo PE, SP ou BA.',
+        state: chatState.step,
+        error: true
+      });
+    }
+    chatState.data.estado = uf;
+    chatState.step = 'awaiting_signup_vehicle_class';
+    return sendMessage({
+      state: chatState.step,
+      reply: 'Qual a classe do seu veículo principal?',
+      options: Object.entries(VEHICLE_CLASS_OPTIONS).map(([value, info]) => ({
+        label: info.label,
+        value
+      }))
+    });
+  }
+
+  if (chatState.step === 'awaiting_signup_vehicle_class') {
+    const selectedClass = resolveVehicleClass(inputRaw);
+    if (!selectedClass) {
+      return sendMessage({
+        reply: 'Escolha entre veículos leves, médios ou pesados. Você pode clicar em uma das opções acima.',
+        state: chatState.step,
+        error: true,
+        options: Object.entries(VEHICLE_CLASS_OPTIONS).map(([value, info]) => ({
+          label: info.label,
+          value
+        }))
+      });
+    }
+    chatState.data.classeVeiculo = selectedClass;
+    chatState.step = 'awaiting_signup_vehicle_type';
+    const typeOptions = VEHICLE_CLASS_OPTIONS[selectedClass].tiposVeiculo.map(tipo => ({
+      label: tipo,
+      value: tipo
+    }));
+    return sendMessage({
+      state: chatState.step,
+      reply: 'Qual é o tipo de veículo que você opera?',
+      options: typeOptions
+    });
+  }
+
+  if (chatState.step === 'awaiting_signup_vehicle_type') {
+    const classKey = chatState.data.classeVeiculo;
+    const resolvedType = resolveVehicleType(classKey, inputRaw);
+    if (!resolvedType) {
+      const typeOptions = (VEHICLE_CLASS_OPTIONS[classKey]?.tiposVeiculo || []).map(tipo => ({
+        label: tipo,
+        value: tipo
+      }));
+      return sendMessage({
+        reply: 'Não reconheci esse tipo de veículo. Escolha uma das opções sugeridas.',
+        state: chatState.step,
+        error: true,
+        options: typeOptions
+      });
+    }
+    chatState.data.tipoVeiculo = resolvedType;
+    chatState.step = 'awaiting_signup_bodywork';
+    const carroceriaOptions = (VEHICLE_CLASS_OPTIONS[classKey]?.carrocerias || []).map(carroceria => ({
+      label: formatCarroceriaLabel(carroceria),
+      value: carroceria
+    }));
+    return sendMessage({
+      state: chatState.step,
+      reply: 'E qual é a carroceria/implemento principal?',
+      options: carroceriaOptions
+    });
+  }
+
+  if (chatState.step === 'awaiting_signup_bodywork') {
+    const classKey = chatState.data.classeVeiculo;
+    const resolvedCarroceria = resolveCarroceria(classKey, inputRaw);
+    if (!resolvedCarroceria) {
+      const carroceriaOptions = (VEHICLE_CLASS_OPTIONS[classKey]?.carrocerias || []).map(carroceria => ({
+        label: formatCarroceriaLabel(carroceria),
+        value: carroceria
+      }));
+      return sendMessage({
+        reply: 'Selecione uma carroceria válida nas opções ou digite uma das sugestões.',
+        state: chatState.step,
+        error: true,
+        options: carroceriaOptions
+      });
+    }
+    chatState.data.tipoCarroceria = resolvedCarroceria;
+    chatState.step = 'awaiting_signup_password';
+    return sendMessage({
+      state: chatState.step,
+      reply: 'Para finalizar, defina uma senha com no mínimo 6 caracteres.'
+    });
+  }
+
+      if (chatState.step === 'awaiting_signup_password') {
+        const senha = inputRaw;
+        if (!senha || senha.length < 6) {
+          return sendMessage({
+            reply: 'A senha precisa ter pelo menos 6 caracteres. Tente outra.',
+            state: chatState.step,
+            error: true
+          });
+        }
+
+        const email = chatState.data.email;
+        const normalizedPhone = chatState.data.telefone;
+        const nome = chatState.data.nome;
+
+        try {
+          const { data: createdUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
+            email,
+            password: senha,
+            email_confirm: true,
+            phone: formatE164Phone(normalizedPhone),
+            user_metadata: {
+              nome,
+              telefone: normalizedPhone,
+              tipo: 'motorista'
+            }
+          });
+
+          if (createError) {
+            console.error('❌ Erro ao criar usuário Supabase:', createError);
+          if (createError.message && createError.message.includes('already been registered')) {
+            let existingUser = null;
+            try {
+              const { data } = await supabaseAdmin.auth.admin.getUserByEmail(email);
+              existingUser = data?.user || null;
+            } catch (existingError) {
+              console.error('❌ Erro ao buscar usuário existente após conflito:', existingError);
+            }
+
+            chatState.mode = 'login';
+            chatState.step = 'awaiting_login_password';
+            if (existingUser?.id) {
+              chatState.data.supabaseUserId = existingUser.id;
+            }
+            return sendMessage({
+              state: chatState.step,
+              reply: 'Esse telefone já possui cadastro. Informe sua senha para continuar.',
+              options: [
+                { label: 'Esqueci a senha', value: 'humano' }
+              ]
+            });
+          }
+            return sendMessage({
+              reply: createError.message || 'Não foi possível concluir o cadastro. Tente novamente mais tarde.',
+              state: chatState.step,
+              error: true
+            });
+          }
+
+          const supabaseUser = createdUser?.user;
+          if (!supabaseUser) {
+            return sendMessage({
+              reply: 'Cadastro criado, mas não foi possível concluir o login automático. Tente fazer login manualmente.',
+              state: 'awaiting_intent',
+              error: true,
+              options: [
+                { label: 'Fazer login', value: 'login' },
+                { label: 'Falar com humano', value: 'humano' }
+              ]
+            });
+          }
+
+          const authClient = createSupabaseAuthClient();
+          const { data: signInData, error: signInError } = await authClient.auth.signInWithPassword({
+            email,
+            password: senha
+          });
+
+          if (signInError || !signInData?.session) {
+            console.error('❌ Erro ao gerar sessão após cadastro:', signInError);
+            return sendMessage({
+              reply: 'Cadastro realizado, mas não foi possível entrar automaticamente. Faça login usando seu telefone e senha.',
+              state: 'awaiting_intent',
+              error: true,
+              options: [
+                { label: 'Fazer login', value: 'login' },
+                { label: 'Falar com humano', value: 'humano' }
+              ]
+            });
+          }
+
+          const motoristaRecord = await ensureMotoristaRecordForAuthUser({
+            authUserId: supabaseUser.id,
+            nome,
+            telefone: normalizedPhone,
+            estado: chatState.data.estado,
+            classeVeiculo: chatState.data.classeVeiculo,
+            tipoVeiculo: chatState.data.tipoVeiculo,
+            tipoCarroceria: chatState.data.tipoCarroceria
+          });
+
+          req.session.motorista = {
+            motoristaId: motoristaRecord.id,
+            authUserId: supabaseUser.id,
+            telefone: normalizedPhone,
+            nome: motoristaRecord.nome,
+            email: supabaseUser.email
+          };
+
+          delete req.session.motoristaChat;
+
+          const supabasePayload = {
+            url: process.env.SUPABASE_URL,
+            anonKey: process.env.SUPABASE_ANON_KEY,
+            session: {
+              access_token: signInData.session.access_token,
+              refresh_token: signInData.session.refresh_token,
+              expires_in: signInData.session.expires_in,
+              token_type: signInData.session.token_type
+            },
+            user: {
+              id: supabaseUser.id,
+              email: supabaseUser.email
+            }
+          };
+
+          return sendMessage({
+            done: true,
+            state: 'completed',
+            reply: `Cadastro concluído, ${motoristaRecord.nome?.split(' ')[0] || 'motorista'}! Vamos abrir o portal para você finalizar seus dados.`,
+            redirect: '/portal-motorista.html',
+            supabase: supabasePayload,
+            motorista: mapMotoristaResponse(motoristaRecord)
+          });
+        } catch (signupError) {
+          console.error('❌ Erro inesperado no cadastro conversacional:', signupError);
+          return sendMessage({
+            reply: 'Estamos com instabilidade para concluir o cadastro. Tente novamente em instantes ou fale com nossa equipe.',
+            state: chatState.step,
+            error: true,
+            options: [
+              { label: 'Falar com humano', value: 'humano' }
+            ]
+          });
+        }
+      }
+    }
+
+    return sendMessage({
+      reply: 'Desculpe, não entendi. Você deseja fazer login ou se cadastrar?',
+      state: 'awaiting_intent',
+      options: [
+        { label: 'Fazer login', value: 'login' },
+        { label: 'Cadastrar', value: 'cadastro' },
+        { label: 'Falar com humano', value: 'humano' }
+      ]
+    });
+  } catch (error) {
+    console.error('❌ Erro no fluxo de chat do motorista:', error);
+    return res.status(500).json({ success: false, error: 'Erro interno ao processar sua solicitação.' });
+  }
+});
+
 app.get('/api/motoristas/auth/me', async (req, res) => {
   try {
-    const { user, error } = await getSupabaseUserFromRequest(req);
+    const { user, motorista, error } = await requireMotoristaAuth(req);
     if (error) {
       return res.status(error.status || 401).json({ success: false, error: error.message });
     }
 
-    console.log('🆔 Supabase user autenticado:', {
-      id: user.id,
-      email: user.email,
-      metadata: user.user_metadata
-    });
-
-    const { data: existingMotorista, error: motoristaError } = await supabaseAdmin
-      .from('motoristas')
-      .select(MOTORISTA_SELECT_FIELDS)
-      .eq('auth_user_id', user.id)
-      .maybeSingle();
-
-    if (motoristaError) {
-      console.error('❌ Erro ao buscar motorista por auth_user_id:', motoristaError);
-    }
-
-    if (motoristaError && motoristaError.code !== 'PGRST116') {
-      throw motoristaError;
-    }
+    const motoristaResponse = motorista ? mapMotoristaResponse(motorista) : null;
+    const nomeUsuario = user?.user_metadata?.nome || user?.user_metadata?.full_name || user?.user_metadata?.name || user?.email;
 
     res.json({
       success: true,
       user: {
         id: user.id,
         email: user.email,
-        nome: user.user_metadata?.full_name || user.user_metadata?.name || user.email
+        nome: nomeUsuario
       },
-      motorista: existingMotorista ? mapMotoristaResponse(existingMotorista) : null
+      motorista: motoristaResponse
     });
   } catch (error) {
     console.error('❌ Erro ao carregar sessão do motorista:', error);
     res.status(500).json({ success: false, error: 'Erro ao validar sessão. Tente novamente.' });
+  }
+});
+
+app.post('/api/mensagens/variar', express.json(), async (req, res) => {
+  try {
+    const { user, error: authError } = await getUserFromRequest(req);
+    if (authError || !user) {
+      return res.status(401).json({ success: false, error: 'Não autenticado' });
+    }
+
+    const mensagemOriginal = (req.body?.mensagem || '').toString();
+    const contexto = req.body?.contexto || {};
+
+    if (!mensagemOriginal || mensagemOriginal.trim().length < 5) {
+      return res.status(400).json({ success: false, error: 'Mensagem inválida' });
+    }
+
+    if (!openai) {
+      return res.json({ success: true, mensagem: mensagemOriginal });
+    }
+
+    const camposFixos = Object.entries(contexto)
+      .filter(([_, value]) => value !== null && value !== undefined && value !== '')
+      .map(([key, value]) => `${key}: ${value}`)
+      .join('\n');
+
+    const systemPrompt = 'Você é um copywriter em português responsável por gerar variações naturais de mensagens de WhatsApp sem alterar dados importantes.';
+
+    const userPrompt = `
+Reescreva a mensagem abaixo criando uma variação sutil, mantendo o sentido original e preservando todos os dados sensíveis (nomes, números, datas, valores, links, telefones, e-mails, placas).
+
+- Não traduza os termos.
+- Mantenha o tom profissional, cordial e direto.
+- Você pode alterar saudações, ordem das frases, adicionar ou remover um emoji e substituir algumas palavras por sinônimos.
+- Evite gerar listas ou formatos muito diferentes. Retorne apenas uma mensagem contínua.
+- Tamanho aproximado da mensagem deve ser preservado (+/- 25%).
+
+Mensagem original:
+"""${mensagemOriginal.trim()}"""
+
+Dados que não podem ser alterados:
+${camposFixos || 'Nenhum dado adicional informado.'}
+`;
+
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-3.5-turbo',
+      temperature: 0.85,
+      max_tokens: 220,
+      top_p: 1,
+      frequency_penalty: 0.2,
+      presence_penalty: 0.2,
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt }
+      ]
+    });
+
+    let mensagemVariada = completion.choices[0]?.message?.content || '';
+    mensagemVariada = mensagemVariada.trim();
+    if (!mensagemVariada) {
+      mensagemVariada = mensagemOriginal;
+    } else {
+      mensagemVariada = mensagemVariada.replace(/^["'`]+|["'`]+$/g, '').trim();
+    }
+
+    res.json({ success: true, mensagem: mensagemVariada });
+  } catch (error) {
+    console.error('❌ Erro ao gerar variação de mensagem:', error);
+    res.json({
+      success: true,
+      mensagem: (req.body?.mensagem || '').toString()
+    });
   }
 });
 
@@ -1924,7 +3111,7 @@ app.post('/api/motoristas/importar-csv', upload.single('csv'), async (req, res) 
 app.post('/api/motoristas/auth/profile', express.json(), async (req, res) => {
   let payload = null;
   try {
-    const { user, error } = await getSupabaseUserFromRequest(req);
+    const { user, motorista: motoristaAtual, error } = await requireMotoristaAuth(req);
     if (error) {
       return res.status(error.status || 401).json({ success: false, error: error.message });
     }
@@ -1972,17 +3159,7 @@ app.post('/api/motoristas/auth/profile', express.json(), async (req, res) => {
       console.log('✅ Perfil do usuário criado automaticamente:', user.id);
     }
 
-    const { data: motoristaByAuth, error: motoristaByAuthError } = await supabaseAdmin
-      .from('motoristas')
-      .select(MOTORISTA_SELECT_FIELDS)
-      .eq('auth_user_id', user.id)
-      .maybeSingle();
-
-    if (motoristaByAuthError && motoristaByAuthError.code !== 'PGRST116') {
-      throw motoristaByAuthError;
-    }
-
-    let motoristaSelecionado = motoristaByAuth || null;
+    let motoristaSelecionado = motoristaAtual || null;
 
     const motoristasPorTelefone = await fetchMotoristasByPhone(normalizedPhone);
     const motoristaPorTelefone = motoristasPorTelefone.find(m => phonesMatch(normalizedPhone, m.telefone1, m.telefone2));
@@ -1994,11 +3171,13 @@ app.post('/api/motoristas/auth/profile', express.json(), async (req, res) => {
       motoristaSelecionado = motoristaPorTelefone;
     }
 
+    const departamento = (body.departamento || 'portal-motorista').toString().trim() || 'portal-motorista';
+
     payload = {
       nome,
       telefone1: normalizedPhone,
       auth_user_id: user.id,
-      created_by_departamento: body.departamento || motoristaSelecionado?.created_by_departamento || 'Portal Motorista',
+      created_by_departamento: departamento,
       created_by: motoristaSelecionado?.created_by || user.id,
       usuario_id: motoristaSelecionado?.usuario_id || user.id
     };
@@ -2104,19 +3283,9 @@ app.post('/api/motoristas/auth/profile', express.json(), async (req, res) => {
 
 app.get('/api/motoristas/documentos/status', async (req, res) => {
   try {
-    const { user, error } = await getSupabaseUserFromRequest(req);
+    const { motorista, error } = await requireMotoristaAuth(req);
     if (error) {
       return res.status(error.status || 401).json({ success: false, error: error.message });
-    }
-
-    const { data: motorista, error: motoristaError } = await supabaseAdmin
-      .from('motoristas')
-      .select('id')
-      .eq('auth_user_id', user.id)
-      .maybeSingle();
-
-    if (motoristaError && motoristaError.code !== 'PGRST116') {
-      throw motoristaError;
     }
 
     const defaultCategorias = () => {
@@ -2208,7 +3377,7 @@ app.get('/api/motoristas/documentos/status', async (req, res) => {
 
 app.get('/api/motoristas/oportunidades', async (req, res) => {
   try {
-    const { error } = await getSupabaseUserFromRequest(req);
+    const { error } = await requireMotoristaAuth(req);
     if (error) {
       return res.status(error.status || 401).json({ success: false, error: error.message });
     }
@@ -2232,19 +3401,9 @@ app.get('/api/motoristas/oportunidades', async (req, res) => {
 });
 app.get('/api/motoristas/viagens', async (req, res) => {
   try {
-    const { user, error } = await getSupabaseUserFromRequest(req);
+    const { motorista, error } = await requireMotoristaAuth(req);
     if (error) {
       return res.status(error.status || 401).json({ success: false, error: error.message });
-    }
-
-    const { data: motorista, error: motoristaError } = await supabaseAdmin
-      .from('motoristas')
-      .select(MOTORISTA_SELECT_FIELDS)
-      .eq('auth_user_id', user.id)
-      .maybeSingle();
-
-    if (motoristaError && motoristaError.code !== 'PGRST116') {
-      throw motoristaError;
     }
 
     if (!motorista) {
@@ -2274,7 +3433,7 @@ app.get('/api/motoristas/viagens', async (req, res) => {
 
 app.post('/api/motoristas/oportunidades/:coletaId/assumir', async (req, res) => {
   try {
-    const { user, error } = await getSupabaseUserFromRequest(req);
+    const { user, motorista, error } = await requireMotoristaAuth(req);
     if (error) {
       return res.status(error.status || 401).json({ success: false, error: error.message });
     }
@@ -2282,16 +3441,6 @@ app.post('/api/motoristas/oportunidades/:coletaId/assumir', async (req, res) => 
     const coletaId = req.params.coletaId;
     if (!coletaId) {
       return res.status(400).json({ success: false, error: 'Identificador da coleta é obrigatório.' });
-    }
-
-    const { data: motorista, error: motoristaError } = await supabaseAdmin
-      .from('motoristas')
-      .select(MOTORISTA_SELECT_FIELDS)
-      .eq('auth_user_id', user.id)
-      .maybeSingle();
-
-    if (motoristaError && motoristaError.code !== 'PGRST116') {
-      throw motoristaError;
     }
 
     if (!motorista) {
@@ -2403,7 +3552,7 @@ app.post('/api/motoristas/oportunidades/:coletaId/assumir', async (req, res) => 
 
 app.post('/api/motoristas/coletas/:coletaId/documentos', upload.array('arquivos', 30), async (req, res) => {
   try {
-    const { user, error } = await getSupabaseUserFromRequest(req);
+    const { user, motorista, error } = await requireMotoristaAuth(req);
     if (error) {
       return res.status(error.status || 401).json({ success: false, error: error.message });
     }
@@ -2411,16 +3560,6 @@ app.post('/api/motoristas/coletas/:coletaId/documentos', upload.array('arquivos'
     const coletaId = req.params.coletaId;
     if (!coletaId) {
       return res.status(400).json({ success: false, error: 'Identificador da coleta é obrigatório.' });
-    }
-
-    const { data: motorista, error: motoristaError } = await supabaseAdmin
-      .from('motoristas')
-      .select('id, nome')
-      .eq('auth_user_id', user.id)
-      .maybeSingle();
-
-    if (motoristaError && motoristaError.code !== 'PGRST116') {
-      throw motoristaError;
     }
 
     if (!motorista) {
@@ -2821,19 +3960,9 @@ app.post('/api/coletas/:coletaId/solicitar-atualizacao-documento', requireAuth, 
 // Endpoint para motorista ver notificações de atualização de documentos
 app.get('/api/motoristas/notificacoes', async (req, res) => {
   try {
-    const { user, error } = await getSupabaseUserFromRequest(req);
+    const { motorista, error } = await requireMotoristaAuth(req);
     if (error) {
       return res.status(error.status || 401).json({ success: false, error: error.message });
-    }
-
-    const { data: motorista, error: motoristaError } = await supabaseAdmin
-      .from('motoristas')
-      .select('id')
-      .eq('auth_user_id', user.id)
-      .maybeSingle();
-
-    if (motoristaError && motoristaError.code !== 'PGRST116') {
-      throw motoristaError;
     }
 
     if (!motorista) {
@@ -2893,22 +4022,12 @@ app.get('/api/motoristas/notificacoes', async (req, res) => {
 // Endpoint para marcar solicitação como atendida (quando motorista atualizar documento)
 app.post('/api/motoristas/solicitacoes/:solicitacaoId/atender', async (req, res) => {
   try {
-    const { user, error } = await getSupabaseUserFromRequest(req);
+    const { user, motorista, error } = await requireMotoristaAuth(req);
     if (error) {
       return res.status(error.status || 401).json({ success: false, error: error.message });
     }
 
     const solicitacaoId = req.params.solicitacaoId;
-
-    const { data: motorista, error: motoristaError } = await supabaseAdmin
-      .from('motoristas')
-      .select('id')
-      .eq('auth_user_id', user.id)
-      .maybeSingle();
-
-    if (motoristaError && motoristaError.code !== 'PGRST116') {
-      throw motoristaError;
-    }
 
     if (!motorista) {
       return res.status(404).json({ success: false, error: 'Motorista não encontrado.' });
@@ -4574,6 +5693,39 @@ app.post('/webhook/send-supabase', upload.single('media'), async (req, res) => {
 
     console.log('✅ Usando user_id:', userIdentity);
 
+    const overrides = {};
+    const maxMessages = parseInt(req.body?.maxMessages, 10);
+    if (Number.isFinite(maxMessages) && maxMessages >= 1) {
+      overrides.threshold = maxMessages;
+    }
+    const cooldownMinutesOverride = parseInt(req.body?.cooldownMinutes, 10);
+    if (Number.isFinite(cooldownMinutesOverride) && cooldownMinutesOverride >= 1) {
+      overrides.cooldownMs = cooldownMinutesOverride * 60 * 1000;
+    }
+    const windowMinutesOverride = parseInt(req.body?.windowMinutes, 10);
+    if (Number.isFinite(windowMinutesOverride) && windowMinutesOverride >= 1) {
+      overrides.windowMs = windowMinutesOverride * 60 * 1000;
+    }
+    if (Object.keys(overrides).length) {
+      setUserConfig(userIdentity, overrides);
+    }
+
+    const userConfig = getUserConfig(userIdentity);
+    const cooldownState = getUserCooldownState(userIdentity);
+    if (cooldownState.blocked) {
+      const remainingMinutes = Math.ceil((cooldownState.remainingMs || 0) / 60000);
+      console.warn(`⛔ Usuário ${userIdentity} em cooldown. Restam ${remainingMinutes} minutos.`);
+      cleanupFile();
+      const cooldownMinutesConfig = Math.ceil((userConfig.cooldownMs || DEFAULT_DISPARO_CONFIG.cooldownMs) / 60000);
+      return res.status(429).json({
+        success: false,
+        error: `Limite de envios atingido. Aguarde ${cooldownMinutesConfig} minuto(s) antes de enviar novas mensagens.`,
+        remainingMs: cooldownState.remainingMs || DEFAULT_DISPARO_CONFIG.cooldownMs,
+        remainingMinutes: remainingMinutes > 0 ? remainingMinutes : cooldownMinutesConfig,
+        cooldownMinutes: cooldownMinutesConfig
+      });
+    }
+
     // Buscar credenciais da Evolution API do usuário
     console.log('🔍 Buscando credenciais para user_id:', userIdentity);
 
@@ -4663,10 +5815,21 @@ app.post('/webhook/send-supabase', upload.single('media'), async (req, res) => {
     console.log('🔢 Número formatado:', formattedNumber);
 
     const evolutionUrl = userCreds.api_url;
+    const simulateTypingRaw = (req.body?.simulateTyping || req.body?.simulate_typing || '').toString().toLowerCase();
+    const simulateTypingEnabled = ['1', 'true', 'on', 'yes'].includes(simulateTypingRaw);
 
     if (!mediaData) {
       const textUrl = `${evolutionUrl}/message/sendText/${userCreds.instance_name}`;
       console.log('🌐 URL da requisição:', textUrl);
+
+      await simulateTypingAction({
+        enabled: simulateTypingEnabled,
+        evolutionUrl,
+        instanceName: userCreds.instance_name,
+        apiKey: userCreds.api_key,
+        formattedNumber,
+        message
+      });
 
       const response = await fetch(textUrl, {
         method: 'POST',
@@ -4686,6 +5849,7 @@ app.post('/webhook/send-supabase', upload.single('media'), async (req, res) => {
       if (response.ok) {
         const result = await response.json();
         console.log('✅ Mensagem enviada com sucesso:', result);
+        const cooldownInfo = registerUserSend(userIdentity);
         cleanupFile();
 
         // Registrar disparo no BI
@@ -4710,7 +5874,10 @@ app.post('/webhook/send-supabase', upload.single('media'), async (req, res) => {
           usuario: usuario,
           instancia: userCreds.instance_name,
           messageId: result.key?.id,
-          mediaEnviada: null
+          mediaEnviada: null,
+          cooldownTriggered: cooldownInfo.cooldownTriggered,
+          cooldownUntil: cooldownInfo.cooldownUntil,
+          cooldownMinutes: cooldownInfo.cooldownTriggered ? cooldownInfo.cooldownMinutes : null
         });
         return;
       }
@@ -4832,6 +5999,14 @@ app.post('/webhook/send-supabase', upload.single('media'), async (req, res) => {
     ];
 
     const attemptLogs = [];
+    await simulateTypingAction({
+      enabled: simulateTypingEnabled,
+      evolutionUrl,
+      instanceName: userCreds.instance_name,
+      apiKey: userCreds.api_key,
+      formattedNumber,
+      message
+    });
     let evolutionResult = null;
     let lastErrorText = null;
     let lastStatus = null;
@@ -4882,6 +6057,7 @@ app.post('/webhook/send-supabase', upload.single('media'), async (req, res) => {
     cleanupFile();
 
     if (evolutionResult) {
+      const cooldownInfo = registerUserSend(userIdentity);
       // Registrar disparo no BI
       try {
         await supabaseAdmin.from('disparos_log').insert([
@@ -4905,7 +6081,10 @@ app.post('/webhook/send-supabase', upload.single('media'), async (req, res) => {
         instancia: userCreds.instance_name,
         messageId: evolutionResult.key?.id,
         mediaEnviada: mediaData.fileName,
-        endpointUsado: attemptLogs.find(a => a.success)?.endpoint || null
+        endpointUsado: attemptLogs.find(a => a.success)?.endpoint || null,
+        cooldownTriggered: cooldownInfo.cooldownTriggered,
+        cooldownUntil: cooldownInfo.cooldownUntil,
+        cooldownMinutes: cooldownInfo.cooldownTriggered ? cooldownInfo.cooldownMinutes : null
       });
     }
 
@@ -6981,6 +8160,30 @@ async function getUserFromRequest(req) {
     }
   }
   
+  const userIdHeader = req.headers['x-user-id'];
+  if (userIdHeader) {
+    console.log('🔍 Tentando autenticação via userId header:', userIdHeader);
+    try {
+      const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.getUserById(userIdHeader);
+      if (!authError && authUser && authUser.user) {
+        const { data: perfil } = await supabaseAdmin
+          .from('user_profiles')
+          .select('departamento')
+          .eq('id', userIdHeader)
+          .maybeSingle();
+
+        const user = {
+          ...authUser.user,
+          departamento: perfil?.departamento || null
+        };
+
+        return { user, error: null };
+      }
+    } catch (err) {
+      console.warn('⚠️ Erro ao autenticar via userId header:', err);
+    }
+  }
+
   // Tentar autenticação via email do localStorage (header X-User-Email)
   const userEmailHeader = req.headers['x-user-email'];
   if (userEmailHeader) {
