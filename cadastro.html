@@ -521,6 +521,85 @@
       border-radius: 12px;
       border: none;
     }
+
+    .treinamento-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.9);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 3000;
+      padding: 2rem;
+    }
+
+    .treinamento-overlay.ativo {
+      display: flex;
+    }
+
+    .treinamento-overlay-card {
+      max-width: 520px;
+      width: 100%;
+      background: rgba(15, 23, 42, 0.95);
+      border-radius: 20px;
+      border: 1px solid rgba(96, 165, 250, 0.35);
+      padding: 2.5rem 2rem;
+      text-align: center;
+      box-shadow: 0 24px 60px rgba(15, 23, 42, 0.6);
+      color: #e2e8f0;
+    }
+
+    .treinamento-overlay-card h2 {
+      font-size: 1.6rem;
+      font-weight: 700;
+      color: #f8fafc;
+      margin-bottom: 1rem;
+    }
+
+    .treinamento-overlay-card p {
+      color: rgba(226, 232, 240, 0.78);
+      margin-bottom: 1.75rem;
+      line-height: 1.6;
+    }
+
+    .treinamento-overlay-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      justify-content: center;
+    }
+
+    .treinamento-overlay .btn {
+      border-radius: 14px;
+      font-weight: 600;
+      padding: 0.75rem 1.5rem;
+    }
+
+    .treinamento-overlay .btn-training {
+      background: linear-gradient(135deg, #38bdf8, #0ea5e9);
+      border: none;
+      color: #0b1120;
+      box-shadow: 0 16px 32px rgba(56, 189, 248, 0.35);
+    }
+
+    .treinamento-overlay .btn-refresh {
+      border: 1px solid rgba(148, 163, 184, 0.4);
+      background: transparent;
+      color: #e2e8f0;
+    }
+
+    .treinamento-overlay .badge {
+      background: rgba(59, 130, 246, 0.2);
+      color: #bfdbfe;
+      border-radius: 999px;
+      padding: 0.35rem 0.75rem;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+
+    body.treinamento-bloqueado {
+      overflow: hidden;
+    }
     
     /* Sistema de Tabs Customizado */
     .tab-content {
@@ -1141,6 +1220,27 @@
   </main>
 </div>
 
+<div id="treinamentoCadastroOverlay" class="treinamento-overlay">
+  <div class="treinamento-overlay-card">
+    <div class="mb-3">
+      <span class="badge"><i class="fas fa-graduation-cap me-2"></i>Treinamento obrigatório</span>
+    </div>
+    <h2>Conclua o treinamento de cadastro</h2>
+    <p>
+      Por segurança, somente usuários com o treinamento <strong>"Cadastro de Motoristas"</strong> concluído podem inserir ou editar registros.
+      Complete o treinamento e valide para liberar o acesso.
+    </p>
+    <div class="treinamento-overlay-actions">
+      <a href="treinamento-cadastro-motoristas.html" target="_blank" class="btn btn-training">
+        <i class="fas fa-play-circle me-2"></i> Fazer treinamento agora
+      </a>
+      <button type="button" class="btn btn-refresh" id="btnReverificarTreinamentoCadastro">
+        <i class="fas fa-rotate-right me-2"></i> Já concluí / Revalidar
+      </button>
+    </div>
+  </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script>
 // ========== CONFIGURAÇÕES GLOBAIS ==========
@@ -1149,6 +1249,8 @@ let todosContatos = [];
 let contatosFiltrados = [];
 let currentPage = 1;
 const pageSize = 20;
+const TREINAMENTO_CADASTRO_SLUG = 'cadastro_motoristas';
+let treinamentoCadastroConcluido = false;
 
 // Mapeamentos inteligentes
 const tiposVeiculo = {
@@ -1193,6 +1295,94 @@ const estados = [
   'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 
   'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO'
 ];
+
+function obterUsuarioAtual() {
+  try {
+    const usuarioLocal = localStorage.getItem('loggedInUser');
+    if (usuarioLocal) {
+      const parsed = JSON.parse(usuarioLocal);
+      return {
+        email: parsed.email || parsed.username || parsed.user || null,
+        id: parsed.id || parsed.user_id || parsed.userId || null,
+        nome: parsed.nome || parsed.name || null
+      };
+    }
+  } catch (error) {
+    console.warn('⚠️ Não foi possível ler loggedInUser do localStorage:', error);
+  }
+  return null;
+}
+
+function bloquearCadastroTreinamento() {
+  treinamentoCadastroConcluido = false;
+  document.getElementById('treinamentoCadastroOverlay')?.classList.add('ativo');
+  document.body.classList.add('treinamento-bloqueado');
+}
+
+function liberarCadastroTreinamento() {
+  treinamentoCadastroConcluido = true;
+  document.getElementById('treinamentoCadastroOverlay')?.classList.remove('ativo');
+  document.body.classList.remove('treinamento-bloqueado');
+}
+
+function exigirTreinamentoCadastro() {
+  if (!treinamentoCadastroConcluido) {
+    mostrarErro('Finalize o treinamento "Cadastro de Motoristas" antes de continuar.');
+    return false;
+  }
+  return true;
+}
+
+async function verificarTreinamentoCadastro(silencioso = false) {
+  try {
+    const usuarioAtual = obterUsuarioAtual();
+    const headers = {};
+    if (usuarioAtual?.email) {
+      headers['X-User-Email'] = usuarioAtual.email;
+    }
+    if (usuarioAtual?.id) {
+      headers['X-User-Id'] = usuarioAtual.id;
+    }
+
+    const response = await fetch(`/api/treinamentos/status?slug=${encodeURIComponent(TREINAMENTO_CADASTRO_SLUG)}`, {
+      method: 'GET',
+      credentials: 'include',
+      headers
+    });
+
+    if (!response.ok) {
+      console.warn('⚠️ Falha ao verificar treinamento de cadastro:', response.status);
+      bloquearCadastroTreinamento();
+      if (!silencioso) {
+        if (response.status === 401) {
+          mostrarAviso('Faça login novamente para validar o treinamento de cadastro.');
+        } else {
+          mostrarAviso('Não foi possível validar o treinamento de cadastro. Tente novamente após concluir o curso.');
+        }
+      }
+      return;
+    }
+
+    const data = await response.json();
+    if (data?.concluido) {
+      liberarCadastroTreinamento();
+      if (!silencioso) {
+        mostrarSucesso('Treinamento de cadastro validado! Você pode utilizar o módulo de cadastro.');
+      }
+    } else {
+      bloquearCadastroTreinamento();
+      if (!silencioso) {
+        mostrarAviso('Finalize o treinamento "Cadastro de Motoristas" antes de utilizar o módulo.');
+      }
+    }
+  } catch (error) {
+    console.error('❌ Erro ao verificar treinamento de cadastro:', error);
+    bloquearCadastroTreinamento();
+    if (!silencioso) {
+      mostrarAviso('Erro ao verificar o treinamento. Tente novamente em instantes.');
+    }
+  }
+}
 
 // ========== SUPABASE CONFIGURATION ==========
 let SUPABASE_URL = '';
@@ -1257,6 +1447,7 @@ class TabSystem {
 // ========== INICIALIZAÇÃO SEGURA ==========
 async function inicializarAplicacao() {
   try {
+    bloquearCadastroTreinamento();
     // 🔐 Verificar permissão de acesso
     const temPermissao = await verificarEAplicarPermissao('cadastro');
     if (!temPermissao) {
@@ -1278,6 +1469,7 @@ async function inicializarAplicacao() {
     await carregarContatos();
     carregarFiltros();
     await carregarEstatisticasSistema();
+    await verificarTreinamentoCadastro(true);
     
     console.log('✅ Sistema de Cadastro de Motoristas inicializado com sucesso!');
   } catch (error) {
@@ -1403,9 +1595,19 @@ function inicializarEventListeners() {
   const uploadArea = document.getElementById('uploadArea');
   
   if (btnSelecionarArquivo && csvFile) {
-    btnSelecionarArquivo.addEventListener('click', () => csvFile.click());
+    btnSelecionarArquivo.addEventListener('click', (event) => {
+      if (!exigirTreinamentoCadastro()) {
+        event.preventDefault();
+        return;
+      }
+      csvFile.click();
+    });
     
     csvFile.addEventListener('change', (e) => {
+      if (!exigirTreinamentoCadastro()) {
+        e.target.value = '';
+        return;
+      }
       const file = e.target.files[0];
       if (file) {
         const fileName = file.name;
@@ -1427,17 +1629,22 @@ function inicializarEventListeners() {
     // Drag and drop
     uploadArea.addEventListener('dragover', (e) => {
       e.preventDefault();
+      if (!treinamentoCadastroConcluido) return;
       uploadArea.style.borderColor = '#667eea';
       uploadArea.style.backgroundColor = '#f0f4ff';
     });
     
     uploadArea.addEventListener('dragleave', () => {
+      if (!treinamentoCadastroConcluido) return;
       uploadArea.style.borderColor = '';
       uploadArea.style.backgroundColor = '';
     });
     
     uploadArea.addEventListener('drop', (e) => {
       e.preventDefault();
+      if (!exigirTreinamentoCadastro()) {
+        return;
+      }
       uploadArea.style.borderColor = '';
       uploadArea.style.backgroundColor = '';
       
@@ -1463,6 +1670,9 @@ function inicializarEventListeners() {
   
   if (btnImportarCSV) {
     btnImportarCSV.addEventListener('click', async () => {
+      if (!exigirTreinamentoCadastro()) {
+        return;
+      }
       const file = csvFile?.files[0];
       if (!file) {
         mostrarErro('Por favor, selecione um arquivo CSV primeiro');
@@ -1479,10 +1689,23 @@ function inicializarEventListeners() {
       baixarTemplateCSV();
     });
   }
+
+  const btnReverificarTreinamentoCadastro = document.getElementById('btnReverificarTreinamentoCadastro');
+  if (btnReverificarTreinamentoCadastro) {
+    btnReverificarTreinamentoCadastro.addEventListener('click', async () => {
+      btnReverificarTreinamentoCadastro.disabled = true;
+      const textoOriginal = btnReverificarTreinamentoCadastro.innerHTML;
+      btnReverificarTreinamentoCadastro.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Verificando...';
+      await verificarTreinamentoCadastro();
+      btnReverificarTreinamentoCadastro.disabled = false;
+      btnReverificarTreinamentoCadastro.innerHTML = textoOriginal;
+    });
+  }
 }
 
 // ========== CADASTRO DE MOTORISTAS (SUPABASE) ==========
 async function cadastrarMotorista() {
+  if (!exigirTreinamentoCadastro()) return;
   const classeSelecionada = document.querySelector('.vehicle-class.active');
   
   if (!classeSelecionada) {
@@ -1891,6 +2114,7 @@ function mudarPagina(pagina) {
 }
 
 async function editarMotorista(id) {
+    if (!exigirTreinamentoCadastro()) return;
     try {
     let motorista = null;
 
@@ -1967,6 +2191,7 @@ async function editarMotorista(id) {
 }
 
 async function atualizarMotorista() {
+  if (!exigirTreinamentoCadastro()) return;
   const id = document.getElementById('formCadastro').dataset.editing;
   if (!id) return;
 
@@ -2013,6 +2238,7 @@ async function atualizarMotorista() {
 }
 
 async function excluirMotorista(id) {
+  if (!exigirTreinamentoCadastro()) return;
   if (!confirm('Tem certeza que deseja excluir este motorista?')) return;
 
   try {
@@ -2054,6 +2280,10 @@ function mostrarSucesso(mensagem) {
 
 function mostrarErro(mensagem) {
   mostrarMensagem(mensagem, 'danger');
+}
+
+function mostrarAviso(mensagem) {
+  mostrarMensagem(mensagem, 'warning');
 }
 
 function mostrarMensagem(mensagem, tipo) {
@@ -2133,6 +2363,7 @@ async function carregarEstatisticasSistema() { /* removido */ }
 
 // ========== IMPORTAÇÃO CSV ==========
 async function importarCSV(file) {
+  if (!exigirTreinamentoCadastro()) return;
   const btnImportar = document.getElementById('btnImportarCSV');
   const sobrescrever = document.getElementById('sobrescrever')?.checked || false;
   const manterInativos = document.getElementById('manter_inativos')?.checked || false;

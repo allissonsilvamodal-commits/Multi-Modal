@@ -8037,6 +8037,52 @@ app.post('/api/treinamentos/assinaturas', express.json(), async (req, res) => {
   }
 });
 
+app.get('/api/treinamentos/status', async (req, res) => {
+  try {
+    const slug = (req.query.slug || '').toString().trim();
+    if (!slug) {
+      return res.status(400).json({ success: false, error: 'Parâmetro slug é obrigatório' });
+    }
+
+    const { user, error } = await getUserFromRequest(req);
+    if (error || !user) {
+      return res.status(401).json({ success: false, error: 'Usuário não autenticado' });
+    }
+
+    const userId = user.id;
+
+    const { data, error: queryError } = await supabaseAdmin
+      .from('treinamentos_assinaturas')
+      .select('id, treinamento_slug, data_assinatura, created_at, nome')
+      .eq('treinamento_slug', slug)
+      .eq('user_id', userId)
+      .order('data_assinatura', { ascending: false })
+      .limit(1);
+
+    if (queryError) {
+      throw queryError;
+    }
+
+    const assinatura = data && data.length ? data[0] : null;
+
+    if (assinatura) {
+      return res.json({
+        success: true,
+        concluido: true,
+        assinatura
+      });
+    }
+
+    return res.json({
+      success: true,
+      concluido: false
+    });
+  } catch (err) {
+    console.error('❌ Erro ao verificar status do treinamento:', err);
+    return res.status(500).json({ success: false, error: 'Erro ao verificar treinamento: ' + (err.message || 'Erro desconhecido') });
+  }
+});
+
 // Função auxiliar para obter usuário autenticado (sessão ou Supabase)
 async function getUserFromRequest(req) {
   // Tentar autenticação via sessão primeiro

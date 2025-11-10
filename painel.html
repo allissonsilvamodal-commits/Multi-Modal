@@ -715,6 +715,81 @@
         body[data-theme="dark"] .delay-counter-number {
             color: var(--info);
         }
+
+        .treinamento-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.92);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+            padding: 2rem;
+        }
+
+        .treinamento-overlay.ativo {
+            display: flex;
+        }
+
+        .treinamento-overlay-card {
+            max-width: 520px;
+            width: 100%;
+            background: rgba(15, 23, 42, 0.95);
+            border-radius: 18px;
+            border: 1px solid rgba(96, 165, 250, 0.35);
+            padding: 2.5rem 2rem;
+            text-align: center;
+            box-shadow: 0 24px 60px rgba(15, 23, 42, 0.6);
+            color: #e2e8f0;
+        }
+
+        .treinamento-overlay-card h2 {
+            font-size: 1.6rem;
+            font-weight: 700;
+            color: #f8fafc;
+            margin-bottom: 1rem;
+        }
+
+        .treinamento-overlay-card p {
+            color: rgba(226, 232, 240, 0.78);
+            margin-bottom: 1.75rem;
+            line-height: 1.6;
+        }
+
+        .treinamento-overlay-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+            justify-content: center;
+        }
+
+        .treinamento-overlay .btn {
+            border-radius: 14px;
+            font-weight: 600;
+            padding: 0.75rem 1.5rem;
+        }
+
+        .treinamento-overlay .btn-training {
+            background: linear-gradient(135deg, #38bdf8, #0ea5e9);
+            border: none;
+            color: #0b1120;
+            box-shadow: 0 16px 32px rgba(56, 189, 248, 0.35);
+        }
+
+        .treinamento-overlay .btn-refresh {
+            border: 1px solid rgba(148, 163, 184, 0.4);
+            background: transparent;
+            color: #e2e8f0;
+        }
+
+        .treinamento-overlay .badge {
+            background: rgba(59, 130, 246, 0.2);
+            color: #bfdbfe;
+            border-radius: 999px;
+            padding: 0.35rem 0.75rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
   </style>
 </head>
 <body>
@@ -1169,6 +1244,27 @@
       </div>
     </div>
         
+    <div id="treinamentoBloqueio" class="treinamento-overlay">
+      <div class="treinamento-overlay-card">
+        <div class="mb-3">
+          <span class="badge"><i class="fas fa-graduation-cap me-2"></i>Treinamento obrigatório</span>
+        </div>
+        <h2>Conclua o treinamento antes de disparar</h2>
+        <p>
+          Para proteger a reputação do número e garantir o uso correto do disparador,
+          somente usuários com o treinamento <strong>"Disparador de Mensagens"</strong> concluído podem enviar mensagens.
+        </p>
+        <div class="treinamento-overlay-actions">
+          <a href="treinamento-disparador.html" target="_blank" class="btn btn-training">
+            <i class="fas fa-play-circle me-2"></i> Fazer treinamento agora
+          </a>
+          <button type="button" class="btn btn-refresh" id="btnReverificarTreinamento">
+            <i class="fas fa-rotate-right me-2"></i> Já concluí / Revalidar
+          </button>
+        </div>
+      </div>
+    </div>
+    
     <!-- Scripts -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script>
@@ -1185,6 +1281,7 @@
             simulateTyping: true
         };
         let configDisparo = { ...DEFAULT_DISPARO_CONFIG };
+        let treinamentoConcluido = false;
 
         function getConfigResumoTexto() {
             const typingText = configDisparo.simulateTyping ? 'Simular digitação: ativado' : 'Simular digitação: desativado';
@@ -1205,7 +1302,8 @@
                 resumo.innerHTML = `
                     <strong>Intervalo entre disparos:</strong> ${configDisparo.delayMin}-${configDisparo.delayMax} segundos<br>
                     <strong>Limite por bloco:</strong> ${configDisparo.messageLimit} mensagens a cada ${configDisparo.windowMinutes} minuto(s)<br>
-                    <strong>Pausa automática:</strong> ${configDisparo.cooldownMinutes} minuto(s) até a retomada
+                    <strong>Pausa automática:</strong> ${configDisparo.cooldownMinutes} minuto(s) até a retomada<br>
+                    <strong>Simular digitação:</strong> ${configDisparo.simulateTyping ? 'ativado' : 'desativado'}
                 `;
             }
         }
@@ -1289,6 +1387,80 @@
                 if (simulateTypingInput) simulateTypingInput.checked = !!configDisparo.simulateTyping;
                 atualizarResumoConfig();
                 aplicarConfigDisparo(null, true);
+            }
+        }
+
+        function bloquearDisparadorTreinamento() {
+            treinamentoConcluido = false;
+            ['btnIniciarDisparo', 'btnTestarEnvio', 'btnTestarMensagem'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) {
+                    el.setAttribute('disabled', 'disabled');
+                }
+            });
+            document.getElementById('treinamentoBloqueio')?.classList.add('ativo');
+        }
+
+        function liberarDisparadorTreinamento() {
+            treinamentoConcluido = true;
+            ['btnIniciarDisparo', 'btnTestarEnvio', 'btnTestarMensagem'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) {
+                    el.removeAttribute('disabled');
+                }
+            });
+            document.getElementById('treinamentoBloqueio')?.classList.remove('ativo');
+        }
+
+        async function verificarTreinamentoObrigatorio(silencioso = false) {
+            try {
+                const usuarioAtual = obterUsuarioAtual();
+                const headers = {};
+                if (usuarioAtual?.email) {
+                    headers['X-User-Email'] = usuarioAtual.email;
+                }
+                if (usuarioAtual?.id) {
+                    headers['X-User-Id'] = usuarioAtual.id;
+                }
+
+                const response = await fetch('/api/treinamentos/status?slug=disparador_mensagens', {
+                    method: 'GET',
+                    credentials: 'include',
+                    headers
+                });
+
+                if (!response.ok) {
+                    console.warn('⚠️ Não foi possível verificar treinamento:', response.status);
+                    bloquearDisparadorTreinamento();
+                    if (!silencioso) {
+                        if (response.status === 401) {
+                            mostrarAviso('Faça login novamente para validar o treinamento antes de utilizar o disparador.');
+                        } else {
+                            mostrarAviso('Não foi possível validar o treinamento. Refaça o login ou repita a verificação após concluir o curso.');
+                        }
+                    }
+                    return;
+                }
+
+                const data = await response.json();
+
+                if (data?.concluido) {
+                    liberarDisparadorTreinamento();
+                    if (!silencioso) {
+                        mostrarSucesso('Treinamento validado! Você pode utilizar o disparador com segurança.');
+                    }
+                } else {
+                    bloquearDisparadorTreinamento();
+                    if (!silencioso) {
+                        mostrarAviso('Finalize o treinamento "Disparador de Mensagens" antes de utilizar o sistema.');
+                    }
+                }
+            } catch (error) {
+                console.error('❌ Erro ao verificar treinamento:', error);
+                bloquearDisparadorTreinamento();
+                if (!silencioso) {
+                    mostrarAviso('Erro ao verificar o treinamento. Tente novamente em instantes.');
+                }
             }
         }
 
@@ -1388,6 +1560,7 @@ const estados = [
         // ========== INICIALIZAÇÃO ==========
         document.addEventListener('DOMContentLoaded', async () => {
             console.log('🚀 Inicializando Painel de Disparo Moderno...');
+            bloquearDisparadorTreinamento();
             
             // 🔐 Verificar permissão de acesso
             const temPermissao = await verificarEAplicarPermissao('painel');
@@ -1411,6 +1584,7 @@ const estados = [
             await carregarFiltros();
             configurarEventos();
             configurarUploadImagem();
+            await verificarTreinamentoObrigatorio(true);
             
             console.log('✅ Painel inicializado com sucesso!');
 
@@ -1427,6 +1601,17 @@ const estados = [
                     if (triggerElement) {
                         triggerElement.focus();
                     }
+                });
+            }
+            
+            const btnReverificarTreinamento = document.getElementById('btnReverificarTreinamento');
+            if (btnReverificarTreinamento) {
+                btnReverificarTreinamento.addEventListener('click', async () => {
+                    btnReverificarTreinamento.disabled = true;
+                    btnReverificarTreinamento.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Verificando...';
+                    await verificarTreinamentoObrigatorio();
+                    btnReverificarTreinamento.disabled = false;
+                    btnReverificarTreinamento.innerHTML = '<i class="fas fa-rotate-right me-2"></i> Já concluí / Revalidar';
                 });
             }
         });
@@ -2361,6 +2546,10 @@ const estados = [
 
         // ========== TESTAR MENSAGEM ==========
         async function testarMensagem() {
+            if (!treinamentoConcluido) {
+                mostrarAviso('Finalize o treinamento "Disparador de Mensagens" antes de utilizar os recursos do disparador.');
+                return;
+            }
             const mensagem = document.getElementById('messageText').value;
             
             if (!mensagem.trim()) {
@@ -2398,6 +2587,10 @@ const estados = [
 
         // ========== TESTAR ENVIO REAL ==========
         async function testarEnvioReal() {
+            if (!treinamentoConcluido) {
+                mostrarAviso('Finalize o treinamento "Disparador de Mensagens" antes de enviar mensagens.');
+                return;
+            }
             const telefone = document.getElementById('telefoneTeste').value.trim();
             const mensagem = document.getElementById('messageText').value.trim();
             const imageFile = imagemSelecionada;
@@ -2461,6 +2654,7 @@ const estados = [
                 formData.append('windowMinutes', configDisparo.windowMinutes);
                 formData.append('delayMin', configDisparo.delayMin);
                 formData.append('delayMax', configDisparo.delayMax);
+                formData.append('simulateTyping', configDisparo.simulateTyping ? 'true' : 'false');
                 if (imageFile) {
                     formData.append('media', imageFile);
                 }
@@ -2692,6 +2886,10 @@ const estados = [
 
         // ========== INICIAR DISPARO ==========
         async function iniciarDisparo() {
+            if (!treinamentoConcluido) {
+                mostrarAviso('Finalize o treinamento "Disparador de Mensagens" antes de iniciar disparos.');
+                return;
+            }
             if (!currentClass) {
                 mostrarAviso('Selecione uma categoria primeiro');
                 return;
@@ -2805,6 +3003,7 @@ const estados = [
                     formData.append('windowMinutes', configDisparo.windowMinutes);
                     formData.append('delayMin', configDisparo.delayMin);
                     formData.append('delayMax', configDisparo.delayMax);
+                    formData.append('simulateTyping', configDisparo.simulateTyping ? 'true' : 'false');
                     if (imageFile) {
                         formData.append('media', imageFile);
                     }
