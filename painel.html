@@ -347,9 +347,9 @@
             height: 20px;
             border: 2px solid #dee2e6;
             border-radius: 4px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             transition: var(--transition);
         }
 
@@ -357,6 +357,40 @@
             background: var(--primary);
             border-color: var(--primary);
             color: white;
+        }
+
+        .motorista-actions {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .motorista-favorito {
+            width: 32px;
+            height: 32px;
+            border: none;
+            background: transparent;
+            color: #dee2e6;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            transition: var(--transition);
+            font-size: 1.2rem;
+        }
+
+        .motorista-favorito:hover {
+            background: rgba(255, 193, 7, 0.1);
+            color: #ffc107;
+        }
+
+        .motorista-favorito.active {
+            color: #ffc107;
+        }
+
+        .motorista-favorito.active:hover {
+            color: #ff9800;
         }
 
         /* Pagination */
@@ -924,15 +958,6 @@
             <div class="filters-container">
                 <div class="row">
                     <div class="col-md-2">
-                        <label class="form-label">Classe de Veículo</label>
-                        <select id="filtroClasse" class="form-control form-control-modern">
-                            <option value="">Todas as classes</option>
-                            <option value="leve">Leve</option>
-                            <option value="medio">Médio</option>
-                            <option value="pesado">Pesado</option>
-                        </select>
-                    </div>
-                    <div class="col-md-2">
                         <label class="form-label">Tipo de Veículo</label>
                         <select id="filtroTipoVeiculo" class="form-control form-control-modern">
                             <option value="">Todos os tipos</option>
@@ -961,6 +986,14 @@
                     <div class="col-md-2">
                         <label class="form-label">Buscar</label>
                         <input type="text" id="filtroBusca" class="form-control form-control-modern" placeholder="Nome ou telefone...">
+                    </div>
+                </div>
+                <div class="row mt-2">
+                    <div class="col-md-2">
+                        <label class="form-label">
+                            <input type="checkbox" id="filtroFavoritos" class="form-check-input me-2">
+                            Apenas Favoritos
+                        </label>
                     </div>
                 </div>
                 <div class="row mt-3">
@@ -1500,6 +1533,8 @@ async function inicializarSupabase() {
         // ========== VARIÁVEIS GLOBAIS ==========
         let allMotoristas = [];
         let selectedMotoristas = new Set();
+        let motoristasFavoritos = new Set(); // Set de IDs de motoristas favoritos
+        let currentUser = null; // Usuário atual autenticado
         let currentClass = null;
         let isDisparoAtivo = false;
         let disparoCancelado = false;
@@ -1582,6 +1617,7 @@ const estados = [
             await verificarAutenticacao();
             await carregarEstatisticas();
             await carregarFiltros();
+            await carregarFavoritos(); // Carregar favoritos do usuário
             configurarEventos();
             configurarUploadImagem();
             await verificarTreinamentoObrigatorio(true);
@@ -1932,12 +1968,12 @@ const estados = [
             });
 
             // Filtros
-            document.getElementById('filtroClasse').addEventListener('change', aplicarFiltros);
             document.getElementById('filtroTipoVeiculo').addEventListener('change', aplicarFiltros);
             document.getElementById('filtroCarroceria').addEventListener('change', aplicarFiltros);
             document.getElementById('filtroEstado').addEventListener('change', aplicarFiltros);
             document.getElementById('filtroStatus').addEventListener('change', aplicarFiltros);
             document.getElementById('filtroBusca').addEventListener('input', aplicarFiltros);
+            document.getElementById('filtroFavoritos').addEventListener('change', aplicarFiltros);
 
             // Paginação
             document.getElementById('itensPorPagina').addEventListener('change', (e) => {
@@ -2066,8 +2102,16 @@ const estados = [
                             ${motorista.tipo_carroceria ? `<br><i class="fas fa-box me-1"></i>${tiposCarroceriaMap[motorista.tipo_carroceria] || motorista.tipo_carroceria}` : ''}
                         </div>
                     </div>
-                    <div class="motorista-checkbox ${selectedMotoristas.has(motorista.id) ? 'checked' : ''}">
-                        ${selectedMotoristas.has(motorista.id) ? '<i class="fas fa-check"></i>' : ''}
+                    <div class="motorista-actions">
+                        <button class="motorista-favorito ${motoristasFavoritos.has(motorista.id) ? 'active' : ''}" 
+                                data-motorista-id="${motorista.id}" 
+                                onclick="event.stopPropagation(); toggleFavorito('${motorista.id}')"
+                                title="${motoristasFavoritos.has(motorista.id) ? 'Remover dos favoritos' : 'Adicionar aos favoritos'}">
+                            <i class="fas fa-star"></i>
+                        </button>
+                        <div class="motorista-checkbox ${selectedMotoristas.has(motorista.id) ? 'checked' : ''}">
+                            ${selectedMotoristas.has(motorista.id) ? '<i class="fas fa-check"></i>' : ''}
+                        </div>
                     </div>
                 </div>
             `).join('');
@@ -2148,6 +2192,95 @@ const estados = [
             atualizarContadorSelecionados();
         }
 
+        // ========== GERENCIAR FAVORITOS ==========
+        async function carregarFavoritos() {
+            try {
+                if (!supabase || !currentUser) {
+                    console.log('⚠️ Supabase ou usuário não disponível para carregar favoritos');
+                    return;
+                }
+
+                // Buscar favoritos do usuário atual
+                const { data, error } = await supabase
+                    .from('motoristas_favoritos')
+                    .select('motorista_id')
+                    .eq('usuario_id', currentUser);
+
+                if (error) {
+                    console.error('❌ Erro ao carregar favoritos:', error);
+                    return;
+                }
+
+                // Limpar e popular o Set de favoritos
+                motoristasFavoritos.clear();
+                if (data && data.length > 0) {
+                    data.forEach(item => {
+                        motoristasFavoritos.add(item.motorista_id);
+                    });
+                    console.log(`✅ ${motoristasFavoritos.size} favoritos carregados`);
+                }
+            } catch (error) {
+                console.error('❌ Erro ao carregar favoritos:', error);
+            }
+        }
+
+        async function toggleFavorito(motoristaId) {
+            try {
+                if (!supabase || !currentUser) {
+                    mostrarAviso('Erro: usuário não autenticado');
+                    return;
+                }
+
+                const isFavorito = motoristasFavoritos.has(motoristaId);
+
+                if (isFavorito) {
+                    // Remover dos favoritos
+                    const { error } = await supabase
+                        .from('motoristas_favoritos')
+                        .delete()
+                        .eq('usuario_id', currentUser)
+                        .eq('motorista_id', motoristaId);
+
+                    if (error) throw error;
+
+                    motoristasFavoritos.delete(motoristaId);
+                    console.log(`⭐ Favorito removido: ${motoristaId}`);
+                } else {
+                    // Adicionar aos favoritos
+                    const { error } = await supabase
+                        .from('motoristas_favoritos')
+                        .insert([{
+                            usuario_id: currentUser,
+                            motorista_id: motoristaId,
+                            created_at: new Date().toISOString()
+                        }]);
+
+                    if (error) throw error;
+
+                    motoristasFavoritos.add(motoristaId);
+                    console.log(`⭐ Favorito adicionado: ${motoristaId}`);
+                }
+
+                // Atualizar visual do botão
+                const favoritoBtn = document.querySelector(`[data-motorista-id="${motoristaId}"]`);
+                if (favoritoBtn) {
+                    favoritoBtn.classList.toggle('active');
+                    favoritoBtn.title = motoristasFavoritos.has(motoristaId) 
+                        ? 'Remover dos favoritos' 
+                        : 'Adicionar aos favoritos';
+                }
+
+                // Se o filtro de favoritos estiver ativo, reaplicar filtros
+                const filtroFavoritos = document.getElementById('filtroFavoritos');
+                if (filtroFavoritos && filtroFavoritos.checked) {
+                    aplicarFiltros();
+                }
+            } catch (error) {
+                console.error('❌ Erro ao alternar favorito:', error);
+                mostrarAviso('Erro ao atualizar favorito. Tente novamente.');
+            }
+        }
+
         // ========== APLICAR FILTROS (INTELIGENTE) ==========
         async function aplicarFiltros() {
             if (!currentClass) {
@@ -2155,20 +2288,21 @@ const estados = [
                 return;
             }
 
-            const filtroClasse = document.getElementById('filtroClasse').value;
             const filtroTipoVeiculo = document.getElementById('filtroTipoVeiculo').value;
             const filtroCarroceria = document.getElementById('filtroCarroceria').value;
             const filtroEstado = document.getElementById('filtroEstado').value;
             const filtroStatus = document.getElementById('filtroStatus').value;
             const filtroBusca = document.getElementById('filtroBusca').value.toLowerCase();
+            const filtroFavoritos = document.getElementById('filtroFavoritos').checked;
 
             console.log('🔍 Aplicando filtros inteligentes...', {
-                classe: filtroClasse,
+                classe: currentClass,
                 tipoVeiculo: filtroTipoVeiculo,
                 carroceria: filtroCarroceria,
                 estado: filtroEstado,
                 status: filtroStatus,
-                busca: filtroBusca
+                busca: filtroBusca,
+                favoritos: filtroFavoritos
             });
 
             const motoristasList = document.getElementById('motoristasList');
@@ -2178,10 +2312,8 @@ const estados = [
                 let todosMotoristas = [];
                 
                 if (supabase) {
-                    // Determinar classe a usar: filtro do select tem prioridade sobre currentClass
-                    const classeParaFiltro = filtroClasse || currentClass;
-                    
-                    if (!classeParaFiltro) {
+                    // Usar currentClass (selecionado pelos cards)
+                    if (!currentClass) {
                         mostrarAviso('Selecione uma categoria primeiro');
                         return;
                     }
@@ -2190,7 +2322,7 @@ const estados = [
                     let query = supabase
                         .from('motoristas')
                         .select('id, nome, telefone1, telefone2, estado, classe_veiculo, tipo_veiculo, tipo_carroceria, status')
-                        .eq('classe_veiculo', classeParaFiltro);
+                        .eq('classe_veiculo', currentClass);
 
                     // Aplicar filtro de status (se não houver filtro, não aplicar nenhum filtro de status)
                     if (filtroStatus) {
@@ -2307,15 +2439,31 @@ const estados = [
                         console.log(`✅ Filtro de carroceria: ${antes} → ${todosMotoristas.length} motoristas`);
                     }
                     
+                    // Aplicar filtro de favoritos (client-side)
+                    if (filtroFavoritos && motoristasFavoritos.size > 0) {
+                        const antes = todosMotoristas.length;
+                        todosMotoristas = todosMotoristas.filter(motorista => {
+                            return motoristasFavoritos.has(motorista.id);
+                        });
+                        console.log(`✅ Filtro de favoritos: ${antes} → ${todosMotoristas.length} motoristas`);
+                    } else if (filtroFavoritos && motoristasFavoritos.size === 0) {
+                        // Se o filtro está ativo mas não há favoritos, retornar lista vazia
+                        todosMotoristas = [];
+                        console.log('⚠️ Filtro de favoritos ativo, mas nenhum favorito encontrado');
+                    }
+                    
                     console.log(`🔍 ${todosMotoristas.length.toLocaleString('pt-BR')} motoristas encontrados com filtros aplicados`);
                 } else {
                     // Usar dados mockados com filtros locais
-                    // Determinar classe a usar: filtro do select tem prioridade sobre currentClass
-                    const classeParaFiltro = filtroClasse || currentClass;
+                    // Usar currentClass (selecionado pelos cards)
+                    if (!currentClass) {
+                        mostrarAviso('Selecione uma categoria primeiro');
+                        return;
+                    }
                     
                     todosMotoristas = allMotoristas.filter(motorista => {
-                        // Filtro de classe (usar filtroClasse se existir, senão currentClass)
-                        if (classeParaFiltro && motorista.classe_veiculo !== classeParaFiltro) return false;
+                        // Filtro de classe usando currentClass
+                        if (motorista.classe_veiculo !== currentClass) return false;
                         
                         // Filtro de tipo de veículo (tolerante, case-insensitive, sem acentos)
                         if (filtroTipoVeiculo) {
@@ -2360,6 +2508,13 @@ const estados = [
                             }
                         }
                         
+                        // Filtro de favoritos
+                        if (filtroFavoritos) {
+                            if (!motoristasFavoritos.has(motorista.id)) {
+                                return false;
+                            }
+                        }
+                        
                         return true;
                     });
                 }
@@ -2378,9 +2533,13 @@ const estados = [
                 console.error('❌ Erro ao aplicar filtros:', error);
                 
                 // Fallback para filtros locais
-                const classeParaFiltro = filtroClasse || currentClass;
+                if (!currentClass) {
+                    mostrarAviso('Selecione uma categoria primeiro');
+                    return;
+                }
+                
                 motoristasFiltrados = allMotoristas.filter(m => {
-                    if (classeParaFiltro && m.classe_veiculo !== classeParaFiltro) return false;
+                    if (m.classe_veiculo !== currentClass) return false;
                     // Não filtrar por status no fallback, mostrar todos
                     return true;
                 });
