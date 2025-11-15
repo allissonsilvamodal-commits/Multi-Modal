@@ -27,15 +27,31 @@ const crypto = require('crypto');
 const { validate } = require('./validation');
 const { logger } = require('./logger');
 const OpenAI = require('openai');
-const ffmpeg = require('fluent-ffmpeg');
-const ffmpegInstaller = require('@ffmpeg-installer/ffmpeg');
 const { promisify } = require('util');
 const writeFile = promisify(fs.writeFile);
 const unlink = promisify(fs.unlink);
 const readFile = promisify(fs.readFile);
 
-// Configurar caminho do ffmpeg
-ffmpeg.setFfmpegPath(ffmpegInstaller.path);
+// Tentar carregar ffmpeg (opcional - apenas se disponível)
+let ffmpeg = null;
+let ffmpegAvailable = false;
+try {
+  ffmpeg = require('fluent-ffmpeg');
+  const ffmpegInstaller = require('@ffmpeg-installer/ffmpeg');
+  if (ffmpegInstaller && ffmpegInstaller.path) {
+    ffmpeg.setFfmpegPath(ffmpegInstaller.path);
+    ffmpegAvailable = true;
+    console.log('✅ FFmpeg disponível - conversão de áudio habilitada');
+  } else {
+    throw new Error('FFmpeg installer path não encontrado');
+  }
+} catch (error) {
+  console.warn('⚠️ FFmpeg não disponível - conversão de áudio desabilitada.');
+  console.warn('   Motivo:', error.message || 'Dependências não instaladas');
+  console.warn('   O sistema continuará funcionando normalmente.');
+  console.warn('   Áudios serão enviados no formato original (WebM/OGG).');
+  ffmpegAvailable = false;
+}
 
 const app = express();
 const PORT = process.env.PORT || 5680;
@@ -5735,8 +5751,8 @@ app.post('/webhook/send-supabase', (req, res, next) => {
         isWebM: isAudio && mediaData.mimetype.includes('webm')
       });
       
-      // Converter áudio para MP3 se não for MP3
-      if (isAudio && !mediaData.mimetype.includes('mp3') && !mediaData.mimetype.includes('mpeg')) {
+      // Converter áudio para MP3 se não for MP3 (apenas se ffmpeg estiver disponível)
+      if (isAudio && !mediaData.mimetype.includes('mp3') && !mediaData.mimetype.includes('mpeg') && ffmpegAvailable) {
         console.log('🔄 Convertendo áudio para MP3 para melhor compatibilidade com WhatsApp...');
         try {
           const tempInputPath = path.join(__dirname, 'temp', `input_${Date.now()}_${Math.random().toString(36).substring(7)}.${mediaData.mimetype.includes('ogg') ? 'ogg' : 'webm'}`);
