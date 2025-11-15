@@ -27,6 +27,15 @@ const crypto = require('crypto');
 const { validate } = require('./validation');
 const { logger } = require('./logger');
 const OpenAI = require('openai');
+const ffmpeg = require('fluent-ffmpeg');
+const ffmpegInstaller = require('@ffmpeg-installer/ffmpeg');
+const { promisify } = require('util');
+const writeFile = promisify(fs.writeFile);
+const unlink = promisify(fs.unlink);
+const readFile = promisify(fs.readFile);
+
+// Configurar caminho do ffmpeg
+ffmpeg.setFfmpegPath(ffmpegInstaller.path);
 
 const app = express();
 const PORT = process.env.PORT || 5680;
@@ -51,7 +60,7 @@ if (isDevelopment) {
         connectSrc: ["'self'", "https://*.supabase.co", "https://cdn.jsdelivr.net", "https://cdnjs.cloudflare.com", "https://unpkg.com", "https:", "ws:", "wss:"],
         fontSrc: ["'self'", "https://cdnjs.cloudflare.com", "https://fonts.gstatic.com", "https://fonts.googleapis.com", "https:", "data:"],
         objectSrc: ["'none'"],
-        mediaSrc: ["'self'"],
+        mediaSrc: ["'self'", "blob:"],
         frameSrc: ["'none'"],
         workerSrc: ["'self'", "blob:"],
         manifestSrc: ["'self'"],
@@ -78,7 +87,7 @@ if (isDevelopment) {
         connectSrc: ["'self'", "https://*.supabase.co", "https://cdn.jsdelivr.net", "https://cdnjs.cloudflare.com", "https://unpkg.com"],
         fontSrc: ["'self'", "https://cdnjs.cloudflare.com", "https://fonts.gstatic.com", "https://fonts.googleapis.com"],
         objectSrc: ["'none'"],
-        mediaSrc: ["'self'"],
+        mediaSrc: ["'self'", "blob:"],
         frameSrc: ["'none'"],
         workerSrc: ["'self'", "blob:"],
         manifestSrc: ["'self'"],
@@ -138,6 +147,7 @@ const loginLimiter = rateLimit({
 // 🔒 SEGURANÇA: Configuração do Multer para uploads com validação de tipo
 const storage = multer.memoryStorage();
 
+// Upload para CSV (importação)
 const upload = multer({
   storage,
   limits: {
@@ -166,6 +176,49 @@ const upload = multer({
       }
     } else {
       cb(new Error('Tipo de arquivo não permitido. Apenas arquivos CSV são aceitos.'));
+    }
+  }
+});
+
+// Upload para mídia/imagens (disparos)
+const uploadMedia = multer({
+  storage,
+  limits: {
+    fileSize: 10 * 1024 * 1024 // 10MB
+  },
+  fileFilter: (req, file, cb) => {
+    // Tipos MIME permitidos para imagens e áudio
+    const allowedMimes = [
+      'image/jpeg',
+      'image/jpg',
+      'image/png',
+      'image/gif',
+      'image/webp',
+      'image/bmp',
+      'audio/webm',
+      'audio/ogg',
+      'audio/mpeg',
+      'audio/mp3',
+      'audio/wav',
+      'audio/mp4',
+      'audio/aac',
+      'audio/opus'
+    ];
+    
+    // Extensões permitidas
+    const allowedExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp', '.webm', '.ogg', '.mp3', '.wav', '.mp4', '.aac', '.opus'];
+    const fileExtension = path.extname(file.originalname).toLowerCase();
+    
+    // Verificar tipo MIME
+    if (allowedMimes.includes(file.mimetype)) {
+      // Verificar extensão também
+      if (allowedExtensions.includes(fileExtension)) {
+        cb(null, true);
+      } else {
+        cb(new Error('Extensão de arquivo não permitida. Apenas arquivos de imagem ou áudio são aceitos.'));
+      }
+    } else {
+      cb(new Error('Tipo de arquivo não permitido. Apenas arquivos de imagem ou áudio são aceitos.'));
     }
   }
 });
@@ -4332,7 +4385,9 @@ app.get('/api/active-sessions', async (req, res) => {
     // 1. Contar sessões ativas do SQLite (express-session)
     try {
       const db = new sqlite3.Database('./sessions.db');
-      const query = `SELECT sid, sess, expire, expired, expires FROM sessions`;
+      // A tabela sessions do express-session usa 'expires' (com 's'), não 'expire'
+      // Verificar primeiro quais colunas existem antes de fazer a query
+      const query = `SELECT sid, sess, expired, expires FROM sessions`;
       
       await new Promise((resolve, reject) => {
         db.all(query, [], (err, rows) => {
@@ -4349,17 +4404,18 @@ app.get('/api/active-sessions', async (req, res) => {
           if (rows && rows.length) {
             rows.forEach(row => {
               try {
-                const expireMs = typeof row.expire === 'number' ? row.expire
-                  : (typeof row.expired === 'number' ? row.expired : null);
-                
+                // A tabela sessions do express-session usa 'expires' (string ISO) ou 'expired' (boolean)
                 let notExpired = true;
-                if (expireMs !== null) {
-                  notExpired = expireMs > now;
-                } else if (row.expires) {
+                
+                // Verificar coluna 'expires' (formato ISO string)
+                if (row.expires) {
                   const expParsed = new Date(row.expires).getTime();
                   if (!Number.isNaN(expParsed)) {
                     notExpired = expParsed > now;
                   }
+                } else if (typeof row.expired === 'boolean') {
+                  // Se 'expired' é false, a sessão ainda está ativa
+                  notExpired = !row.expired;
                 }
                 
                 if (notExpired) {
@@ -5588,7 +5644,19 @@ app.post('/webhook/send-auth', requireAuth, async (req, res) => {
   }
 });
 // ========== NOVA ROTA PARA ENVIO COM SUPABASE ==========
-app.post('/webhook/send-supabase', upload.single('media'), async (req, res) => {
+app.post('/webhook/send-supabase', (req, res, next) => {
+  uploadMedia.single('media')(req, res, (err) => {
+    if (err) {
+      console.error('❌ Erro no upload de mídia:', err.message);
+      return res.status(400).json({
+        success: false,
+        error: err.message || 'Erro ao processar arquivo de imagem',
+        details: 'Verifique se o arquivo é uma imagem válida (JPG, PNG, GIF, WEBP) e tem no máximo 10MB'
+      });
+    }
+    next();
+  });
+}, async (req, res) => {
   const { number, message, usuario, userId } = req.body;
   const mediaFile = req.file;
 
@@ -5611,41 +5679,129 @@ app.post('/webhook/send-supabase', upload.single('media'), async (req, res) => {
   }
   
   const cleanupFile = () => {
+    // Com memoryStorage, não há arquivo no disco para deletar
+    // Apenas limpar referências se necessário
     if (mediaFile) {
-      try {
-        fs.unlinkSync(mediaFile.path);
-      } catch (error) {
-        console.warn('⚠️ Falha ao remover arquivo temporário:', error.message);
-      }
+      console.log('🧹 Limpando referências do arquivo de mídia');
     }
   };
 
   let mediaData = null;
   if (mediaFile) {
-    if (!mediaFile.mimetype.startsWith('image/')) {
+    const isImage = mediaFile.mimetype.startsWith('image/');
+    const isAudio = mediaFile.mimetype.startsWith('audio/');
+    
+    if (!isImage && !isAudio) {
       cleanupFile();
       return res.status(400).json({
         success: false,
-        error: 'Somente arquivos de imagem são permitidos'
+        error: 'Somente arquivos de imagem ou áudio são permitidos'
       });
     }
 
-    if (mediaFile.size > 5 * 1024 * 1024) {
+    const maxSize = isAudio ? 10 * 1024 * 1024 : 5 * 1024 * 1024; // Áudio pode ser maior (10MB)
+    if (mediaFile.size > maxSize) {
       cleanupFile();
       return res.status(400).json({
         success: false,
-        error: 'A imagem deve ter no máximo 5MB'
+        error: isAudio ? 'O áudio deve ter no máximo 10MB' : 'A imagem deve ter no máximo 5MB'
       });
     }
 
     try {
-      const buffer = fs.readFileSync(mediaFile.path);
+      // Como estamos usando memoryStorage, o arquivo está em req.file.buffer, não em req.file.path
+      if (!mediaFile.buffer) {
+        cleanupFile();
+        return res.status(500).json({
+          success: false,
+          error: `Arquivo de ${isAudio ? 'áudio' : 'imagem'} não foi recebido corretamente`,
+          details: 'O buffer do arquivo está vazio'
+        });
+      }
+      
       mediaData = {
         fileName: mediaFile.originalname,
         mimetype: mediaFile.mimetype,
-        base64: buffer.toString('base64')
+        base64: mediaFile.buffer.toString('base64'),
+        size: mediaFile.size
       };
+      
+      const tipoMedia = isAudio ? 'Áudio' : 'Imagem';
+      console.log(`✅ ${tipoMedia} processado:`, {
+        nome: mediaData.fileName,
+        tipo: mediaData.mimetype,
+        tamanhoOriginal: `${Math.round(mediaData.size / 1024)}KB`,
+        tamanhoBase64: `${Math.round(mediaData.base64.length / 1024)}KB`,
+        isWebM: isAudio && mediaData.mimetype.includes('webm')
+      });
+      
+      // Converter áudio para MP3 se não for MP3
+      if (isAudio && !mediaData.mimetype.includes('mp3') && !mediaData.mimetype.includes('mpeg')) {
+        console.log('🔄 Convertendo áudio para MP3 para melhor compatibilidade com WhatsApp...');
+        try {
+          const tempInputPath = path.join(__dirname, 'temp', `input_${Date.now()}_${Math.random().toString(36).substring(7)}.${mediaData.mimetype.includes('ogg') ? 'ogg' : 'webm'}`);
+          const tempOutputPath = path.join(__dirname, 'temp', `output_${Date.now()}_${Math.random().toString(36).substring(7)}.mp3`);
+          
+          // Criar diretório temp se não existir
+          const tempDir = path.join(__dirname, 'temp');
+          if (!fs.existsSync(tempDir)) {
+            fs.mkdirSync(tempDir, { recursive: true });
+          }
+          
+          // Escrever arquivo temporário de entrada
+          await writeFile(tempInputPath, mediaFile.buffer);
+          
+          // Converter para MP3
+          await new Promise((resolve, reject) => {
+            ffmpeg(tempInputPath)
+              .toFormat('mp3')
+              .audioCodec('libmp3lame')
+              .audioBitrate(128)
+              .audioChannels(1) // Mono para reduzir tamanho
+              .audioFrequency(44100)
+              .on('end', () => {
+                console.log('✅ Conversão para MP3 concluída');
+                resolve();
+              })
+              .on('error', (err) => {
+                console.error('❌ Erro na conversão para MP3:', err.message);
+                reject(err);
+              })
+              .save(tempOutputPath);
+          });
+          
+          // Ler arquivo MP3 convertido
+          const mp3Buffer = await readFile(tempOutputPath);
+          
+          // Atualizar mediaData com MP3
+          mediaData = {
+            fileName: mediaData.fileName.replace(/\.[^.]+$/, '.mp3'),
+            mimetype: 'audio/mpeg',
+            base64: mp3Buffer.toString('base64'),
+            size: mp3Buffer.length
+          };
+          
+          console.log(`✅ Áudio convertido para MP3:`, {
+            tamanhoOriginal: `${Math.round(mediaFile.size / 1024)}KB`,
+            tamanhoMP3: `${Math.round(mediaData.size / 1024)}KB`,
+            reducao: `${Math.round((1 - mediaData.size / mediaFile.size) * 100)}%`
+          });
+          
+          // Limpar arquivos temporários
+          try {
+            await unlink(tempInputPath);
+            await unlink(tempOutputPath);
+          } catch (cleanupErr) {
+            console.warn('⚠️ Erro ao limpar arquivos temporários:', cleanupErr.message);
+          }
+        } catch (conversionError) {
+          console.error('❌ Erro ao converter áudio para MP3:', conversionError);
+          console.warn('⚠️ Continuando com formato original...');
+          // Continuar com o formato original se a conversão falhar
+        }
+      }
     } catch (error) {
+      console.error('❌ Erro ao processar imagem:', error);
       cleanupFile();
       return res.status(500).json({
         success: false,
@@ -5908,12 +6064,120 @@ app.post('/webhook/send-supabase', upload.single('media'), async (req, res) => {
     }
 
     const isImage = mediaData.mimetype.startsWith('image/');
+    const isAudio = mediaData.mimetype.startsWith('audio/');
     const rawBase64 = mediaData.base64;
     const prefixedBase64 = rawBase64.startsWith('data:') ? rawBase64 : `data:${mediaData.mimetype};base64,${rawBase64}`;
-    const guessedExtension = path.extname(mediaData.fileName) || (isImage ? '.jpg' : '');
+    
+    // Para áudio, usar o mimetype do mediaData (já convertido para MP3 se necessário)
+    let audioMimeType = mediaData.mimetype;
+    
+    // Se já for MP3, usar diretamente
+    if (isAudio && (audioMimeType.includes('mp3') || audioMimeType.includes('mpeg'))) {
+      console.log('✅ Áudio já está em formato MP3 - formato ideal para WhatsApp');
+    } else if (isAudio && audioMimeType.includes('webm')) {
+      // Se ainda for WebM (conversão falhou), tentar OGG como fallback
+      audioMimeType = 'audio/ogg; codecs=opus';
+      console.log('⚠️ Usando OGG Opus como fallback (conversão para MP3 pode ter falhado)');
+    }
+    
+    const guessedExtension = path.extname(mediaData.fileName) || (isImage ? '.jpg' : (isAudio ? (audioMimeType.includes('mp3') || audioMimeType.includes('mpeg') ? '.mp3' : (audioMimeType.includes('ogg') ? '.ogg' : '.webm')) : ''));
     const normalizedFileName = mediaData.fileName || `arquivo${guessedExtension}`;
 
-    const mediaAttempts = [
+    const mediaAttempts = isAudio ? [
+      {
+        name: 'message/sendPtt',
+        url: `${evolutionUrl}/message/sendPtt/${userCreds.instance_name}`,
+        payload: {
+          number: formattedNumber,
+          audio: rawBase64,
+          base64: rawBase64,
+          mimetype: audioMimeType,
+          ptt: false
+        }
+      },
+      {
+        name: 'message/sendAudio',
+        url: `${evolutionUrl}/message/sendAudio/${userCreds.instance_name}`,
+        payload: {
+          number: formattedNumber,
+          audio: rawBase64,
+          base64: rawBase64,
+          mimetype: audioMimeType,
+          ptt: false
+        }
+      },
+      {
+        name: 'message/sendAudioBase64',
+        url: `${evolutionUrl}/message/sendAudioBase64/${userCreds.instance_name}`,
+        payload: {
+          number: formattedNumber,
+          audio: rawBase64,
+          base64: rawBase64,
+          mimetype: audioMimeType,
+          ptt: false
+        }
+      },
+      {
+        name: 'message/sendMedia',
+        url: `${evolutionUrl}/message/sendMedia/${userCreds.instance_name}`,
+        payload: {
+          number: formattedNumber,
+          message: message || '',
+          caption: message || '',
+          mediatype: 'audio',
+          mediaType: 'audio',
+          fileName: normalizedFileName,
+          filename: normalizedFileName,
+          mimetype: audioMimeType,
+          base64: rawBase64,
+          media: rawBase64,
+          audio: rawBase64,
+          ptt: false,
+          seconds: null, // Duração em segundos (será calculada se possível)
+          owned: {
+            type: 'audio',
+            media: rawBase64,
+            base64: rawBase64,
+            filename: normalizedFileName,
+            mimetype: audioMimeType,
+            audio: rawBase64
+          },
+          mediaMessage: {
+            mediatype: 'audio',
+            media: rawBase64,
+            base64: rawBase64,
+            audio: rawBase64,
+            fileName: normalizedFileName,
+            mimetype: audioMimeType,
+            caption: message || ''
+          }
+        }
+      }
+    ] : [
+      {
+        name: 'message/sendImage',
+        url: `${evolutionUrl}/message/sendImage/${userCreds.instance_name}`,
+        payload: {
+          number: formattedNumber,
+          caption: message,
+          fileName: normalizedFileName,
+          filename: normalizedFileName,
+          base64: rawBase64,
+          media: rawBase64
+        }
+      },
+      {
+        name: 'message/sendImageBase64',
+        url: `${evolutionUrl}/message/sendImageBase64/${userCreds.instance_name}`,
+        payload: {
+          number: formattedNumber,
+          caption: message,
+          fileName: normalizedFileName,
+          filename: normalizedFileName,
+          base64: rawBase64,
+          media: rawBase64
+        }
+      },
       {
         name: 'message/sendFileBase64',
         url: `${evolutionUrl}/message/sendFileBase64/${userCreds.instance_name}`,
@@ -5934,9 +6198,9 @@ app.post('/webhook/send-supabase', upload.single('media'), async (req, res) => {
           caption: message,
           fileName: normalizedFileName,
           mimetype: mediaData.mimetype,
-          mediaData: prefixedBase64,
+          mediaData: rawBase64,
           base64: rawBase64,
-          media: prefixedBase64
+          media: rawBase64
         }
       },
       {
@@ -5948,7 +6212,7 @@ app.post('/webhook/send-supabase', upload.single('media'), async (req, res) => {
           fileName: normalizedFileName,
           mimetype: mediaData.mimetype,
           base64: rawBase64,
-          media: prefixedBase64
+          media: rawBase64
         }
       },
       {
@@ -5958,25 +6222,25 @@ app.post('/webhook/send-supabase', upload.single('media'), async (req, res) => {
           number: formattedNumber,
           message,
           caption: message,
-          mediatype: isImage ? 'image' : mediaData.mimetype,
-          mediaType: isImage ? 'image' : mediaData.mimetype,
+          mediatype: isImage ? 'image' : 'document',
+          mediaType: isImage ? 'image' : 'document',
           fileName: normalizedFileName,
           filename: normalizedFileName,
           mimetype: mediaData.mimetype,
           base64: rawBase64,
-          media: prefixedBase64,
-          mediaData: prefixedBase64,
+          media: rawBase64, // Base64 puro sem prefixo data:
+          mediaData: rawBase64,
           owned: {
-            type: isImage ? 'image' : 'file',
-            media: prefixedBase64,
+            type: isImage ? 'image' : 'document',
+            media: rawBase64, // Base64 puro sem prefixo data:
             base64: rawBase64,
             filename: normalizedFileName,
             mimetype: mediaData.mimetype,
             caption: message
           },
           mediaMessage: {
-            mediatype: isImage ? 'image' : mediaData.mimetype,
-            media: prefixedBase64,
+            mediatype: isImage ? 'image' : 'document',
+            media: rawBase64,
             base64: rawBase64,
             fileName: normalizedFileName,
             mimetype: mediaData.mimetype,
@@ -5984,18 +6248,6 @@ app.post('/webhook/send-supabase', upload.single('media'), async (req, res) => {
           }
         }
       },
-      {
-        name: 'message/sendImageBase64',
-        url: `${evolutionUrl}/message/sendImageBase64/${userCreds.instance_name}`,
-        payload: {
-          number: formattedNumber,
-          caption: message,
-          fileName: normalizedFileName,
-          filename: normalizedFileName,
-          base64: rawBase64,
-          media: prefixedBase64
-        }
-      }
     ];
 
     const attemptLogs = [];
@@ -6014,6 +6266,30 @@ app.post('/webhook/send-supabase', upload.single('media'), async (req, res) => {
     for (const attempt of mediaAttempts) {
       try {
         console.log(`🌐 Tentando Evolution endpoint: ${attempt.name}`);
+        if (isAudio) {
+          const audioSizeKB = Math.round(mediaData.size / 1024);
+          const base64SizeKB = Math.round(rawBase64.length / 1024);
+          const maxSizeKB = 16 * 1024; // WhatsApp limita áudio a ~16MB
+          
+          console.log(`🎤 Payload de áudio:`, {
+            number: formattedNumber,
+            mimetypeOriginal: mediaData.mimetype,
+            mimetypeEnviado: audioMimeType,
+            fileName: normalizedFileName,
+            tamanhoOriginal: `${audioSizeKB}KB`,
+            tamanhoBase64: `${base64SizeKB}KB`,
+            dentroDoLimite: audioSizeKB <= maxSizeKB,
+            limiteMaximo: `${maxSizeKB}KB (16MB)`,
+            hasAudio: !!attempt.payload.audio,
+            hasBase64: !!attempt.payload.base64,
+            hasMedia: !!attempt.payload.media,
+            endpoint: attempt.name
+          });
+          
+          if (audioSizeKB > maxSizeKB) {
+            console.warn(`⚠️ Áudio muito grande (${audioSizeKB}KB). WhatsApp pode rejeitar arquivos maiores que 16MB.`);
+          }
+        }
         const response = await fetch(attempt.url, {
           method: 'POST',
           headers: {
@@ -6030,6 +6306,14 @@ app.post('/webhook/send-supabase', upload.single('media'), async (req, res) => {
           evolutionResult = await response.json();
           attemptLogs.push({ endpoint: attempt.name, status: response.status, success: true });
           console.log(`✅ Evolution aceitou no endpoint ${attempt.name}`);
+          console.log(`📦 Resposta Evolution:`, JSON.stringify(evolutionResult, null, 2));
+          
+          // Verificar se realmente foi enviado (pode retornar 200 mas com erro interno)
+          if (evolutionResult && evolutionResult.key && evolutionResult.key.id) {
+            console.log(`✅ Mensagem de mídia enviada com sucesso! ID: ${evolutionResult.key.id}`);
+          } else {
+            console.warn(`⚠️ Resposta OK mas sem ID de mensagem. Resposta:`, evolutionResult);
+          }
           break;
         }
 
@@ -6053,11 +6337,26 @@ app.post('/webhook/send-supabase', upload.single('media'), async (req, res) => {
       }
     }
 
-    console.log('📝 Tentativas Evolution:', attemptLogs);
+    console.log('📝 Tentativas Evolution:', JSON.stringify(attemptLogs, null, 2));
     cleanupFile();
 
-    if (evolutionResult) {
+    // Verificar se realmente foi enviado (precisa ter key.id na resposta)
+    const realmenteEnviado = evolutionResult && evolutionResult.key && evolutionResult.key.id;
+    
+    if (realmenteEnviado) {
       const cooldownInfo = registerUserSend(userIdentity);
+      const endpointUsado = attemptLogs.find(a => a.success)?.endpoint || null;
+      
+      console.log(`✅ Mídia enviada com sucesso via ${endpointUsado}`);
+      console.log(`📋 Detalhes:`, {
+        messageId: evolutionResult.key.id,
+        fileName: mediaData.fileName,
+        mimetype: mediaData.mimetype,
+        isAudio: isAudio,
+        isImage: isImage,
+        tipoMedia: isAudio ? 'áudio' : 'imagem'
+      });
+      
       // Registrar disparo no BI
       try {
         await supabaseAdmin.from('disparos_log').insert([
@@ -6079,12 +6378,23 @@ app.post('/webhook/send-supabase', upload.single('media'), async (req, res) => {
         message: '✅ Mensagem enviada com sucesso!',
         usuario: usuario,
         instancia: userCreds.instance_name,
-        messageId: evolutionResult.key?.id,
+        messageId: evolutionResult.key.id,
         mediaEnviada: mediaData.fileName,
-        endpointUsado: attemptLogs.find(a => a.success)?.endpoint || null,
+        mediaType: isAudio ? 'audio' : 'image',
+        endpointUsado: endpointUsado,
         cooldownTriggered: cooldownInfo.cooldownTriggered,
         cooldownUntil: cooldownInfo.cooldownUntil,
         cooldownMinutes: cooldownInfo.cooldownTriggered ? cooldownInfo.cooldownMinutes : null
+      });
+    } else if (evolutionResult) {
+      // Resposta OK mas sem confirmação de envio
+      console.warn('⚠️ Evolution retornou OK mas sem ID de mensagem. Resposta completa:', JSON.stringify(evolutionResult, null, 2));
+      cleanupFile();
+      return res.status(500).json({
+        success: false,
+        error: 'Evolution aceitou a requisição mas não confirmou o envio',
+        details: 'A API retornou sucesso mas não forneceu ID de mensagem. Verifique se o áudio foi realmente enviado.',
+        evolutionResponse: evolutionResult
       });
     }
 
@@ -9139,8 +9449,29 @@ app.get('/api/filtros/motoristas/tipos', async (req, res) => {
       .neq('tipo_veiculo', '')
       .limit(10000);
     if (error) throw error;
-    const uniq = Array.from(new Set((data || []).map(r => (r.tipo_veiculo || '').trim()).filter(Boolean)))
-      .sort((a, b) => a.localeCompare(b, 'pt-BR'));
+    let uniq = Array.from(new Set((data || []).map(r => (r.tipo_veiculo || '').trim()).filter(Boolean)));
+    
+    // Normalizar variações comuns (case-insensitive)
+    const tiposNormalizados = new Map();
+    uniq.forEach(tipo => {
+      const normalizado = tipo.toLowerCase();
+      // Manter a versão com primeira letra maiúscula se existir
+      if (!tiposNormalizados.has(normalizado) || tipo[0] === tipo[0].toUpperCase()) {
+        tiposNormalizados.set(normalizado, tipo);
+      }
+    });
+    
+    // Garantir que tipos importantes estejam sempre presentes (mesmo que não existam no banco)
+    const tiposImportantes = ['Carreta', 'Bitrem', 'Rodotrem'];
+    tiposImportantes.forEach(tipo => {
+      const normalizado = tipo.toLowerCase();
+      if (!tiposNormalizados.has(normalizado)) {
+        tiposNormalizados.set(normalizado, tipo);
+      }
+    });
+    
+    // Converter de volta para array e ordenar
+    uniq = Array.from(tiposNormalizados.values()).sort((a, b) => a.localeCompare(b, 'pt-BR'));
     res.json({ success: true, tipos: uniq });
   } catch (e) {
     console.error('❌ Erro filtros tipos:', e);
@@ -11911,7 +12242,33 @@ app.get('/api/ferramentas-qualidade/painel/:id', async (req, res) => {
 });
 
 // ========== MIDDLEWARE DE ERRO ==========
+// Middleware para tratar erros do Multer (upload de arquivos)
 app.use((err, req, res, next) => {
+  // Erros do Multer
+  if (err instanceof multer.MulterError) {
+    console.error('❌ Erro do Multer:', err.message);
+    return res.status(400).json({
+      success: false,
+      error: 'Erro no upload de arquivo',
+      details: err.message
+    });
+  }
+  
+  // Erros de validação de tipo de arquivo (fileFilter)
+  if (err.message && (
+    err.message.includes('Tipo de arquivo não permitido') ||
+    err.message.includes('Extensão de arquivo não permitida') ||
+    err.message.includes('Apenas arquivos')
+  )) {
+    console.error('❌ Erro de validação de arquivo:', err.message);
+    return res.status(400).json({
+      success: false,
+      error: err.message,
+      details: 'Verifique o tipo e formato do arquivo enviado'
+    });
+  }
+  
+  // Outros erros
   console.error('❌ Erro não tratado:', err);
   res.status(500).json({ 
     error: 'Erro interno do servidor',
@@ -11919,8 +12276,18 @@ app.use((err, req, res, next) => {
   });
 });
 
+// ========== FAVICON ==========
+app.get('/favicon.ico', (req, res) => {
+  // Retornar 204 No Content para evitar erro 404
+  res.status(204).end();
+});
+
 // ========== ROTA 404 ==========
 app.use('*', (req, res) => {
+  // Ignorar requisições de favicon no 404
+  if (req.originalUrl === '/favicon.ico') {
+    return res.status(204).end();
+  }
   res.status(404).json({ 
     error: 'Rota não encontrada',
     path: req.originalUrl

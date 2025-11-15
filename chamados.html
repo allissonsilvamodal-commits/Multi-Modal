@@ -1,0 +1,890 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Chamados - Sistema de Suporte</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/permissions.js"></script>
+  <style>
+    :root {
+      --primary: #667eea;
+      --primary-dark: #5a6fd8;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --info: #3b82f6;
+      --dark: #1f2937;
+      --light: #f8fafc;
+    }
+    
+    body { 
+      padding: 0;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+    }
+    
+    .app-container {
+      background: white;
+      min-height: 100vh;
+      border-radius: 0;
+      box-shadow: 0 0 50px rgba(0,0,0,0.1);
+    }
+    
+    .app-header {
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+      color: white;
+      padding: 1.25rem 0;
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+    }
+    
+    .modern-card {
+      background: white;
+      border: none;
+      border-radius: 20px;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.08);
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      overflow: hidden;
+      border: 1px solid rgba(0,0,0,0.03);
+    }
+    
+    .modern-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 20px 40px rgba(0,0,0,0.12);
+    }
+    
+    .chamado-card {
+      border-left: 4px solid var(--primary);
+      margin-bottom: 1rem;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+    
+    .chamado-card:hover {
+      border-left-width: 6px;
+    }
+    
+    .chamado-card.prioridade-baixa { border-left-color: var(--info); }
+    .chamado-card.prioridade-media { border-left-color: var(--warning); }
+    .chamado-card.prioridade-alta { border-left-color: var(--danger); }
+    .chamado-card.prioridade-urgente { border-left-color: #dc2626; }
+    
+    .badge-status {
+      padding: 0.4rem 0.8rem;
+      border-radius: 8px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+    
+    .badge-aberto { background: #dbeafe; color: #1e40af; }
+    .badge-em_andamento { background: #fef3c7; color: #92400e; }
+    .badge-aguardando { background: #f3f4f6; color: #374151; }
+    .badge-resolvido { background: #d1fae5; color: #065f46; }
+    .badge-fechado { background: #e5e7eb; color: #4b5563; }
+    .badge-cancelado { background: #fee2e2; color: #991b1b; }
+    
+    .btn-modern {
+      border: none;
+      border-radius: 14px;
+      padding: 0.75rem 1.5rem;
+      font-weight: 700;
+      transition: all 0.3s ease;
+    }
+    
+    .btn-modern-primary {
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+      color: white;
+    }
+    
+    .btn-modern-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
+    }
+    
+    .form-control-modern {
+      border: 2px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 1rem;
+      transition: all 0.3s ease;
+    }
+    
+    .form-control-modern:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+    
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+    }
+    
+    .stat-card {
+      background: white;
+      padding: 1.5rem;
+      border-radius: 16px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+      text-align: center;
+    }
+    
+    .stat-number {
+      font-size: 2.5rem;
+      font-weight: 800;
+      margin-bottom: 0.5rem;
+    }
+    
+    .alert-floating {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      z-index: 9999;
+      min-width: 300px;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.15);
+    }
+    
+    .upload-area {
+      border: 2px dashed #cbd5e1;
+      border-radius: 12px;
+      padding: 2rem;
+      text-align: center;
+      transition: all 0.3s ease;
+      cursor: pointer;
+    }
+    
+    .upload-area:hover {
+      border-color: var(--primary);
+      background: rgba(102, 126, 234, 0.05);
+    }
+    
+    .upload-area.dragover {
+      border-color: var(--success);
+      background: rgba(16, 185, 129, 0.1);
+    }
+  </style>
+</head>
+<body>
+  <div class="app-container">
+    <!-- Header -->
+    <div class="app-header">
+      <div class="container">
+        <div class="d-flex justify-content-between align-items-center">
+          <div>
+            <h4 class="mb-0"><i class="fas fa-ticket-alt me-2"></i>Sistema de Chamados</h4>
+            <small>Gerencie seus chamados e solicitações</small>
+          </div>
+          <div class="d-flex align-items-center gap-3">
+            <span class="user-badge" id="currentUser">Carregando...</span>
+            <a href="portal.html" class="btn btn-light btn-sm">
+              <i class="fas fa-home me-1"></i>Voltar
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Conteúdo -->
+    <div class="container py-4">
+      <!-- Estatísticas -->
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-number text-primary" id="statAbertos">0</div>
+          <div class="text-muted">Abertos</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-number text-warning" id="statEmAndamento">0</div>
+          <div class="text-muted">Em Andamento</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-number text-success" id="statResolvidos">0</div>
+          <div class="text-muted">Resolvidos</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-number text-info" id="statTotal">0</div>
+          <div class="text-muted">Total</div>
+        </div>
+      </div>
+
+      <!-- Filtros e Ações -->
+      <div class="modern-card mb-4">
+        <div class="card-body p-4">
+          <div class="row g-3 align-items-end">
+            <div class="col-md-3">
+              <label class="form-label fw-bold">Status</label>
+              <select id="filtroStatus" class="form-select form-control-modern">
+                <option value="">Todos os status</option>
+                <option value="aberto">Aberto</option>
+                <option value="em_andamento">Em Andamento</option>
+                <option value="aguardando">Aguardando</option>
+                <option value="resolvido">Resolvido</option>
+                <option value="fechado">Fechado</option>
+                <option value="cancelado">Cancelado</option>
+              </select>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label fw-bold">Prioridade</label>
+              <select id="filtroPrioridade" class="form-select form-control-modern">
+                <option value="">Todas as prioridades</option>
+                <option value="baixa">Baixa</option>
+                <option value="media">Média</option>
+                <option value="alta">Alta</option>
+                <option value="urgente">Urgente</option>
+              </select>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label fw-bold">Categoria</label>
+              <select id="filtroCategoria" class="form-select form-control-modern">
+                <option value="">Todas as categorias</option>
+                <option value="bug">Bug</option>
+                <option value="melhoria">Melhoria</option>
+                <option value="duvida">Dúvida</option>
+                <option value="sugestao">Sugestão</option>
+                <option value="outro">Outro</option>
+              </select>
+            </div>
+            <div class="col-md-3">
+              <button class="btn btn-modern btn-modern-primary w-100" onclick="abrirModalNovoChamado()">
+                <i class="fas fa-plus me-2"></i>Novo Chamado
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Lista de Chamados -->
+      <div class="modern-card">
+        <div class="card-body p-4">
+          <h5 class="mb-4"><i class="fas fa-list me-2"></i>Meus Chamados</h5>
+          <div id="listaChamados">
+            <div class="text-center py-5">
+              <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Carregando...</span>
+              </div>
+              <p class="mt-3">Carregando chamados...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Novo Chamado -->
+  <div class="modal fade" id="modalNovoChamado" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header bg-primary text-white">
+          <h5 class="modal-title"><i class="fas fa-plus me-2"></i>Novo Chamado</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <form id="formNovoChamado">
+            <div class="mb-3">
+              <label class="form-label fw-bold">Título *</label>
+              <input type="text" id="novoTitulo" class="form-control form-control-modern" required maxlength="200" placeholder="Descreva brevemente o problema">
+            </div>
+            <div class="mb-3">
+              <label class="form-label fw-bold">Categoria *</label>
+              <select id="novaCategoria" class="form-select form-control-modern" required>
+                <option value="">Selecione...</option>
+                <option value="bug">🐛 Bug</option>
+                <option value="melhoria">✨ Melhoria</option>
+                <option value="duvida">❓ Dúvida</option>
+                <option value="sugestao">💡 Sugestão</option>
+                <option value="outro">📋 Outro</option>
+              </select>
+            </div>
+            <div class="mb-3">
+              <label class="form-label fw-bold">Prioridade *</label>
+              <select id="novaPrioridade" class="form-select form-control-modern" required>
+                <option value="baixa">🟢 Baixa</option>
+                <option value="media" selected>🟡 Média</option>
+                <option value="alta">🟠 Alta</option>
+                <option value="urgente">🔴 Urgente</option>
+              </select>
+            </div>
+            <div class="mb-3">
+              <label class="form-label fw-bold">Descrição *</label>
+              <textarea id="novaDescricao" class="form-control form-control-modern" rows="6" required placeholder="Descreva detalhadamente o problema, dúvida ou sugestão..."></textarea>
+            </div>
+            <div class="mb-3" id="divUploadImagem" style="display: none;">
+              <label class="form-label fw-bold">Imagem do Bug * <span class="text-danger" id="asteriscoImagem">*</span></label>
+              <input type="file" id="novaImagem" class="form-control form-control-modern" accept="image/*">
+              <small class="text-muted">Para bugs, é obrigatório anexar uma imagem do problema ocorrido</small>
+              <div id="previewImagemContainer" class="mt-3" style="display: none;">
+                <img id="previewImagem" src="" alt="Preview" class="img-thumbnail" style="max-width: 100%; max-height: 300px;">
+                <button type="button" class="btn btn-sm btn-danger mt-2" id="btnRemoverImagem">
+                  <i class="fas fa-times me-1"></i>Remover Imagem
+                </button>
+              </div>
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="button" class="btn btn-primary" onclick="criarChamado()">
+            <i class="fas fa-save me-2"></i>Criar Chamado
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Detalhes do Chamado -->
+  <div class="modal fade" id="modalDetalhes" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header bg-primary text-white">
+          <h5 class="modal-title" id="detalhesTitulo">Detalhes do Chamado</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div id="detalhesConteudo">
+            <div class="text-center py-3">
+              <div class="spinner-border text-primary" role="status"></div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    let supabase;
+    let todosChamados = [];
+    let chamadosFiltrados = [];
+    let currentUserId = null;
+    let currentUserName = null;
+
+    // Funções globais para acesso via HTML
+    window.previewImagem = function(input) {
+      if (input && input.files && input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          document.getElementById('previewImagem').src = e.target.result;
+          document.getElementById('previewImagemContainer').style.display = 'block';
+        };
+        reader.readAsDataURL(input.files[0]);
+      }
+    };
+
+    window.removerImagem = function() {
+      document.getElementById('novaImagem').value = '';
+      document.getElementById('previewImagem').src = '';
+      document.getElementById('previewImagemContainer').style.display = 'none';
+    };
+
+    // Inicialização
+    document.addEventListener('DOMContentLoaded', async () => {
+      await inicializarSupabase();
+      await carregarUsuario();
+      await carregarChamados();
+      inicializarEventListeners();
+    });
+
+    async function inicializarSupabase() {
+      try {
+        if (window.supabase && window.supabase.from) {
+          supabase = window.supabase;
+        } else {
+          const response = await fetch('/api/supabase-config');
+          if (!response.ok) {
+            throw new Error('Erro ao buscar configuração do Supabase');
+          }
+          
+          const config = await response.json();
+          supabase = window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey);
+          window.supabase = supabase;
+        }
+        
+        // Verificar se o bucket existe
+        await verificarBucketChamados();
+      } catch (error) {
+        console.error('Erro ao inicializar Supabase:', error);
+        if (window.supabase && window.supabase.from) {
+          supabase = window.supabase;
+        } else {
+          mostrarErro('Erro ao conectar com o banco de dados');
+        }
+      }
+    }
+
+    async function verificarBucketChamados() {
+      try {
+        // Tentar listar os buckets primeiro
+        const { data: buckets, error: listError } = await supabase.storage.listBuckets();
+        
+        let bucketChamados = null;
+        let bucketNames = [];
+        
+        if (!listError && buckets && buckets.length > 0) {
+          bucketNames = buckets.map(b => b.name);
+          console.log('📦 Buckets disponíveis no Supabase:', bucketNames);
+          
+          // Buscar bucket case-insensitive
+          bucketChamados = buckets.find(b => b.name.toLowerCase() === 'chamados');
+        } else {
+          console.warn('⚠️ Não foi possível listar buckets (pode ser problema de permissões)');
+          console.log('Tentando verificar bucket diretamente...');
+        }
+        
+        // Se não encontrou na lista, tentar verificar diretamente tentando acessar o bucket "chamados"
+        if (!bucketChamados) {
+          try {
+            // Tentar listar arquivos do bucket "chamados" (se conseguir, o bucket existe)
+            const { data: files, error: testError } = await supabase.storage
+              .from('chamados')
+              .list('', { limit: 1 });
+            
+            // Se não deu erro de "bucket not found", o bucket existe
+            if (!testError || (!testError.message?.includes('not found') && !testError.message?.includes('Bucket'))) {
+              bucketChamados = { name: 'chamados', public: true };
+              console.log('✅ Bucket "chamados" encontrado por teste direto!');
+            }
+          } catch (e) {
+            console.warn('⚠️ Erro ao testar acesso ao bucket:', e);
+          }
+        }
+        
+        if (!bucketChamados) {
+          console.error('❌ Bucket "chamados" não encontrado!');
+          console.log('📋 Buckets disponíveis:', bucketNames.length > 0 ? bucketNames.join(', ') : 'Nenhum (ou sem permissão para listar)');
+          
+          let mensagem = 'Bucket "chamados" não encontrado ou sem acesso.\n\n';
+          if (bucketNames.length > 0) {
+            mensagem += `Buckets encontrados: ${bucketNames.join(', ')}\n\n`;
+          } else {
+            mensagem += 'Não foi possível listar buckets (pode ser problema de permissões).\n\n';
+          }
+          mensagem += 'Verifique:\n';
+          mensagem += '1. Se o bucket "Chamados" ou "chamados" existe no Supabase Storage\n';
+          mensagem += '2. Se o bucket está marcado como "Public"\n';
+          mensagem += '3. Se as políticas RLS estão configuradas corretamente';
+          
+          mostrarErro(mensagem);
+        } else {
+          // Armazenar o nome real do bucket
+          window.bucketChamadosNome = bucketChamados.name;
+          console.log(`✅ Bucket encontrado: "${bucketChamados.name}"`);
+          
+          if (bucketChamados.public === false) {
+            console.warn('⚠️ Bucket pode não estar público!');
+          } else {
+            console.log('✅ Bucket está acessível e pronto para uso!');
+          }
+        }
+      } catch (error) {
+        console.warn('⚠️ Erro ao verificar bucket:', error);
+        // Sempre usar "chamados" como padrão (minúsculo)
+        window.bucketChamadosNome = 'chamados';
+        console.log('⚠️ Usando nome padrão "chamados" para o bucket');
+      }
+      
+      // Garantir que sempre temos um nome de bucket definido
+      if (!window.bucketChamadosNome) {
+        window.bucketChamadosNome = 'chamados';
+      }
+    }
+
+    async function carregarUsuario() {
+      try {
+        const userData = localStorage.getItem('loggedInUser');
+        if (userData) {
+          const user = JSON.parse(userData);
+          currentUserId = user.id || user.email;
+          currentUserName = user.nome || user.email;
+          document.getElementById('currentUser').textContent = currentUserName;
+        }
+      } catch (error) {
+        console.error('Erro ao carregar usuário:', error);
+      }
+    }
+
+    async function carregarChamados() {
+      try {
+        if (!supabase) {
+          await inicializarSupabase();
+        }
+
+        const { data, error } = await supabase
+          .from('chamados')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (error) throw error;
+
+        todosChamados = data || [];
+        aplicarFiltros();
+        atualizarEstatisticas();
+      } catch (error) {
+        console.error('Erro ao carregar chamados:', error);
+        mostrarErro('Erro ao carregar chamados: ' + error.message);
+        document.getElementById('listaChamados').innerHTML = '<div class="alert alert-danger">Erro ao carregar chamados</div>';
+      }
+    }
+
+    function aplicarFiltros() {
+      const status = document.getElementById('filtroStatus').value;
+      const prioridade = document.getElementById('filtroPrioridade').value;
+      const categoria = document.getElementById('filtroCategoria').value;
+
+      chamadosFiltrados = todosChamados.filter(chamado => {
+        const matchStatus = !status || chamado.status === status;
+        const matchPrioridade = !prioridade || chamado.prioridade === prioridade;
+        const matchCategoria = !categoria || chamado.categoria === categoria;
+        return matchStatus && matchPrioridade && matchCategoria;
+      });
+
+      atualizarLista();
+    }
+
+    function atualizarLista() {
+      const lista = document.getElementById('listaChamados');
+
+      if (chamadosFiltrados.length === 0) {
+        lista.innerHTML = '<div class="text-center py-5 text-muted"><i class="fas fa-inbox fa-3x mb-3"></i><p>Nenhum chamado encontrado</p></div>';
+        return;
+      }
+
+      let html = '';
+      chamadosFiltrados.forEach(chamado => {
+        const dataFormatada = new Date(chamado.created_at).toLocaleString('pt-BR');
+        const prioridadeClass = `prioridade-${chamado.prioridade}`;
+        const statusClass = `badge-${chamado.status}`;
+        const statusText = chamado.status.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
+
+        html += `
+          <div class="chamado-card modern-card p-3 ${prioridadeClass}" onclick="abrirDetalhes('${chamado.id}')">
+            <div class="d-flex justify-content-between align-items-start">
+              <div class="flex-grow-1">
+                <h6 class="mb-2 fw-bold">${chamado.titulo}</h6>
+                <p class="text-muted mb-2 small">${chamado.descricao.substring(0, 150)}${chamado.descricao.length > 150 ? '...' : ''}</p>
+                <div class="d-flex gap-2 flex-wrap">
+                  <span class="badge badge-status ${statusClass}">${statusText}</span>
+                  <span class="badge bg-secondary">${chamado.categoria}</span>
+                  <span class="badge bg-info">${chamado.prioridade}</span>
+                </div>
+              </div>
+              <div class="text-end">
+                <small class="text-muted d-block">${dataFormatada}</small>
+                <small class="text-muted">Por: ${chamado.usuario_nome || 'N/A'}</small>
+              </div>
+            </div>
+          </div>
+        `;
+      });
+
+      lista.innerHTML = html;
+    }
+
+    function atualizarEstatisticas() {
+      const abertos = todosChamados.filter(c => c.status === 'aberto').length;
+      const emAndamento = todosChamados.filter(c => c.status === 'em_andamento').length;
+      const resolvidos = todosChamados.filter(c => c.status === 'resolvido').length;
+      const total = todosChamados.length;
+
+      document.getElementById('statAbertos').textContent = abertos;
+      document.getElementById('statEmAndamento').textContent = emAndamento;
+      document.getElementById('statResolvidos').textContent = resolvidos;
+      document.getElementById('statTotal').textContent = total;
+    }
+
+    function abrirModalNovoChamado() {
+      document.getElementById('formNovoChamado').reset();
+      document.getElementById('divUploadImagem').style.display = 'none';
+      document.getElementById('previewImagemContainer').style.display = 'none';
+      
+      const inputImagem = document.getElementById('novaImagem');
+      if (inputImagem) {
+        inputImagem.required = false;
+        // Garantir que o event listener está configurado
+        inputImagem.onchange = function() {
+          previewImagem(this);
+        };
+      }
+      
+      // Configurar listener de categoria quando o modal abrir
+      const selectCategoria = document.getElementById('novaCategoria');
+      if (selectCategoria) {
+        selectCategoria.onchange = function() {
+          const isBug = this.value === 'bug';
+          const divUpload = document.getElementById('divUploadImagem');
+          const inputImg = document.getElementById('novaImagem');
+          
+          if (isBug) {
+            divUpload.style.display = 'block';
+            if (inputImg) inputImg.required = true;
+          } else {
+            divUpload.style.display = 'none';
+            if (inputImg) {
+              inputImg.required = false;
+              inputImg.value = '';
+            }
+            document.getElementById('previewImagemContainer').style.display = 'none';
+          }
+        };
+      }
+      
+      new bootstrap.Modal(document.getElementById('modalNovoChamado')).show();
+    }
+
+    function previewImagem(input) {
+      if (input && input.files && input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          document.getElementById('previewImagem').src = e.target.result;
+          document.getElementById('previewImagemContainer').style.display = 'block';
+        };
+        reader.readAsDataURL(input.files[0]);
+      }
+    }
+
+    function removerImagem() {
+      document.getElementById('novaImagem').value = '';
+      document.getElementById('previewImagem').src = '';
+      document.getElementById('previewImagemContainer').style.display = 'none';
+    }
+
+    async function uploadImagem(file) {
+      try {
+        // Validar tamanho do arquivo (máximo 5MB)
+        const maxSize = 5 * 1024 * 1024; // 5MB
+        if (file.size > maxSize) {
+          throw new Error('A imagem deve ter no máximo 5MB');
+        }
+
+        // Validar tipo de arquivo
+        const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+        if (!allowedTypes.includes(file.type)) {
+          throw new Error('Formato de imagem não suportado. Use JPG, PNG, GIF ou WEBP');
+        }
+
+        const fileExt = file.name.split('.').pop();
+        // O caminho não deve incluir o nome do bucket, apenas a estrutura de pastas dentro dele
+        const fileName = `${currentUserId}/${Date.now()}.${fileExt}`;
+        
+        // Usar sempre "chamados" (minúsculo) - bucket foi recriado com este nome
+        const bucketName = 'chamados';
+        
+        const { data, error } = await supabase.storage
+          .from(bucketName)
+          .upload(fileName, file, {
+            cacheControl: '3600',
+            upsert: false
+          });
+
+        if (error) {
+          console.error('Erro detalhado do upload:', error);
+          console.error('Código do erro:', error.statusCode || error.status);
+          console.error('Mensagem completa:', JSON.stringify(error, null, 2));
+          
+          // Se o bucket não existir, verificar novamente e informar
+          if (error.message && error.message.includes('Bucket not found')) {
+            // Tentar listar buckets para diagnóstico
+            const { data: buckets } = await supabase.storage.listBuckets();
+            const bucketNames = buckets?.map(b => b.name).join(', ') || 'Nenhum bucket encontrado';
+            
+            throw new Error(`Bucket "chamados" não encontrado no Supabase Storage.\n\nBuckets disponíveis: ${bucketNames}\n\nPor favor, verifique:\n1. Se o bucket foi criado com o nome exato "chamados"\n2. Se as políticas de acesso estão configuradas\n3. Se o bucket está público ou tem políticas para authenticated/anonymous`);
+          }
+          
+          // Se for erro 400, pode ser problema de permissões ou configuração
+          if (error.statusCode === 400 || error.status === 400) {
+            throw new Error('Erro 400 ao fazer upload. Isso geralmente indica:\n1. Políticas de acesso não configuradas no bucket\n2. Bucket não está público ou não permite uploads\n3. Problema de autenticação\n\nVerifique as políticas do bucket "chamados" no Supabase Storage.');
+          }
+          
+          throw new Error(error.message || 'Erro ao fazer upload da imagem');
+        }
+
+        const { data: { publicUrl } } = supabase.storage
+          .from(bucketName)
+          .getPublicUrl(fileName);
+
+        return publicUrl;
+      } catch (error) {
+        console.error('Erro ao fazer upload da imagem:', error);
+        throw error;
+      }
+    }
+
+    async function criarChamado() {
+      const titulo = document.getElementById('novoTitulo').value.trim();
+      const categoria = document.getElementById('novaCategoria').value;
+      const prioridade = document.getElementById('novaPrioridade').value;
+      const descricao = document.getElementById('novaDescricao').value.trim();
+      const imagemInput = document.getElementById('novaImagem');
+
+      if (!titulo || !categoria || !prioridade || !descricao) {
+        mostrarErro('Preencha todos os campos obrigatórios');
+        return;
+      }
+
+      // Validar imagem obrigatória para bugs
+      if (categoria === 'bug') {
+        if (!imagemInput.files || imagemInput.files.length === 0) {
+          mostrarErro('Para bugs, é obrigatório anexar uma imagem do problema ocorrido');
+          return;
+        }
+      }
+
+      let imagemUrl = null;
+
+      try {
+        // Upload da imagem se for bug
+        if (categoria === 'bug' && imagemInput.files && imagemInput.files.length > 0) {
+          mostrarSucesso('Fazendo upload da imagem...');
+          imagemUrl = await uploadImagem(imagemInput.files[0]);
+        }
+
+        const { data, error } = await supabase
+          .from('chamados')
+          .insert([{
+            titulo,
+            descricao,
+            categoria,
+            prioridade,
+            status: 'aberto',
+            usuario_id: currentUserId,
+            usuario_nome: currentUserName,
+            imagem_url: imagemUrl
+          }])
+          .select();
+
+        if (error) throw error;
+
+        mostrarSucesso('Chamado criado com sucesso!');
+        bootstrap.Modal.getInstance(document.getElementById('modalNovoChamado')).hide();
+        await carregarChamados();
+      } catch (error) {
+        console.error('Erro ao criar chamado:', error);
+        mostrarErro('Erro ao criar chamado: ' + error.message);
+      }
+    }
+
+    async function abrirDetalhes(id) {
+      const chamado = todosChamados.find(c => c.id === id);
+      if (!chamado) return;
+
+      document.getElementById('detalhesTitulo').textContent = chamado.titulo;
+      
+      const dataFormatada = new Date(chamado.created_at).toLocaleString('pt-BR');
+      const statusClass = `badge-${chamado.status}`;
+      const statusText = chamado.status.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
+
+      let html = `
+        <div class="mb-3">
+          <span class="badge badge-status ${statusClass} me-2">${statusText}</span>
+          <span class="badge bg-secondary me-2">${chamado.categoria}</span>
+          <span class="badge bg-info">${chamado.prioridade}</span>
+        </div>
+        <div class="mb-3">
+          <strong>Descrição:</strong>
+          <p class="mt-2">${chamado.descricao.replace(/\n/g, '<br>')}</p>
+        </div>
+      `;
+
+      // Exibir imagem se houver
+      if (chamado.imagem_url) {
+        html += `
+          <div class="mb-3">
+            <strong>Imagem do Bug:</strong>
+            <div class="mt-2">
+              <img src="${chamado.imagem_url}" alt="Imagem do bug" class="img-fluid rounded" style="max-width: 100%; max-height: 500px; cursor: pointer;" onclick="window.open('${chamado.imagem_url}', '_blank')">
+              <br>
+              <small class="text-muted">Clique na imagem para ampliar</small>
+            </div>
+          </div>
+        `;
+      }
+
+      html += `
+        <div class="row mb-3">
+          <div class="col-md-6">
+            <strong>Criado por:</strong> ${chamado.usuario_nome || 'N/A'}<br>
+            <strong>Data:</strong> ${dataFormatada}
+          </div>
+        </div>
+      `;
+
+      if (chamado.resposta) {
+        const respostaData = new Date(chamado.resposta_data).toLocaleString('pt-BR');
+        html += `
+          <div class="alert alert-success">
+            <strong>Resposta:</strong>
+            <p class="mt-2 mb-0">${chamado.resposta.replace(/\n/g, '<br>')}</p>
+            <small class="text-muted">${respostaData}</small>
+          </div>
+        `;
+      }
+
+      document.getElementById('detalhesConteudo').innerHTML = html;
+      new bootstrap.Modal(document.getElementById('modalDetalhes')).show();
+    }
+
+    function inicializarEventListeners() {
+      document.getElementById('filtroStatus').addEventListener('change', aplicarFiltros);
+      document.getElementById('filtroPrioridade').addEventListener('change', aplicarFiltros);
+      document.getElementById('filtroCategoria').addEventListener('change', aplicarFiltros);
+      
+      // Listener para mudança de categoria no modal
+      const selectCategoria = document.getElementById('novaCategoria');
+      if (selectCategoria) {
+        selectCategoria.addEventListener('change', function() {
+          const isBug = this.value === 'bug';
+          const divUpload = document.getElementById('divUploadImagem');
+          const inputImagem = document.getElementById('novaImagem');
+          
+          if (isBug) {
+            divUpload.style.display = 'block';
+            inputImagem.required = true;
+          } else {
+            divUpload.style.display = 'none';
+            inputImagem.required = false;
+            inputImagem.value = '';
+            document.getElementById('previewImagemContainer').style.display = 'none';
+          }
+        });
+      }
+      
+      // Listener para preview de imagem
+      const inputImagem = document.getElementById('novaImagem');
+      if (inputImagem) {
+        inputImagem.addEventListener('change', function() {
+          previewImagem(this);
+        });
+      }
+      
+      // Listener para remover imagem
+      const btnRemoverImagem = document.getElementById('btnRemoverImagem');
+      if (btnRemoverImagem) {
+        btnRemoverImagem.addEventListener('click', removerImagem);
+      }
+    }
+
+    function mostrarSucesso(mensagem) {
+      mostrarMensagem(mensagem, 'success');
+    }
+
+    function mostrarErro(mensagem) {
+      mostrarMensagem(mensagem, 'danger');
+    }
+
+    function mostrarMensagem(mensagem, tipo) {
+      const alert = document.createElement('div');
+      alert.className = `alert alert-${tipo} alert-floating alert-dismissible fade show`;
+      alert.innerHTML = `${mensagem}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>`;
+      document.body.appendChild(alert);
+      setTimeout(() => alert.remove(), 5000);
+    }
+  </script>
+</body>
+</html>
+

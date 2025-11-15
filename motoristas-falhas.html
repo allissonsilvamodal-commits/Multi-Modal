@@ -1,0 +1,1359 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Motoristas com Falhas nos Disparos</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        :root {
+            --primary: #667eea;
+            --secondary: #764ba2;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --success: #10b981;
+        }
+        body {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            padding: 2rem 0;
+            min-height: 100vh;
+        }
+        .container-max {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        .header {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            padding: 2rem;
+            border-radius: 16px;
+            box-shadow: 0 8px 24px rgba(0,0,0,.15);
+            margin-bottom: 2rem;
+        }
+        .card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,.1);
+            border: none;
+            margin-bottom: 1.5rem;
+        }
+        .card-header {
+            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+            border-bottom: 2px solid #dee2e6;
+            padding: 1.25rem;
+            font-weight: 700;
+            color: #495057;
+        }
+        .stats-card {
+            text-align: center;
+            padding: 1.5rem;
+        }
+        .stats-card .number {
+            font-size: 2.5rem;
+            font-weight: 800;
+            margin: 0.5rem 0;
+        }
+        .stats-card .label {
+            color: #6c757d;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .stats-card.total { border-left: 4px solid var(--primary); }
+        .stats-card.erros { border-left: 4px solid var(--danger); }
+        .stats-card.corrigidos { border-left: 4px solid var(--success); }
+        .stats-card.pendentes { border-left: 4px solid var(--warning); }
+        .table {
+            margin-bottom: 0;
+        }
+        .table thead {
+            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+        }
+        .table thead th {
+            border: none;
+            font-weight: 700;
+            color: #495057;
+            text-transform: uppercase;
+            font-size: 0.85rem;
+            letter-spacing: 0.5px;
+        }
+        .table tbody tr {
+            transition: all 0.2s ease;
+        }
+        .table tbody tr:hover {
+            background: #f8f9fa;
+            transform: translateX(2px);
+        }
+        .badge-status {
+            padding: 0.4rem 0.8rem;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 0.8rem;
+        }
+        .badge-error {
+            background: #fee2e2;
+            color: #dc2626;
+        }
+        .badge-success {
+            background: #d1fae5;
+            color: #059669;
+        }
+        .badge-warning {
+            background: #fef3c7;
+            color: #d97706;
+        }
+        .btn-action {
+            padding: 0.4rem 0.8rem;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .btn-edit {
+            background: var(--primary);
+            color: white;
+        }
+        .btn-edit:hover {
+            background: var(--secondary);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(102, 126, 234, 0.3);
+        }
+        .btn-view {
+            background: #6c757d;
+            color: white;
+        }
+        .btn-view:hover {
+            background: #5a6268;
+            transform: translateY(-2px);
+        }
+        .btn-export {
+            background: var(--success);
+            color: white;
+        }
+        .btn-export:hover {
+            background: #059669;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(16, 185, 129, 0.3);
+        }
+        .filters-container {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,.1);
+            margin-bottom: 2rem;
+        }
+        .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(102, 126, 234, 0.3);
+            border-radius: 50%;
+            border-top-color: var(--primary);
+            animation: spin 1s ease-in-out infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .empty-state {
+            text-align: center;
+            padding: 3rem;
+            color: #6c757d;
+        }
+        .empty-state i {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+            opacity: 0.5;
+        }
+        .modal-header {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+        }
+        .form-label {
+            font-weight: 600;
+            color: #495057;
+            margin-bottom: 0.5rem;
+        }
+        .form-control:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+        }
+        .alert-info {
+            background: #dbeafe;
+            border-left: 4px solid #3b82f6;
+            color: #1e40af;
+        }
+        .pagination {
+            justify-content: center;
+        }
+        .page-link {
+            color: var(--primary);
+        }
+        .page-link:hover {
+            color: var(--secondary);
+        }
+        .page-item.active .page-link {
+            background: var(--primary);
+            border-color: var(--primary);
+        }
+    </style>
+</head>
+<body>
+    <div class="container-max">
+        <div class="header">
+            <h1 class="mb-2"><i class="fas fa-exclamation-triangle me-2"></i>Motoristas com Falhas nos Disparos</h1>
+            <p class="mb-0">Registro e correção de números de telefone com problemas nos disparos</p>
+        </div>
+
+        <!-- Estatísticas -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="card stats-card total">
+                    <div class="label">Total de Falhas</div>
+                    <div class="number text-primary" id="statTotal">0</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card stats-card erros">
+                    <div class="label">Últimos 7 Dias</div>
+                    <div class="number text-danger" id="statUltimos7Dias">0</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card stats-card pendentes">
+                    <div class="label">Motoristas Únicos</div>
+                    <div class="number text-warning" id="statMotoristasUnicos">0</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card stats-card corrigidos">
+                    <div class="label">Taxa de Erro</div>
+                    <div class="number text-success" id="statTaxaErro">0%</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Análise por Motivo -->
+        <div class="card mb-4" id="analiseMotivosCard" style="display: none;">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-chart-pie me-2"></i>Análise por Motivo da Falha</h5>
+            </div>
+            <div class="card-body">
+                <div class="row" id="motivosEstatisticas">
+                    <!-- Será preenchido dinamicamente -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Filtros -->
+        <div class="filters-container">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="mb-0"><i class="fas fa-filter me-2"></i>Filtros de Busca</h5>
+                <button class="btn btn-sm btn-outline-secondary" onclick="limparFiltros()">
+                    <i class="fas fa-redo me-2"></i>Limpar Filtros
+                </button>
+            </div>
+            
+            <!-- Primeira Linha de Filtros -->
+            <div class="row g-3 mb-3">
+                <div class="col-md-3">
+                    <label class="form-label"><i class="fas fa-calendar-alt me-1"></i>Período</label>
+                    <select id="filtroPeriodo" class="form-select">
+                        <option value="7">Últimos 7 dias</option>
+                        <option value="30">Últimos 30 dias</option>
+                        <option value="90">Últimos 90 dias</option>
+                        <option value="180">Últimos 180 dias</option>
+                        <option value="365">Último ano</option>
+                        <option value="custom">Período personalizado</option>
+                        <option value="all">Todos os registros</option>
+                    </select>
+                </div>
+                <div class="col-md-3" id="dataInicialContainer" style="display: none;">
+                    <label class="form-label"><i class="fas fa-calendar me-1"></i>Data Inicial</label>
+                    <input type="date" id="filtroDataInicial" class="form-control">
+                </div>
+                <div class="col-md-3" id="dataFinalContainer" style="display: none;">
+                    <label class="form-label"><i class="fas fa-calendar me-1"></i>Data Final</label>
+                    <input type="date" id="filtroDataFinal" class="form-control">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label"><i class="fas fa-phone me-1"></i>Buscar por Número</label>
+                    <input type="text" id="filtroNumero" class="form-control" placeholder="Ex: 5511999999999 ou 11999999999">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label"><i class="fas fa-user me-1"></i>Buscar por Nome</label>
+                    <input type="text" id="filtroNome" class="form-control" placeholder="Nome do motorista">
+                </div>
+            </div>
+
+            <!-- Segunda Linha de Filtros -->
+            <div class="row g-3 mb-3">
+                <div class="col-md-3">
+                    <label class="form-label"><i class="fas fa-map-marker-alt me-1"></i>Estado</label>
+                    <select id="filtroEstado" class="form-select">
+                        <option value="">Todos os estados</option>
+                        <option value="AC">Acre</option>
+                        <option value="AL">Alagoas</option>
+                        <option value="AP">Amapá</option>
+                        <option value="AM">Amazonas</option>
+                        <option value="BA">Bahia</option>
+                        <option value="CE">Ceará</option>
+                        <option value="DF">Distrito Federal</option>
+                        <option value="ES">Espírito Santo</option>
+                        <option value="GO">Goiás</option>
+                        <option value="MA">Maranhão</option>
+                        <option value="MT">Mato Grosso</option>
+                        <option value="MS">Mato Grosso do Sul</option>
+                        <option value="MG">Minas Gerais</option>
+                        <option value="PA">Pará</option>
+                        <option value="PB">Paraíba</option>
+                        <option value="PR">Paraná</option>
+                        <option value="PE">Pernambuco</option>
+                        <option value="PI">Piauí</option>
+                        <option value="RJ">Rio de Janeiro</option>
+                        <option value="RN">Rio Grande do Norte</option>
+                        <option value="RS">Rio Grande do Sul</option>
+                        <option value="RO">Rondônia</option>
+                        <option value="RR">Roraima</option>
+                        <option value="SC">Santa Catarina</option>
+                        <option value="SP">São Paulo</option>
+                        <option value="SE">Sergipe</option>
+                        <option value="TO">Tocantins</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label"><i class="fas fa-truck me-1"></i>Classe de Veículo</label>
+                    <select id="filtroClasse" class="form-select">
+                        <option value="">Todas as classes</option>
+                        <option value="leve">Leve</option>
+                        <option value="medio">Médio</option>
+                        <option value="pesado">Pesado</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label"><i class="fas fa-toggle-on me-1"></i>Status do Motorista</label>
+                    <select id="filtroStatus" class="form-select">
+                        <option value="">Todos os status</option>
+                        <option value="ativo">Ativo</option>
+                        <option value="inativo">Inativo</option>
+                        <option value="bloqueado">Bloqueado</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label"><i class="fas fa-exclamation-circle me-1"></i>Mínimo de Falhas</label>
+                    <input type="number" id="filtroMinFalhas" class="form-control" placeholder="Ex: 3" min="1">
+                </div>
+            </div>
+
+            <!-- Terceira Linha - Filtro por Motivo -->
+            <div class="row g-3 mb-3">
+                <div class="col-md-3">
+                    <label class="form-label"><i class="fas fa-search me-1"></i>Filtrar por Motivo</label>
+                    <select id="filtroMotivo" class="form-select">
+                        <option value="">Todos os motivos</option>
+                        <option value="numero_invalido">Número Inválido</option>
+                        <option value="numero_nao_encontrado">Número Não Encontrado</option>
+                        <option value="formato_incorreto">Formato Incorreto</option>
+                        <option value="sem_ddi">Sem DDI (55)</option>
+                        <option value="numero_curto">Número Muito Curto</option>
+                        <option value="numero_longo">Número Muito Longo</option>
+                        <option value="motorista_nao_cadastrado">Motorista Não Cadastrado</option>
+                        <option value="outro">Outro</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Terceira Linha - Botões de Ação -->
+            <div class="row">
+                <div class="col-md-12 d-flex justify-content-between align-items-end gap-2">
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-primary" onclick="aplicarFiltros()">
+                            <i class="fas fa-search me-2"></i>Buscar
+                        </button>
+                        <button class="btn btn-secondary" onclick="limparFiltros()">
+                            <i class="fas fa-times me-2"></i>Limpar
+                        </button>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-export" onclick="exportarDados('csv')" title="Exportar para CSV">
+                            <i class="fas fa-file-csv me-2"></i>Exportar CSV
+                        </button>
+                        <button class="btn btn-export" onclick="exportarDados('excel')" title="Exportar para Excel">
+                            <i class="fas fa-file-excel me-2"></i>Exportar Excel
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tabela de Falhas -->
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <div>
+                    <i class="fas fa-list me-2"></i>Registro de Falhas
+                </div>
+                <div>
+                    <button class="btn btn-sm btn-export me-2" onclick="exportarDados('csv')" title="Exportar para CSV" id="btnExportCSV" style="display: none;">
+                        <i class="fas fa-file-csv me-1"></i>CSV
+                    </button>
+                    <button class="btn btn-sm btn-export" onclick="exportarDados('excel')" title="Exportar para Excel" id="btnExportExcel" style="display: none;">
+                        <i class="fas fa-file-excel me-1"></i>Excel
+                    </button>
+                </div>
+            </div>
+            <div class="card-body p-0">
+                <div id="loadingState" class="text-center py-5">
+                    <div class="loading-spinner"></div>
+                    <p class="mt-3 text-muted">Carregando dados...</p>
+                </div>
+                <div id="emptyState" class="empty-state" style="display: none;">
+                    <i class="fas fa-check-circle"></i>
+                    <h5>Nenhuma falha encontrada</h5>
+                    <p>Não há registros de falhas no período selecionado.</p>
+                </div>
+                <div id="tableContainer" style="display: none;">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Data/Hora</th>
+                                    <th>Número</th>
+                                    <th>Motorista</th>
+                                    <th>Telefone 1</th>
+                                    <th>Telefone 2</th>
+                                    <th>Motivo da Falha</th>
+                                    <th>Status</th>
+                                    <th>Usuário</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="falhasTableBody">
+                            </tbody>
+                        </table>
+                    </div>
+                    <nav aria-label="Paginação" class="p-3">
+                        <ul class="pagination mb-0" id="paginationContainer">
+                        </ul>
+                    </nav>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Edição -->
+    <div class="modal fade" id="editModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="fas fa-edit me-2"></i>Editar Motorista</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>Importante:</strong> Verifique se o número está no formato correto (DDI + DDD + Número). Exemplo: 5511999999999
+                    </div>
+                    <form id="editForm">
+                        <input type="hidden" id="editMotoristaId">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Nome do Motorista</label>
+                                <input type="text" id="editNome" class="form-control" readonly>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Classe de Veículo</label>
+                                <input type="text" id="editClasse" class="form-control" readonly>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Telefone 1 <span class="text-danger">*</span></label>
+                                <input type="text" id="editTelefone1" class="form-control" required>
+                                <small class="text-muted">Formato: 5511999999999 (sem espaços ou caracteres especiais)</small>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Telefone 2</label>
+                                <input type="text" id="editTelefone2" class="form-control">
+                                <small class="text-muted">Formato: 5511999999999 (opcional)</small>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Estado</label>
+                                <input type="text" id="editEstado" class="form-control" readonly>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Status</label>
+                                <select id="editStatus" class="form-select">
+                                    <option value="ativo">Ativo</option>
+                                    <option value="inativo">Inativo</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Observações</label>
+                            <textarea id="editObservacoes" class="form-control" rows="3" placeholder="Adicione observações sobre a correção..."></textarea>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" onclick="salvarEdicao()">
+                        <i class="fas fa-save me-2"></i>Salvar Alterações
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let supabase;
+        let allFalhas = [];
+        let currentPage = 1;
+        const itemsPerPage = 20;
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            await initSupabase();
+            await carregarFalhas();
+        });
+
+        async function initSupabase() {
+            try {
+                const res = await fetch('/api/supabase-config');
+                const cfg = await res.json();
+                supabase = window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey);
+            } catch (error) {
+                console.error('Erro ao inicializar Supabase:', error);
+                alert('Erro ao conectar com o banco de dados');
+            }
+        }
+
+        async function carregarFalhas() {
+            const loadingState = document.getElementById('loadingState');
+            const emptyState = document.getElementById('emptyState');
+            const tableContainer = document.getElementById('tableContainer');
+            
+            loadingState.style.display = 'block';
+            emptyState.style.display = 'none';
+            tableContainer.style.display = 'none';
+
+            try {
+                const periodo = document.getElementById('filtroPeriodo').value;
+                const filtroNumero = document.getElementById('filtroNumero').value.trim();
+                const filtroNome = document.getElementById('filtroNome').value.trim().toLowerCase();
+                const filtroEstado = document.getElementById('filtroEstado').value;
+                const filtroClasse = document.getElementById('filtroClasse').value;
+                const filtroStatus = document.getElementById('filtroStatus').value;
+                const filtroMinFalhas = parseInt(document.getElementById('filtroMinFalhas').value) || 0;
+
+                // Calcular data inicial baseada no período
+                let dataInicial = new Date();
+                if (periodo === 'custom') {
+                    const dataInicialInput = document.getElementById('filtroDataInicial').value;
+                    const dataFinalInput = document.getElementById('filtroDataFinal').value;
+                    if (dataInicialInput) {
+                        dataInicial = new Date(dataInicialInput);
+                    } else {
+                        dataInicial = new Date(2000, 0, 1);
+                    }
+                    if (dataFinalInput) {
+                        // A data final será usada na query
+                    }
+                } else if (periodo === '7') {
+                    dataInicial.setDate(dataInicial.getDate() - 7);
+                } else if (periodo === '30') {
+                    dataInicial.setDate(dataInicial.getDate() - 30);
+                } else if (periodo === '90') {
+                    dataInicial.setDate(dataInicial.getDate() - 90);
+                } else if (periodo === '180') {
+                    dataInicial.setDate(dataInicial.getDate() - 180);
+                } else if (periodo === '365') {
+                    dataInicial.setDate(dataInicial.getDate() - 365);
+                } else {
+                    dataInicial = new Date(2000, 0, 1); // Todos os registros
+                }
+
+                // Buscar falhas no disparos_log
+                let query = supabase
+                    .from('disparos_log')
+                    .select('*')
+                    .eq('status', 'error')
+                    .gte('created_at', dataInicial.toISOString())
+                    .order('created_at', { ascending: false });
+
+                // Aplicar filtro de data final se for período personalizado
+                if (periodo === 'custom') {
+                    const dataFinalInput = document.getElementById('filtroDataFinal').value;
+                    if (dataFinalInput) {
+                        const dataFinal = new Date(dataFinalInput);
+                        dataFinal.setHours(23, 59, 59, 999); // Fim do dia
+                        query = query.lte('created_at', dataFinal.toISOString());
+                    }
+                }
+
+                const { data: falhas, error } = await query;
+
+                if (error) throw error;
+
+                // Buscar nomes dos usuários responsáveis
+                const usuarioNomeMap = new Map();
+                const userIds = [...new Set(falhas.map(f => f.user_id).filter(Boolean))];
+                const chunkSize = 100;
+                for (let i = 0; i < userIds.length; i += chunkSize) {
+                    const chunk = userIds.slice(i, i + chunkSize);
+                    try {
+                        const { data: usuarios, error: usuariosError } = await supabase
+                            .from('user_profiles')
+                            .select('id, nome, email')
+                            .in('id', chunk);
+                        if (usuariosError) {
+                            console.warn('⚠️ Erro ao buscar nomes de usuários:', usuariosError.message);
+                            continue;
+                        }
+                        (usuarios || []).forEach(usuario => {
+                            const display = usuario.nome || usuario.email || usuario.id;
+                            usuarioNomeMap.set(usuario.id, display);
+                        });
+                    } catch (usuariosException) {
+                        console.warn('⚠️ Erro inesperado ao carregar nomes de usuários:', usuariosException.message);
+                    }
+                }
+
+                // Buscar informações dos motoristas
+                allFalhas = [];
+                const numerosUnicos = [...new Set(falhas.map(f => f.numero).filter(Boolean))];
+
+                for (const numero of numerosUnicos) {
+                    // Aplicar filtro de número se houver (normalizar ambos para comparação)
+                    if (filtroNumero) {
+                        const numeroLimpo = numero.replace(/\D/g, '');
+                        const filtroLimpo = filtroNumero.replace(/\D/g, '');
+                        
+                        // Aceitar busca parcial (contém)
+                        if (!numeroLimpo.includes(filtroLimpo)) {
+                            continue;
+                        }
+                    }
+
+                    // Buscar motorista por telefone
+                    const { data: motoristas } = await supabase
+                        .from('motoristas')
+                        .select('*')
+                        .or(`telefone1.ilike.%${numero}%,telefone2.ilike.%${numero}%`)
+                        .limit(1);
+
+                    const motorista = motoristas && motoristas.length > 0 ? motoristas[0] : null;
+
+                    // Aplicar filtro de nome se houver
+                    if (filtroNome && motorista && !motorista.nome.toLowerCase().includes(filtroNome)) {
+                        continue;
+                    }
+
+                    // Aplicar filtro de estado se houver
+                    if (filtroEstado && motorista && motorista.estado !== filtroEstado) {
+                        continue;
+                    }
+
+                    // Aplicar filtro de classe se houver
+                    if (filtroClasse && motorista && motorista.classe_veiculo !== filtroClasse) {
+                        continue;
+                    }
+
+                    // Aplicar filtro de status se houver
+                    if (filtroStatus && motorista && motorista.status !== filtroStatus) {
+                        continue;
+                    }
+
+                    // Contar falhas para este número
+                    const falhasNumero = falhas.filter(f => f.numero === numero);
+                    const totalFalhas = falhasNumero.length;
+
+                    // Aplicar filtro de mínimo de falhas
+                    if (filtroMinFalhas > 0 && totalFalhas < filtroMinFalhas) {
+                        continue;
+                    }
+
+                    const ultimaFalha = falhasNumero[0]; // Já está ordenado por data desc
+
+                    // Analisar motivo da falha
+                    const motivoFalha = analisarMotivoFalha(numero, motorista);
+
+                    allFalhas.push({
+                        numero: numero,
+                        motorista: motorista,
+                        totalFalhas: totalFalhas,
+                        ultimaFalha: ultimaFalha,
+                        primeiraFalha: falhasNumero[falhasNumero.length - 1],
+                        usuarioNome: usuarioNomeMap.get(ultimaFalha?.user_id) || ultimaFalha?.user_id || 'Anônimo',
+                        motivoFalha: motivoFalha
+                    });
+                }
+
+                // Aplicar filtro de motivo se houver
+                if (document.getElementById('filtroMotivo').value) {
+                    const motivoFiltro = document.getElementById('filtroMotivo').value;
+                    allFalhas = allFalhas.filter(f => f.motivoFalha.tipo === motivoFiltro);
+                }
+
+                // Ordenar por total de falhas (maior primeiro)
+                allFalhas.sort((a, b) => b.totalFalhas - a.totalFalhas);
+
+                atualizarEstatisticas();
+                atualizarTabela();
+                
+            } catch (error) {
+                console.error('Erro ao carregar falhas:', error);
+                alert('Erro ao carregar dados: ' + (error.message || 'Erro desconhecido'));
+            } finally {
+                loadingState.style.display = 'none';
+            }
+        }
+
+        // Função para analisar o motivo da falha
+        function analisarMotivoFalha(numero, motorista) {
+            const numeroLimpo = numero.replace(/\D/g, '');
+            const numeroSemSufixo = numero.replace(/@.*$/, '').replace(/\D/g, '');
+            
+            // Se não há motorista cadastrado
+            if (!motorista) {
+                return {
+                    tipo: 'motorista_nao_cadastrado',
+                    descricao: 'Motorista não encontrado no cadastro',
+                    cor: 'danger',
+                    icone: 'fa-user-slash'
+                };
+            }
+
+            // Verificar formato do número
+            if (numeroSemSufixo.length < 10) {
+                return {
+                    tipo: 'numero_curto',
+                    descricao: `Número muito curto (${numeroSemSufixo.length} dígitos)`,
+                    cor: 'danger',
+                    icone: 'fa-exclamation-triangle'
+                };
+            }
+
+            if (numeroSemSufixo.length > 15) {
+                return {
+                    tipo: 'numero_longo',
+                    descricao: `Número muito longo (${numeroSemSufixo.length} dígitos)`,
+                    cor: 'warning',
+                    icone: 'fa-exclamation-triangle'
+                };
+            }
+
+            // Verificar se tem DDI (55)
+            if (!numeroSemSufixo.startsWith('55')) {
+                return {
+                    tipo: 'sem_ddi',
+                    descricao: 'Número sem código do país (55)',
+                    cor: 'warning',
+                    icone: 'fa-globe'
+                };
+            }
+
+            // Verificar se o número do log corresponde ao telefone cadastrado
+            const telefone1Limpo = (motorista.telefone1 || '').replace(/\D/g, '');
+            const telefone2Limpo = (motorista.telefone2 || '').replace(/\D/g, '');
+            
+            const numeroCorresponde = numeroSemSufixo === telefone1Limpo || numeroSemSufixo === telefone2Limpo ||
+                                     numeroSemSufixo.endsWith(telefone1Limpo.slice(-11)) || 
+                                     numeroSemSufixo.endsWith(telefone2Limpo.slice(-11));
+
+            if (!numeroCorresponde) {
+                return {
+                    tipo: 'numero_nao_encontrado',
+                    descricao: 'Número não corresponde aos telefones cadastrados',
+                    cor: 'warning',
+                    icone: 'fa-phone-slash'
+                };
+            }
+
+            // Verificar formato brasileiro (55 + DDD + 9 + número)
+            if (numeroSemSufixo.length === 13 && numeroSemSufixo.startsWith('55')) {
+                const ddd = numeroSemSufixo.slice(2, 4);
+                const digito9 = numeroSemSufixo[4];
+                
+                if (digito9 !== '9') {
+                    return {
+                        tipo: 'formato_incorreto',
+                        descricao: 'Formato incorreto (deve começar com 55 + DDD + 9)',
+                        cor: 'warning',
+                        icone: 'fa-times-circle'
+                    };
+                }
+            }
+
+            // Verificar se o número está no formato correto (11 ou 13 dígitos)
+            if (numeroSemSufixo.length !== 11 && numeroSemSufixo.length !== 13) {
+                return {
+                    tipo: 'formato_incorreto',
+                    descricao: `Formato incorreto (${numeroSemSufixo.length} dígitos, esperado 11 ou 13)`,
+                    cor: 'warning',
+                    icone: 'fa-times-circle'
+                };
+            }
+
+            // Se passou todas as validações, pode ser outro motivo
+            return {
+                tipo: 'outro',
+                descricao: 'Erro desconhecido ou problema na API',
+                cor: 'secondary',
+                icone: 'fa-question-circle'
+            };
+        }
+
+        function atualizarEstatisticas() {
+            const totalFalhas = allFalhas.reduce((sum, f) => sum + f.totalFalhas, 0);
+            const motoristasUnicos = allFalhas.length;
+            
+            // Falhas dos últimos 7 dias
+            const seteDiasAtras = new Date();
+            seteDiasAtras.setDate(seteDiasAtras.getDate() - 7);
+            const falhasUltimos7Dias = allFalhas.filter(f => 
+                new Date(f.ultimaFalha.created_at) >= seteDiasAtras
+            ).reduce((sum, f) => sum + f.totalFalhas, 0);
+
+            // Taxa de erro (simplificada - seria necessário comparar com sucessos)
+            const taxaErro = motoristasUnicos > 0 ? ((totalFalhas / (totalFalhas + 100)) * 100).toFixed(1) : 0;
+
+            document.getElementById('statTotal').textContent = totalFalhas.toLocaleString('pt-BR');
+            document.getElementById('statUltimos7Dias').textContent = falhasUltimos7Dias.toLocaleString('pt-BR');
+            document.getElementById('statMotoristasUnicos').textContent = motoristasUnicos.toLocaleString('pt-BR');
+            document.getElementById('statTaxaErro').textContent = taxaErro + '%';
+
+            // Atualizar análise por motivo
+            atualizarAnaliseMotivos();
+        }
+
+        function atualizarAnaliseMotivos() {
+            const motivosEstatisticas = document.getElementById('motivosEstatisticas');
+            const analiseCard = document.getElementById('analiseMotivosCard');
+            
+            if (allFalhas.length === 0) {
+                analiseCard.style.display = 'none';
+                return;
+            }
+
+            analiseCard.style.display = 'block';
+
+            // Agrupar por tipo de motivo
+            const motivosMap = new Map();
+            allFalhas.forEach(falha => {
+                const motivo = falha.motivoFalha || { tipo: 'outro', descricao: 'Não analisado' };
+                const tipo = motivo.tipo;
+                
+                if (!motivosMap.has(tipo)) {
+                    motivosMap.set(tipo, {
+                        tipo: tipo,
+                        descricao: motivo.descricao,
+                        cor: motivo.cor,
+                        icone: motivo.icone,
+                        total: 0,
+                        motoristas: new Set()
+                    });
+                }
+                
+                const estatistica = motivosMap.get(tipo);
+                estatistica.total += falha.totalFalhas;
+                estatistica.motoristas.add(falha.numero);
+            });
+
+            // Converter para array e ordenar por total (maior primeiro)
+            const motivosArray = Array.from(motivosMap.values())
+                .sort((a, b) => b.total - a.total);
+
+            // Calcular percentuais
+            const totalGeral = motivosArray.reduce((sum, m) => sum + m.total, 0);
+
+            motivosEstatisticas.innerHTML = '';
+
+            motivosArray.forEach(motivo => {
+                const percentual = totalGeral > 0 ? ((motivo.total / totalGeral) * 100).toFixed(1) : 0;
+                const motoristasUnicos = motivo.motoristas.size;
+
+                let badgeClass = 'badge-error';
+                if (motivo.cor === 'warning') badgeClass = 'badge-warning';
+                else if (motivo.cor === 'success') badgeClass = 'badge-success';
+                else if (motivo.cor === 'secondary') badgeClass = 'badge-status';
+
+                const col = document.createElement('div');
+                col.className = 'col-md-6 col-lg-4 mb-3';
+                col.innerHTML = `
+                    <div class="card h-100">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <div>
+                                    <h6 class="mb-1">
+                                        <i class="fas ${motivo.icone} me-2"></i>${motivo.descricao}
+                                    </h6>
+                                    <span class="badge badge-status ${badgeClass}">${percentual}%</span>
+                                </div>
+                            </div>
+                            <div class="mt-2">
+                                <div class="text-muted small">Total de falhas</div>
+                                <div class="h4 mb-0">${motivo.total.toLocaleString('pt-BR')}</div>
+                                <div class="text-muted small mt-1">${motoristasUnicos.toLocaleString('pt-BR')} motorista(s) único(s)</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                motivosEstatisticas.appendChild(col);
+            });
+        }
+
+        function atualizarTabela() {
+            const tbody = document.getElementById('falhasTableBody');
+            const emptyState = document.getElementById('emptyState');
+            const tableContainer = document.getElementById('tableContainer');
+
+            if (allFalhas.length === 0) {
+                emptyState.style.display = 'block';
+                tableContainer.style.display = 'none';
+                // Ocultar botões de exportação quando não há dados
+                document.getElementById('btnExportCSV').style.display = 'none';
+                document.getElementById('btnExportExcel').style.display = 'none';
+                return;
+            }
+
+            emptyState.style.display = 'none';
+            tableContainer.style.display = 'block';
+            
+            // Mostrar botões de exportação no cabeçalho
+            document.getElementById('btnExportCSV').style.display = 'inline-block';
+            document.getElementById('btnExportExcel').style.display = 'inline-block';
+
+            // Paginação
+            const start = (currentPage - 1) * itemsPerPage;
+            const end = start + itemsPerPage;
+            const falhasPagina = allFalhas.slice(start, end);
+
+            tbody.innerHTML = '';
+
+            falhasPagina.forEach(falha => {
+                const motorista = falha.motorista;
+                const dataFalha = new Date(falha.ultimaFalha.created_at);
+                const motivo = falha.motivoFalha || { tipo: 'outro', descricao: 'Não analisado', cor: 'secondary', icone: 'fa-question-circle' };
+                const row = document.createElement('tr');
+                
+                // Determinar classe CSS baseada na cor do motivo
+                let badgeClass = 'badge-error';
+                if (motivo.cor === 'warning') badgeClass = 'badge-warning';
+                else if (motivo.cor === 'success') badgeClass = 'badge-success';
+                else if (motivo.cor === 'secondary') badgeClass = 'badge-status';
+                
+                row.innerHTML = `
+                    <td>${dataFalha.toLocaleString('pt-BR')}</td>
+                    <td><code>${falha.numero}</code></td>
+                    <td>${motorista ? motorista.nome : '<span class="text-muted">Não encontrado</span>'}</td>
+                    <td><code>${motorista ? (motorista.telefone1 || '-') : '-'}</code></td>
+                    <td><code>${motorista ? (motorista.telefone2 || '-') : '-'}</code></td>
+                    <td>
+                        <span class="badge badge-status ${badgeClass}" title="${motivo.descricao}">
+                            <i class="fas ${motivo.icone} me-1"></i>${motivo.descricao}
+                        </span>
+                    </td>
+                    <td><span class="badge badge-status badge-error">${falha.totalFalhas} falha(s)</span></td>
+                    <td>${falha.usuarioNome || 'Anônimo'}</td>
+                    <td>
+                        ${motorista ? `
+                            <button class="btn btn-action btn-edit me-2" onclick="editarMotorista('${motorista.id}')">
+                                <i class="fas fa-edit"></i> Editar
+                            </button>
+                        ` : `
+                            <span class="text-muted">N/A</span>
+                        `}
+                    </td>
+                `;
+                
+                tbody.appendChild(row);
+            });
+
+            atualizarPaginacao();
+        }
+
+        function atualizarPaginacao() {
+            const totalPages = Math.ceil(allFalhas.length / itemsPerPage);
+            const paginationContainer = document.getElementById('paginationContainer');
+            
+            paginationContainer.innerHTML = '';
+
+            if (totalPages <= 1) return;
+
+            // Botão Anterior
+            const prevLi = document.createElement('li');
+            prevLi.className = `page-item ${currentPage === 1 ? 'disabled' : ''}`;
+            prevLi.innerHTML = `<a class="page-link" href="#" onclick="mudarPagina(${currentPage - 1}); return false;">Anterior</a>`;
+            paginationContainer.appendChild(prevLi);
+
+            // Números de página
+            for (let i = 1; i <= totalPages; i++) {
+                if (i === 1 || i === totalPages || (i >= currentPage - 2 && i <= currentPage + 2)) {
+                    const li = document.createElement('li');
+                    li.className = `page-item ${i === currentPage ? 'active' : ''}`;
+                    li.innerHTML = `<a class="page-link" href="#" onclick="mudarPagina(${i}); return false;">${i}</a>`;
+                    paginationContainer.appendChild(li);
+                } else if (i === currentPage - 3 || i === currentPage + 3) {
+                    const li = document.createElement('li');
+                    li.className = 'page-item disabled';
+                    li.innerHTML = `<span class="page-link">...</span>`;
+                    paginationContainer.appendChild(li);
+                }
+            }
+
+            // Botão Próximo
+            const nextLi = document.createElement('li');
+            nextLi.className = `page-item ${currentPage === totalPages ? 'disabled' : ''}`;
+            nextLi.innerHTML = `<a class="page-link" href="#" onclick="mudarPagina(${currentPage + 1}); return false;">Próximo</a>`;
+            paginationContainer.appendChild(nextLi);
+        }
+
+        function mudarPagina(page) {
+            const totalPages = Math.ceil(allFalhas.length / itemsPerPage);
+            if (page < 1 || page > totalPages) return;
+            currentPage = page;
+            atualizarTabela();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        async function editarMotorista(motoristaId) {
+            try {
+                const { data: motorista, error } = await supabase
+                    .from('motoristas')
+                    .select('*')
+                    .eq('id', motoristaId)
+                    .single();
+
+                if (error) throw error;
+
+                document.getElementById('editMotoristaId').value = motorista.id;
+                document.getElementById('editNome').value = motorista.nome || '';
+                document.getElementById('editClasse').value = motorista.classe_veiculo || '';
+                document.getElementById('editTelefone1').value = motorista.telefone1 || '';
+                document.getElementById('editTelefone2').value = motorista.telefone2 || '';
+                document.getElementById('editEstado').value = motorista.estado || '';
+                document.getElementById('editStatus').value = motorista.status || 'ativo';
+                document.getElementById('editObservacoes').value = '';
+
+                const modal = new bootstrap.Modal(document.getElementById('editModal'));
+                modal.show();
+            } catch (error) {
+                console.error('Erro ao carregar motorista:', error);
+                alert('Erro ao carregar dados do motorista');
+            }
+        }
+
+        async function salvarEdicao() {
+            const motoristaId = document.getElementById('editMotoristaId').value;
+            const telefone1 = document.getElementById('editTelefone1').value.trim();
+            const telefone2 = document.getElementById('editTelefone2').value.trim();
+            const status = document.getElementById('editStatus').value;
+            const observacoes = document.getElementById('editObservacoes').value.trim();
+
+            // Validar telefone 1 (obrigatório)
+            if (!telefone1) {
+                alert('Telefone 1 é obrigatório');
+                return;
+            }
+
+            // Validar formato do telefone (apenas números, mínimo 10 dígitos)
+            const telefone1Limpo = telefone1.replace(/\D/g, '');
+            const telefone2Limpo = telefone2.replace(/\D/g, '');
+
+            if (telefone1Limpo.length < 10) {
+                alert('Telefone 1 deve ter pelo menos 10 dígitos');
+                return;
+            }
+
+            if (telefone2 && telefone2Limpo.length < 10) {
+                alert('Telefone 2 deve ter pelo menos 10 dígitos (ou deixe em branco)');
+                return;
+            }
+
+            try {
+                const { error } = await supabase
+                    .from('motoristas')
+                    .update({
+                        telefone1: telefone1Limpo,
+                        telefone2: telefone2Limpo || null,
+                        status: status,
+                        updated_at: new Date().toISOString()
+                    })
+                    .eq('id', motoristaId);
+
+                if (error) throw error;
+
+                // Registrar observação se houver (poderia criar uma tabela de histórico)
+                if (observacoes) {
+                    console.log('Observação:', observacoes);
+                    // Aqui você poderia salvar em uma tabela de histórico de correções
+                }
+
+                alert('✅ Motorista atualizado com sucesso!');
+                
+                const modal = bootstrap.Modal.getInstance(document.getElementById('editModal'));
+                modal.hide();
+
+                // Recarregar dados
+                await carregarFalhas();
+            } catch (error) {
+                console.error('Erro ao salvar:', error);
+                alert('Erro ao salvar alterações: ' + (error.message || 'Erro desconhecido'));
+            }
+        }
+
+        function aplicarFiltros() {
+            currentPage = 1;
+            carregarFalhas();
+        }
+
+        function limparFiltros() {
+            document.getElementById('filtroPeriodo').value = '7';
+            document.getElementById('filtroNumero').value = '';
+            document.getElementById('filtroNome').value = '';
+            document.getElementById('filtroEstado').value = '';
+            document.getElementById('filtroClasse').value = '';
+            document.getElementById('filtroStatus').value = '';
+            document.getElementById('filtroMinFalhas').value = '';
+            document.getElementById('filtroMotivo').value = '';
+            document.getElementById('filtroDataInicial').value = '';
+            document.getElementById('filtroDataFinal').value = '';
+            document.getElementById('dataInicialContainer').style.display = 'none';
+            document.getElementById('dataFinalContainer').style.display = 'none';
+            aplicarFiltros();
+        }
+
+        // Mostrar/ocultar campos de data personalizada
+        document.getElementById('filtroPeriodo').addEventListener('change', function() {
+            const isCustom = this.value === 'custom';
+            document.getElementById('dataInicialContainer').style.display = isCustom ? 'block' : 'none';
+            document.getElementById('dataFinalContainer').style.display = isCustom ? 'block' : 'none';
+        });
+
+        // ========== EXPORTAÇÃO DE DADOS ==========
+        function exportarDados(formato) {
+            if (!allFalhas || allFalhas.length === 0) {
+                alert('Não há dados para exportar. Aplique os filtros e carregue os dados primeiro.');
+                return;
+            }
+
+            const periodo = document.getElementById('filtroPeriodo').value;
+            const dataAtual = new Date().toISOString().split('T')[0];
+            const nomeArquivo = `motoristas_falhas_${periodo}_dias_${dataAtual}`;
+
+            if (formato === 'csv') {
+                exportarParaCSV(nomeArquivo);
+            } else if (formato === 'excel') {
+                exportarParaExcel(nomeArquivo);
+            }
+        }
+
+        function exportarParaCSV(nomeArquivo) {
+            // Cabeçalhos CSV
+            const headers = [
+                'Data/Hora',
+                'Número com Falha',
+                'Nome do Motorista',
+                'Telefone 1',
+                'Telefone 2',
+                'Estado',
+                'Classe de Veículo',
+                'Tipo de Veículo',
+                'Tipo de Carroceria',
+                'Status',
+                'Motivo da Falha',
+                'Total de Falhas',
+                'Primeira Falha',
+                'Última Falha',
+                'Usuário que Tentou Enviar'
+            ];
+
+            // Converter dados para CSV
+            const linhas = [headers.join(';')];
+
+            allFalhas.forEach(falha => {
+                const motorista = falha.motorista;
+                const dataUltimaFalha = new Date(falha.ultimaFalha.created_at);
+                const dataPrimeiraFalha = new Date(falha.primeiraFalha.created_at);
+
+                const linha = [
+                    escaparCSV(dataUltimaFalha.toLocaleString('pt-BR')),
+                    escaparCSV(falha.numero),
+                    escaparCSV(motorista ? motorista.nome : 'Não encontrado'),
+                    escaparCSV(motorista ? (motorista.telefone1 || '') : ''),
+                    escaparCSV(motorista ? (motorista.telefone2 || '') : ''),
+                    escaparCSV(motorista ? (motorista.estado || '') : ''),
+                    escaparCSV(motorista ? (motorista.classe_veiculo || '') : ''),
+                    escaparCSV(motorista ? (motorista.tipo_veiculo || '') : ''),
+                    escaparCSV(motorista ? (motorista.tipo_carroceria || '') : ''),
+                    escaparCSV(motorista ? (motorista.status || '') : ''),
+                    escaparCSV(falha.motivoFalha ? falha.motivoFalha.descricao : 'Não analisado'),
+                    falha.totalFalhas.toString(),
+                    escaparCSV(dataPrimeiraFalha.toLocaleString('pt-BR')),
+                    escaparCSV(dataUltimaFalha.toLocaleString('pt-BR')),
+                    escaparCSV(falha.usuarioNome || 'Anônimo')
+                ];
+
+                linhas.push(linha.join(';'));
+            });
+
+            // Criar arquivo e fazer download
+            const csvContent = linhas.join('\n');
+            const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' }); // BOM para Excel reconhecer UTF-8
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+
+            link.setAttribute('href', url);
+            link.setAttribute('download', `${nomeArquivo}.csv`);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+            alert(`✅ Arquivo CSV exportado com sucesso!\n\nTotal de registros: ${allFalhas.length}`);
+        }
+
+        function exportarParaExcel(nomeArquivo) {
+            // Para Excel, vamos criar um CSV com extensão .xlsx ou usar uma biblioteca
+            // Como não queremos adicionar dependências pesadas, vamos criar um CSV otimizado para Excel
+            // que pode ser aberto diretamente no Excel
+
+            // Cabeçalhos
+            const headers = [
+                'Data/Hora',
+                'Número com Falha',
+                'Nome do Motorista',
+                'Telefone 1',
+                'Telefone 2',
+                'Estado',
+                'Classe de Veículo',
+                'Tipo de Veículo',
+                'Tipo de Carroceria',
+                'Status',
+                'Motivo da Falha',
+                'Total de Falhas',
+                'Primeira Falha',
+                'Última Falha',
+                'Usuário que Tentou Enviar'
+            ];
+
+            // Criar conteúdo HTML para Excel (formato que Excel entende)
+            let htmlContent = `
+                <html>
+                    <head>
+                        <meta charset="UTF-8">
+                        <style>
+                            table { border-collapse: collapse; width: 100%; }
+                            th { background-color: #667eea; color: white; font-weight: bold; padding: 8px; text-align: left; border: 1px solid #ddd; }
+                            td { padding: 8px; border: 1px solid #ddd; }
+                            tr:nth-child(even) { background-color: #f2f2f2; }
+                        </style>
+                    </head>
+                    <body>
+                        <table>
+                            <thead>
+                                <tr>
+                                    ${headers.map(h => `<th>${h}</th>`).join('')}
+                                </tr>
+                            </thead>
+                            <tbody>
+            `;
+
+            allFalhas.forEach(falha => {
+                const motorista = falha.motorista;
+                const dataUltimaFalha = new Date(falha.ultimaFalha.created_at);
+                const dataPrimeiraFalha = new Date(falha.primeiraFalha.created_at);
+
+                const escaparHTML = (texto) => {
+                    if (texto === null || texto === undefined) return '';
+                    return String(texto)
+                        .replace(/&/g, '&amp;')
+                        .replace(/</g, '&lt;')
+                        .replace(/>/g, '&gt;')
+                        .replace(/"/g, '&quot;')
+                        .replace(/'/g, '&#39;');
+                };
+
+                htmlContent += '<tr>';
+                htmlContent += `<td>${escaparHTML(dataUltimaFalha.toLocaleString('pt-BR'))}</td>`;
+                htmlContent += `<td>${escaparHTML(falha.numero)}</td>`;
+                htmlContent += `<td>${escaparHTML(motorista ? (motorista.nome || '') : 'Não encontrado')}</td>`;
+                htmlContent += `<td>${escaparHTML(motorista ? (motorista.telefone1 || '') : '')}</td>`;
+                htmlContent += `<td>${escaparHTML(motorista ? (motorista.telefone2 || '') : '')}</td>`;
+                htmlContent += `<td>${escaparHTML(motorista ? (motorista.estado || '') : '')}</td>`;
+                htmlContent += `<td>${escaparHTML(motorista ? (motorista.classe_veiculo || '') : '')}</td>`;
+                htmlContent += `<td>${escaparHTML(motorista ? (motorista.tipo_veiculo || '') : '')}</td>`;
+                htmlContent += `<td>${escaparHTML(motorista ? (motorista.tipo_carroceria || '') : '')}</td>`;
+                htmlContent += `<td>${escaparHTML(motorista ? (motorista.status || '') : '')}</td>`;
+                htmlContent += `<td>${escaparHTML(falha.motivoFalha ? falha.motivoFalha.descricao : 'Não analisado')}</td>`;
+                htmlContent += `<td>${falha.totalFalhas}</td>`;
+                htmlContent += `<td>${escaparHTML(dataPrimeiraFalha.toLocaleString('pt-BR'))}</td>`;
+                htmlContent += `<td>${escaparHTML(dataUltimaFalha.toLocaleString('pt-BR'))}</td>`;
+                htmlContent += `<td>${escaparHTML(falha.usuarioNome || 'Anônimo')}</td>`;
+                htmlContent += '</tr>';
+            });
+
+            htmlContent += `
+                            </tbody>
+                        </table>
+                    </body>
+                </html>
+            `;
+
+            // Criar arquivo e fazer download
+            const blob = new Blob(['\ufeff' + htmlContent], { type: 'application/vnd.ms-excel;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+
+            link.setAttribute('href', url);
+            link.setAttribute('download', `${nomeArquivo}.xls`);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+            alert(`✅ Arquivo Excel exportado com sucesso!\n\nTotal de registros: ${allFalhas.length}`);
+        }
+
+        function escaparCSV(texto) {
+            if (texto === null || texto === undefined) return '';
+            const textoStr = String(texto);
+            // Se contém vírgula, ponto e vírgula, aspas ou quebra de linha, precisa ser envolvido em aspas
+            if (textoStr.includes(';') || textoStr.includes('"') || textoStr.includes('\n') || textoStr.includes('\r')) {
+                return '"' + textoStr.replace(/"/g, '""') + '"';
+            }
+            return textoStr;
+        }
+
+        // Permitir buscar ao pressionar Enter em todos os campos de filtro
+        ['filtroNumero', 'filtroNome', 'filtroMinFalhas', 'filtroDataInicial', 'filtroDataFinal'].forEach(id => {
+            const element = document.getElementById(id);
+            if (element) {
+                element.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') aplicarFiltros();
+                });
+            }
+        });
+
+        // Aplicar filtros automaticamente quando mudar período, estado, classe, status ou motivo
+        ['filtroPeriodo', 'filtroEstado', 'filtroClasse', 'filtroStatus', 'filtroMotivo'].forEach(id => {
+            const element = document.getElementById(id);
+            if (element) {
+                element.addEventListener('change', () => {
+                    aplicarFiltros();
+                });
+            }
+        });
+    </script>
+    <!-- Chat IA -->
+    <link rel="stylesheet" href="css/chat-ia.css">
+    <script src="js/chat-ia.js"></script>
+</body>
+</html>
+

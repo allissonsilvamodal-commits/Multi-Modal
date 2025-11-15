@@ -165,6 +165,53 @@
             padding: 2rem;
         }
 
+        .modal-content {
+            background: white;
+            border-radius: 18px;
+            border: none;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+        }
+
+        .modal-header, .modal-footer {
+            border: none;
+            background: white;
+        }
+
+        .modal-header {
+            padding: 1.5rem 2rem 1rem;
+        }
+
+        .modal-body {
+            padding: 1rem 2rem 2rem;
+        }
+
+        body[data-theme="dark"] .modal-content {
+            background: var(--card-bg);
+            color: var(--text-color);
+            border: 1px solid var(--border-color);
+        }
+
+        body[data-theme="dark"] .modal-header,
+        body[data-theme="dark"] .modal-footer {
+            background: var(--card-bg);
+            color: var(--text-color);
+            border-color: var(--border-color);
+        }
+
+        body[data-theme="dark"] .modal-header .btn-close {
+            filter: invert(1);
+        }
+
+        body[data-theme="dark"] .form-label,
+        body[data-theme="dark"] .modal-body .text-muted {
+            color: var(--text-color) !important;
+        }
+
+        body[data-theme="dark"] .modal-body .text-muted small {
+            color: var(--text-color) !important;
+        }
+        
+
         /* Stats Cards */
         .stats-grid {
       display: grid;
@@ -1107,6 +1154,39 @@
                                     </div>
                                 </div>
                             </div>
+
+                            <div class="mb-4">
+                                <label class="form-label">Áudio (opcional)</label>
+                                <div id="audioRecordWrapper">
+                                    <div class="d-flex gap-2 mb-2">
+                                        <button class="btn btn-outline-primary" id="btnStartRecording" type="button">
+                                            <i class="fas fa-microphone me-2"></i>Gravar Áudio
+                                        </button>
+                                        <button class="btn btn-outline-danger" id="btnStopRecording" type="button" style="display:none;">
+                                            <i class="fas fa-stop me-2"></i>Parar Gravação
+                                        </button>
+                                        <button class="btn btn-outline-secondary" id="btnRemoveAudio" type="button" style="display:none;">
+                                            <i class="fas fa-times me-2"></i>Remover
+                                        </button>
+                                    </div>
+                                    <div id="audioPreview" class="mt-3" style="display:none;">
+                                        <div class="d-flex align-items-center gap-3 p-3 border rounded">
+                                            <div class="flex-grow-1">
+                                                <div class="d-flex align-items-center gap-2 mb-2">
+                                                    <i class="fas fa-volume-up text-primary"></i>
+                                                    <small class="text-muted" id="audioInfo">Áudio gravado</small>
+                                                    <span class="badge bg-secondary" id="audioDuration">0s</span>
+                                                </div>
+                                                <audio id="audioPlayer" controls class="w-100" style="max-width: 100%;">
+                                                    <source id="audioSource" src="" type="audio/webm">
+                                                    Seu navegador não suporta o elemento de áudio.
+                                                </audio>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <small class="text-muted">Clique em "Gravar Áudio" para gravar uma mensagem de voz. Máximo 2 minutos.</small>
+                                </div>
+                            </div>
                             
                             <!-- Test Field -->
                             <div class="mb-4">
@@ -1592,6 +1672,10 @@ const estados = [
                 .trim();
         }
 
+        function normalizarChaveCarroceria(valor) {
+            return normalizarTexto(valor || '').replace(/[\s_]/g, '');
+        }
+
         // ========== INICIALIZAÇÃO ==========
         document.addEventListener('DOMContentLoaded', async () => {
             console.log('🚀 Inicializando Painel de Disparo Moderno...');
@@ -1620,6 +1704,7 @@ const estados = [
             await carregarFavoritos(); // Carregar favoritos do usuário
             configurarEventos();
             configurarUploadImagem();
+            configurarGravacaoAudio();
             await verificarTreinamentoObrigatorio(true);
             
             console.log('✅ Painel inicializado com sucesso!');
@@ -1853,6 +1938,7 @@ const estados = [
             // Carregar estados
             const filtroEstado = document.getElementById('filtroEstado');
             if (filtroEstado) {
+                filtroEstado.innerHTML = '<option value="">Todos os estados</option>';
                 estados.forEach(estado => {
                     const option = document.createElement('option');
                     option.value = estado;
@@ -1866,16 +1952,39 @@ const estados = [
             // Carregar tipos de veículo do backend (distinct via service role)
             const filtroTipoVeiculo = document.getElementById('filtroTipoVeiculo');
             if (filtroTipoVeiculo) {
+                filtroTipoVeiculo.innerHTML = '<option value="">Todos os tipos</option>';
                 try {
                     const resp = await fetch('/api/filtros/motoristas/tipos');
                     if (resp.ok) {
                         const json = await resp.json();
+                        const valoresMap = new Map();
+
                         (json.tipos || []).forEach(tipo => {
-                            const option = document.createElement('option');
-                            option.value = tipo;
-                            option.textContent = tipo;
-                            filtroTipoVeiculo.appendChild(option);
+                            const valor = (tipo || '').trim();
+                            if (!valor) return;
+
+                            const chave = valor.toLowerCase();
+                            if (!valoresMap.has(chave)) {
+                                valoresMap.set(chave, valor);
+                            }
                         });
+
+                        // Garantir que tipos críticos estejam presentes
+                        ['Carreta', 'Bitrem', 'Rodotrem'].forEach(tipo => {
+                            const chave = tipo.toLowerCase();
+                            if (!valoresMap.has(chave)) {
+                                valoresMap.set(chave, tipo);
+                            }
+                        });
+
+                        Array.from(valoresMap.values())
+                            .sort((a, b) => a.localeCompare(b, 'pt-BR'))
+                            .forEach(valor => {
+                                const option = document.createElement('option');
+                                option.value = valor;
+                                option.textContent = valor;
+                                filtroTipoVeiculo.appendChild(option);
+                            });
                         console.log('✅ Filtro de tipos de veículo carregado:', (json.tipos||[]).length);
                     }
                 } catch (error) {
@@ -1888,39 +1997,48 @@ const estados = [
             // Carregar carrocerias do backend (distinct via service role)
             const filtroCarroceria = document.getElementById('filtroCarroceria');
             if (filtroCarroceria) {
+                filtroCarroceria.innerHTML = '<option value="">Todas as carrocerias</option>';
                 try {
                     const resp = await fetch('/api/filtros/motoristas/carrocerias');
                     if (resp.ok) {
                         const json = await resp.json();
-                        // Usar Map para evitar duplicações case-insensitive
+                        // Usar Map para evitar duplicações case-insensitive e com variações de acentos/underscore
                         const valoresMap = new Map();
                         
-                        // Primeiro, adicionar valores do backend
-                        (json.carrocerias||[]).forEach(v => {
-                            const valor = (v||'').trim();
-                            if (valor) {
-                                const chaveNormalizada = valor.toLowerCase();
-                                if (!valoresMap.has(chaveNormalizada)) {
-                                    valoresMap.set(chaveNormalizada, valor);
-                                }
+                        const adicionarCarroceria = (valor) => {
+                            const valorLimpo = (valor || '').trim();
+                            if (!valorLimpo) return;
+                            
+                            const chave = normalizarChaveCarroceria(valorLimpo);
+                            if (!chave) return;
+                            
+                            // Padronizar label (substituir underscores por espaços e capitalizar)
+                            const labelFormatado = valorLimpo
+                                .replace(/_/g, ' ')
+                                .replace(/\s+/g, ' ')
+                                .split(' ')
+                                .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+                                .join(' ')
+                                .trim();
+                            
+                            if (!valoresMap.has(chave)) {
+                                valoresMap.set(chave, labelFormatado);
                             }
-                        });
+                        };
+                        
+                        // Primeiro, adicionar valores do backend
+                        (json.carrocerias||[]).forEach(adicionarCarroceria);
                         
                         // Depois, adicionar valores padronizados do cadastro (sobrescrevem se já existirem)
                         Object.values(tiposCarroceriaMap||{}).forEach(lbl => {
-                            if (lbl) {
-                                const chaveNormalizada = lbl.toLowerCase();
-                                valoresMap.set(chaveNormalizada, lbl);
-                            }
+                            if (!lbl) return;
+                            const chave = normalizarChaveCarroceria(lbl);
+                            if (!chave) return;
+                            valoresMap.set(chave, lbl);
                         });
                         
-                        // Garantir presença explícita dessas opções
-                        ['BASCULANTE','PORTA CONTAINER 20','PORTA CONTAINER 40','PORTA CONTAINER20/40'].forEach(v => {
-                            const chaveNormalizada = v.toLowerCase();
-                            valoresMap.set(chaveNormalizada, v);
-                        });
-                        
-                        const listaOrdenada = Array.from(valoresMap.values()).sort((a,b)=> a.localeCompare(b,'pt-BR'));
+                        const listaOrdenada = Array.from(valoresMap.values())
+                            .sort((a,b)=> a.localeCompare(b,'pt-BR'));
                         listaOrdenada.forEach(valorOriginal => {
                             const option = document.createElement('option');
                             option.value = valorOriginal;
@@ -2404,7 +2522,7 @@ const estados = [
                     }
                     
                     if (filtroCarroceria) {
-                        const filtroNormalizado = normalizarTexto(filtroCarroceria);
+                        const filtroNormalizado = normalizarChaveCarroceria(filtroCarroceria);
                         console.log('🔍 Filtrando carroceria:', {
                             filtroOriginal: filtroCarroceria,
                             filtroNormalizado: filtroNormalizado,
@@ -2413,23 +2531,15 @@ const estados = [
                         
                         const antes = todosMotoristas.length;
                         todosMotoristas = todosMotoristas.filter(motorista => {
-                            const carroceriaMotorista = normalizarTexto(motorista.tipo_carroceria || '');
+                            const carroceriaMotorista = normalizarChaveCarroceria(motorista.tipo_carroceria || '');
                             
-                            // Verificar se carroceria contém o filtro OU se o filtro contém a carroceria
-                            // Isso garante que funcione para casos como:
-                            // - Banco: "bau", Filtro: "Baú" → carroceria.includes("bau") = true
-                            // - Banco: "Baú Frigorífico", Filtro: "bau" → carroceria.includes("bau") = true
-                            const match = carroceriaMotorista.includes(filtroNormalizado) || 
-                                         filtroNormalizado.includes(carroceriaMotorista) ||
-                                         carroceriaMotorista === filtroNormalizado;
+                            const match = carroceriaMotorista === filtroNormalizado;
                             
                             if (!match && motorista.tipo_carroceria && filtroNormalizado) {
                                 console.log('❌ Não match:', {
                                     original: motorista.tipo_carroceria,
                                     normalizado: carroceriaMotorista,
-                                    filtro: filtroNormalizado,
-                                    inclui: carroceriaMotorista.includes(filtroNormalizado),
-                                    filtroIncluiCarroceria: filtroNormalizado.includes(carroceriaMotorista)
+                                    filtro: filtroNormalizado
                                 });
                             }
                             
@@ -2480,15 +2590,10 @@ const estados = [
                         
                         // Filtro de carroceria (tolerante, contém, case-insensitive, sem acentos)
                         if (filtroCarroceria) {
-                            const carroceriaMotorista = normalizarTexto(motorista.tipo_carroceria || '');
-                            const filtroNormalizado = normalizarTexto(filtroCarroceria);
+                            const carroceriaMotorista = normalizarChaveCarroceria(motorista.tipo_carroceria || '');
+                            const filtroNormalizado = normalizarChaveCarroceria(filtroCarroceria);
                             
-                            // Verificar se carroceria contém o filtro OU se o filtro contém a carroceria
-                            const match = carroceriaMotorista.includes(filtroNormalizado) || 
-                                         filtroNormalizado.includes(carroceriaMotorista) ||
-                                         carroceriaMotorista === filtroNormalizado;
-                            
-                            if (!match) return false;
+                            if (carroceriaMotorista !== filtroNormalizado) return false;
                         }
                         
                         // Filtro de estado
@@ -2648,6 +2753,16 @@ const estados = [
 
         let imagemSelecionada = null;
         let imagemPreviewUrl = null;
+        
+        // Variáveis para gravação de áudio
+        let mediaRecorder = null;
+        let audioChunks = [];
+        let audioBlob = null;
+        let audioFile = null;
+        let recordingStartTime = null;
+        let recordingTimer = null;
+        let audioStream = null;
+        let currentMimeType = 'audio/webm';
 
         function resetarImagem() {
             const input = document.getElementById('imageInput');
@@ -2684,6 +2799,11 @@ const estados = [
                     URL.revokeObjectURL(imagemPreviewUrl);
                 }
                 imagemPreviewUrl = URL.createObjectURL(file);
+                
+                // Remover áudio se houver imagem
+                if (audioFile) {
+                    resetarAudio();
+                }
 
                 const preview = document.getElementById('imagePreview');
                 const previewImg = document.getElementById('previewImg');
@@ -2701,6 +2821,185 @@ const estados = [
                 e.preventDefault();
                 resetarImagem();
             });
+        }
+
+        // ========== GRAVAÇÃO DE ÁUDIO ==========
+        function resetarAudio() {
+            if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+                mediaRecorder.stop();
+            }
+            
+            if (recordingTimer) {
+                clearInterval(recordingTimer);
+                recordingTimer = null;
+            }
+            
+            // Parar stream se ainda estiver ativo
+            if (audioStream) {
+                audioStream.getTracks().forEach(track => track.stop());
+                audioStream = null;
+            }
+            
+            if (audioBlob) {
+                const url = URL.createObjectURL(audioBlob);
+                URL.revokeObjectURL(url);
+            }
+            
+            audioBlob = null;
+            audioFile = null;
+            audioChunks = [];
+            mediaRecorder = null;
+            currentMimeType = 'audio/webm';
+            
+            const audioPreview = document.getElementById('audioPreview');
+            const audioSource = document.getElementById('audioSource');
+            const audioPlayer = document.getElementById('audioPlayer');
+            const audioDuration = document.getElementById('audioDuration');
+            const btnStart = document.getElementById('btnStartRecording');
+            const btnStop = document.getElementById('btnStopRecording');
+            const btnRemove = document.getElementById('btnRemoveAudio');
+            
+            if (audioPreview) audioPreview.style.display = 'none';
+            if (audioSource) audioSource.src = '';
+            if (audioPlayer) audioPlayer.load();
+            if (audioDuration) audioDuration.textContent = '0s';
+            if (btnStart) btnStart.style.display = 'inline-block';
+            if (btnStop) btnStop.style.display = 'none';
+            if (btnRemove) btnRemove.style.display = 'none';
+            
+            adicionarLog('🗑️ Áudio removido', 'info');
+        }
+        
+        function configurarGravacaoAudio() {
+            const btnStart = document.getElementById('btnStartRecording');
+            const btnStop = document.getElementById('btnStopRecording');
+            const btnRemove = document.getElementById('btnRemoveAudio');
+            const audioPreview = document.getElementById('audioPreview');
+            const audioPlayer = document.getElementById('audioPlayer');
+            const audioSource = document.getElementById('audioSource');
+            const audioDuration = document.getElementById('audioDuration');
+
+            if (!btnStart || !btnStop || !btnRemove) return;
+
+            async function iniciarGravacao() {
+                try {
+                    // Remover imagem se houver áudio
+                    if (imagemSelecionada) {
+                        resetarImagem();
+                    }
+                    
+                    audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    
+                    // Tentar usar OGG Opus primeiro (preferido pelo WhatsApp)
+                    // Se não suportar, tentar WebM Opus, depois WebM simples
+                    currentMimeType = 'audio/ogg;codecs=opus';
+                    if (!MediaRecorder.isTypeSupported(currentMimeType)) {
+                        currentMimeType = 'audio/webm;codecs=opus';
+                    }
+                    if (!MediaRecorder.isTypeSupported(currentMimeType)) {
+                        currentMimeType = 'audio/webm';
+                    }
+                    if (!MediaRecorder.isTypeSupported(currentMimeType)) {
+                        currentMimeType = 'audio/mp4'; // Fallback
+                    }
+                    
+                    console.log(`🎤 Codec selecionado: ${currentMimeType}`);
+                    
+                    mediaRecorder = new MediaRecorder(audioStream, {
+                        mimeType: currentMimeType
+                    });
+                    
+                    audioChunks = [];
+                    
+                    mediaRecorder.ondataavailable = (event) => {
+                        if (event.data.size > 0) {
+                            audioChunks.push(event.data);
+                        }
+                    };
+                    
+                    mediaRecorder.onstop = () => {
+                        const mimeTypeBase = currentMimeType.split(';')[0];
+                        audioBlob = new Blob(audioChunks, { type: mimeTypeBase });
+                        const audioUrl = URL.createObjectURL(audioBlob);
+                        
+                        // Criar arquivo para envio
+                        const fileExtension = currentMimeType.includes('ogg') ? '.ogg' : '.webm';
+                        audioFile = new File([audioBlob], `audio_${Date.now()}${fileExtension}`, { type: mimeTypeBase });
+                        
+                        // Atualizar preview
+                        audioSource.src = audioUrl;
+                        audioSource.type = mimeTypeBase;
+                        audioPlayer.load();
+                        audioPreview.style.display = 'block';
+                        
+                        // Calcular duração real
+                        audioPlayer.addEventListener('loadedmetadata', () => {
+                            const duration = Math.round(audioPlayer.duration);
+                            audioDuration.textContent = `${duration}s`;
+                        }, { once: true });
+                        
+                        // Parar todas as tracks do stream
+                        if (audioStream) {
+                            audioStream.getTracks().forEach(track => track.stop());
+                            audioStream = null;
+                        }
+                        
+                        btnStart.style.display = 'inline-block';
+                        btnStop.style.display = 'none';
+                        btnRemove.style.display = 'inline-block';
+                        
+                        adicionarLog('🎤 Áudio gravado com sucesso', 'success');
+                    };
+                    
+                    mediaRecorder.start();
+                    recordingStartTime = Date.now();
+                    
+                    // Atualizar UI
+                    btnStart.style.display = 'none';
+                    btnStop.style.display = 'inline-block';
+                    btnRemove.style.display = 'none';
+                    audioPreview.style.display = 'none';
+                    audioDuration.textContent = '0s';
+                    
+                    // Timer de duração
+                    recordingTimer = setInterval(() => {
+                        const elapsed = Math.floor((Date.now() - recordingStartTime) / 1000);
+                        audioDuration.textContent = `${elapsed}s`;
+                        
+                        // Limite de 2 minutos
+                        if (elapsed >= 120) {
+                            pararGravacao();
+                            mostrarAviso('Limite de 2 minutos atingido. Gravação interrompida.');
+                        }
+                    }, 1000);
+                    
+                    adicionarLog('🎤 Gravação iniciada...', 'info');
+                } catch (error) {
+                    console.error('Erro ao iniciar gravação:', error);
+                    mostrarErro('Erro ao acessar o microfone. Verifique as permissões do navegador.');
+                }
+            }
+            
+            function pararGravacao() {
+                if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+                    mediaRecorder.stop();
+                }
+                
+                if (recordingTimer) {
+                    clearInterval(recordingTimer);
+                    recordingTimer = null;
+                }
+                
+                // Parar stream se ainda estiver ativo
+                if (audioStream) {
+                    audioStream.getTracks().forEach(track => track.stop());
+                    audioStream = null;
+                }
+            }
+            
+            btnStart.addEventListener('click', iniciarGravacao);
+            btnStop.addEventListener('click', pararGravacao);
+            btnRemove.addEventListener('click', resetarAudio);
         }
 
         // ========== TESTAR MENSAGEM ==========
@@ -2756,6 +3055,7 @@ const estados = [
             const telefone = document.getElementById('telefoneTeste').value.trim();
             const mensagem = document.getElementById('messageText').value.trim();
             const imageFile = imagemSelecionada;
+            const audioFileToSend = audioFile;
             
             if (!telefone) {
                 mostrarAviso('Digite um número de telefone para teste');
@@ -2791,6 +3091,10 @@ const estados = [
                     adicionarLog(`🖼️ Imagem anexada: ${imageFile.name}`, 'info');
                 }
                 
+                if (audioFileToSend) {
+                    adicionarLog(`🎤 Áudio anexado: ${audioFileToSend.name}`, 'info');
+                }
+                
                 // Buscar credenciais da Evolution API do usuário logado
                 const userData = localStorage.getItem('loggedInUser');
                 let userEmail = null;
@@ -2821,6 +3125,8 @@ const estados = [
                 formData.append('simulateTyping', configDisparo.simulateTyping ? 'true' : 'false');
                 if (imageFile) {
                     formData.append('media', imageFile);
+                } else if (audioFileToSend) {
+                    formData.append('media', audioFileToSend);
                 }
 
                 const response = await fetch('/webhook/send-supabase', {
@@ -2842,6 +3148,8 @@ const estados = [
                         adicionarLog(`✅ Teste enviado com sucesso para ${telefone}`, 'success');
                         if (imageFile) {
                             adicionarLog(`🖼️ Imagem enviada: ${imageFile.name}`, 'info');
+                        } else if (audioFileToSend) {
+                            adicionarLog(`🎤 Áudio enviado: ${audioFileToSend.name}`, 'info');
                         }
                         adicionarLog(`🏷️ Instância usada: ${data.instancia || 'N/A'}`, 'info');
                         mostrarSucesso(`Mensagem de teste enviada para ${telefone}`);
@@ -3071,6 +3379,7 @@ const estados = [
             }
 
             const imageFile = imagemSelecionada;
+            const audioFileToSend = audioFile;
 
             isDisparoAtivo = true;
             disparoCancelado = false;
@@ -3088,6 +3397,10 @@ const estados = [
             adicionarLog(`🚀 Iniciando disparo para ${selectedMotoristas.size} motoristas...`, 'info');
             if (imageFile) {
                 adicionarLog(`🖼️ Imagem anexada: ${imageFile.name}`, 'info');
+            }
+            
+            if (audioFileToSend) {
+                adicionarLog(`🎤 Áudio anexado: ${audioFileToSend.name}`, 'info');
             }
             adicionarLog(`⚙️ Configuração: ${getConfigResumoTexto()}`, 'info');
 
@@ -3172,6 +3485,8 @@ const estados = [
                     formData.append('simulateTyping', configDisparo.simulateTyping ? 'true' : 'false');
                     if (imageFile) {
                         formData.append('media', imageFile);
+                    } else if (audioFileToSend) {
+                        formData.append('media', audioFileToSend);
                     }
 
                     const response = await fetch('/webhook/send-supabase', {
@@ -3200,6 +3515,8 @@ const estados = [
                             adicionarLog(`✅ Enviado para ${motorista.nome} (${motorista.telefone1})`, 'success');
                             if (imageFile) {
                                 adicionarLog(`🖼️ Imagem enviada: ${imageFile.name}`, 'info');
+                            } else if (audioFileToSend) {
+                                adicionarLog(`🎤 Áudio enviado: ${audioFileToSend.name}`, 'info');
                             }
                             if (data.instancia) {
                                 adicionarLog(`🏷️ Usando instância: ${data.instancia}`, 'info');

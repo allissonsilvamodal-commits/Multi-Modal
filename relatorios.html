@@ -65,7 +65,7 @@
                 padding: 0 0.75rem;
             }
         }
-        #abaBI, #abaCadastros { 
+        #abaBI, #abaCadastros, #abaFalhas { 
             width: 100%; 
             padding: 0; 
             margin: 0; 
@@ -143,6 +143,7 @@
                 <li class="nav-item"><button class="nav-link active" id="tabColetas" onclick="mostrarAba('coletas')">Coletas</button></li>
                 <li class="nav-item"><button class="nav-link" id="tabBI" onclick="mostrarAba('bi')">BI Disparos</button></li>
 				<li class="nav-item"><button class="nav-link" id="tabCadastros" onclick="mostrarAba('cadastros')">Cadastros</button></li>
+                <li class="nav-item"><button class="nav-link" id="tabFalhas" onclick="mostrarAba('falhas')">Motoristas com Falhas</button></li>
             </ul>
             <div id="abaColetas">
                 <div class="dashboard-row">
@@ -380,6 +381,57 @@
 					</div>
 				</div>
 			</div>
+            <div id="abaFalhas" style="display:none">
+                <div class="card-futuristic">
+                    <div class="card-header-futuristic">
+                        <h5><i class="fas fa-exclamation-triangle me-2"></i>Motoristas com Falhas nos Disparos</h5>
+                    </div>
+                    <div class="p-4">
+                        <div class="alert alert-info mb-4" style="background: rgba(59, 130, 246, 0.1); border-left: 4px solid #3b82f6; color: var(--text-primary);">
+                            <i class="fas fa-info-circle me-2"></i>
+                            <strong>Registro de Falhas:</strong> Esta página permite visualizar e corrigir motoristas que tiveram falhas nos disparos de mensagens, geralmente causadas por números de telefone incorretos ou incompletos.
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-4">
+                                <div class="card-futuristic p-4">
+                                    <h6 class="mb-3"><i class="fas fa-list-check me-2"></i>Funcionalidades</h6>
+                                    <ul style="list-style: none; padding: 0;">
+                                        <li class="mb-2"><i class="fas fa-check-circle text-success me-2"></i>Visualizar todas as falhas de disparo</li>
+                                        <li class="mb-2"><i class="fas fa-check-circle text-success me-2"></i>Filtrar por período, número ou nome</li>
+                                        <li class="mb-2"><i class="fas fa-check-circle text-success me-2"></i>Editar telefones diretamente</li>
+                                        <li class="mb-2"><i class="fas fa-check-circle text-success me-2"></i>Estatísticas em tempo real</li>
+                                        <li class="mb-2"><i class="fas fa-check-circle text-success me-2"></i>Identificar motoristas não encontrados</li>
+                                    </ul>
+                                </div>
+                            </div>
+                            <div class="col-md-6 mb-4">
+                                <div class="card-futuristic p-4">
+                                    <h6 class="mb-3"><i class="fas fa-chart-line me-2"></i>Estatísticas Rápidas</h6>
+                                    <div class="dashboard-row">
+                                        <div class="metric-card card-futuristic">
+                                            <div class="metric-value" id="statTotalFalhas">-</div>
+                                            <div class="metric-label">Total de Falhas</div>
+                                        </div>
+                                        <div class="metric-card card-futuristic">
+                                            <div class="metric-value" id="statMotoristasUnicos">-</div>
+                                            <div class="metric-label">Motoristas Únicos</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="text-center mt-4">
+                            <a href="motoristas-falhas.html" class="btn btn-futuristic btn-lg" target="_blank">
+                                <i class="fas fa-external-link-alt me-2"></i>Abrir Página de Motoristas com Falhas
+                            </a>
+                            <p class="text-muted mt-3" style="color: var(--text-secondary);">
+                                <i class="fas fa-info-circle me-1"></i>
+                                A página será aberta em uma nova aba para facilitar a navegação
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
     <div id="loadingOverlay" class="loading-overlay" style="display: none;">
         <div class="text-center"><div class="spinner"></div><p class="loading-text">Carregando relatórios...</p></div>
         </div>
@@ -391,10 +443,14 @@
         document.getElementById('tabBI').classList.toggle('active', aba==='bi');
 		const tabCad = document.getElementById('tabCadastros');
 		if(tabCad) tabCad.classList.toggle('active', aba==='cadastros');
+        const tabFalhas = document.getElementById('tabFalhas');
+		if(tabFalhas) tabFalhas.classList.toggle('active', aba==='falhas');
         document.getElementById('abaColetas').style.display = aba==='coletas' ? '' : 'none';
         document.getElementById('abaBI').style.display = aba==='bi' ? '' : 'none';
 		const abaCad = document.getElementById('abaCadastros');
 		if(abaCad) abaCad.style.display = aba==='cadastros' ? '' : 'none';
+		const abaFalhas = document.getElementById('abaFalhas');
+		if(abaFalhas) abaFalhas.style.display = aba==='falhas' ? '' : 'none';
         if(aba==='bi' && typeof carregarDisparos==='function' && typeof carregarFiltrosDisparos==='function') {
             // Sempre recarregar filtros e dados para refletir novos logs
             if(typeof atualizarVisibilidadeDatasDisp==='function') atualizarVisibilidadeDatasDisp();
@@ -412,7 +468,46 @@
 				}catch(e){ console.error('Erro ao carregar Motoristas:', e); }
 			})();
 		}
+		if(aba==='falhas'){
+			(async ()=>{
+				try{
+					await carregarEstatisticasFalhas();
+				}catch(e){ console.error('Erro ao carregar estatísticas de falhas:', e); }
+			})();
+		}
     }
+    
+    // ====== ESTATÍSTICAS DE FALHAS ======
+    async function carregarEstatisticasFalhas() {
+        try {
+            const sb = await getSupabaseClientRel();
+            if (!sb) {
+                document.getElementById('statTotalFalhas').textContent = '0';
+                document.getElementById('statMotoristasUnicos').textContent = '0';
+                return;
+            }
+
+            // Buscar todas as falhas
+            const { data: falhas, error } = await sb
+                .from('disparos_log')
+                .select('numero')
+                .eq('status', 'error');
+
+            if (error) throw error;
+
+            const totalFalhas = falhas ? falhas.length : 0;
+            const numerosUnicos = new Set(falhas ? falhas.map(f => f.numero).filter(Boolean) : []);
+            const motoristasUnicos = numerosUnicos.size;
+
+            document.getElementById('statTotalFalhas').textContent = totalFalhas.toLocaleString('pt-BR');
+            document.getElementById('statMotoristasUnicos').textContent = motoristasUnicos.toLocaleString('pt-BR');
+        } catch (error) {
+            console.error('Erro ao carregar estatísticas de falhas:', error);
+            document.getElementById('statTotalFalhas').textContent = 'Erro';
+            document.getElementById('statMotoristasUnicos').textContent = 'Erro';
+        }
+    }
+    
     function toggleTheme(){
         const body = document.body;
         const themeIcon = document.querySelector('#themeToggle i');

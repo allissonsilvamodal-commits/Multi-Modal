@@ -378,9 +378,29 @@ class ChatIA {
   }
 
   async loadHistory() {
+    // Tentar obter userId novamente caso não esteja definido
+    if (!this.userId) {
+      await this.getUserId();
+    }
+    
+    // Se ainda não há userId após tentar obter, verificar se há sessão ativa
+    if (!this.userId) {
+      try {
+        if (window.supabase && window.supabase.auth && typeof window.supabase.auth.getSession === 'function') {
+          const { data: session } = await window.supabase.auth.getSession();
+          if (session?.session?.user?.id) {
+            this.userId = session.session.user.id;
+            localStorage.setItem('chatIALastUserId', this.userId);
+          }
+        }
+      } catch (e) {
+        // Ignorar erro silenciosamente
+      }
+    }
+    
     // Se usuário não está autenticado, não carregar histórico compartilhado
     if (!this.userId) {
-      console.log('⚠️ Usuário não autenticado, não carregando histórico');
+      // Não mostrar warning, apenas retornar silenciosamente
       return;
     }
     

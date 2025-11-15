@@ -1020,6 +1020,127 @@
                                         <div id="resultadoMigracao" class="mt-3" style="display: none;"></div>
                                     </div>
                                 </div>
+
+                                <div class="card mb-4" style="background: linear-gradient(135deg, rgba(220, 53, 69, 0.1), rgba(255, 75, 43, 0.1)); border: 2px solid rgba(220, 53, 69, 0.3);">
+                                    <div class="card-header bg-transparent border-0">
+                                        <h6 class="mb-0">
+                                            <i class="fas fa-trash-alt me-2 text-danger"></i>
+                                            Limpeza de Motoristas Duplicados
+                                        </h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <p class="mb-3">
+                                            Esta ferramenta verifica e remove motoristas duplicados do banco de dados, 
+                                            mantendo apenas os registros com telefone no formato correto: <strong>55+DDD+9+Número</strong> (ex: 5581986919496).
+                                        </p>
+                                        <p class="text-muted small mb-3">
+                                            <i class="fas fa-exclamation-triangle me-1"></i>
+                                            <strong>Atenção:</strong> Esta operação irá:
+                                            <ul class="mt-2 mb-0">
+                                                <li>Identificar duplicados pelo telefone (telefone1)</li>
+                                                <li>Manter apenas registros com formatação correta (55+DDD+9+Número)</li>
+                                                <li>Remover duplicados com formatação incorreta</li>
+                                                <li>Se houver múltiplos com formatação correta, manterá o mais recente</li>
+                                            </ul>
+                                        </p>
+                                        <p class="text-danger small mb-3">
+                                            <i class="fas fa-database me-1"></i>
+                                            <strong>Importante:</strong> Certifique-se de que há um backup antes de executar. Esta operação não pode ser desfeita.
+                                        </p>
+                                        <button class="btn btn-danger" onclick="verificarELimparDuplicados()" id="btnLimparDuplicados">
+                                            <i class="fas fa-search me-2"></i>Verificar e Limpar Duplicados
+                                        </button>
+                                        <div id="resultadoLimpeza" class="mt-3" style="display: none;"></div>
+                                    </div>
+                                </div>
+
+                                <div class="card mb-4" style="background: linear-gradient(135deg, rgba(220, 53, 69, 0.15), rgba(255, 75, 43, 0.15)); border: 2px solid rgba(220, 53, 69, 0.5);">
+                                    <div class="card-header bg-transparent border-0">
+                                        <h6 class="mb-0">
+                                            <i class="fas fa-database me-2 text-danger"></i>
+                                            Excluir Todo o Cadastro de Motoristas
+                                        </h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <p class="mb-3">
+                                            <strong class="text-danger">⚠️ ATENÇÃO: OPERAÇÃO IRREVERSÍVEL</strong><br>
+                                            Esta ferramenta irá <strong>DELETAR TODOS OS MOTORISTAS</strong> do banco de dados.
+                                            Use esta opção apenas quando desejar limpar completamente o cadastro para importar novos dados.
+                                        </p>
+                                        <p class="text-muted small mb-3">
+                                            <i class="fas fa-exclamation-triangle me-1"></i>
+                                            <strong>Esta operação irá:</strong>
+                                            <ul class="mt-2 mb-0">
+                                                <li>Deletar <strong>TODOS</strong> os registros da tabela <code>motoristas</code></li>
+                                                <li>Deletar <strong>TODOS</strong> os favoritos relacionados (tabela <code>motoristas_favoritos</code>)</li>
+                                                <li>Limpar completamente o cadastro</li>
+                                                <li><strong>NÃO PODE SER DESFEITA</strong></li>
+                                            </ul>
+                                        </p>
+                                        <p class="text-danger small mb-3">
+                                            <i class="fas fa-database me-1"></i>
+                                            <strong>CRÍTICO:</strong> Faça um backup completo antes de executar. Após a exclusão, você precisará importar todos os dados novamente.
+                                        </p>
+                                        <button class="btn btn-danger" onclick="excluirTodoCadastro()" id="btnExcluirTodoCadastro">
+                                            <i class="fas fa-trash-alt me-2"></i>Excluir Todo o Cadastro
+                                        </button>
+                                        <div id="resultadoExclusaoTotal" class="mt-3" style="display: none;"></div>
+                                    </div>
+                                </div>
+
+                                <!-- Backup & Reset -->
+                                <div class="card mb-4" style="background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1)); border: 2px solid rgba(102, 126, 234, 0.3);">
+                                    <div class="card-header bg-transparent border-0">
+                                        <h6 class="mb-0">
+                                            <i class="fas fa-shield-alt me-2 text-primary"></i>
+                                            Backup & Reset
+                                        </h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <p class="mb-3">
+                                            Ferramentas para fazer backup e restaurar o cadastro de motoristas.
+                                        </p>
+                                        
+                                        <div class="row g-3">
+                                            <div class="col-md-6">
+                                                <div class="card border-primary">
+                                                    <div class="card-body">
+                                                        <h6 class="card-title">
+                                                            <i class="fas fa-download me-2 text-primary"></i>
+                                                            Fazer Backup
+                                                        </h6>
+                                                        <p class="card-text small text-muted">
+                                                            Exporte todos os motoristas cadastrados para um arquivo JSON de backup.
+                                                        </p>
+                                                        <button class="btn btn-primary btn-sm w-100" onclick="fazerBackupMotoristas()" id="btnFazerBackup">
+                                                            <i class="fas fa-download me-2"></i>Fazer Backup
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            
+                                            <div class="col-md-6">
+                                                <div class="card border-warning">
+                                                    <div class="card-body">
+                                                        <h6 class="card-title">
+                                                            <i class="fas fa-upload me-2 text-warning"></i>
+                                                            Restaurar Backup
+                                                        </h6>
+                                                        <p class="card-text small text-muted">
+                                                            Restaure um backup anterior. <strong class="text-danger">Atenção:</strong> Isso substituirá os dados atuais.
+                                                        </p>
+                                                        <input type="file" id="arquivoBackup" accept=".json" class="d-none" onchange="restaurarBackupMotoristas(event)">
+                                                        <button class="btn btn-warning btn-sm w-100" onclick="document.getElementById('arquivoBackup').click()" id="btnRestaurarBackup">
+                                                            <i class="fas fa-upload me-2"></i>Restaurar Backup
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        
+                                        <div id="resultadoBackup" class="mt-3" style="display: none;"></div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -3391,6 +3512,631 @@
             } finally {
                 btn.disabled = false;
                 btn.innerHTML = '<i class="fas fa-play me-2"></i>Executar Migração';
+            }
+        }
+
+        // ========== LIMPEZA DE DUPLICADOS ==========
+        async function verificarELimparDuplicados() {
+            const btn = document.getElementById('btnLimparDuplicados');
+            const resultadoDiv = document.getElementById('resultadoLimpeza');
+            
+            if (!confirm('Deseja verificar e limpar motoristas duplicados?\n\nEsta operação irá:\n- Identificar duplicados pelo telefone\n- Manter apenas registros com formatação correta (55+DDD+9+Número)\n- Remover duplicados com formatação incorreta\n\n⚠️ Esta operação não pode ser desfeita. Certifique-se de ter um backup.')) {
+                return;
+            }
+
+            try {
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Verificando duplicados...';
+                resultadoDiv.style.display = 'block';
+                resultadoDiv.innerHTML = '<div class="alert alert-info"><i class="fas fa-spinner fa-spin me-2"></i>Carregando motoristas e verificando duplicados, aguarde...</div>';
+
+                if (!window.supabase) {
+                    throw new Error('Supabase não inicializado');
+                }
+
+                // Buscar todos os motoristas
+                let todosMotoristas = [];
+                let offset = 0;
+                const limit = 1000;
+                let hasMore = true;
+                let tentativas = 0;
+                const maxTentativas = 10;
+
+                while (hasMore && tentativas < maxTentativas) {
+                    try {
+                        tentativas++;
+                        resultadoDiv.innerHTML = `<div class="alert alert-info"><i class="fas fa-spinner fa-spin me-2"></i>Carregando motoristas... ${todosMotoristas.length.toLocaleString('pt-BR')} encontrados (página ${tentativas})</div>`;
+                        
+                        // Buscar apenas campos que existem
+                        const { data, error } = await window.supabase
+                            .from('motoristas')
+                            .select('id, nome, telefone1, telefone2')
+                            .order('id', { ascending: true })
+                            .range(offset, offset + limit - 1);
+
+                        if (error) {
+                            console.error('Erro na query Supabase:', error);
+                            // Se for erro de RLS ou permissão, tentar sem order/range
+                            if (error.code === 'PGRST116' || error.message?.includes('permission') || error.message?.includes('RLS')) {
+                                console.warn('Tentando query alternativa sem ordenação...');
+                                const { data: dataAlt, error: errorAlt } = await window.supabase
+                                    .from('motoristas')
+                                    .select('id, nome, telefone1, telefone2');
+                                
+                                if (errorAlt) {
+                                    throw new Error(`Erro ao buscar motoristas: ${errorAlt.message || JSON.stringify(errorAlt)}. Verifique as permissões RLS.`);
+                                }
+                                
+                                if (dataAlt && dataAlt.length > 0) {
+                                    todosMotoristas = dataAlt;
+                                    hasMore = false;
+                                } else {
+                                    hasMore = false;
+                                }
+                            } else {
+                                throw new Error(`Erro ao buscar motoristas: ${error.message || JSON.stringify(error)}`);
+                            }
+                        } else if (data) {
+                            if (data.length > 0) {
+                                todosMotoristas = todosMotoristas.concat(data);
+                                offset += limit;
+                                
+                                // Se retornou menos que o limite, não há mais dados
+                                if (data.length < limit) {
+                                    hasMore = false;
+                                }
+                            } else {
+                                hasMore = false;
+                            }
+                        } else {
+                            hasMore = false;
+                        }
+                    } catch (queryError) {
+                        console.error('Erro ao buscar motoristas:', queryError);
+                        throw queryError;
+                    }
+                }
+
+                if (todosMotoristas.length === 0) {
+                    throw new Error('Nenhum motorista encontrado no banco de dados. Verifique as permissões ou se há dados cadastrados.');
+                }
+
+                resultadoDiv.innerHTML = '<div class="alert alert-info"><i class="fas fa-spinner fa-spin me-2"></i>Analisando duplicados...</div>';
+
+                // Função para normalizar telefone (remover caracteres não numéricos)
+                const normalizarTelefone = (tel) => {
+                    if (!tel) return null;
+                    return tel.replace(/\D/g, '');
+                };
+
+                // Função para validar formatação
+                // Aceita apenas números com exatamente 11 ou 13 dígitos
+                const validarFormato = (tel) => {
+                    const normalizado = normalizarTelefone(tel);
+                    if (!normalizado) return false;
+                    
+                    // Deve ter exatamente 11 ou 13 dígitos
+                    if (normalizado.length !== 11 && normalizado.length !== 13) return false;
+                    
+                    // Se passou a validação de tamanho, está no formato correto
+                    return true;
+                };
+
+                // Agrupar por telefone normalizado e identificar números inválidos
+                const gruposPorTelefone = {};
+                const semTelefone = [];
+                
+                todosMotoristas.forEach(motorista => {
+                    const telNormalizado = normalizarTelefone(motorista.telefone1);
+                    if (!telNormalizado || telNormalizado.trim() === '') {
+                        // Sem telefone - remover
+                        semTelefone.push(motorista.id);
+                        return;
+                    }
+
+                    if (!gruposPorTelefone[telNormalizado]) {
+                        gruposPorTelefone[telNormalizado] = [];
+                    }
+                    gruposPorTelefone[telNormalizado].push(motorista);
+                });
+                
+                // Identificar duplicados e quais manter/remover
+                const idsParaManter = new Set();
+                const idsParaRemover = [];
+                const estatisticas = {
+                    total: todosMotoristas.length,
+                    duplicados: 0,
+                    comFormatoCorreto: 0,
+                    comFormatoIncorreto: 0,
+                    semTelefone: 0,
+                    removidos: 0,
+                    mantidos: 0
+                };
+
+                Object.keys(gruposPorTelefone).forEach(telNormalizado => {
+                    const grupo = gruposPorTelefone[telNormalizado];
+                    
+                    if (grupo.length > 1) {
+                        estatisticas.duplicados += grupo.length;
+                        
+                        // Separar por formatação
+                        const comFormatoCorreto = grupo.filter(m => validarFormato(m.telefone1));
+                        const comFormatoIncorreto = grupo.filter(m => !validarFormato(m.telefone1));
+
+                        estatisticas.comFormatoCorreto += comFormatoCorreto.length;
+                        estatisticas.comFormatoIncorreto += comFormatoIncorreto.length;
+
+                        // Se há registros com formato correto, manter apenas o primeiro
+                        if (comFormatoCorreto.length > 0) {
+                            // Manter apenas o primeiro com formato correto
+                            idsParaManter.add(comFormatoCorreto[0].id);
+                            estatisticas.mantidos++;
+                            
+                            // Marcar os outros para remover
+                            comFormatoCorreto.slice(1).forEach(m => idsParaRemover.push(m.id));
+                            comFormatoIncorreto.forEach(m => idsParaRemover.push(m.id));
+                        } else {
+                            // Se não há nenhum com formato correto, manter o primeiro mesmo assim
+                            idsParaManter.add(grupo[0].id);
+                            estatisticas.mantidos++;
+                            grupo.slice(1).forEach(m => idsParaRemover.push(m.id));
+                        }
+                    } else {
+                        // Não é duplicado, verificar formato
+                        const motorista = grupo[0];
+                        if (validarFormato(motorista.telefone1)) {
+                            idsParaManter.add(motorista.id);
+                            estatisticas.mantidos++;
+                        } else {
+                            // Sem formato correto (não tem 11 ou 13 dígitos) - remover
+                            idsParaRemover.push(motorista.id);
+                            estatisticas.comFormatoIncorreto++;
+                        }
+                    }
+                });
+
+                // Adicionar sem telefone aos removidos
+                idsParaRemover.push(...semTelefone);
+                estatisticas.semTelefone = semTelefone.length;
+                estatisticas.removidos = idsParaRemover.length;
+
+                // Mostrar estatísticas antes de remover
+                resultadoDiv.innerHTML = `
+                    <div class="alert alert-warning">
+                        <h6><i class="fas fa-info-circle me-2"></i>Análise Concluída</h6>
+                        <hr>
+                        <p class="mb-1"><strong>Total de motoristas:</strong> ${estatisticas.total.toLocaleString('pt-BR')}</p>
+                        <p class="mb-1"><strong>Duplicados encontrados:</strong> ${estatisticas.duplicados.toLocaleString('pt-BR')}</p>
+                        <p class="mb-1 text-success"><strong>Com formato correto (11 ou 13 dígitos):</strong> ${estatisticas.comFormatoCorreto.toLocaleString('pt-BR')}</p>
+                        <p class="mb-1 text-danger"><strong>Com formato incorreto (não tem 11 ou 13 dígitos):</strong> ${estatisticas.comFormatoIncorreto.toLocaleString('pt-BR')}</p>
+                        ${estatisticas.semTelefone > 0 ? `<p class="mb-1"><strong>Sem telefone:</strong> ${estatisticas.semTelefone.toLocaleString('pt-BR')}</p>` : ''}
+                        <p class="mb-1"><strong>Serão mantidos:</strong> ${estatisticas.mantidos.toLocaleString('pt-BR')}</p>
+                        <p class="mb-0 text-danger"><strong>Serão removidos:</strong> ${estatisticas.removidos.toLocaleString('pt-BR')}</p>
+                    </div>
+                `;
+
+                if (idsParaRemover.length === 0) {
+                    resultadoDiv.innerHTML = `
+                        <div class="alert alert-success">
+                            <h6><i class="fas fa-check-circle me-2"></i>Nenhum duplicado encontrado!</h6>
+                            <p class="mb-0">Todos os motoristas estão únicos ou já estão no formato correto.</p>
+                        </div>
+                    `;
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-search me-2"></i>Verificar e Limpar Duplicados';
+                    return;
+                }
+
+                // Confirmar remoção
+                if (!confirm(`Deseja realmente remover ${idsParaRemover.length.toLocaleString('pt-BR')} motorista(s) duplicado(s)?\n\n⚠️ Esta operação não pode ser desfeita!`)) {
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-search me-2"></i>Verificar e Limpar Duplicados';
+                    return;
+                }
+
+                // Remover duplicados em lotes
+                resultadoDiv.innerHTML = '<div class="alert alert-info"><i class="fas fa-spinner fa-spin me-2"></i>Removendo duplicados...</div>';
+                
+                const batchSize = 100;
+                let removidosComSucesso = 0;
+                let erros = 0;
+                const detalhesErros = [];
+
+                for (let i = 0; i < idsParaRemover.length; i += batchSize) {
+                    const batch = idsParaRemover.slice(i, i + batchSize);
+                    
+                    const { error } = await window.supabase
+                        .from('motoristas')
+                        .delete()
+                        .in('id', batch);
+
+                    if (error) {
+                        erros += batch.length;
+                        detalhesErros.push({
+                            batch: batch,
+                            error: error.message
+                        });
+                        console.error('Erro ao remover batch:', error);
+                    } else {
+                        removidosComSucesso += batch.length;
+                    }
+
+                    resultadoDiv.innerHTML = `<div class="alert alert-info"><i class="fas fa-spinner fa-spin me-2"></i>Removendo duplicados... ${Math.min(i + batchSize, idsParaRemover.length)} de ${idsParaRemover.length}</div>`;
+                }
+
+                // Resultado final
+                resultadoDiv.innerHTML = `
+                    <div class="alert alert-success">
+                        <h6><i class="fas fa-check-circle me-2"></i>Limpeza concluída!</h6>
+                        <hr>
+                        <p class="mb-1"><strong>Total analisado:</strong> ${estatisticas.total.toLocaleString('pt-BR')}</p>
+                        <p class="mb-1"><strong>Duplicados encontrados:</strong> ${estatisticas.duplicados.toLocaleString('pt-BR')}</p>
+                        <p class="mb-1"><strong>Removidos com sucesso:</strong> ${removidosComSucesso.toLocaleString('pt-BR')}</p>
+                        ${erros > 0 ? `<p class="mb-1 text-danger"><strong>Erros:</strong> ${erros.toLocaleString('pt-BR')}</p>` : ''}
+                        <p class="mb-0"><strong>Motoristas mantidos:</strong> ${estatisticas.mantidos.toLocaleString('pt-BR')}</p>
+                        ${detalhesErros.length > 0 ? `
+                            <hr>
+                            <small><strong>Detalhes dos erros:</strong></small>
+                            <pre class="small mt-2" style="max-height: 200px; overflow-y: auto;">${JSON.stringify(detalhesErros, null, 2)}</pre>
+                        ` : ''}
+                    </div>
+                `;
+
+                mostrarSucesso(`Limpeza concluída: ${removidosComSucesso.toLocaleString('pt-BR')} duplicado(s) removido(s).`);
+
+            } catch (error) {
+                console.error('❌ Erro ao verificar e limpar duplicados:', error);
+                const errorMessage = error.message || (typeof error === 'string' ? error : JSON.stringify(error));
+                const errorDetails = error.details || error.hint || '';
+                
+                resultadoDiv.innerHTML = `
+                    <div class="alert alert-danger">
+                        <h6><i class="fas fa-exclamation-triangle me-2"></i>Erro ao verificar e limpar duplicados</h6>
+                        <p class="mb-1"><strong>Erro:</strong> ${errorMessage}</p>
+                        ${errorDetails ? `<p class="mb-0 small text-muted"><strong>Detalhes:</strong> ${errorDetails}</p>` : ''}
+                        ${error.code ? `<p class="mb-0 small text-muted"><strong>Código:</strong> ${error.code}</p>` : ''}
+                    </div>
+                `;
+                mostrarErro('Erro ao verificar e limpar duplicados: ' + errorMessage);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-search me-2"></i>Verificar e Limpar Duplicados';
+            }
+        }
+
+        // ========== BACKUP & RESTORE ==========
+        async function fazerBackupMotoristas() {
+            const btn = document.getElementById('btnFazerBackup');
+            const resultadoDiv = document.getElementById('resultadoBackup');
+            
+            try {
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Gerando backup...';
+                resultadoDiv.style.display = 'block';
+                resultadoDiv.innerHTML = '<div class="alert alert-info"><i class="fas fa-spinner fa-spin me-2"></i>Buscando todos os motoristas...</div>';
+
+                if (!window.supabase) {
+                    throw new Error('Supabase não inicializado');
+                }
+
+                // Buscar todos os motoristas
+                const { data: motoristas, error } = await window.supabase
+                    .from('motoristas')
+                    .select('*')
+                    .order('nome', { ascending: true });
+
+                if (error) throw error;
+
+                if (!motoristas || motoristas.length === 0) {
+                    resultadoDiv.innerHTML = `
+                        <div class="alert alert-warning">
+                            <h6><i class="fas fa-exclamation-triangle me-2"></i>Nenhum motorista encontrado</h6>
+                            <p class="mb-0">Não há motoristas cadastrados para fazer backup.</p>
+                        </div>
+                    `;
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-download me-2"></i>Fazer Backup';
+                    return;
+                }
+
+                resultadoDiv.innerHTML = '<div class="alert alert-info"><i class="fas fa-spinner fa-spin me-2"></i>Preparando arquivo de backup...</div>';
+
+                // Criar objeto de backup com metadados
+                const backup = {
+                    versao: '1.0',
+                    dataBackup: new Date().toISOString(),
+                    totalRegistros: motoristas.length,
+                    motoristas: motoristas
+                };
+
+                // Converter para JSON
+                const jsonContent = JSON.stringify(backup, null, 2);
+                const blob = new Blob([jsonContent], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                
+                const dataAtual = new Date().toISOString().split('T')[0];
+                link.href = url;
+                link.download = `backup_motoristas_${dataAtual}.json`;
+                link.style.visibility = 'hidden';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+
+                resultadoDiv.innerHTML = `
+                    <div class="alert alert-success">
+                        <h6><i class="fas fa-check-circle me-2"></i>Backup criado com sucesso!</h6>
+                        <p class="mb-0">
+                            <strong>Total de registros:</strong> ${motoristas.length.toLocaleString('pt-BR')}<br>
+                            <strong>Data do backup:</strong> ${new Date().toLocaleString('pt-BR')}
+                        </p>
+                    </div>
+                `;
+
+                mostrarSucesso(`✅ Backup criado com sucesso! ${motoristas.length.toLocaleString('pt-BR')} motorista(s) exportado(s).`);
+            } catch (error) {
+                console.error('Erro ao fazer backup:', error);
+                const errorMessage = error.message || 'Erro desconhecido ao fazer backup';
+                resultadoDiv.innerHTML = `
+                    <div class="alert alert-danger">
+                        <h6><i class="fas fa-exclamation-triangle me-2"></i>Erro ao fazer backup</h6>
+                        <p class="mb-0">${errorMessage}</p>
+                    </div>
+                `;
+                mostrarErro('Erro ao fazer backup: ' + errorMessage);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-download me-2"></i>Fazer Backup';
+            }
+        }
+
+        async function restaurarBackupMotoristas(event) {
+            const arquivo = event.target.files[0];
+            const resultadoDiv = document.getElementById('resultadoBackup');
+            
+            if (!arquivo) {
+                return;
+            }
+
+            // Verificar se é arquivo JSON
+            if (!arquivo.name.endsWith('.json')) {
+                mostrarErro('Por favor, selecione um arquivo JSON válido.');
+                event.target.value = '';
+                return;
+            }
+
+            // Confirmação
+            if (!confirm('⚠️ ATENÇÃO: Esta operação irá SUBSTITUIR todos os motoristas atuais pelos dados do backup!\n\nEsta ação não pode ser desfeita facilmente.\n\nDeseja continuar?')) {
+                event.target.value = '';
+                return;
+            }
+
+            try {
+                resultadoDiv.style.display = 'block';
+                resultadoDiv.innerHTML = '<div class="alert alert-info"><i class="fas fa-spinner fa-spin me-2"></i>Lendo arquivo de backup...</div>';
+
+                // Ler arquivo
+                const texto = await arquivo.text();
+                const backup = JSON.parse(texto);
+
+                // Validar estrutura do backup
+                if (!backup.motoristas || !Array.isArray(backup.motoristas)) {
+                    throw new Error('Arquivo de backup inválido. Estrutura de dados não reconhecida.');
+                }
+
+                resultadoDiv.innerHTML = `<div class="alert alert-info"><i class="fas fa-spinner fa-spin me-2"></i>Preparando para restaurar ${backup.motoristas.length.toLocaleString('pt-BR')} motorista(s)...</div>`;
+
+                if (!window.supabase) {
+                    throw new Error('Supabase não inicializado');
+                }
+
+                // Excluir todos os motoristas existentes primeiro
+                resultadoDiv.innerHTML = '<div class="alert alert-warning"><i class="fas fa-spinner fa-spin me-2"></i>Removendo motoristas existentes...</div>';
+
+                // Excluir favoritos primeiro
+                await window.supabase
+                    .from('motoristas_favoritos')
+                    .delete()
+                    .neq('id', '00000000-0000-0000-0000-000000000000');
+
+                // Excluir motoristas em lotes
+                let offset = 0;
+                const limit = 1000;
+                while (true) {
+                    const { data: motoristas, error: fetchError } = await window.supabase
+                        .from('motoristas')
+                        .select('id')
+                        .range(offset, offset + limit - 1);
+
+                    if (fetchError) throw fetchError;
+                    if (!motoristas || motoristas.length === 0) break;
+
+                    const ids = motoristas.map(m => m.id);
+                    await window.supabase
+                        .from('motoristas')
+                        .delete()
+                        .in('id', ids);
+
+                    offset += limit;
+                }
+
+                // Inserir motoristas do backup em lotes
+                resultadoDiv.innerHTML = `<div class="alert alert-info"><i class="fas fa-spinner fa-spin me-2"></i>Restaurando ${backup.motoristas.length.toLocaleString('pt-BR')} motorista(s)...</div>`;
+
+                let inseridos = 0;
+                const batchSize = 100;
+                for (let i = 0; i < backup.motoristas.length; i += batchSize) {
+                    const batch = backup.motoristas.slice(i, i + batchSize);
+                    const { error: insertError } = await window.supabase
+                        .from('motoristas')
+                        .insert(batch);
+
+                    if (insertError) throw insertError;
+                    inseridos += batch.length;
+                    
+                    resultadoDiv.innerHTML = `<div class="alert alert-info"><i class="fas fa-spinner fa-spin me-2"></i>Restaurando... ${inseridos.toLocaleString('pt-BR')} de ${backup.motoristas.length.toLocaleString('pt-BR')} motorista(s)</div>`;
+                }
+
+                resultadoDiv.innerHTML = `
+                    <div class="alert alert-success">
+                        <h6><i class="fas fa-check-circle me-2"></i>Backup restaurado com sucesso!</h6>
+                        <p class="mb-0">
+                            <strong>Total de registros restaurados:</strong> ${inseridos.toLocaleString('pt-BR')}<br>
+                            <strong>Data do backup original:</strong> ${backup.dataBackup ? new Date(backup.dataBackup).toLocaleString('pt-BR') : 'Não informada'}
+                        </p>
+                    </div>
+                `;
+
+                mostrarSucesso(`✅ Backup restaurado com sucesso! ${inseridos.toLocaleString('pt-BR')} motorista(s) restaurado(s).`);
+            } catch (error) {
+                console.error('Erro ao restaurar backup:', error);
+                const errorMessage = error.message || 'Erro desconhecido ao restaurar backup';
+                resultadoDiv.innerHTML = `
+                    <div class="alert alert-danger">
+                        <h6><i class="fas fa-exclamation-triangle me-2"></i>Erro ao restaurar backup</h6>
+                        <p class="mb-0">${errorMessage}</p>
+                    </div>
+                `;
+                mostrarErro('Erro ao restaurar backup: ' + errorMessage);
+            } finally {
+                event.target.value = '';
+            }
+        }
+
+        // ========== EXCLUSÃO TOTAL DO CADASTRO ==========
+        async function excluirTodoCadastro() {
+            const btn = document.getElementById('btnExcluirTodoCadastro');
+            const resultadoDiv = document.getElementById('resultadoExclusaoTotal');
+            
+            // Primeira confirmação
+            if (!confirm('⚠️ ATENÇÃO: Esta operação irá DELETAR TODOS OS MOTORISTAS do banco de dados!\n\nEsta ação é IRREVERSÍVEL e não pode ser desfeita.\n\nVocê tem certeza absoluta que deseja continuar?')) {
+                return;
+            }
+
+            // Segunda confirmação com digitação
+            const confirmacao = prompt('Para confirmar, digite "EXCLUIR TUDO" (em maiúsculas):');
+            if (confirmacao !== 'EXCLUIR TUDO') {
+                alert('Confirmação cancelada. Nenhum dado foi excluído.');
+                return;
+            }
+
+            try {
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Excluindo todos os motoristas...';
+                resultadoDiv.style.display = 'block';
+                resultadoDiv.innerHTML = '<div class="alert alert-danger"><i class="fas fa-spinner fa-spin me-2"></i>Excluindo todos os motoristas do banco de dados, aguarde...</div>';
+
+                if (!window.supabase) {
+                    throw new Error('Supabase não inicializado');
+                }
+
+                // Primeiro, contar quantos motoristas existem
+                const { count: totalMotoristas, error: countError } = await window.supabase
+                    .from('motoristas')
+                    .select('*', { count: 'exact', head: true });
+
+                if (countError) {
+                    throw new Error(`Erro ao contar motoristas: ${countError.message}`);
+                }
+
+                const total = totalMotoristas || 0;
+
+                if (total === 0) {
+                    resultadoDiv.innerHTML = `
+                        <div class="alert alert-info">
+                            <h6><i class="fas fa-info-circle me-2"></i>Nenhum motorista encontrado</h6>
+                            <p class="mb-0">Não há motoristas cadastrados para excluir.</p>
+                        </div>
+                    `;
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-trash-alt me-2"></i>Excluir Todo o Cadastro';
+                    return;
+                }
+
+                resultadoDiv.innerHTML = `<div class="alert alert-danger"><i class="fas fa-spinner fa-spin me-2"></i>Excluindo ${total.toLocaleString('pt-BR')} motorista(s)...</div>`;
+
+                // Excluir favoritos primeiro (devido à foreign key)
+                resultadoDiv.innerHTML = '<div class="alert alert-danger"><i class="fas fa-spinner fa-spin me-2"></i>Excluindo favoritos relacionados...</div>';
+                
+                const { error: favoritosError } = await window.supabase
+                    .from('motoristas_favoritos')
+                    .delete()
+                    .neq('id', '00000000-0000-0000-0000-000000000000'); // Deletar todos
+
+                if (favoritosError) {
+                    console.warn('Aviso ao excluir favoritos:', favoritosError);
+                    // Continuar mesmo se houver erro, pode não existir a tabela
+                }
+
+                // Excluir todos os motoristas em lotes
+                let excluidosComSucesso = 0;
+                let offset = 0;
+                const limit = 1000;
+                let hasMore = true;
+
+                while (hasMore) {
+                    // Buscar IDs em lotes
+                    const { data: motoristas, error: fetchError } = await window.supabase
+                        .from('motoristas')
+                        .select('id')
+                        .range(offset, offset + limit - 1);
+
+                    if (fetchError) throw fetchError;
+
+                    if (motoristas && motoristas.length > 0) {
+                        const ids = motoristas.map(m => m.id);
+                        
+                        // Excluir lote
+                        const { error: deleteError } = await window.supabase
+                            .from('motoristas')
+                            .delete()
+                            .in('id', ids);
+
+                        if (deleteError) throw deleteError;
+
+                        excluidosComSucesso += ids.length;
+                        offset += limit;
+
+                        resultadoDiv.innerHTML = `<div class="alert alert-danger"><i class="fas fa-spinner fa-spin me-2"></i>Excluindo... ${Math.min(excluidosComSucesso, total).toLocaleString('pt-BR')} de ${total.toLocaleString('pt-BR')}</div>`;
+
+                        if (motoristas.length < limit) {
+                            hasMore = false;
+                        }
+                    } else {
+                        hasMore = false;
+                    }
+                }
+
+                // Resultado final
+                resultadoDiv.innerHTML = `
+                    <div class="alert alert-success">
+                        <h6><i class="fas fa-check-circle me-2"></i>Exclusão concluída!</h6>
+                        <hr>
+                        <p class="mb-1"><strong>Total excluído:</strong> ${excluidosComSucesso.toLocaleString('pt-BR')} motorista(s)</p>
+                        <p class="mb-0"><strong>Favoritos excluídos:</strong> Sim</p>
+                        <hr>
+                        <p class="mb-0 text-muted small">O cadastro foi completamente limpo. Você pode agora importar novos dados.</p>
+                    </div>
+                `;
+
+                mostrarSucesso(`Exclusão concluída: ${excluidosComSucesso.toLocaleString('pt-BR')} motorista(s) excluído(s).`);
+
+            } catch (error) {
+                console.error('❌ Erro ao excluir todo o cadastro:', error);
+                const errorMessage = error.message || (typeof error === 'string' ? error : JSON.stringify(error));
+                
+                resultadoDiv.innerHTML = `
+                    <div class="alert alert-danger">
+                        <h6><i class="fas fa-exclamation-triangle me-2"></i>Erro ao excluir cadastro</h6>
+                        <p class="mb-1"><strong>Erro:</strong> ${errorMessage}</p>
+                        <p class="mb-0 small text-muted">Verifique as permissões e tente novamente.</p>
+                    </div>
+                `;
+                mostrarErro('Erro ao excluir todo o cadastro: ' + errorMessage);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-trash-alt me-2"></i>Excluir Todo o Cadastro';
             }
         }
     </script>
