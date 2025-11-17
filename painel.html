@@ -371,6 +371,20 @@
         .motorista-item:hover {
             background: #f8f9fa;
         }
+        
+        .motorista-item.telefone-erro {
+            border-left: 3px solid #dc3545;
+            background-color: rgba(220, 53, 69, 0.1);
+        }
+        
+        .motorista-item.telefone-erro:hover {
+            background-color: rgba(220, 53, 69, 0.15);
+        }
+        
+        .motorista-item.telefone-erro .motorista-checkbox {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
 
         .motorista-item.selected {
             background: rgba(67, 97, 238, 0.1);
@@ -1073,6 +1087,9 @@
                         Lista de Motoristas
                 </div>
                     <div class="d-flex align-items-center gap-3">
+                        <button class="btn btn-sm btn-outline-light" onclick="sincronizarErrosDisparos()" title="Sincronizar erros de disparos da tabela disparos_log">
+                            <i class="fas fa-sync-alt me-1"></i> Sincronizar Erros
+                        </button>
                         <span class="badge bg-light text-dark" id="motoristasSelecionadosBadge">0 selecionados</span>
                         <div class="d-flex align-items-center">
                             <span class="me-2">Mostrar:</span>
@@ -1516,25 +1533,31 @@
 
         function liberarDisparadorTreinamento() {
             treinamentoConcluido = true;
+            console.log('🔓 Liberando disparador - treinamento concluído');
             ['btnIniciarDisparo', 'btnTestarEnvio', 'btnTestarMensagem'].forEach(id => {
                 const el = document.getElementById(id);
                 if (el) {
                     el.removeAttribute('disabled');
                 }
             });
-            document.getElementById('treinamentoBloqueio')?.classList.remove('ativo');
+            const bloqueio = document.getElementById('treinamentoBloqueio');
+            if (bloqueio) {
+                bloqueio.classList.remove('ativo');
+                console.log('✅ Card de treinamento ocultado');
+            } else {
+                console.warn('⚠️ Elemento treinamentoBloqueio não encontrado');
+            }
         }
 
         async function verificarTreinamentoObrigatorio(silencioso = false) {
             try {
-                const usuarioAtual = obterUsuarioAtual();
-                const headers = {};
-                if (usuarioAtual?.email) {
-                    headers['X-User-Email'] = usuarioAtual.email;
-                }
-                if (usuarioAtual?.id) {
-                    headers['X-User-Id'] = usuarioAtual.id;
-                }
+                // Usar getAuthHeaders() que já foi criada para garantir consistência
+                const headers = await getAuthHeaders();
+                console.log('🔍 Verificando treinamento com headers:', { 
+                    hasAuth: !!headers.Authorization, 
+                    hasEmail: !!headers['X-User-Email'], 
+                    hasUserId: !!headers['X-User-Id'] 
+                });
 
                 const response = await fetch('/api/treinamentos/status?slug=disparador_mensagens', {
                     method: 'GET',
@@ -1542,8 +1565,11 @@
                     headers
                 });
 
+                console.log('📡 Resposta do treinamento:', response.status, response.statusText);
+
                 if (!response.ok) {
-                    console.warn('⚠️ Não foi possível verificar treinamento:', response.status);
+                    const errorText = await response.text();
+                    console.warn('⚠️ Não foi possível verificar treinamento:', response.status, errorText);
                     bloquearDisparadorTreinamento();
                     if (!silencioso) {
                         if (response.status === 401) {
@@ -1556,13 +1582,16 @@
                 }
 
                 const data = await response.json();
+                console.log('📊 Dados do treinamento:', data);
 
                 if (data?.concluido) {
+                    console.log('✅ Treinamento concluído! Liberando disparador...');
                     liberarDisparadorTreinamento();
                     if (!silencioso) {
                         mostrarSucesso('Treinamento validado! Você pode utilizar o disparador com segurança.');
                     }
                 } else {
+                    console.log('⚠️ Treinamento não concluído. Bloqueando disparador...');
                     bloquearDisparadorTreinamento();
                     if (!silencioso) {
                         mostrarAviso('Finalize o treinamento "Disparador de Mensagens" antes de utilizar o sistema.');
@@ -1679,8 +1708,6 @@ const estados = [
         // ========== INICIALIZAÇÃO ==========
         document.addEventListener('DOMContentLoaded', async () => {
             console.log('🚀 Inicializando Painel de Disparo Moderno...');
-            bloquearDisparadorTreinamento();
-            
             // 🔐 Verificar permissão de acesso
             const temPermissao = await verificarEAplicarPermissao('painel');
             if (!temPermissao) {
@@ -1699,13 +1726,32 @@ const estados = [
             carregarConfigDisparo();
             
             await verificarAutenticacao();
+            
+            // Carregar dados principais PRIMEIRO (sem bloquear)
             await carregarEstatisticas();
             await carregarFiltros();
             await carregarFavoritos(); // Carregar favoritos do usuário
+            
+            // Selecionar automaticamente a categoria "pesado" ao carregar a página
+            if (!currentClass) {
+                console.log('🚚 Selecionando categoria "pesado" automaticamente...');
+                await selecionarClasse('pesado');
+            }
+            
             configurarEventos();
             configurarUploadImagem();
             configurarGravacaoAudio();
+            
+            // Verificar treinamento ANTES de bloquear (para não mostrar o card se já estiver concluído)
             await verificarTreinamentoObrigatorio(true);
+            
+            // Sincronizar erros em background (não bloqueia o carregamento)
+            if (supabaseOk) {
+                console.log('🔄 Iniciando sincronização de erros em background...');
+                sincronizarErrosDisparos().catch(error => {
+                    console.warn('⚠️ Erro na sincronização de erros (não crítico):', error);
+                });
+            }
             
             console.log('✅ Painel inicializado com sucesso!');
 
@@ -1823,92 +1869,125 @@ const estados = [
 
         // ========== CARREGAR ESTATÍSTICAS (OTIMIZADO PARA 20K+) ==========
         async function carregarEstatisticas() {
+            console.log('📊 Iniciando carregamento de estatísticas...');
             try {
                 // Tentar carregar do Supabase com contagem otimizada
-                if (supabase) {
-                    // Contar total de motoristas
-                    const { count: totalCount, error: totalError } = await supabase
-                        .from('motoristas')
-                        .select('*', { count: 'exact', head: true });
+                if (!supabase) {
+                    console.warn('⚠️ Supabase não inicializado, usando dados mockados');
+                    throw new Error('Supabase não inicializado');
+                }
+                
+                console.log('🔍 Buscando contagens do Supabase...');
+                
+                // Contar total de motoristas
+                const { count: totalCount, error: totalError } = await supabase
+                    .from('motoristas')
+                    .select('*', { count: 'exact', head: true });
 
-                    if (totalError) throw totalError;
-                    
-                    // Contar motoristas ativos
-                    const { count: ativosCount, error: ativosError } = await supabase
-                        .from('motoristas')
-                        .select('*', { count: 'exact', head: true })
-                        .eq('status', 'ativo');
+                if (totalError) {
+                    console.error('❌ Erro ao contar total de motoristas:', totalError);
+                    throw totalError;
+                }
+                
+                // Contar motoristas ativos
+                const { count: ativosCount, error: ativosError } = await supabase
+                    .from('motoristas')
+                    .select('*', { count: 'exact', head: true })
+                    .eq('status', 'ativo');
 
-                    if (ativosError) throw ativosError;
+                if (ativosError) {
+                    console.error('❌ Erro ao contar motoristas ativos:', ativosError);
+                    throw ativosError;
+                }
 
-                    // Contar por classe de veículo
-                    const { count: leveCount, error: leveError } = await supabase
-                        .from('motoristas')
-                        .select('*', { count: 'exact', head: true })
-                        .eq('classe_veiculo', 'leve')
-                        .eq('status', 'ativo');
+                // Contar por classe de veículo
+                console.log('🔍 Contando motoristas por classe...');
+                const { count: leveCount, error: leveError } = await supabase
+                    .from('motoristas')
+                    .select('*', { count: 'exact', head: true })
+                    .eq('classe_veiculo', 'leve')
+                    .eq('status', 'ativo');
 
-                    const { count: medioCount, error: medioError } = await supabase
-                        .from('motoristas')
-                        .select('*', { count: 'exact', head: true })
-                        .eq('classe_veiculo', 'medio')
-                        .eq('status', 'ativo');
+                const { count: medioCount, error: medioError } = await supabase
+                    .from('motoristas')
+                    .select('*', { count: 'exact', head: true })
+                    .eq('classe_veiculo', 'medio')
+                    .eq('status', 'ativo');
 
-                    const { count: pesadoCount, error: pesadoError } = await supabase
-                        .from('motoristas')
-                        .select('*', { count: 'exact', head: true })
-                        .eq('classe_veiculo', 'pesado')
-                        .eq('status', 'ativo');
+                const { count: pesadoCount, error: pesadoError } = await supabase
+                    .from('motoristas')
+                    .select('*', { count: 'exact', head: true })
+                    .eq('classe_veiculo', 'pesado')
+                    .eq('status', 'ativo');
 
-                    if (leveError || medioError || pesadoError) {
-                        console.warn('⚠️ Erro ao contar por classe, usando valores padrão');
-                    }
-                    
-                    totalMotoristasCount = totalCount || 0;
-                    const totalAtivos = ativosCount || 0;
-                    const leve = leveCount || 0;
-                    const medio = medioCount || 0;
-                    const pesado = pesadoCount || 0;
-                    
-                    console.log(`📊 Total de motoristas no Supabase: ${totalMotoristasCount.toLocaleString('pt-BR')}`);
-                    console.log(`📊 Motoristas ativos: ${totalAtivos.toLocaleString('pt-BR')}`);
-                    console.log(`📊 Por classe - Leve: ${leve}, Médio: ${medio}, Pesado: ${pesado}`);
-                    
-                    // Atualizar interface com dados reais
-                    document.getElementById('totalMotoristas').textContent = totalMotoristasCount.toLocaleString('pt-BR');
-                    document.getElementById('motoristasAtivos').textContent = totalAtivos.toLocaleString('pt-BR');
-                    document.getElementById('motoristasSelecionados').textContent = '0';
-                    document.getElementById('categoriaAtiva').textContent = '-';
-                    
-                    // Atualizar contadores de categoria
-                    document.getElementById('count-leve').textContent = `${leve.toLocaleString('pt-BR')} motoristas`;
-                    document.getElementById('count-medio').textContent = `${medio.toLocaleString('pt-BR')} motoristas`;
-                    document.getElementById('count-pesado').textContent = `${pesado.toLocaleString('pt-BR')} motoristas`;
-                    
+                if (leveError) console.warn('⚠️ Erro ao contar leve:', leveError);
+                if (medioError) console.warn('⚠️ Erro ao contar médio:', medioError);
+                if (pesadoError) console.warn('⚠️ Erro ao contar pesado:', pesadoError);
+                
+                totalMotoristasCount = totalCount || 0;
+                const totalAtivos = ativosCount || 0;
+                const leve = leveCount || 0;
+                const medio = medioCount || 0;
+                const pesado = pesadoCount || 0;
+                
+                console.log(`📊 Total de motoristas no Supabase: ${totalMotoristasCount.toLocaleString('pt-BR')}`);
+                console.log(`📊 Motoristas ativos: ${totalAtivos.toLocaleString('pt-BR')}`);
+                console.log(`📊 Por classe - Leve: ${leve}, Médio: ${medio}, Pesado: ${pesado}`);
+                
+                // Atualizar interface com dados reais
+                const totalMotoristasEl = document.getElementById('totalMotoristas');
+                const motoristasAtivosEl = document.getElementById('motoristasAtivos');
+                const motoristasSelecionadosEl = document.getElementById('motoristasSelecionados');
+                const categoriaAtivaEl = document.getElementById('categoriaAtiva');
+                const countLeveEl = document.getElementById('count-leve');
+                const countMedioEl = document.getElementById('count-medio');
+                const countPesadoEl = document.getElementById('count-pesado');
+                
+                if (totalMotoristasEl) {
+                    totalMotoristasEl.textContent = totalMotoristasCount.toLocaleString('pt-BR');
                 } else {
-                    // Dados mockados para teste (simulando 20k+ motoristas)
-                    totalMotoristasCount = 20150; // Simulando 20k+ motoristas
-                    const totalAtivos = 18500; // Simulando 18.5k ativos
-                    const leve = 6500; // Simulando distribuição
-                    const medio = 6000;
-                    const pesado = 6000;
-                    
-                    console.log('📊 Usando dados mockados para teste');
-                    
-                    // Atualizar interface
-                    document.getElementById('totalMotoristas').textContent = totalMotoristasCount.toLocaleString('pt-BR');
-                    document.getElementById('motoristasAtivos').textContent = totalAtivos.toLocaleString('pt-BR');
-                    document.getElementById('motoristasSelecionados').textContent = '0';
-                    document.getElementById('categoriaAtiva').textContent = '-';
-                    
-                    // Atualizar contadores de categoria
-                    document.getElementById('count-leve').textContent = `${leve.toLocaleString('pt-BR')} motoristas`;
-                    document.getElementById('count-medio').textContent = `${medio.toLocaleString('pt-BR')} motoristas`;
-                    document.getElementById('count-pesado').textContent = `${pesado.toLocaleString('pt-BR')} motoristas`;
+                    console.warn('⚠️ Elemento totalMotoristas não encontrado');
+                }
+                
+                if (motoristasAtivosEl) {
+                    motoristasAtivosEl.textContent = totalAtivos.toLocaleString('pt-BR');
+                } else {
+                    console.warn('⚠️ Elemento motoristasAtivos não encontrado');
+                }
+                
+                if (motoristasSelecionadosEl) {
+                    motoristasSelecionadosEl.textContent = '0';
+                }
+                
+                if (categoriaAtivaEl) {
+                    categoriaAtivaEl.textContent = '-';
+                }
+                
+                // Atualizar contadores de categoria
+                if (countLeveEl) {
+                    countLeveEl.textContent = `${leve.toLocaleString('pt-BR')} motoristas`;
+                    console.log(`✅ Atualizado count-leve: ${leve}`);
+                } else {
+                    console.warn('⚠️ Elemento count-leve não encontrado');
+                }
+                
+                if (countMedioEl) {
+                    countMedioEl.textContent = `${medio.toLocaleString('pt-BR')} motoristas`;
+                    console.log(`✅ Atualizado count-medio: ${medio}`);
+                } else {
+                    console.warn('⚠️ Elemento count-medio não encontrado');
+                }
+                
+                if (countPesadoEl) {
+                    countPesadoEl.textContent = `${pesado.toLocaleString('pt-BR')} motoristas`;
+                    console.log(`✅ Atualizado count-pesado: ${pesado}`);
+                } else {
+                    console.warn('⚠️ Elemento count-pesado não encontrado');
                 }
                 
             } catch (error) {
                 console.error('❌ Erro ao carregar estatísticas:', error);
+                console.error('❌ Detalhes do erro:', error.message, error.code, error.details);
                 
                 // Fallback para dados mockados
                 totalMotoristasCount = 1000;
@@ -1917,15 +1996,37 @@ const estados = [
                 const medio = 300;
                 const pesado = 300;
                 
-                document.getElementById('totalMotoristas').textContent = totalMotoristasCount.toLocaleString('pt-BR');
-                document.getElementById('motoristasAtivos').textContent = totalAtivos.toLocaleString('pt-BR');
-                document.getElementById('motoristasSelecionados').textContent = '0';
-                document.getElementById('categoriaAtiva').textContent = '-';
+                const totalMotoristasEl = document.getElementById('totalMotoristas');
+                const motoristasAtivosEl = document.getElementById('motoristasAtivos');
+                const motoristasSelecionadosEl = document.getElementById('motoristasSelecionados');
+                const categoriaAtivaEl = document.getElementById('categoriaAtiva');
+                const countLeveEl = document.getElementById('count-leve');
+                const countMedioEl = document.getElementById('count-medio');
+                const countPesadoEl = document.getElementById('count-pesado');
+                
+                if (totalMotoristasEl) {
+                    totalMotoristasEl.textContent = totalMotoristasCount.toLocaleString('pt-BR');
+                }
+                if (motoristasAtivosEl) {
+                    motoristasAtivosEl.textContent = totalAtivos.toLocaleString('pt-BR');
+                }
+                if (motoristasSelecionadosEl) {
+                    motoristasSelecionadosEl.textContent = '0';
+                }
+                if (categoriaAtivaEl) {
+                    categoriaAtivaEl.textContent = '-';
+                }
                 
                 // Atualizar contadores de categoria
-                document.getElementById('count-leve').textContent = `${leve.toLocaleString('pt-BR')} motoristas`;
-                document.getElementById('count-medio').textContent = `${medio.toLocaleString('pt-BR')} motoristas`;
-                document.getElementById('count-pesado').textContent = `${pesado.toLocaleString('pt-BR')} motoristas`;
+                if (countLeveEl) {
+                    countLeveEl.textContent = `${leve.toLocaleString('pt-BR')} motoristas`;
+                }
+                if (countMedioEl) {
+                    countMedioEl.textContent = `${medio.toLocaleString('pt-BR')} motoristas`;
+                }
+                if (countPesadoEl) {
+                    countPesadoEl.textContent = `${pesado.toLocaleString('pt-BR')} motoristas`;
+                }
                 
                 mostrarAviso('Usando dados de exemplo - Supabase não disponível');
             }
@@ -2103,31 +2204,153 @@ const estados = [
             console.log('✅ Eventos configurados');
         }
 
+        // ========== OBTER HEADERS DE AUTENTICAÇÃO ==========
+        async function getAuthHeaders() {
+            const headers = {
+                'Content-Type': 'application/json'
+            };
+            
+            // Tentar obter token do Supabase
+            if (supabase) {
+                try {
+                    const { data: { session } } = await supabase.auth.getSession();
+                    if (session && session.access_token) {
+                        headers['Authorization'] = `Bearer ${session.access_token}`;
+                    }
+                } catch (error) {
+                    console.warn('⚠️ Erro ao obter sessão:', error);
+                }
+            }
+            
+            // Tentar obter email do localStorage (loggedInUser primeiro, depois userData como fallback)
+            try {
+                let userEmail = null;
+                let userId = null;
+
+                // Tentar loggedInUser primeiro
+                const loggedInUserData = localStorage.getItem('loggedInUser');
+                if (loggedInUserData) {
+                    const parsed = JSON.parse(loggedInUserData);
+                    userEmail = parsed.email;
+                    userId = parsed.id;
+                }
+
+                // Fallback para userData
+                if (!userEmail) {
+                    const userData = localStorage.getItem('userData');
+                    if (userData) {
+                        const parsed = JSON.parse(userData);
+                        userEmail = parsed.email;
+                        userId = parsed.id;
+                    }
+                }
+
+                if (userEmail) {
+                    headers['X-User-Email'] = userEmail;
+                }
+                if (userId) {
+                    headers['X-User-Id'] = userId;
+                }
+            } catch (error) {
+                console.warn('⚠️ Erro ao obter email do localStorage:', error);
+            }
+            
+            return headers;
+        }
+
+        // ========== SINCRONIZAR ERROS DE DISPAROS ==========
+        async function sincronizarErrosDisparos() {
+            try {
+                console.log('🔄 Sincronizando erros de disparos da tabela disparos_log...');
+                const headers = await getAuthHeaders();
+                const response = await fetch('/api/motoristas/sincronizar-erros-disparos', {
+                    method: 'POST',
+                    headers: { ...headers, 'Content-Type': 'application/json' },
+                    credentials: 'include'
+                });
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error('❌ Erro na resposta da sincronização:', errorText);
+                    throw new Error(`HTTP ${response.status}: ${errorText}`);
+                }
+
+                const data = await response.json();
+                console.log('📊 Resultado da sincronização:', data);
+                
+                if (data.success) {
+                    const mensagem = `✅ Sincronização concluída: ${data.processados} números processados, ${data.atualizados} motoristas atualizados, ${data.naoEncontrados} não encontrados`;
+                    console.log(mensagem);
+                    
+                    // Mostrar notificação ao usuário
+                    if (data.atualizados > 0) {
+                        mostrarAviso(mensagem);
+                    } else if (data.processados > 0 && data.atualizados === 0) {
+                        mostrarAviso(`⚠️ ${data.processados} números processados mas nenhum motorista foi atualizado. Verifique se os números correspondem aos telefones dos motoristas.`);
+                    }
+                    
+                    // Recarregar a lista apenas se houver uma classe selecionada E se a página já estiver carregada
+                    // (evita recarregar durante a inicialização)
+                    if (currentClass && document.readyState === 'complete') {
+                        console.log('🔄 Recarregando lista de motoristas após sincronização...');
+                        // Usar setTimeout para não bloquear
+                        setTimeout(() => {
+                            carregarMotoristas(currentClass).catch(error => {
+                                console.warn('⚠️ Erro ao recarregar motoristas após sincronização:', error);
+                            });
+                        }, 1000);
+                    }
+                } else {
+                    const erroMsg = `⚠️ Sincronização não teve sucesso: ${data.error}`;
+                    console.warn(erroMsg);
+                    mostrarAviso(erroMsg);
+                }
+            } catch (error) {
+                console.error('❌ Erro ao sincronizar erros de disparos:', error);
+                // Não bloquear o carregamento da página se a sincronização falhar
+            }
+        }
+
         // ========== SELEÇÃO DE CLASSE ==========
-        async function selecionarClasse(classe) {
+        // Tornar função global para ser acessível via onclick
+        window.selecionarClasse = async function(classe) {
             currentClass = classe;
             selectedMotoristas.clear();
 
             // Atualizar interface
             document.querySelectorAll('.vehicle-class').forEach(el => el.classList.remove('active'));
-            document.querySelector(`[data-class="${classe}"]`).classList.add('active');
+            const classeElement = document.querySelector(`[data-class="${classe}"]`);
+            if (classeElement) {
+                classeElement.classList.add('active');
+            }
             
-            document.getElementById('categoriaAtiva').textContent = classe.charAt(0).toUpperCase() + classe.slice(1);
+            const categoriaAtivaEl = document.getElementById('categoriaAtiva');
+            if (categoriaAtivaEl) {
+                categoriaAtivaEl.textContent = classe.charAt(0).toUpperCase() + classe.slice(1);
+            }
             
             // Carregar motoristas da classe (otimizado para 20k+)
             await carregarMotoristas(classe);
-        }
+        };
 
         // ========== CARREGAR MOTORISTAS (OTIMIZADO PARA 20K+) ==========
         async function carregarMotoristas(classe) {
+            console.log(`🚚 Iniciando carregamento de motoristas da classe: ${classe}`);
             const motoristasList = document.getElementById('motoristasList');
+            if (!motoristasList) {
+                console.error('❌ Elemento motoristasList não encontrado!');
+                return;
+            }
             motoristasList.innerHTML = '<div class="text-center py-3"><div class="loading-spinner me-2"></div>Carregando motoristas...</div>';
 
             try {
                 let todosMotoristas = [];
                 
                 // Tentar carregar do Supabase com paginação otimizada
-                if (supabase) {
+                if (!supabase) {
+                    console.warn('⚠️ Supabase não inicializado, usando dados mockados');
+                    todosMotoristas = allMotoristas.filter(m => m.classe_veiculo === classe && m.status === 'ativo');
+                } else {
                     console.log(`🔍 Carregando TODOS os motoristas da classe ${classe}...`);
                     
                     // Carregar TODOS os motoristas da classe (sem limite)
@@ -2136,15 +2359,19 @@ const estados = [
                     let hasMore = true;
                     
                     while (hasMore) {
+                        console.log(`📥 Buscando motoristas: de ${from} até ${from + limit - 1}`);
                         const { data: motoristas, error } = await supabase
                             .from('motoristas')
-                            .select('id, nome, telefone1, telefone2, estado, classe_veiculo, tipo_veiculo, tipo_carroceria, status')
+                            .select('id, nome, telefone1, telefone2, estado, classe_veiculo, tipo_veiculo, tipo_carroceria, status, telefone1_erro, telefone2_erro, telefone1_erro_motivo, telefone2_erro_motivo')
                             .eq('classe_veiculo', classe)
                             .eq('status', 'ativo')
                             .order('nome')
                             .range(from, from + limit - 1);
 
-                        if (error) throw error;
+                        if (error) {
+                            console.error('❌ Erro ao buscar motoristas:', error);
+                            throw error;
+                        }
                         
                         if (motoristas && motoristas.length > 0) {
                             todosMotoristas = todosMotoristas.concat(motoristas);
@@ -2163,32 +2390,53 @@ const estados = [
                     }
                     
                     console.log(`📞 ${todosMotoristas.length.toLocaleString('pt-BR')} motoristas carregados para classe ${classe}`);
-                } else {
-                    // Usar dados mockados filtrados por classe
-                    todosMotoristas = allMotoristas.filter(m => m.classe_veiculo === classe && m.status === 'ativo');
                 }
                 
                 // Armazenar todos os motoristas filtrados
                 motoristasFiltrados = todosMotoristas;
                 currentPage = 1;
                 
+                console.log(`✅ Total de motoristas filtrados: ${motoristasFiltrados.length}`);
+                
                 // Atualizar estatísticas
-                document.getElementById('motoristasSelecionados').textContent = '0';
-                document.getElementById('motoristasSelecionadosBadge').textContent = '0 selecionados';
+                const selecionadosEl = document.getElementById('motoristasSelecionados');
+                const selecionadosBadgeEl = document.getElementById('motoristasSelecionadosBadge');
+                if (selecionadosEl) selecionadosEl.textContent = '0';
+                if (selecionadosBadgeEl) selecionadosBadgeEl.textContent = '0 selecionados';
                 
                 atualizarListaMotoristas(motoristasFiltrados);
                 
             } catch (error) {
                 console.error('❌ Erro ao carregar motoristas:', error);
+                console.error('❌ Detalhes do erro:', error.message, error.code, error.details);
+                
+                // Mostrar mensagem de erro na lista
+                const motoristasList = document.getElementById('motoristasList');
+                if (motoristasList) {
+                    motoristasList.innerHTML = `
+                        <div class="text-center py-5">
+                            <i class="fas fa-exclamation-triangle fs-1 text-warning mb-3"></i>
+                            <p class="text-danger">Erro ao carregar motoristas</p>
+                            <p class="text-muted small">${error.message || 'Erro desconhecido'}</p>
+                            <button class="btn btn-primary mt-3" onclick="carregarMotoristas('${classe}')">
+                                <i class="fas fa-redo me-2"></i>Tentar novamente
+                            </button>
+                        </div>
+                    `;
+                }
                 
                 // Fallback para dados mockados
                 motoristasFiltrados = allMotoristas.filter(m => m.classe_veiculo === classe && m.status === 'ativo');
                 currentPage = 1;
-                document.getElementById('motoristasSelecionados').textContent = '0';
-                document.getElementById('motoristasSelecionadosBadge').textContent = '0 selecionados';
-                atualizarListaMotoristas(motoristasFiltrados);
+                const selecionadosEl = document.getElementById('motoristasSelecionados');
+                const selecionadosBadgeEl = document.getElementById('motoristasSelecionadosBadge');
+                if (selecionadosEl) selecionadosEl.textContent = '0';
+                if (selecionadosBadgeEl) selecionadosBadgeEl.textContent = '0 selecionados';
                 
-                mostrarAviso('Usando dados de exemplo - Supabase não disponível');
+                if (motoristasFiltrados.length > 0) {
+                    atualizarListaMotoristas(motoristasFiltrados);
+                    mostrarAviso('Usando dados de exemplo - Supabase não disponível');
+                }
             }
         }
 
@@ -2208,13 +2456,34 @@ const estados = [
             const endIndex = startIndex + itemsPerPage;
             const motoristasPagina = motoristas.slice(startIndex, endIndex);
 
-            motoristasList.innerHTML = motoristasPagina.map(motorista => `
-                <div class="motorista-item ${selectedMotoristas.has(motorista.id) ? 'selected' : ''}" data-id="${motorista.id}">
+            motoristasList.innerHTML = motoristasPagina.map(motorista => {
+                const temErroTelefone1 = motorista.telefone1_erro === true;
+                const temErroTelefone2 = motorista.telefone2_erro === true;
+                const temErro = temErroTelefone1 || temErroTelefone2;
+                const desabilitado = temErro ? 'disabled' : '';
+                const classeErro = temErro ? 'telefone-erro' : '';
+                
+                return `
+                <div class="motorista-item ${selectedMotoristas.has(motorista.id) ? 'selected' : ''} ${classeErro}" 
+                     data-id="${motorista.id}" 
+                     ${desabilitado ? 'style="opacity: 0.6; cursor: not-allowed;"' : ''}>
                     <div class="motorista-info">
-                        <h6>${motorista.nome || 'Nome não informado'}</h6>
+                        <h6>${motorista.nome || 'Nome não informado'}
+                            ${temErro ? '<span class="badge bg-danger ms-2" title="Telefone com erro de disparo"><i class="fas fa-exclamation-triangle"></i> Erro</span>' : ''}
+                        </h6>
                         <div class="motorista-details">
-                            <i class="fas fa-phone me-1"></i>${motorista.telefone1 || 'Telefone não informado'}
-                            ${motorista.telefone2 ? `<br><i class="fas fa-mobile-alt me-1"></i>${motorista.telefone2}` : ''}
+                            <i class="fas fa-phone me-1 ${temErroTelefone1 ? 'text-danger' : ''}"></i>
+                            <span class="${temErroTelefone1 ? 'text-danger text-decoration-line-through' : ''}">
+                                ${motorista.telefone1 || 'Telefone não informado'}
+                            </span>
+                            ${temErroTelefone1 && motorista.telefone1_erro_motivo ? `<br><small class="text-danger"><i class="fas fa-info-circle"></i> ${motorista.telefone1_erro_motivo.substring(0, 50)}</small>` : ''}
+                            ${motorista.telefone2 ? `
+                                <br><i class="fas fa-mobile-alt me-1 ${temErroTelefone2 ? 'text-danger' : ''}"></i>
+                                <span class="${temErroTelefone2 ? 'text-danger text-decoration-line-through' : ''}">
+                                    ${motorista.telefone2}
+                                </span>
+                                ${temErroTelefone2 && motorista.telefone2_erro_motivo ? `<br><small class="text-danger"><i class="fas fa-info-circle"></i> ${motorista.telefone2_erro_motivo.substring(0, 50)}</small>` : ''}
+                            ` : ''}
                             ${motorista.estado ? `<br><i class="fas fa-map-marker-alt me-1"></i>${motorista.estado}` : ''}
                             ${motorista.tipo_veiculo ? `<br><i class="fas fa-truck me-1"></i>${motorista.tipo_veiculo}` : ''}
                             ${motorista.tipo_carroceria ? `<br><i class="fas fa-box me-1"></i>${tiposCarroceriaMap[motorista.tipo_carroceria] || motorista.tipo_carroceria}` : ''}
@@ -2227,17 +2496,22 @@ const estados = [
                                 title="${motoristasFavoritos.has(motorista.id) ? 'Remover dos favoritos' : 'Adicionar aos favoritos'}">
                             <i class="fas fa-star"></i>
                         </button>
-                    <div class="motorista-checkbox ${selectedMotoristas.has(motorista.id) ? 'checked' : ''}">
+                    <div class="motorista-checkbox ${selectedMotoristas.has(motorista.id) ? 'checked' : ''} ${desabilitado ? 'disabled' : ''}">
                         ${selectedMotoristas.has(motorista.id) ? '<i class="fas fa-check"></i>' : ''}
                         </div>
                     </div>
                 </div>
-            `).join('');
+            `;
+            }).join('');
 
-            // Adicionar eventos de clique
+            // Adicionar eventos de clique (apenas para motoristas sem erro)
             motoristasList.querySelectorAll('.motorista-item').forEach(item => {
                 item.addEventListener('click', () => {
                     const id = item.dataset.id;
+                    // Não permitir seleção se tiver erro de telefone
+                    if (item.classList.contains('telefone-erro')) {
+                        return;
+                    }
                     toggleSelecaoMotorista(id);
                 });
             });
@@ -2248,6 +2522,13 @@ const estados = [
 
         // ========== TOGGLE SELEÇÃO DE MOTORISTA ==========
         function toggleSelecaoMotorista(id) {
+            // Verificar se o motorista tem erro de telefone
+            const motorista = motoristasFiltrados.find(m => m.id === id);
+            if (motorista && (motorista.telefone1_erro || motorista.telefone2_erro)) {
+                alert('⚠️ Este motorista não pode ser selecionado pois possui telefone com erro de disparo.');
+                return;
+            }
+            
             if (selectedMotoristas.has(id)) {
                 selectedMotoristas.delete(id);
             } else {
@@ -2269,13 +2550,25 @@ const estados = [
 
         // ========== SELECIONAR TODOS ==========
         function selecionarTodos() {
-            // Selecionar até o limite configurado (itemsPerPage)
+            // Selecionar até o limite configurado (itemsPerPage), excluindo motoristas com erro
             const limite = itemsPerPage;
-            const motoristasParaSelecionar = motoristasFiltrados.slice(0, limite);
+            const motoristasParaSelecionar = motoristasFiltrados
+                .slice(0, limite)
+                .filter(motorista => {
+                    // Não selecionar motoristas com erro de telefone
+                    return !motorista.telefone1_erro && !motorista.telefone2_erro;
+                });
             
+            let selecionados = 0;
             motoristasParaSelecionar.forEach(motorista => {
                 selectedMotoristas.add(motorista.id);
+                selecionados++;
             });
+            
+            if (selecionados < motoristasFiltrados.slice(0, limite).length) {
+                const excluidos = motoristasFiltrados.slice(0, limite).length - selecionados;
+                mostrarAviso(`⚠️ ${excluidos} motorista(s) com erro de telefone foram excluídos da seleção.`);
+            }
             
             atualizarListaMotoristas(motoristasFiltrados);
             atualizarContadorSelecionados();
@@ -2283,14 +2576,27 @@ const estados = [
 
         // ========== SELECIONAR PÁGINA ATUAL ==========
         function selecionarPaginaAtual() {
-            // Selecionar apenas os motoristas da página atual
+            // Selecionar apenas os motoristas da página atual, excluindo motoristas com erro
             const startIndex = (currentPage - 1) * itemsPerPage;
             const endIndex = startIndex + itemsPerPage;
-            const motoristasPagina = motoristasFiltrados.slice(startIndex, endIndex);
+            const motoristasPagina = motoristasFiltrados
+                .slice(startIndex, endIndex)
+                .filter(motorista => {
+                    // Não selecionar motoristas com erro de telefone
+                    return !motorista.telefone1_erro && !motorista.telefone2_erro;
+                });
             
+            let selecionados = 0;
             motoristasPagina.forEach(motorista => {
                 selectedMotoristas.add(motorista.id);
+                selecionados++;
             });
+            
+            const totalNaPagina = motoristasFiltrados.slice(startIndex, endIndex).length;
+            if (selecionados < totalNaPagina) {
+                const excluidos = totalNaPagina - selecionados;
+                mostrarAviso(`⚠️ ${excluidos} motorista(s) com erro de telefone foram excluídos da seleção.`);
+            }
             
             atualizarListaMotoristas(motoristasFiltrados);
             atualizarContadorSelecionados();
@@ -3537,6 +3843,32 @@ const estados = [
                             const errorMsg = data?.error || data?.message || 'Erro desconhecido';
                             adicionarLog(`❌ Falha para ${motorista.nome}: ${errorMsg}`, 'danger');
                             
+                            // Marcar telefone com erro no banco de dados
+                            try {
+                                const headers = await getAuthHeaders();
+                                await fetch('/api/motoristas/marcar-telefone-erro', {
+                                    method: 'POST',
+                                    headers: { ...headers, 'Content-Type': 'application/json' },
+                                    credentials: 'include',
+                                    body: JSON.stringify({
+                                        motoristaId: motorista.id,
+                                        telefone: motorista.telefone1,
+                                        motivo: errorMsg.substring(0, 200) // Limitar tamanho
+                                    })
+                                });
+                                console.log(`📝 Telefone ${motorista.telefone1} marcado com erro para ${motorista.nome}`);
+                                // Atualizar o motorista na lista local
+                                const motoristaIndex = motoristasFiltrados.findIndex(m => m.id === motorista.id);
+                                if (motoristaIndex !== -1) {
+                                    motoristasFiltrados[motoristaIndex].telefone1_erro = true;
+                                    motoristasFiltrados[motoristaIndex].telefone1_erro_motivo = errorMsg.substring(0, 200);
+                                    // Recarregar apenas a página atual
+                                    atualizarListaMotoristas(motoristasFiltrados);
+                                }
+                            } catch (markError) {
+                                console.error('❌ Erro ao marcar telefone com erro:', markError);
+                            }
+                            
                             if (errorMsg.includes('Credenciais da Evolution API não configuradas')) {
                                 adicionarLog(`⚠️ CONFIGURE SUAS CREDENCIAIS em Settings > Evolution API`, 'warning');
                             }
@@ -3552,7 +3884,35 @@ const estados = [
                     } else {
                         totalFalhas++;
                         const errorData = await response.json().catch(() => ({}));
+                        const errorMsg = errorData.error || `HTTP ${response.status}`;
                         adicionarLog(`❌ Falha para ${motorista.nome}: HTTP ${response.status}`, 'danger');
+                        
+                        // Marcar telefone com erro no banco de dados
+                        try {
+                            const headers = await getAuthHeaders();
+                            await fetch('/api/motoristas/marcar-telefone-erro', {
+                                method: 'POST',
+                                headers: { ...headers, 'Content-Type': 'application/json' },
+                                credentials: 'include',
+                                body: JSON.stringify({
+                                    motoristaId: motorista.id,
+                                    telefone: motorista.telefone1,
+                                    motivo: errorMsg.substring(0, 200) // Limitar tamanho
+                                })
+                            });
+                            console.log(`📝 Telefone ${motorista.telefone1} marcado com erro para ${motorista.nome}`);
+                            // Atualizar o motorista na lista local
+                            const motoristaIndex = motoristasFiltrados.findIndex(m => m.id === motorista.id);
+                            if (motoristaIndex !== -1) {
+                                motoristasFiltrados[motoristaIndex].telefone1_erro = true;
+                                motoristasFiltrados[motoristaIndex].telefone1_erro_motivo = errorMsg.substring(0, 200);
+                                // Recarregar apenas a página atual
+                                atualizarListaMotoristas(motoristasFiltrados);
+                            }
+                        } catch (markError) {
+                            console.error('❌ Erro ao marcar telefone com erro:', markError);
+                        }
+                        
                         if (errorData.error) {
                             adicionarLog(`   Detalhes: ${errorData.error}`, 'danger');
                         }
@@ -3564,6 +3924,32 @@ const estados = [
                     totalFalhas++;
                     adicionarLog(`❌ Erro para ${motorista.nome}: ${error.message}`, 'danger');
                     console.error('❌ Erro ao enviar mensagem:', error);
+                    
+                    // Marcar telefone com erro no banco de dados
+                    try {
+                        const headers = await getAuthHeaders();
+                        await fetch('/api/motoristas/marcar-telefone-erro', {
+                            method: 'POST',
+                            headers: { ...headers, 'Content-Type': 'application/json' },
+                            credentials: 'include',
+                            body: JSON.stringify({
+                                motoristaId: motorista.id,
+                                telefone: motorista.telefone1,
+                                motivo: error.message.substring(0, 200) // Limitar tamanho
+                            })
+                        });
+                        console.log(`📝 Telefone ${motorista.telefone1} marcado com erro para ${motorista.nome}`);
+                        // Atualizar o motorista na lista local
+                        const motoristaIndex = motoristasFiltrados.findIndex(m => m.id === motorista.id);
+                        if (motoristaIndex !== -1) {
+                            motoristasFiltrados[motoristaIndex].telefone1_erro = true;
+                            motoristasFiltrados[motoristaIndex].telefone1_erro_motivo = error.message.substring(0, 200);
+                            // Recarregar apenas a página atual
+                            atualizarListaMotoristas(motoristasFiltrados);
+                        }
+                    } catch (markError) {
+                        console.error('❌ Erro ao marcar telefone com erro:', markError);
+                    }
                 }
 
                 // Verificar se foi cancelado após o envio

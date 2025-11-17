@@ -2550,6 +2550,10 @@
         
         async function carregarDadosFerramenta(ferramenta) {
             try {
+                // IMPORTANTE: Definir o ID da ferramenta atual para que o salvamento atualize em vez de criar nova
+                ferramentaAtualId = ferramenta.id;
+                console.log(`📝 Carregando ferramenta ${ferramenta.tipo_ferramenta} com ID: ${ferramentaAtualId}`);
+                
                 const tipo = ferramenta.tipo_ferramenta;
                 const dados = ferramenta.dados || {};
                 
@@ -2684,10 +2688,38 @@
                     case 'pdca':
                         document.getElementById('tituloPDCA').value = ferramenta.titulo || '';
                         if (dados.problema) document.getElementById('pdca-problema').value = dados.problema;
-                        if (dados.plan) document.getElementById('pdca-plan').value = dados.plan;
-                        if (dados.do) document.getElementById('pdca-do').value = dados.do;
-                        if (dados.check) document.getElementById('pdca-check').value = dados.check;
-                        if (dados.act) document.getElementById('pdca-act').value = dados.act;
+                        if (dados.objetivo) document.getElementById('pdca-objetivo').value = dados.objetivo;
+                        // PDCA pode vir como arrays (formato novo) ou strings (formato antigo)
+                        if (dados.plan) {
+                            const planValue = Array.isArray(dados.plan) ? dados.plan.join('\n') : dados.plan;
+                            document.getElementById('pdca-plano').value = planValue;
+                        }
+                        if (dados.do) {
+                            const doValue = Array.isArray(dados.do) ? dados.do.join('\n') : dados.do;
+                            document.getElementById('pdca-executado').value = doValue;
+                        }
+                        if (dados.check) {
+                            const checkValue = Array.isArray(dados.check) ? dados.check.join('\n') : dados.check;
+                            // Se for array, distribuir entre os campos de check
+                            if (Array.isArray(dados.check) && dados.check.length > 0) {
+                                document.getElementById('pdca-dificuldades').value = dados.check[0] || '';
+                                document.getElementById('pdca-resultados').value = dados.check[1] || '';
+                                document.getElementById('pdca-comparacao').value = dados.check[2] || '';
+                            } else {
+                                document.getElementById('pdca-dificuldades').value = checkValue;
+                            }
+                        }
+                        if (dados.act) {
+                            const actValue = Array.isArray(dados.act) ? dados.act.join('\n') : dados.act;
+                            // Se for array, distribuir entre os campos de act
+                            if (Array.isArray(dados.act) && dados.act.length > 0) {
+                                document.getElementById('pdca-padronizacao').value = dados.act[0] || '';
+                                document.getElementById('pdca-proximos').value = dados.act[1] || '';
+                                document.getElementById('pdca-proximo-ciclo').value = dados.act[2] || '';
+                            } else {
+                                document.getElementById('pdca-padronizacao').value = actValue;
+                            }
+                        }
                         break;
                         
                     case 'plano_acao':

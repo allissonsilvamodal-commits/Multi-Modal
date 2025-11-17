@@ -6813,6 +6813,10 @@ app.post('/webhook/send-supabase', (req, res, next) => {
 
       const errorText = await response.text();
       console.log('❌ Erro da Evolution (texto):', errorText);
+      
+      // Identificar tipo de erro
+      const tipoErro = identificarTipoErro(null, response, errorText);
+      
       // Registrar falha no BI
       try {
         await supabaseAdmin.from('disparos_log').insert([
@@ -6821,10 +6825,11 @@ app.post('/webhook/send-supabase', (req, res, next) => {
             departamento: req.session?.userData?.departamento || null,
             numero: formattedNumber,
             mensagem_tamanho: (message || '').length,
-            status: 'error'
+            status: 'error',
+            tipo_erro: tipoErro
           }
         ]);
-        console.log('✅ Falha de disparo registrada no BI');
+        console.log(`✅ Falha de disparo registrada no BI (tipo: ${tipoErro || 'desconhecido'})`);
       } catch (logErr) {
         console.error('❌ Falha ao registrar disparo (erro texto):', logErr.message, logErr);
       }
@@ -7171,6 +7176,9 @@ app.post('/webhook/send-supabase', (req, res, next) => {
       });
     }
 
+    // Identificar tipo de erro
+    const tipoErro = identificarTipoErro(null, lastStatus ? { status: lastStatus } : null, lastErrorText);
+
     // Registrar falha no BI
     try {
       await supabaseAdmin.from('disparos_log').insert([
@@ -7179,10 +7187,11 @@ app.post('/webhook/send-supabase', (req, res, next) => {
           departamento: req.session?.userData?.departamento || null,
           numero: formattedNumber,
           mensagem_tamanho: (message || '').length,
-          status: 'error'
+          status: 'error',
+          tipo_erro: tipoErro
         }
       ]);
-      console.log('✅ Falha de disparo registrada no BI (mídia)');
+      console.log(`✅ Falha de disparo registrada no BI (mídia) - tipo: ${tipoErro || 'desconhecido'}`);
     } catch (logErr) {
       console.error('❌ Falha ao registrar disparo (erro mídia):', logErr.message, logErr);
     }
@@ -7196,6 +7205,10 @@ app.post('/webhook/send-supabase', (req, res, next) => {
 
   } catch (error) {
     console.log('❌ Erro:', error.message);
+    
+    // Identificar tipo de erro (geralmente será erro de conexão em catch)
+    const tipoErro = identificarTipoErro(error, null, null);
+    
     // Registrar falha inesperada no BI
     try {
       await supabaseAdmin.from('disparos_log').insert([
@@ -7204,10 +7217,11 @@ app.post('/webhook/send-supabase', (req, res, next) => {
           departamento: req.session?.userData?.departamento || null,
           numero: (typeof number !== 'undefined') ? String(number) : null,
           mensagem_tamanho: (message || '').length,
-          status: 'error'
+          status: 'error',
+          tipo_erro: tipoErro
         }
       ]);
-      console.log('✅ Falha inesperada de disparo registrada no BI');
+      console.log(`✅ Falha inesperada de disparo registrada no BI - tipo: ${tipoErro || 'desconhecido'}`);
     } catch (logErr) {
       console.error('❌ Falha ao registrar disparo (erro catch):', logErr.message, logErr);
     }
@@ -10723,6 +10737,438 @@ app.get('/api/diagnostico', requireAuth, async (req, res) => {
     console.error('❌ Erro no diagnóstico:', error);
     res.status(500).json({
       error: 'Erro no diagnóstico: ' + error.message
+    });
+  }
+});
+
+// ========== HELPER: IDENTIFICAR TIPO DE ERRO ==========
+function identificarTipoErro(error, response, errorText) {
+  // Erros de conexão (timeout, network, etc)
+  if (error) {
+    const errorMsg = error.message?.toLowerCase() || '';
+    if (
+      errorMsg.includes('timeout') ||
+      errorMsg.includes('econnrefused') ||
+      errorMsg.includes('enotfound') ||
+      errorMsg.includes('network') ||
+      errorMsg.includes('connection') ||
+      errorMsg.includes('fetch failed') ||
+      errorMsg.includes('aborted') ||
+      error.name === 'AbortError'
+    ) {
+      return 'conexao';
+    }
+  }
+
+  // Erros de resposta HTTP
+  if (response) {
+    // Status 500, 502, 503, 504 = problemas de servidor/conexão
+    if ([500, 502, 503, 504].includes(response.status)) {
+      return 'conexao';
+    }
+    // Status 404 = instância não encontrada (problema de conexão/configuração)
+    if (response.status === 404) {
+      return 'conexao';
+    }
+    // Status 401 = API key inválida (problema de configuração, não número)
+    if (response.status === 401) {
+      return 'conexao';
+    }
+  }
+
+  // Erros de número inválido (geralmente vêm da Evolution API)
+  if (errorText) {
+    const errorLower = errorText.toLowerCase();
+    if (
+      errorLower.includes('number') ||
+      errorLower.includes('número') ||
+      errorLower.includes('invalid') ||
+      errorLower.includes('not found') ||
+      errorLower.includes('não encontrado') ||
+      errorLower.includes('does not exist') ||
+      errorLower.includes('não existe')
+    ) {
+      return 'numero_invalido';
+    }
+  }
+
+  // Se não conseguir identificar, retorna null (erro desconhecido)
+  return null;
+}
+
+// ========== API PARA SINCRONIZAR ERROS DA TABELA DISPAROS_LOG ==========
+app.post('/api/motoristas/sincronizar-erros-disparos', express.json(), async (req, res) => {
+  try {
+    const userResult = await getUserFromRequest(req);
+    const userId = userResult?.user?.id;
+
+    if (!userId) {
+      return res.status(401).json({ success: false, error: 'Não autenticado' });
+    }
+
+    console.log('🔄 Sincronizando erros da tabela disparos_log...');
+
+    // Buscar todos os números com erro na tabela disparos_log
+    // Considerar apenas erros dos últimos 30 dias para não processar dados muito antigos
+    const trintaDiasAtras = new Date();
+    trintaDiasAtras.setDate(trintaDiasAtras.getDate() - 30);
+
+    const { data: errosDisparos, error: erroQuery } = await supabaseAdmin
+      .from('disparos_log')
+      .select('numero, status, created_at, tipo_erro')
+      .eq('status', 'error')
+      .gte('created_at', trintaDiasAtras.toISOString());
+
+    if (erroQuery) {
+      console.error('❌ Erro ao buscar erros de disparos:', erroQuery);
+      return res.status(500).json({
+        success: false,
+        error: 'Erro ao buscar erros de disparos'
+      });
+    }
+
+    if (!errosDisparos || errosDisparos.length === 0) {
+      return res.json({
+        success: true,
+        message: 'Nenhum erro encontrado nos últimos 30 dias',
+        processados: 0,
+        atualizados: 0
+      });
+    }
+
+    console.log(`📊 Encontrados ${errosDisparos.length} erros de disparo`);
+
+    // Agrupar por número e pegar o erro mais recente
+    const errosPorNumero = new Map();
+    errosDisparos.forEach(erro => {
+      // Normalizar número: remover @c.us e caracteres não numéricos
+      const numeroNormalizado = erro.numero
+        .replace('@c.us', '')
+        .replace(/\D/g, '');
+      
+      if (!numeroNormalizado || numeroNormalizado.length < 10) {
+        return; // Pular números inválidos
+      }
+
+      const erroExistente = errosPorNumero.get(numeroNormalizado);
+      if (!erroExistente || new Date(erro.created_at) > new Date(erroExistente.created_at)) {
+        errosPorNumero.set(numeroNormalizado, {
+          numero: numeroNormalizado,
+          created_at: erro.created_at
+        });
+      }
+    });
+
+    console.log(`📞 ${errosPorNumero.size} números únicos com erro`);
+
+    let atualizados = 0;
+    let naoEncontrados = 0;
+
+    // Para cada número com erro, verificar taxa de sucesso antes de marcar
+    for (const [numeroNormalizado, erroInfo] of errosPorNumero) {
+      try {
+        // PRIMEIRO: Verificar taxa de sucesso/erro para este número
+        // Buscar TODOS os disparos (sucessos e erros) dos últimos 30 dias
+        const { data: todosDisparos, error: disparosError } = await supabaseAdmin
+          .from('disparos_log')
+          .select('status, created_at, tipo_erro')
+          .or(`numero.ilike.%${numeroNormalizado}%,numero.ilike.%55${numeroNormalizado}%,numero.ilike.%${numeroNormalizado}@c.us%,numero.ilike.%55${numeroNormalizado}@c.us%`)
+          .gte('created_at', trintaDiasAtras.toISOString());
+
+        if (disparosError) {
+          console.error(`❌ Erro ao buscar disparos para ${numeroNormalizado}:`, disparosError);
+        }
+
+        // Calcular estatísticas
+        let totalDisparos = 0;
+        let totalSucessos = 0;
+        let totalErros = 0;
+        let errosConexao = 0; // Erros de conexão (devem ser ignorados)
+        let errosNumeroInvalido = 0; // Erros de número inválido
+        let errosRecentesNumeroInvalido = 0; // Erros de número inválido dos últimos 7 dias
+
+        if (todosDisparos && todosDisparos.length > 0) {
+          totalDisparos = todosDisparos.length;
+          const seteDiasAtras = new Date();
+          seteDiasAtras.setDate(seteDiasAtras.getDate() - 7);
+
+          todosDisparos.forEach(disparo => {
+            if (disparo.status === 'success') {
+              totalSucessos++;
+            } else if (disparo.status === 'error') {
+              totalErros++;
+              
+              // Separar erros de conexão de erros de número inválido
+              if (disparo.tipo_erro === 'conexao') {
+                errosConexao++;
+                // Erros de conexão não contam para inativação
+              } else if (disparo.tipo_erro === 'numero_invalido') {
+                errosNumeroInvalido++;
+                if (new Date(disparo.created_at) >= seteDiasAtras) {
+                  errosRecentesNumeroInvalido++;
+                }
+              } else {
+                // Se tipo_erro é null (erro antigo), assumir como número inválido para compatibilidade
+                errosNumeroInvalido++;
+                if (new Date(disparo.created_at) >= seteDiasAtras) {
+                  errosRecentesNumeroInvalido++;
+                }
+              }
+            }
+          });
+        }
+
+        // IGNORAR erros de conexão - não devem inativar números
+        if (errosConexao > 0) {
+          console.log(`⏭️ Número ${numeroNormalizado} ignorado: ${errosConexao} erro(s) de conexão detectado(s) - não será marcado como erro`);
+          continue; // Pular este número, erros de conexão não contam
+        }
+
+        // Calcular taxa de erro apenas para números inválidos
+        const taxaErro = totalDisparos > 0 ? (errosNumeroInvalido / totalDisparos) * 100 : 0;
+
+        // DECISÃO: Só marcar como erro se:
+        // 1. Pelo menos 3 tentativas com erro de número inválido (configurável - pode ser alterado para 5)
+        // 2. OU pelo menos 5 tentativas com erro de número inválido nos últimos 7 dias
+        // 3. OU taxa de erro > 50% E pelo menos 3 erros de número inválido
+        const TENTATIVAS_MINIMAS = 3; // Configurável: mínimo de tentativas antes de marcar (recomendado: 3-5)
+        const deveMarcarComoErro = 
+          errosNumeroInvalido >= TENTATIVAS_MINIMAS ||
+          errosRecentesNumeroInvalido >= 5 ||
+          (taxaErro > 50 && errosNumeroInvalido >= 3);
+
+        if (!deveMarcarComoErro) {
+          console.log(`⏭️ Número ${numeroNormalizado} ignorado: ${errosNumeroInvalido} erro(s) de número inválido (mínimo: ${TENTATIVAS_MINIMAS}) - ${totalSucessos} sucessos`);
+          continue; // Pular este número, não atingiu o mínimo de tentativas
+        }
+
+        console.log(`⚠️ Número ${numeroNormalizado} será marcado como erro: ${errosNumeroInvalido} erro(s) de número inválido (${totalSucessos} sucessos, taxa: ${taxaErro.toFixed(1)}%)`);
+
+        // Tentar diferentes variações do número
+        const variacoes = [];
+        
+        // Número completo
+        variacoes.push(numeroNormalizado);
+        
+        // Sem código do país (55) - últimos 10 ou 11 dígitos
+        if (numeroNormalizado.startsWith('55') && numeroNormalizado.length > 2) {
+          variacoes.push(numeroNormalizado.slice(2));
+        }
+        
+        // Apenas últimos 8 dígitos (sem DDD)
+        if (numeroNormalizado.length > 8) {
+          variacoes.push(numeroNormalizado.slice(-8));
+        }
+        
+        // Apenas últimos 9 dígitos (com DDD)
+        if (numeroNormalizado.length > 9) {
+          variacoes.push(numeroNormalizado.slice(-9));
+        }
+
+        let motoristasEncontrados = [];
+        
+        // Buscar com cada variação
+        for (const variacao of variacoes) {
+          if (variacao.length < 8) continue; // Pular variações muito curtas
+          
+          const { data: motoristas, error: motoristasError } = await supabaseAdmin
+            .from('motoristas')
+            .select('id, nome, telefone1, telefone2, telefone1_erro, telefone2_erro')
+            .or(`telefone1.ilike.%${variacao}%,telefone2.ilike.%${variacao}%`);
+
+          if (motoristasError) {
+            console.error(`❌ Erro ao buscar motorista para ${variacao}:`, motoristasError);
+            continue;
+          }
+
+          if (motoristas && motoristas.length > 0) {
+            motoristasEncontrados = motoristas;
+            break; // Se encontrou, não precisa tentar outras variações
+          }
+        }
+
+        if (motoristasEncontrados.length === 0) {
+          naoEncontrados++;
+          if (naoEncontrados <= 5) { // Log apenas os primeiros 5 para não poluir
+            console.log(`⚠️ Número ${numeroNormalizado} não encontrado em nenhum motorista`);
+          }
+          continue;
+        }
+
+        // Processar motoristas encontrados
+        for (const motorista of motoristasEncontrados) {
+          const updateData = {};
+          const telefone1Normalizado = motorista.telefone1?.replace(/\D/g, '');
+          const telefone2Normalizado = motorista.telefone2?.replace(/\D/g, '');
+
+          // Verificar match exato ou parcial
+          const telefone1Match = telefone1Normalizado && (
+            telefone1Normalizado === numeroNormalizado ||
+            telefone1Normalizado.endsWith(numeroNormalizado) ||
+            numeroNormalizado.endsWith(telefone1Normalizado) ||
+            telefone1Normalizado.includes(numeroNormalizado.slice(-8)) ||
+            numeroNormalizado.includes(telefone1Normalizado.slice(-8))
+          );
+
+          const telefone2Match = telefone2Normalizado && (
+            telefone2Normalizado === numeroNormalizado ||
+            telefone2Normalizado.endsWith(numeroNormalizado) ||
+            numeroNormalizado.endsWith(telefone2Normalizado) ||
+            telefone2Normalizado.includes(numeroNormalizado.slice(-8)) ||
+            numeroNormalizado.includes(telefone2Normalizado.slice(-8))
+          );
+
+          // Criar motivo detalhado com estatísticas
+          const motivoDetalhado = `Número inválido: ${errosNumeroInvalido} tentativa(s) falharam (${totalSucessos} sucessos anteriores)`;
+
+          if (telefone1Match && !motorista.telefone1_erro) {
+            updateData.telefone1_erro = true;
+            updateData.telefone1_erro_data = erroInfo.created_at;
+            updateData.telefone1_erro_motivo = motivoDetalhado;
+            console.log(`✅ Marcando telefone1 com erro: ${motorista.nome} (${motorista.telefone1}) - ${motivoDetalhado}`);
+          }
+          if (telefone2Match && !motorista.telefone2_erro) {
+            updateData.telefone2_erro = true;
+            updateData.telefone2_erro_data = erroInfo.created_at;
+            updateData.telefone2_erro_motivo = motivoDetalhado;
+            console.log(`✅ Marcando telefone2 com erro: ${motorista.nome} (${motorista.telefone2}) - ${motivoDetalhado}`);
+          }
+
+          // Inativar se ambos os telefones tiverem erro
+          if (updateData.telefone1_erro && updateData.telefone2_erro) {
+            updateData.status = 'inativo';
+          } else if (updateData.telefone1_erro && motorista.telefone2_erro) {
+            updateData.status = 'inativo';
+          } else if (updateData.telefone2_erro && motorista.telefone1_erro) {
+            updateData.status = 'inativo';
+          }
+
+          if (Object.keys(updateData).length > 0) {
+            const { error: updateError } = await supabaseAdmin
+              .from('motoristas')
+              .update(updateData)
+              .eq('id', motorista.id);
+            
+            if (updateError) {
+              console.error(`❌ Erro ao atualizar motorista ${motorista.id}:`, updateError);
+            } else {
+              atualizados++;
+            }
+          }
+        }
+      } catch (error) {
+        console.error(`❌ Erro ao processar número ${numeroNormalizado}:`, error);
+      }
+    }
+
+    console.log(`✅ Sincronização concluída: ${atualizados} motoristas atualizados, ${naoEncontrados} números não encontrados`);
+
+    res.json({
+      success: true,
+      message: 'Sincronização concluída',
+      processados: errosPorNumero.size,
+      atualizados: atualizados,
+      naoEncontrados: naoEncontrados
+    });
+  } catch (error) {
+    console.error('❌ Erro ao sincronizar erros de disparos:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Erro interno ao sincronizar erros'
+    });
+  }
+});
+
+// ========== API PARA MARCAR TELEFONE COM ERRO DE DISPARO ==========
+app.post('/api/motoristas/marcar-telefone-erro', express.json(), async (req, res) => {
+  try {
+    const userResult = await getUserFromRequest(req);
+    const userId = userResult?.user?.id;
+
+    if (!userId) {
+      return res.status(401).json({ success: false, error: 'Não autenticado' });
+    }
+
+    const { motoristaId, telefone, motivo } = req.body;
+
+    if (!motoristaId || !telefone) {
+      return res.status(400).json({
+        success: false,
+        error: 'motoristaId e telefone são obrigatórios'
+      });
+    }
+
+    // Verificar qual telefone foi usado (telefone1 ou telefone2)
+    const { data: motorista } = await supabaseAdmin
+      .from('motoristas')
+      .select('telefone1, telefone2')
+      .eq('id', motoristaId)
+      .single();
+
+    if (!motorista) {
+      return res.status(404).json({
+        success: false,
+        error: 'Motorista não encontrado'
+      });
+    }
+
+    const isTelefone1 = motorista.telefone1 === telefone || motorista.telefone1?.replace(/\D/g, '') === telefone.replace(/\D/g, '');
+    const isTelefone2 = motorista.telefone2 === telefone || motorista.telefone2?.replace(/\D/g, '') === telefone.replace(/\D/g, '');
+
+    if (!isTelefone1 && !isTelefone2) {
+      return res.status(400).json({
+        success: false,
+        error: 'Telefone não corresponde ao motorista'
+      });
+    }
+
+    const updateData = {};
+    if (isTelefone1) {
+      updateData.telefone1_erro = true;
+      updateData.telefone1_erro_data = new Date().toISOString();
+      updateData.telefone1_erro_motivo = motivo || 'Erro ao enviar mensagem';
+    }
+    if (isTelefone2) {
+      updateData.telefone2_erro = true;
+      updateData.telefone2_erro_data = new Date().toISOString();
+      updateData.telefone2_erro_motivo = motivo || 'Erro ao enviar mensagem';
+    }
+
+    // Também inativar o motorista se ambos os telefones tiverem erro
+    if (isTelefone1 && isTelefone2) {
+      updateData.status = 'inativo';
+    } else if (isTelefone1 && motorista.telefone2_erro) {
+      updateData.status = 'inativo';
+    } else if (isTelefone2 && motorista.telefone1_erro) {
+      updateData.status = 'inativo';
+    }
+
+    const { error: updateError } = await supabaseAdmin
+      .from('motoristas')
+      .update(updateData)
+      .eq('id', motoristaId);
+
+    if (updateError) {
+      console.error('❌ Erro ao marcar telefone com erro:', updateError);
+      return res.status(500).json({
+        success: false,
+        error: `Erro ao atualizar motorista: ${updateError.message}`
+      });
+    }
+
+    console.log(`✅ Telefone ${isTelefone1 ? '1' : '2'} marcado com erro para motorista ${motoristaId}`);
+
+    res.json({
+      success: true,
+      message: 'Telefone marcado com erro',
+      telefone: isTelefone1 ? 'telefone1' : 'telefone2',
+      motoristaInativado: updateData.status === 'inativo'
+    });
+  } catch (error) {
+    console.error('❌ Erro ao marcar telefone com erro:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Erro interno ao marcar telefone com erro'
     });
   }
 });

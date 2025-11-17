@@ -1208,11 +1208,16 @@
                         }
                     }
 
-                    // Buscar motorista por telefone
+                    // Buscar motorista por telefone (tentando diferentes variações)
+                    const numeroLimpo = numero.replace(/@.*$/, '').replace(/\D/g, '');
+                    const numeroSemDDI = numeroLimpo.startsWith('55') ? numeroLimpo.slice(2) : numeroLimpo;
+                    const numeroComDDI = numeroLimpo.startsWith('55') ? numeroLimpo : `55${numeroLimpo}`;
+                    
+                    // Buscar com diferentes variações do número
                     const { data: motoristas } = await supabase
                         .from('motoristas')
                         .select('*')
-                        .or(`telefone1.ilike.%${numero}%,telefone2.ilike.%${numero}%`)
+                        .or(`telefone1.ilike.%${numero}%,telefone2.ilike.%${numero}%,telefone1.ilike.%${numeroLimpo}%,telefone2.ilike.%${numeroLimpo}%,telefone1.ilike.%${numeroSemDDI}%,telefone2.ilike.%${numeroSemDDI}%,telefone1.ilike.%${numeroComDDI}%,telefone2.ilike.%${numeroComDDI}%`)
                         .limit(1);
 
                     const motorista = motoristas && motoristas.length > 0 ? motoristas[0] : null;
@@ -1902,10 +1907,13 @@
                 const dataUltimaFalha = new Date(falha.ultimaFalha.created_at);
                 const dataPrimeiraFalha = new Date(falha.primeiraFalha.created_at);
 
+                // Garantir que o nome do motorista sempre apareça quando disponível
+                const nomeMotorista = motorista && motorista.nome ? motorista.nome.trim() : 'Não encontrado';
+                
                 const linha = [
                     escaparCSV(dataUltimaFalha.toLocaleString('pt-BR')),
                     escaparCSV(falha.numero),
-                    escaparCSV(motorista ? motorista.nome : 'Não encontrado'),
+                    escaparCSV(nomeMotorista),
                     escaparCSV(motorista ? (motorista.telefone1 || '') : ''),
                     escaparCSV(motorista ? (motorista.telefone2 || '') : ''),
                     escaparCSV(motorista ? (motorista.estado || '') : ''),
@@ -2000,10 +2008,13 @@
                         .replace(/'/g, '&#39;');
                 };
 
+                // Garantir que o nome do motorista sempre apareça quando disponível
+                const nomeMotorista = motorista && motorista.nome ? motorista.nome.trim() : 'Não encontrado';
+                
                 htmlContent += '<tr>';
                 htmlContent += `<td>${escaparHTML(dataUltimaFalha.toLocaleString('pt-BR'))}</td>`;
                 htmlContent += `<td>${escaparHTML(falha.numero)}</td>`;
-                htmlContent += `<td>${escaparHTML(motorista ? (motorista.nome || '') : 'Não encontrado')}</td>`;
+                htmlContent += `<td>${escaparHTML(nomeMotorista)}</td>`;
                 htmlContent += `<td>${escaparHTML(motorista ? (motorista.telefone1 || '') : '')}</td>`;
                 htmlContent += `<td>${escaparHTML(motorista ? (motorista.telefone2 || '') : '')}</td>`;
                 htmlContent += `<td>${escaparHTML(motorista ? (motorista.estado || '') : '')}</td>`;
