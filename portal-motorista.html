@@ -1279,6 +1279,49 @@
     </div>
   </div>
 
+  <!-- Modal de Termo de Rastreamento -->
+  <div class="modal-overlay" id="rastreamentoTermoModal">
+    <div class="modal-card">
+      <button class="modal-close" id="btnFecharRastreamentoTermo" aria-label="Fechar"><i class="fas fa-xmark"></i></button>
+      <h3><i class="fas fa-map-location-dot me-2"></i> Termo de Rastreamento e Monitoramento</h3>
+      <div class="termo-content" style="max-height: 60vh; overflow-y: auto; padding: 1rem 0; margin: 1rem 0; border-top: 1px solid var(--glass-border); border-bottom: 1px solid var(--glass-border);">
+        <p style="margin-bottom: 1rem; color: var(--text-secondary); line-height: 1.6;">
+          <strong style="color: var(--text-primary);">Ao assumir esta viagem, você concorda com o rastreamento e monitoramento em tempo real da sua localização durante toda a execução da coleta.</strong>
+        </p>
+        <div style="background: rgba(96, 165, 250, 0.1); border-left: 3px solid var(--primary); padding: 1rem; border-radius: 8px; margin: 1rem 0;">
+          <h4 style="color: var(--primary); margin-bottom: 0.5rem; font-size: 1rem;"><i class="fas fa-info-circle me-2"></i>O que será monitorado:</h4>
+          <ul style="list-style: none; padding: 0; margin: 0; color: var(--text-secondary); line-height: 1.8;">
+            <li><i class="fas fa-check-circle me-2" style="color: var(--success);"></i>Localização GPS em tempo real</li>
+            <li><i class="fas fa-check-circle me-2" style="color: var(--success);"></i>Velocidade e direção do veículo</li>
+            <li><i class="fas fa-check-circle me-2" style="color: var(--success);"></i>Status da viagem (em movimento, parado, etc.)</li>
+            <li><i class="fas fa-check-circle me-2" style="color: var(--success);"></i>Alertas automáticos em caso de desvios ou paradas prolongadas</li>
+          </ul>
+        </div>
+        <div style="background: rgba(34, 197, 94, 0.1); border-left: 3px solid var(--success); padding: 1rem; border-radius: 8px; margin: 1rem 0;">
+          <h4 style="color: var(--success); margin-bottom: 0.5rem; font-size: 1rem;"><i class="fas fa-shield-alt me-2"></i>Seus direitos:</h4>
+          <ul style="list-style: none; padding: 0; margin: 0; color: var(--text-secondary); line-height: 1.8;">
+            <li><i class="fas fa-lock me-2" style="color: var(--success);"></i>Dados protegidos e utilizados apenas para fins operacionais</li>
+            <li><i class="fas fa-clock me-2" style="color: var(--success);"></i>Rastreamento ativo apenas durante a execução da coleta</li>
+            <li><i class="fas fa-user-shield me-2" style="color: var(--success);"></i>Privacidade garantida conforme LGPD</li>
+          </ul>
+        </div>
+        <p style="margin-top: 1rem; font-size: 0.85rem; color: var(--muted); text-align: center;">
+          Versão do termo: 1.0 | Última atualização: <span id="termoDataAtualizacao"></span>
+        </p>
+      </div>
+      <div class="modal-footer">
+        <label style="display: flex; align-items: center; gap: 0.75rem; cursor: pointer; padding: 0.75rem; background: rgba(96, 165, 250, 0.05); border-radius: 8px; margin-bottom: 1rem;">
+          <input type="checkbox" id="aceitarTermoRastreamento" required style="width: 18px; height: 18px; cursor: pointer;">
+          <span style="color: var(--text-primary); font-size: 0.9rem;">
+            <strong>Li e aceito o termo de rastreamento e monitoramento</strong>
+          </span>
+        </label>
+        <button type="button" class="btn btn-secondary" id="btnRecusarTermo">Recusar</button>
+        <button type="button" class="btn btn-primary" id="btnAceitarTermo">Aceitar e Continuar</button>
+      </div>
+    </div>
+  </div>
+
   <div class="modal-overlay" id="documentosModal">
     <div class="modal-card docs-modal">
       <button class="modal-close" id="btnFecharDocumentos" aria-label="Fechar"><i class="fas fa-xmark"></i></button>
@@ -1406,6 +1449,11 @@
       formDocumentos: document.getElementById('formDocumentos'),
       btnFecharDocumentos: document.getElementById('btnFecharDocumentos'),
       btnCancelarDocumentos: document.getElementById('btnCancelarDocumentos'),
+      rastreamentoTermoModal: document.getElementById('rastreamentoTermoModal'),
+      btnFecharRastreamentoTermo: document.getElementById('btnFecharRastreamentoTermo'),
+      btnAceitarTermo: document.getElementById('btnAceitarTermo'),
+      btnRecusarTermo: document.getElementById('btnRecusarTermo'),
+      aceitarTermoRastreamento: document.getElementById('aceitarTermoRastreamento'),
       btnEnviarDocumentos: document.getElementById('btnEnviarDocumentos'),
       docsResumo: document.getElementById('docsResumo'),
       docsProprietario: document.getElementById('docsProprietario'),
@@ -2239,7 +2287,36 @@
       }
     }
 
+    // Variável para armazenar a coleta pendente de confirmação após aceitar termo
+    let coletaPendenteConfirmacao = null;
+
     async function confirmarAssumirColeta(coletaId) {
+      // Verificar se já existe termo aceito para esta coleta
+      try {
+        const termoResponse = await fetch(`/api/rastreamento/verificar-termo?coletaId=${encodeURIComponent(coletaId)}`, {
+          headers: {
+            Authorization: `Bearer ${state.session.access_token}`
+          }
+        });
+        
+        const termoData = await termoResponse.json();
+        
+        // Se não houver termo aceito, mostrar modal
+        if (!termoData.termoAceito) {
+          coletaPendenteConfirmacao = coletaId;
+          mostrarModalTermoRastreamento();
+          return null; // Retorna null para indicar que está aguardando aceite
+        }
+      } catch (error) {
+        console.warn('Erro ao verificar termo:', error);
+        // Continuar com o fluxo normal se houver erro
+      }
+
+      // Se termo já aceito ou erro na verificação, prosseguir normalmente
+      return await executarAssumirColeta(coletaId);
+    }
+
+    async function executarAssumirColeta(coletaId) {
       const response = await fetch(`/api/motoristas/oportunidades/${encodeURIComponent(coletaId)}/assumir`, {
         method: 'POST',
         headers: {
@@ -2258,10 +2335,345 @@
       }
 
       state.motorista = result.motorista || state.motorista;
-    await carregarStatusDocumentos(true);
-    atualizarCabecalho();
+      await carregarStatusDocumentos(true);
+      atualizarCabecalho();
+      
+      // Iniciar rastreamento após assumir coleta
+      if (coletaId) {
+        console.log('🚀 Coleta assumida, iniciando rastreamento GPS...', coletaId);
+        // Aguardar um pouco para garantir que tudo está pronto
+        setTimeout(() => {
+          iniciarRastreamento(coletaId);
+        }, 1000);
+      } else {
+        console.warn('⚠️ Coleta assumida mas sem coletaId para rastreamento');
+      }
+      
       return result;
     }
+
+    function mostrarModalTermoRastreamento() {
+      if (elements.rastreamentoTermoModal) {
+        elements.rastreamentoTermoModal.classList.add('active');
+        document.body.style.overflow = 'hidden';
+        
+        // Atualizar data do termo
+        const dataAtual = new Date().toLocaleDateString('pt-BR');
+        const termoDataEl = document.getElementById('termoDataAtualizacao');
+        if (termoDataEl) termoDataEl.textContent = dataAtual;
+        
+        // Resetar checkbox
+        if (elements.aceitarTermoRastreamento) {
+          elements.aceitarTermoRastreamento.checked = false;
+        }
+      }
+    }
+
+    function fecharModalTermoRastreamento() {
+      if (elements.rastreamentoTermoModal) {
+        elements.rastreamentoTermoModal.classList.remove('active');
+        document.body.style.overflow = '';
+        coletaPendenteConfirmacao = null;
+      }
+    }
+
+    async function aceitarTermoERastreamento() {
+      if (!elements.aceitarTermoRastreamento?.checked) {
+        showToast('Você precisa aceitar o termo para continuar.', 'error');
+        return;
+      }
+
+      if (!coletaPendenteConfirmacao) {
+        showToast('Erro: Coleta não identificada.', 'error');
+        fecharModalTermoRastreamento();
+        return;
+      }
+
+      try {
+        console.log('📝 Aceitando termo de rastreamento para coleta:', coletaPendenteConfirmacao);
+        
+        // Registrar aceite do termo
+        const termoResponse = await fetch('/api/rastreamento/aceitar-termo', {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${state.session.access_token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            coletaId: coletaPendenteConfirmacao,
+            termoVersao: '1.0',
+            ipAddress: await obterIP(),
+            userAgent: navigator.userAgent
+          })
+        });
+
+        if (!termoResponse.ok) {
+          const errorData = await termoResponse.json();
+          throw new Error(errorData.error || 'Não foi possível registrar o aceite do termo.');
+        }
+
+        const termoResult = await termoResponse.json();
+        console.log('✅ Termo aceito com sucesso:', termoResult);
+
+        fecharModalTermoRastreamento();
+        
+        // Agora assumir a coleta (isso também iniciará o rastreamento)
+        console.log('🚀 Assumindo coleta e iniciando rastreamento...');
+        await executarAssumirColeta(coletaPendenteConfirmacao);
+        showToast('Termo aceito! Rastreamento ativado. Viagem assumida com sucesso!', 'success');
+        
+        await Promise.all([carregarOportunidades(), carregarViagens()]);
+      } catch (error) {
+        console.error('❌ Erro ao aceitar termo:', error);
+        showToast(error.message || 'Erro ao processar aceite do termo.', 'error');
+      }
+    }
+
+    async function obterIP() {
+      try {
+        const response = await fetch('https://api.ipify.org?format=json');
+        const data = await response.json();
+        return data.ip;
+      } catch {
+        return 'desconhecido';
+      }
+    }
+
+    // Event listeners para modal de termo
+    if (elements.btnFecharRastreamentoTermo) {
+      elements.btnFecharRastreamentoTermo.addEventListener('click', fecharModalTermoRastreamento);
+    }
+    
+    if (elements.btnRecusarTermo) {
+      elements.btnRecusarTermo.addEventListener('click', () => {
+        showToast('É necessário aceitar o termo para assumir viagens.', 'warning');
+        fecharModalTermoRastreamento();
+        coletaPendenteConfirmacao = null;
+      });
+    }
+    
+    if (elements.btnAceitarTermo) {
+      elements.btnAceitarTermo.addEventListener('click', aceitarTermoERastreamento);
+    }
+
+    // ====== SISTEMA DE RASTREAMENTO GPS ======
+    let rastreamentoAtivo = false;
+    let intervaloRastreamento = null;
+    let coletaRastreamentoAtiva = null;
+    let watchId = null;
+
+    async function iniciarRastreamento(coletaId) {
+      if (!coletaId) {
+        console.error('❌ iniciarRastreamento chamado sem coletaId');
+        return;
+      }
+
+      if (rastreamentoAtivo && coletaRastreamentoAtiva === coletaId) {
+        console.log('📍 Rastreamento já está ativo para esta coleta:', coletaId);
+        return;
+      }
+
+      console.log('🚀 Iniciando rastreamento GPS para coleta:', coletaId);
+      coletaRastreamentoAtiva = coletaId;
+      rastreamentoAtivo = true;
+
+      // Solicitar permissão de geolocalização
+      if (!navigator.geolocation) {
+        console.error('❌ Navegador não suporta geolocalização');
+        showToast('Seu navegador não suporta geolocalização.', 'error');
+        rastreamentoAtivo = false;
+        return;
+      }
+
+      const options = {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0
+      };
+
+      // Capturar posição inicial
+      console.log('📍 Solicitando posição inicial...');
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          console.log('✅ Posição inicial obtida:', {
+            lat: position.coords.latitude,
+            lng: position.coords.longitude,
+            accuracy: position.coords.accuracy
+          });
+          enviarPosicao(position, coletaId);
+        },
+        (error) => {
+          console.error('❌ Erro ao obter localização inicial:', error);
+          showToast('Erro ao acessar sua localização. Verifique as permissões do navegador.', 'error');
+          rastreamentoAtivo = false;
+        },
+        options
+      );
+
+      // Monitorar mudanças de posição
+      console.log('📍 Iniciando watchPosition...');
+      watchId = navigator.geolocation.watchPosition(
+        (position) => {
+          console.log('📍 Nova posição detectada:', {
+            lat: position.coords.latitude,
+            lng: position.coords.longitude
+          });
+          enviarPosicao(position, coletaId);
+        },
+        (error) => {
+          console.error('❌ Erro no watchPosition:', error);
+          // Não desativar rastreamento por erro no watchPosition, continuar tentando
+        },
+        options
+      );
+
+      // Enviar posição periodicamente (a cada 30 segundos)
+      console.log('📍 Configurando envio periódico a cada 30 segundos...');
+      intervaloRastreamento = setInterval(() => {
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            console.log('📍 Enviando posição periódica...');
+            enviarPosicao(position, coletaId);
+          },
+          (error) => {
+            console.error('❌ Erro ao obter posição periódica:', error);
+          },
+          options
+        );
+      }, 30000); // 30 segundos
+
+      console.log('✅ Rastreamento GPS iniciado com sucesso para coleta:', coletaId);
+      console.log('📊 Status do rastreamento:', {
+        rastreamentoAtivo: rastreamentoAtivo,
+        coletaRastreamentoAtiva: coletaRastreamentoAtiva,
+        watchId: watchId,
+        intervaloRastreamento: intervaloRastreamento !== null
+      });
+      showToast('Rastreamento GPS ativado! Sua localização está sendo monitorada.', 'success');
+      
+      // Verificar se a primeira posição foi enviada após 5 segundos
+      setTimeout(() => {
+        if (rastreamentoAtivo && coletaRastreamentoAtiva === coletaId) {
+          console.log('✅ Rastreamento ainda ativo após 5 segundos');
+        } else {
+          console.warn('⚠️ Rastreamento não está mais ativo após 5 segundos');
+        }
+      }, 5000);
+    }
+
+    async function enviarPosicao(position, coletaId) {
+      if (!state.session?.access_token) {
+        console.error('❌ Sessão não encontrada para enviar posição');
+        return;
+      }
+
+      if (!coletaId) {
+        console.warn('⚠️ Enviar posição chamado sem coletaId, usando coleta ativa:', coletaRastreamentoAtiva);
+        coletaId = coletaRastreamentoAtiva;
+      }
+
+      if (!coletaId) {
+        console.error('❌ Não é possível enviar posição: coletaId não disponível');
+        return;
+      }
+
+      const { latitude, longitude, accuracy, altitude, speed, heading } = position.coords;
+      
+      console.log('📤 Enviando posição GPS:', {
+        coletaId: coletaId,
+        latitude: latitude,
+        longitude: longitude,
+        accuracy: accuracy
+      });
+
+      // Obter endereço reverso (opcional, pode ser feito no servidor)
+      let endereco = null;
+      try {
+        const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=18&addressdetails=1`);
+        const data = await response.json();
+        if (data.address) {
+          endereco = `${data.address.road || ''} ${data.address.house_number || ''}, ${data.address.city || data.address.town || ''}, ${data.address.state || ''}`.trim();
+        }
+      } catch (error) {
+        console.warn('Erro ao obter endereço:', error);
+      }
+
+      const dadosPosicao = {
+        coletaId: coletaId,
+        latitude: latitude,
+        longitude: longitude,
+        precisao: accuracy,
+        altitude: altitude || null,
+        velocidade: speed ? (speed * 3.6) : null, // Converter m/s para km/h
+        direcao: heading || null,
+        endereco: endereco,
+        bateriaNivel: null, // Não disponível via web API
+        conectadoWifi: navigator.onLine,
+        conectadoRedeCelular: navigator.onLine
+      };
+
+      try {
+        const response = await fetch('/api/rastreamento/enviar-posicao', {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${state.session.access_token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(dadosPosicao)
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({ error: 'Erro desconhecido' }));
+          console.error('❌ Erro ao enviar posição:', {
+            status: response.status,
+            error: errorData.error || 'Erro desconhecido'
+          });
+          throw new Error(errorData.error || 'Erro ao enviar posição');
+        }
+
+        const result = await response.json();
+        console.log('✅ Posição GPS enviada com sucesso:', {
+          coletaId: coletaId,
+          posicaoId: result.posicao?.id,
+          timestamp: new Date().toISOString(),
+          lat: latitude,
+          lng: longitude
+        });
+        
+        // Atualizar indicador visual de que posição foi enviada
+        const statusRastreamento = document.getElementById('statusRastreamento');
+        if (statusRastreamento) {
+          statusRastreamento.textContent = `📍 Última posição: ${new Date().toLocaleTimeString('pt-BR')}`;
+          statusRastreamento.style.color = '#4caf50';
+        }
+      } catch (error) {
+        console.error('❌ Erro ao enviar posição GPS:', error);
+        // Não mostrar toast para não incomodar o usuário, apenas logar
+      }
+    }
+
+    function pararRastreamento() {
+      if (watchId !== null) {
+        navigator.geolocation.clearWatch(watchId);
+        watchId = null;
+      }
+
+      if (intervaloRastreamento !== null) {
+        clearInterval(intervaloRastreamento);
+        intervaloRastreamento = null;
+      }
+
+      rastreamentoAtivo = false;
+      coletaRastreamentoAtiva = null;
+      showToast('Rastreamento GPS desativado.', 'info');
+    }
+
+    // Parar rastreamento quando a página for fechada ou quando a coleta for finalizada
+    window.addEventListener('beforeunload', () => {
+      if (rastreamentoAtivo) {
+        pararRastreamento();
+      }
+    });
 
     function abrirModalCadastro() {
       preencherFormularioCadastro();

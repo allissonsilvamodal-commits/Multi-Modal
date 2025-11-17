@@ -3,149 +3,478 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Motoristas com Falhas nos Disparos</title>
+    <title>Motoristas com Falhas nos Disparos - Multimodal</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
     <style>
         :root {
             --primary: #667eea;
             --secondary: #764ba2;
+            --accent: #f093fb;
             --danger: #ef4444;
             --warning: #f59e0b;
             --success: #10b981;
+            --info: #3b82f6;
+            --dark: #1f2937;
+            --light: #f8fafc;
+            
+            /* Variáveis para modo claro (padrão) */
+            --bg-body: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --bg-container: #ffffff;
+            --bg-card: #ffffff;
+            --text-primary: #1f2937;
+            --text-secondary: #6b7280;
+            --text-muted: #9ca3af;
+            --border-color: rgba(0,0,0,0.08);
+            --shadow-card: 0 4px 20px rgba(0,0,0,0.08);
+            --shadow-card-hover: 0 8px 30px rgba(0,0,0,0.12);
         }
+        
+        /* Variáveis para modo escuro */
+        body.dark-mode {
+            --bg-body: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            --bg-container: #1f2937;
+            --bg-card: #374151;
+            --text-primary: #f9fafb;
+            --text-secondary: #d1d5db;
+            --text-muted: #9ca3af;
+            --border-color: rgba(255,255,255,0.1);
+            --shadow-card: 0 4px 20px rgba(0,0,0,0.3);
+            --shadow-card-hover: 0 8px 30px rgba(0,0,0,0.4);
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
         body {
-            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--bg-body);
             padding: 2rem 0;
             min-height: 100vh;
+            color: var(--text-primary);
+            transition: background 0.3s ease, color 0.3s ease;
         }
         .container-max {
             max-width: 1400px;
             margin: 0 auto;
+            padding: 0 1rem;
         }
+        
+        /* Header Moderno */
         .header {
-            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
             color: white;
             padding: 2rem;
-            border-radius: 16px;
-            box-shadow: 0 8px 24px rgba(0,0,0,.15);
+            border-radius: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
             margin-bottom: 2rem;
+            position: relative;
+            overflow: hidden;
         }
-        .card {
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 4px 12px rgba(0,0,0,.1);
+        
+        body:not(.dark-mode) .header {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
             border: none;
+        }
+        
+        .header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(45deg, transparent 30%, rgba(255, 255, 255, 0.1) 50%, transparent 70%);
+            animation: shimmer 3s infinite;
+        }
+        
+        @keyframes shimmer {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+        
+        .header h1, .header p {
+            position: relative;
+            z-index: 1;
+        }
+        
+        body.dark-mode .header h1 {
+            color: white;
+        }
+        
+        body.dark-mode .header p {
+            color: rgba(255, 255, 255, 0.9);
+        }
+        
+        /* Toggle de Tema */
+        .theme-toggle {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            background: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 0.75rem 1.25rem;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+        
+        .theme-toggle:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: scale(1.05);
+        }
+        
+        body:not(.dark-mode) .theme-toggle {
+            background: rgba(102, 126, 234, 0.9);
+            border-color: rgba(255, 255, 255, 0.3);
+        }
+        
+        /* Cards Modernos */
+        .card {
+            background: var(--bg-card);
+            border-radius: 16px;
+            box-shadow: var(--shadow-card);
+            border: 1px solid var(--border-color);
             margin-bottom: 1.5rem;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            overflow: hidden;
         }
+        
+        .card:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-card-hover);
+        }
+        
         .card-header {
-            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
-            border-bottom: 2px solid #dee2e6;
-            padding: 1.25rem;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            border: none;
+            padding: 1.25rem 1.5rem;
             font-weight: 700;
-            color: #495057;
+            color: white;
+            position: relative;
+            overflow: hidden;
         }
+        
+        .card-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(45deg, transparent 30%, rgba(255, 255, 255, 0.1) 50%, transparent 70%);
+            animation: shimmer 3s infinite;
+        }
+        
+        .card-header h5 {
+            position: relative;
+            z-index: 1;
+            margin: 0;
+        }
+        
+        /* Cards de Estatísticas Modernos */
         .stats-card {
             text-align: center;
             padding: 1.5rem;
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            border-radius: 14px;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1), 
+                        0 0 0 1px rgba(102, 126, 234, 0.1) inset,
+                        0 0 15px rgba(102, 126, 234, 0.08);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
         }
+        
+        body:not(.dark-mode) .stats-card {
+            background: #ffffff;
+            border: 1px solid rgba(102, 126, 234, 0.25);
+            box-shadow: 0 2px 12px rgba(102, 126, 234, 0.1), 
+                        0 0 0 1px rgba(102, 126, 234, 0.08) inset;
+        }
+        
+        body.dark-mode .stats-card {
+            background: rgba(31, 41, 55, 0.6);
+            border: 1px solid rgba(102, 126, 234, 0.4);
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3), 
+                        0 0 0 1px rgba(102, 126, 234, 0.2) inset,
+                        0 0 20px rgba(102, 126, 234, 0.12);
+        }
+        
+        .stats-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, transparent, var(--primary), transparent);
+            opacity: 0.7;
+        }
+        
+        .stats-card::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(102, 126, 234, 0.1), transparent);
+            transition: left 0.5s ease;
+        }
+        
+        .stats-card:hover::after {
+            left: 100%;
+        }
+        
+        .stats-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.2), 
+                        0 0 0 1px rgba(102, 126, 234, 0.3) inset,
+                        0 0 25px rgba(102, 126, 234, 0.15);
+        }
+        
+        .stats-card.total::before { background: linear-gradient(90deg, transparent, var(--primary), transparent); }
+        .stats-card.erros::before { background: linear-gradient(90deg, transparent, var(--danger), transparent); }
+        .stats-card.pendentes::before { background: linear-gradient(90deg, transparent, var(--warning), transparent); }
+        .stats-card.corrigidos::before { background: linear-gradient(90deg, transparent, var(--success), transparent); }
+        
         .stats-card .number {
-            font-size: 2.5rem;
+            font-size: 2.25rem;
             font-weight: 800;
             margin: 0.5rem 0;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            letter-spacing: -1px;
         }
+        
+        .stats-card.erros .number {
+            background: linear-gradient(135deg, var(--danger), #dc2626);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .stats-card.pendentes .number {
+            background: linear-gradient(135deg, var(--warning), #f59e0b);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .stats-card.corrigidos .number {
+            background: linear-gradient(135deg, var(--success), #059669);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
         .stats-card .label {
-            color: #6c757d;
-            font-size: 0.9rem;
+            color: var(--text-secondary);
+            font-size: 0.8rem;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
+            letter-spacing: 0.8px;
+            font-weight: 600;
+            margin-top: 0.5rem;
         }
-        .stats-card.total { border-left: 4px solid var(--primary); }
-        .stats-card.erros { border-left: 4px solid var(--danger); }
-        .stats-card.corrigidos { border-left: 4px solid var(--success); }
-        .stats-card.pendentes { border-left: 4px solid var(--warning); }
         .table {
             margin-bottom: 0;
+            color: var(--text-primary);
         }
+        
         .table thead {
-            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
         }
+        
         .table thead th {
             border: none;
             font-weight: 700;
-            color: #495057;
+            color: white;
             text-transform: uppercase;
-            font-size: 0.85rem;
+            font-size: 0.8rem;
             letter-spacing: 0.5px;
+            padding: 1rem;
         }
+        
         .table tbody tr {
             transition: all 0.2s ease;
+            border-bottom: 1px solid var(--border-color);
         }
+        
+        .table tbody td {
+            padding: 1rem;
+            color: var(--text-primary);
+            vertical-align: middle;
+        }
+        
         .table tbody tr:hover {
-            background: #f8f9fa;
-            transform: translateX(2px);
+            background: rgba(102, 126, 234, 0.05);
+            transform: translateX(3px);
+        }
+        
+        body.dark-mode .table tbody tr:hover {
+            background: rgba(102, 126, 234, 0.1);
         }
         .badge-status {
             padding: 0.4rem 0.8rem;
             border-radius: 20px;
             font-weight: 600;
-            font-size: 0.8rem;
+            font-size: 0.75rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.3rem;
         }
+        
         .badge-error {
-            background: #fee2e2;
-            color: #dc2626;
+            background: rgba(239, 68, 68, 0.15);
+            color: #ef4444;
+            border: 1px solid rgba(239, 68, 68, 0.3);
         }
+        
+        body.dark-mode .badge-error {
+            background: rgba(239, 68, 68, 0.3);
+            color: #fca5a5;
+        }
+        
         .badge-success {
-            background: #d1fae5;
-            color: #059669;
+            background: rgba(16, 185, 129, 0.15);
+            color: #10b981;
+            border: 1px solid rgba(16, 185, 129, 0.3);
         }
+        
+        body.dark-mode .badge-success {
+            background: rgba(16, 185, 129, 0.3);
+            color: #6ee7b7;
+        }
+        
         .badge-warning {
-            background: #fef3c7;
-            color: #d97706;
+            background: rgba(245, 158, 11, 0.15);
+            color: #f59e0b;
+            border: 1px solid rgba(245, 158, 11, 0.3);
+        }
+        
+        body.dark-mode .badge-warning {
+            background: rgba(245, 158, 11, 0.3);
+            color: #fcd34d;
         }
         .btn-action {
-            padding: 0.4rem 0.8rem;
-            border-radius: 8px;
+            padding: 0.5rem 1rem;
+            border-radius: 10px;
             font-size: 0.85rem;
             font-weight: 600;
             border: none;
             cursor: pointer;
-            transition: all 0.2s ease;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
         }
+        
         .btn-edit {
-            background: var(--primary);
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
             color: white;
         }
+        
         .btn-edit:hover {
-            background: var(--secondary);
             transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(102, 126, 234, 0.3);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
         }
+        
         .btn-view {
-            background: #6c757d;
+            background: linear-gradient(135deg, #6b7280, #4b5563);
             color: white;
         }
+        
         .btn-view:hover {
-            background: #5a6268;
             transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(107, 114, 128, 0.4);
         }
+        
         .btn-export {
-            background: var(--success);
+            background: linear-gradient(135deg, var(--success), #059669);
             color: white;
         }
+        
         .btn-export:hover {
-            background: #059669;
             transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(16, 185, 129, 0.3);
+            box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            border: none;
+            border-radius: 10px;
+            padding: 0.75rem 1.5rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+        
+        .btn-secondary {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            border-radius: 10px;
+            padding: 0.75rem 1.5rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-secondary:hover {
+            background: var(--border-color);
+            transform: translateY(-2px);
         }
         .filters-container {
-            background: white;
+            background: var(--bg-card);
             padding: 1.5rem;
-            border-radius: 12px;
-            box-shadow: 0 4px 12px rgba(0,0,0,.1);
+            border-radius: 16px;
+            box-shadow: var(--shadow-card);
+            border: 1px solid var(--border-color);
             margin-bottom: 2rem;
+        }
+        
+        .form-control, .form-select {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            border-radius: 10px;
+            padding: 0.75rem 1rem;
+            transition: all 0.3s ease;
+        }
+        
+        .form-control:focus, .form-select:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+            background: var(--bg-card);
+            color: var(--text-primary);
+        }
+        
+        .form-label {
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 0.5rem;
         }
         .loading-spinner {
             display: inline-block;
@@ -161,13 +490,28 @@
         }
         .empty-state {
             text-align: center;
-            padding: 3rem;
-            color: #6c757d;
+            padding: 4rem 2rem;
+            color: var(--text-secondary);
         }
+        
         .empty-state i {
-            font-size: 4rem;
-            margin-bottom: 1rem;
-            opacity: 0.5;
+            font-size: 5rem;
+            margin-bottom: 1.5rem;
+            opacity: 0.4;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .empty-state h5 {
+            color: var(--text-primary);
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+        
+        .empty-state p {
+            color: var(--text-secondary);
         }
         .modal-header {
             background: linear-gradient(135deg, var(--primary), var(--secondary));
@@ -175,38 +519,210 @@
         }
         .form-label {
             font-weight: 600;
-            color: #495057;
+            color: var(--text-primary);
             margin-bottom: 0.5rem;
+        }
+        
+        body.dark-mode .form-label {
+            color: var(--text-primary);
         }
         .form-control:focus {
             border-color: var(--primary);
             box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
         }
         .alert-info {
-            background: #dbeafe;
-            border-left: 4px solid #3b82f6;
-            color: #1e40af;
+            background: rgba(59, 130, 246, 0.1);
+            border-left: 4px solid var(--info);
+            color: var(--text-primary);
+            border-radius: 10px;
+            padding: 1rem 1.25rem;
+        }
+        
+        body.dark-mode .alert-info {
+            background: rgba(59, 130, 246, 0.15);
+            border-left-color: var(--info);
+        }
+        
+        /* Textos no modo escuro */
+        body.dark-mode .text-muted,
+        body.dark-mode small.text-muted {
+            color: var(--text-secondary) !important;
+        }
+        
+        body.dark-mode .form-label,
+        body.dark-mode label {
+            color: var(--text-primary) !important;
+        }
+        
+        body.dark-mode .btn-outline-secondary {
+            border-color: rgba(255, 255, 255, 0.3);
+            color: var(--text-primary);
+        }
+        
+        body.dark-mode .btn-outline-secondary:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--text-primary);
+        }
+        
+        body.dark-mode .btn-light {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.2);
+            color: var(--text-primary);
+        }
+        
+        body.dark-mode .btn-light:hover {
+            background: rgba(255, 255, 255, 0.2);
+            color: var(--text-primary);
+        }
+        
+        body.dark-mode h1,
+        body.dark-mode h2,
+        body.dark-mode h3,
+        body.dark-mode h4,
+        body.dark-mode h5,
+        body.dark-mode h6 {
+            color: var(--text-primary);
+        }
+        
+        body.dark-mode .card-header h5,
+        body.dark-mode .card-header h6 {
+            color: white;
+        }
+        
+        body.dark-mode .modal-body {
+            background: var(--bg-card);
+            color: var(--text-primary);
+        }
+        
+        body.dark-mode .modal-body .form-label,
+        body.dark-mode .modal-body label {
+            color: var(--text-primary);
+        }
+        
+        body.dark-mode .modal-body small,
+        body.dark-mode .modal-body .text-muted {
+            color: var(--text-secondary);
+        }
+        
+        body.dark-mode .modal-footer {
+            background: var(--bg-card);
+            border-top: 1px solid var(--border-color);
+        }
+        
+        body.dark-mode .modal-footer .btn-secondary {
+            background: var(--bg-container);
+            border-color: var(--border-color);
+            color: var(--text-primary);
+        }
+        
+        body.dark-mode .modal-footer .btn-secondary:hover {
+            background: var(--border-color);
+            color: var(--text-primary);
+        }
+        
+        /* Gráficos */
+        .chart-container {
+            padding: 1.5rem;
+            min-height: 300px;
+            position: relative;
+        }
+        
+        .chart-container canvas {
+            max-height: 300px;
         }
         .pagination {
             justify-content: center;
         }
         .page-link {
             color: var(--primary);
+            background: var(--bg-card);
+            border-color: var(--border-color);
         }
+        
+        body.dark-mode .page-link {
+            color: var(--text-primary);
+            background: var(--bg-card);
+            border-color: var(--border-color);
+        }
+        
         .page-link:hover {
             color: var(--secondary);
+            background: rgba(102, 126, 234, 0.1);
         }
+        
+        body.dark-mode .page-link:hover {
+            color: var(--text-primary);
+            background: rgba(102, 126, 234, 0.2);
+        }
+        
         .page-item.active .page-link {
             background: var(--primary);
             border-color: var(--primary);
+            color: white;
+        }
+        
+        body.dark-mode .page-item.active .page-link {
+            background: var(--primary);
+            border-color: var(--primary);
+            color: white;
+        }
+        
+        body.dark-mode .page-item.disabled .page-link {
+            color: var(--text-muted);
+            background: var(--bg-card);
+            border-color: var(--border-color);
+        }
+        
+        /* Form controls no modo escuro */
+        body.dark-mode .form-control,
+        body.dark-mode .form-select {
+            background: var(--bg-container);
+            border-color: var(--border-color);
+            color: var(--text-primary);
+        }
+        
+        body.dark-mode .form-control:focus,
+        body.dark-mode .form-select:focus {
+            background: var(--bg-container);
+            border-color: var(--primary);
+            color: var(--text-primary);
+            box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+        }
+        
+        body.dark-mode .form-control::placeholder {
+            color: var(--text-muted);
+        }
+        
+        body.dark-mode textarea.form-control {
+            background: var(--bg-container);
+            border-color: var(--border-color);
+            color: var(--text-primary);
+        }
+        
+        body.dark-mode code {
+            background: var(--bg-container);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
         }
     </style>
 </head>
 <body>
+    <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()" title="Alternar modo claro/escuro">
+        <i class="fas fa-moon" id="themeIcon"></i>
+        <span id="themeText">Modo Escuro</span>
+    </button>
+    
     <div class="container-max">
         <div class="header">
-            <h1 class="mb-2"><i class="fas fa-exclamation-triangle me-2"></i>Motoristas com Falhas nos Disparos</h1>
-            <p class="mb-0">Registro e correção de números de telefone com problemas nos disparos</p>
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="mb-2"><i class="fas fa-exclamation-triangle me-2"></i>Motoristas com Falhas nos Disparos</h1>
+                    <p class="mb-0">Registro e correção de números de telefone com problemas nos disparos</p>
+                </div>
+                <a href="relatorios.html" class="btn btn-light btn-sm">
+                    <i class="fas fa-arrow-left me-1"></i>Voltar
+                </a>
+            </div>
         </div>
 
         <!-- Estatísticas -->
@@ -243,6 +759,18 @@
                 <h5 class="mb-0"><i class="fas fa-chart-pie me-2"></i>Análise por Motivo da Falha</h5>
             </div>
             <div class="card-body">
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <div class="chart-container">
+                            <canvas id="chartMotivos"></canvas>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="chart-container">
+                            <canvas id="chartEvolucaoFalhas"></canvas>
+                        </div>
+                    </div>
+                </div>
                 <div class="row" id="motivosEstatisticas">
                     <!-- Será preenchido dinamicamente -->
                 </div>
@@ -516,8 +1044,48 @@
         let allFalhas = [];
         let currentPage = 1;
         const itemsPerPage = 20;
+        let chartMotivos = null;
+        let chartEvolucaoFalhas = null;
+
+        // ========== MODO CLARO/ESCURO ==========
+        function initTheme() {
+            const savedTheme = localStorage.getItem('theme') || 'dark';
+            applyTheme(savedTheme);
+        }
+        
+        function applyTheme(theme) {
+            const body = document.body;
+            const themeIcon = document.getElementById('themeIcon');
+            const themeText = document.getElementById('themeText');
+            
+            if (theme === 'dark') {
+                body.classList.add('dark-mode');
+                if (themeIcon) themeIcon.className = 'fas fa-moon';
+                if (themeText) themeText.textContent = 'Modo Escuro';
+            } else {
+                body.classList.remove('dark-mode');
+                if (themeIcon) themeIcon.className = 'fas fa-sun';
+                if (themeText) themeText.textContent = 'Modo Claro';
+            }
+            
+            localStorage.setItem('theme', theme);
+            
+            // Atualizar gráficos se existirem (precisa recalcular dados)
+            if (allFalhas.length > 0) {
+                atualizarAnaliseMotivos();
+            }
+        }
+        
+        function toggleTheme() {
+            const currentTheme = document.body.classList.contains('dark-mode') ? 'dark' : 'light';
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            applyTheme(newTheme);
+        }
+        
+        window.toggleTheme = toggleTheme;
 
         document.addEventListener('DOMContentLoaded', async () => {
+            initTheme();
             await initSupabase();
             await carregarFalhas();
         });
@@ -838,6 +1406,14 @@
             
             if (allFalhas.length === 0) {
                 analiseCard.style.display = 'none';
+                if (chartMotivos) {
+                    chartMotivos.destroy();
+                    chartMotivos = null;
+                }
+                if (chartEvolucaoFalhas) {
+                    chartEvolucaoFalhas.destroy();
+                    chartEvolucaoFalhas = null;
+                }
                 return;
             }
 
@@ -872,6 +1448,10 @@
             // Calcular percentuais
             const totalGeral = motivosArray.reduce((sum, m) => sum + m.total, 0);
 
+            // Atualizar gráficos
+            atualizarGraficoMotivos(motivosArray);
+            atualizarGraficoEvolucao();
+
             motivosEstatisticas.innerHTML = '';
 
             motivosArray.forEach(motivo => {
@@ -886,25 +1466,165 @@
                 const col = document.createElement('div');
                 col.className = 'col-md-6 col-lg-4 mb-3';
                 col.innerHTML = `
-                    <div class="card h-100">
+                    <div class="card h-100" style="background: var(--bg-card); border: 1px solid var(--border-color);">
                         <div class="card-body">
                             <div class="d-flex justify-content-between align-items-start mb-2">
                                 <div>
-                                    <h6 class="mb-1">
+                                    <h6 class="mb-1" style="color: var(--text-primary);">
                                         <i class="fas ${motivo.icone} me-2"></i>${motivo.descricao}
                                     </h6>
                                     <span class="badge badge-status ${badgeClass}">${percentual}%</span>
                                 </div>
                             </div>
                             <div class="mt-2">
-                                <div class="text-muted small">Total de falhas</div>
-                                <div class="h4 mb-0">${motivo.total.toLocaleString('pt-BR')}</div>
-                                <div class="text-muted small mt-1">${motoristasUnicos.toLocaleString('pt-BR')} motorista(s) único(s)</div>
+                                <div style="color: var(--text-secondary); font-size: 0.85rem;">Total de falhas</div>
+                                <div class="h4 mb-0" style="color: var(--text-primary);">${motivo.total.toLocaleString('pt-BR')}</div>
+                                <div style="color: var(--text-secondary); font-size: 0.85rem; margin-top: 0.5rem;">${motoristasUnicos.toLocaleString('pt-BR')} motorista(s) único(s)</div>
                             </div>
                         </div>
                     </div>
                 `;
                 motivosEstatisticas.appendChild(col);
+            });
+        }
+        
+        function atualizarGraficoMotivos(motivosArray) {
+            const ctx = document.getElementById('chartMotivos');
+            if (!ctx) return;
+            
+            if (chartMotivos) chartMotivos.destroy();
+            
+            const labels = motivosArray.map(m => m.descricao);
+            const data = motivosArray.map(m => m.total);
+            const cores = motivosArray.map(m => {
+                if (m.cor === 'danger') return '#ef4444';
+                if (m.cor === 'warning') return '#f59e0b';
+                if (m.cor === 'success') return '#10b981';
+                return '#6b7280';
+            });
+            
+            const isDark = document.body.classList.contains('dark-mode');
+            
+            chartMotivos = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: data,
+                        backgroundColor: cores,
+                        borderWidth: 2,
+                        borderColor: isDark ? '#1f2937' : '#ffffff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                color: isDark ? '#d1d5db' : '#4b5563',
+                                padding: 12,
+                                font: { size: 11, weight: '500' },
+                                usePointStyle: true
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: isDark ? 'rgba(31, 41, 55, 0.95)' : 'rgba(0, 0, 0, 0.8)',
+                            titleColor: '#ffffff',
+                            bodyColor: '#ffffff',
+                            borderColor: 'rgba(102, 126, 234, 0.5)',
+                            borderWidth: 1,
+                            cornerRadius: 8
+                        }
+                    }
+                }
+            });
+        }
+        
+        function atualizarGraficoEvolucao() {
+            const ctx = document.getElementById('chartEvolucaoFalhas');
+            if (!ctx) return;
+            
+            if (chartEvolucaoFalhas) chartEvolucaoFalhas.destroy();
+            
+            // Agrupar falhas por dia (últimos 30 dias)
+            const hoje = new Date();
+            const dias = [];
+            const contagens = [];
+            
+            for (let i = 29; i >= 0; i--) {
+                const data = new Date(hoje);
+                data.setDate(data.getDate() - i);
+                const dataStr = data.toISOString().split('T')[0];
+                
+                const falhasDoDia = allFalhas.filter(f => {
+                    const dataFalha = new Date(f.ultimaFalha.created_at).toISOString().split('T')[0];
+                    return dataFalha === dataStr;
+                }).reduce((sum, f) => sum + f.totalFalhas, 0);
+                
+                dias.push(data.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }));
+                contagens.push(falhasDoDia);
+            }
+            
+            const isDark = document.body.classList.contains('dark-mode');
+            
+            chartEvolucaoFalhas = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: dias,
+                    datasets: [{
+                        label: 'Falhas por Dia',
+                        data: contagens,
+                        borderColor: '#ef4444',
+                        backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.4,
+                        pointRadius: 4,
+                        pointHoverRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            backgroundColor: isDark ? 'rgba(31, 41, 55, 0.95)' : 'rgba(0, 0, 0, 0.8)',
+                            titleColor: '#ffffff',
+                            bodyColor: '#ffffff',
+                            borderColor: 'rgba(239, 68, 68, 0.5)',
+                            borderWidth: 1,
+                            cornerRadius: 8
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                color: isDark ? '#d1d5db' : '#4b5563',
+                                font: { size: 11 }
+                            },
+                            grid: {
+                                color: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)'
+                            }
+                        },
+                        x: {
+                            ticks: {
+                                color: isDark ? '#d1d5db' : '#4b5563',
+                                font: { size: 11 },
+                                maxRotation: 45,
+                                minRotation: 45
+                            },
+                            grid: {
+                                display: false
+                            }
+                        }
+                    }
+                }
             });
         }
 
@@ -949,25 +1669,25 @@
                 else if (motivo.cor === 'secondary') badgeClass = 'badge-status';
                 
                 row.innerHTML = `
-                    <td>${dataFalha.toLocaleString('pt-BR')}</td>
-                    <td><code>${falha.numero}</code></td>
-                    <td>${motorista ? motorista.nome : '<span class="text-muted">Não encontrado</span>'}</td>
-                    <td><code>${motorista ? (motorista.telefone1 || '-') : '-'}</code></td>
-                    <td><code>${motorista ? (motorista.telefone2 || '-') : '-'}</code></td>
+                    <td style="color: var(--text-primary);">${dataFalha.toLocaleString('pt-BR')}</td>
+                    <td><code style="background: var(--bg-card); padding: 0.25rem 0.5rem; border-radius: 6px; color: var(--primary);">${falha.numero}</code></td>
+                    <td style="color: var(--text-primary); font-weight: 600;">${motorista ? motorista.nome : '<span style="color: var(--text-muted);">Não encontrado</span>'}</td>
+                    <td><code style="background: var(--bg-card); padding: 0.25rem 0.5rem; border-radius: 6px; color: var(--text-primary);">${motorista ? (motorista.telefone1 || '-') : '-'}</code></td>
+                    <td><code style="background: var(--bg-card); padding: 0.25rem 0.5rem; border-radius: 6px; color: var(--text-primary);">${motorista ? (motorista.telefone2 || '-') : '-'}</code></td>
                     <td>
                         <span class="badge badge-status ${badgeClass}" title="${motivo.descricao}">
                             <i class="fas ${motivo.icone} me-1"></i>${motivo.descricao}
                         </span>
                     </td>
                     <td><span class="badge badge-status badge-error">${falha.totalFalhas} falha(s)</span></td>
-                    <td>${falha.usuarioNome || 'Anônimo'}</td>
+                    <td style="color: var(--text-secondary);">${falha.usuarioNome || 'Anônimo'}</td>
                     <td>
                         ${motorista ? `
-                            <button class="btn btn-action btn-edit me-2" onclick="editarMotorista('${motorista.id}')">
+                            <button class="btn btn-action btn-edit me-2" onclick="editarMotorista('${motorista.id}')" title="Editar motorista">
                                 <i class="fas fa-edit"></i> Editar
                             </button>
                         ` : `
-                            <span class="text-muted">N/A</span>
+                            <span style="color: var(--text-muted);">N/A</span>
                         `}
                     </td>
                 `;

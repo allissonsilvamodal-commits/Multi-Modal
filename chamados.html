@@ -3,35 +3,67 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Chamados - Sistema de Suporte</title>
+  <title>Sistema de Chamados - Multimodal</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
   <script src="js/permissions.js"></script>
   <style>
     :root {
       --primary: #667eea;
+      --secondary: #764ba2;
       --primary-dark: #5a6fd8;
+      --accent: #f093fb;
       --success: #10b981;
       --warning: #f59e0b;
       --danger: #ef4444;
       --info: #3b82f6;
       --dark: #1f2937;
       --light: #f8fafc;
+      
+      /* Variáveis para modo claro (padrão) */
+      --bg-body: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      --bg-container: #ffffff;
+      --bg-card: #ffffff;
+      --text-primary: #1f2937;
+      --text-secondary: #6b7280;
+      --text-muted: #9ca3af;
+      --border-color: rgba(0,0,0,0.03);
+      --shadow-card: 0 8px 30px rgba(0,0,0,0.08);
+      --shadow-card-hover: 0 20px 40px rgba(0,0,0,0.12);
+      --shadow-container: 0 0 50px rgba(0,0,0,0.1);
+    }
+    
+    /* Variáveis para modo escuro */
+    body.dark-mode {
+      --bg-body: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      --bg-container: #1f2937;
+      --bg-card: #374151;
+      --text-primary: #f9fafb;
+      --text-secondary: #d1d5db;
+      --text-muted: #9ca3af;
+      --border-color: rgba(255,255,255,0.1);
+      --shadow-card: 0 8px 30px rgba(0,0,0,0.3);
+      --shadow-card-hover: 0 20px 40px rgba(0,0,0,0.4);
+      --shadow-container: 0 0 50px rgba(0,0,0,0.3);
     }
     
     body { 
       padding: 0;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      background: var(--bg-body);
       min-height: 100vh;
       font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+      color: var(--text-primary);
+      transition: background 0.3s ease, color 0.3s ease;
     }
     
     .app-container {
-      background: white;
+      background: var(--bg-container);
       min-height: 100vh;
       border-radius: 0;
-      box-shadow: 0 0 50px rgba(0,0,0,0.1);
+      box-shadow: var(--shadow-container);
+      transition: background 0.3s ease, box-shadow 0.3s ease;
     }
     
     .app-header {
@@ -45,18 +77,19 @@
     }
     
     .modern-card {
-      background: white;
+      background: var(--bg-card);
       border: none;
       border-radius: 20px;
-      box-shadow: 0 8px 30px rgba(0,0,0,0.08);
+      box-shadow: var(--shadow-card);
       transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
       overflow: hidden;
-      border: 1px solid rgba(0,0,0,0.03);
+      border: 1px solid var(--border-color);
+      color: var(--text-primary);
     }
     
     .modern-card:hover {
       transform: translateY(-4px);
-      box-shadow: 0 20px 40px rgba(0,0,0,0.12);
+      box-shadow: var(--shadow-card-hover);
     }
     
     .chamado-card {
@@ -89,6 +122,14 @@
     .badge-fechado { background: #e5e7eb; color: #4b5563; }
     .badge-cancelado { background: #fee2e2; color: #991b1b; }
     
+    /* Ajustes para modo escuro nos badges */
+    body.dark-mode .badge-aberto { background: rgba(59, 130, 246, 0.3); color: #93c5fd; }
+    body.dark-mode .badge-em_andamento { background: rgba(245, 158, 11, 0.3); color: #fcd34d; }
+    body.dark-mode .badge-aguardando { background: #4b5563; color: #f3f4f6; }
+    body.dark-mode .badge-resolvido { background: rgba(16, 185, 129, 0.3); color: #6ee7b7; }
+    body.dark-mode .badge-fechado { background: #6b7280; color: #f9fafb; }
+    body.dark-mode .badge-cancelado { background: rgba(239, 68, 68, 0.3); color: #fca5a5; }
+    
     .btn-modern {
       border: none;
       border-radius: 14px;
@@ -108,15 +149,19 @@
     }
     
     .form-control-modern {
-      border: 2px solid #e2e8f0;
+      border: 2px solid var(--border-color);
       border-radius: 12px;
       padding: 1rem;
       transition: all 0.3s ease;
+      background-color: var(--bg-card);
+      color: var(--text-primary);
     }
     
     .form-control-modern:focus {
       border-color: var(--primary);
-      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
+      background-color: var(--bg-card);
+      color: var(--text-primary);
     }
     
     .stats-grid {
@@ -127,11 +172,13 @@
     }
     
     .stat-card {
-      background: white;
+      background: var(--bg-card);
       padding: 1.5rem;
       border-radius: 16px;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+      box-shadow: var(--shadow-card);
       text-align: center;
+      color: var(--text-primary);
+      transition: background 0.3s ease, box-shadow 0.3s ease;
     }
     
     .stat-number {
@@ -150,22 +197,926 @@
     }
     
     .upload-area {
-      border: 2px dashed #cbd5e1;
+      border: 2px dashed var(--border-color);
       border-radius: 12px;
       padding: 2rem;
       text-align: center;
       transition: all 0.3s ease;
       cursor: pointer;
+      background: var(--bg-card);
+      color: var(--text-primary);
     }
     
     .upload-area:hover {
       border-color: var(--primary);
-      background: rgba(102, 126, 234, 0.05);
+      background: rgba(102, 126, 234, 0.1);
     }
     
     .upload-area.dragover {
       border-color: var(--success);
+      background: rgba(16, 185, 129, 0.15);
+    }
+    
+    /* Dashboard Avançado */
+    .dashboard-advanced {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+    
+    .metric-card-advanced {
+      background: rgba(255, 255, 255, 0.08);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(102, 126, 234, 0.3);
+      border-radius: 12px;
+      box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1), 
+                  0 0 0 1px rgba(102, 126, 234, 0.1) inset,
+                  0 0 15px rgba(102, 126, 234, 0.08);
+      padding: 1rem 1.25rem;
+      position: relative;
+      overflow: hidden;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    
+    body.dark-mode .metric-card-advanced {
+      background: rgba(31, 41, 55, 0.6);
+      border: 1px solid rgba(102, 126, 234, 0.4);
+      box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3), 
+                  0 0 0 1px rgba(102, 126, 234, 0.2) inset,
+                  0 0 20px rgba(102, 126, 234, 0.12);
+    }
+    
+    body:not(.dark-mode) .metric-card-advanced {
+      background: #ffffff;
+      border: 1px solid rgba(102, 126, 234, 0.35);
+      box-shadow: 0 2px 12px rgba(102, 126, 234, 0.15), 
+                  0 0 0 1px rgba(102, 126, 234, 0.12) inset,
+                  0 0 15px rgba(102, 126, 234, 0.1);
+    }
+    
+    body:not(.dark-mode) .metric-card-advanced:hover {
+      box-shadow: 0 6px 25px rgba(102, 126, 234, 0.25), 
+                  0 0 0 1px rgba(102, 126, 234, 0.4) inset,
+                  0 0 25px rgba(102, 126, 234, 0.2);
+    }
+    
+    .metric-card-advanced::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--primary), transparent);
+      opacity: 0.6;
+    }
+    
+    .metric-card-advanced::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(102, 126, 234, 0.1), transparent);
+      transition: left 0.5s ease;
+    }
+    
+    .metric-card-advanced:hover::after {
+      left: 100%;
+    }
+    
+    .metric-card-advanced:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 6px 25px rgba(102, 126, 234, 0.2), 
+                  0 0 0 1px rgba(102, 126, 234, 0.3) inset,
+                  0 0 25px rgba(102, 126, 234, 0.15);
+      border-color: rgba(102, 126, 234, 0.5);
+    }
+    
+    .metric-icon {
+      font-size: 1.5rem;
+      margin-bottom: 0.5rem;
+      opacity: 0.9;
+      filter: drop-shadow(0 0 8px rgba(102, 126, 234, 0.4));
+    }
+    
+    body:not(.dark-mode) .metric-icon {
+      opacity: 1;
+      filter: drop-shadow(0 0 4px rgba(102, 126, 234, 0.3));
+    }
+    
+    .metric-value-large {
+      font-size: 2rem;
+      font-weight: 800;
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      line-height: 1.1;
+      margin: 0.25rem 0;
+      letter-spacing: -0.5px;
+    }
+    
+    .metric-label-advanced {
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+      font-weight: 600;
+      margin-top: 0.25rem;
+      transition: color 0.3s ease;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    
+    body:not(.dark-mode) .metric-label-advanced {
+      color: #4b5563;
+      opacity: 1;
+    }
+    
+    body.dark-mode .metric-label-advanced {
+      opacity: 0.85;
+    }
+    
+    .metric-trend {
+      font-size: 0.7rem;
+      margin-top: 0.25rem;
+      font-weight: 600;
+    }
+    
+    .metric-trend.up { color: var(--success); }
+    .metric-trend.down { color: var(--danger); }
+    
+    /* Notificações em tempo real */
+    .notification-badge {
+      position: fixed;
+      top: 80px;
+      right: 20px;
+      z-index: 9998;
+      min-width: 300px;
+      max-width: 400px;
+    }
+    
+    .notification-item {
+      background: var(--bg-card);
+      border-radius: 12px;
+      padding: 1rem;
+      margin-bottom: 0.5rem;
+      box-shadow: var(--shadow-card);
+      border-left: 4px solid var(--primary);
+      animation: slideInRight 0.3s ease;
+      color: var(--text-primary);
+      transition: background 0.3s ease;
+    }
+    
+    @keyframes slideInRight {
+      from {
+        transform: translateX(100%);
+        opacity: 0;
+      }
+      to {
+        transform: translateX(0);
+        opacity: 1;
+      }
+    }
+    
+    /* Timeline de histórico */
+    .timeline {
+      position: relative;
+      padding-left: 2rem;
+    }
+    
+    .timeline::before {
+      content: '';
+      position: absolute;
+      left: 0.5rem;
+      top: 0;
+      bottom: 0;
+      width: 2px;
+      background: linear-gradient(180deg, var(--primary), var(--accent));
+    }
+    
+    .timeline-item {
+      position: relative;
+      padding-bottom: 1.5rem;
+    }
+    
+    .timeline-item::before {
+      content: '';
+      position: absolute;
+      left: -1.75rem;
+      top: 0.25rem;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: var(--primary);
+      border: 3px solid var(--bg-container);
+      box-shadow: 0 0 0 3px var(--primary);
+      transition: border-color 0.3s ease;
+    }
+    
+    .timeline-content {
+      background: var(--bg-card);
+      border-radius: 10px;
+      padding: 1rem;
+      margin-left: 0.5rem;
+      color: var(--text-primary);
+      border: 1px solid var(--border-color);
+      transition: background 0.3s ease, border-color 0.3s ease;
+    }
+    
+    /* Comentários */
+    .comment-item {
+      background: var(--bg-card);
+      border-radius: 12px;
+      padding: 1rem;
+      margin-bottom: 1rem;
+      color: var(--text-primary);
+      transition: background 0.3s ease;
+      border-left: 3px solid var(--primary);
+    }
+    
+    .comment-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.5rem;
+    }
+    
+    .comment-author {
+      font-weight: 700;
+      color: var(--primary);
+    }
+    
+    .comment-date {
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      transition: color 0.3s ease;
+    }
+    
+    /* SLA Badge */
+    .sla-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.4rem 0.8rem;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      font-weight: 600;
+    }
+    
+    .sla-badge.ok { background: #d1fae5; color: #065f46; }
+    .sla-badge.warning { background: #fef3c7; color: #92400e; }
+    .sla-badge.critical { background: #fee2e2; color: #991b1b; }
+    
+    /* Ajustes para modo escuro nos SLA badges */
+    body.dark-mode .sla-badge.ok { background: rgba(16, 185, 129, 0.3); color: #6ee7b7; }
+    body.dark-mode .sla-badge.warning { background: rgba(245, 158, 11, 0.3); color: #fcd34d; }
+    body.dark-mode .sla-badge.critical { background: rgba(239, 68, 68, 0.3); color: #fca5a5; }
+    
+    /* Filtros avançados */
+    .filters-advanced {
+      background: var(--bg-card);
+      border-radius: 20px;
+      padding: 1.5rem;
+      margin-bottom: 2rem;
+      box-shadow: var(--shadow-card);
+      border: 1px solid var(--border-color);
+      transition: background 0.3s ease, box-shadow 0.3s ease;
+    }
+    
+    /* Busca avançada */
+    .search-advanced {
+      position: relative;
+    }
+    
+    .search-advanced input {
+      padding-left: 3rem;
+    }
+    
+    .search-advanced .search-icon {
+      position: absolute;
+      left: 1rem;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-muted);
+      transition: color 0.3s ease;
+    }
+    
+    /* Tags */
+    .tag-item {
+      display: inline-block;
+      background: rgba(102, 126, 234, 0.1);
+      color: var(--primary);
+      padding: 0.25rem 0.75rem;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      margin: 0.25rem;
+    }
+    
+    /* Sistema de Estrelas para Satisfação */
+    .rating-stars {
+      display: flex;
+      flex-direction: row-reverse;
+      justify-content: flex-end;
+      gap: 0.5rem;
+    }
+    
+    .rating-stars input[type="radio"] {
+      display: none;
+    }
+    
+    .rating-stars .star-label {
+      font-size: 2rem;
+      color: #ddd;
+      cursor: pointer;
+      transition: color 0.2s;
+    }
+    
+    .rating-stars input[type="radio"]:checked ~ .star-label,
+    .rating-stars .star-label:hover,
+    .rating-stars .star-label:hover ~ .star-label {
+      color: #ffc107;
+    }
+    
+    .rating-stars input[type="radio"]:checked ~ .star-label {
+      color: #ffc107;
+    }
+    
+    /* Número do chamado */
+    .chamado-numero {
+      font-family: 'Courier New', monospace;
+      font-weight: 700;
+      color: var(--primary);
+      font-size: 0.9rem;
+    }
+    
+    /* Atribuição */
+    .atribuicao-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.4rem 0.8rem;
       background: rgba(16, 185, 129, 0.1);
+      color: var(--success);
+      border-radius: 20px;
+      font-size: 0.85rem;
+      font-weight: 600;
+    }
+    
+    body.dark-mode .atribuicao-badge {
+      background: rgba(16, 185, 129, 0.3);
+      color: #6ee7b7;
+    }
+    
+    /* Gráficos - Design Tecnológico Compacto */
+    .chart-container-advanced {
+      background: rgba(255, 255, 255, 0.08);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(102, 126, 234, 0.3);
+      border-radius: 16px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15), 
+                  0 0 0 1px rgba(102, 126, 234, 0.1) inset,
+                  0 0 20px rgba(102, 126, 234, 0.1);
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+      overflow: hidden;
+      margin-bottom: 1rem;
+    }
+    
+    body:not(.dark-mode) .chart-container-advanced {
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+    }
+    
+    body.dark-mode .chart-container-advanced {
+      background: rgba(31, 41, 55, 0.6);
+      border: 1px solid rgba(102, 126, 234, 0.4);
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4), 
+                  0 0 0 1px rgba(102, 126, 234, 0.2) inset,
+                  0 0 30px rgba(102, 126, 234, 0.15);
+    }
+    
+    body:not(.dark-mode) .chart-container-advanced {
+      background: #ffffff;
+      border: 1px solid rgba(102, 126, 234, 0.4);
+      box-shadow: 0 4px 20px rgba(102, 126, 234, 0.15), 
+                  0 0 0 1px rgba(102, 126, 234, 0.15) inset,
+                  0 0 20px rgba(102, 126, 234, 0.1);
+    }
+    
+    body:not(.dark-mode) .chart-container-advanced:hover {
+      box-shadow: 0 8px 30px rgba(102, 126, 234, 0.25), 
+                  0 0 0 1px rgba(102, 126, 234, 0.4) inset,
+                  0 0 40px rgba(102, 126, 234, 0.2);
+    }
+    
+    .chart-container-advanced::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(102, 126, 234, 0.15), transparent);
+      transition: left 0.5s ease;
+      z-index: 0;
+    }
+    
+    .chart-container-advanced:hover::before {
+      left: 100%;
+    }
+    
+    .chart-container-advanced::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--primary), transparent);
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+    
+    .chart-container-advanced:hover::after {
+      opacity: 1;
+    }
+    
+    .chart-container-advanced:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 8px 30px rgba(102, 126, 234, 0.25), 
+                  0 0 0 1px rgba(102, 126, 234, 0.3) inset,
+                  0 0 40px rgba(102, 126, 234, 0.2);
+      border-color: rgba(102, 126, 234, 0.5);
+    }
+    
+    .chart-container-advanced .chart-header {
+      background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+      border-radius: 16px 16px 0 0;
+      padding: 0.875rem 1.25rem;
+      border: none;
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .chart-container-advanced .chart-header::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: linear-gradient(45deg, transparent 30%, rgba(255, 255, 255, 0.15) 50%, transparent 70%);
+      animation: shimmer 4s infinite;
+    }
+    
+    @keyframes shimmer {
+      0% { transform: translateX(-100%); }
+      100% { transform: translateX(100%); }
+    }
+    
+    .chart-container-advanced h6 {
+      color: white;
+      font-weight: 600;
+      font-size: 0.95rem;
+      margin: 0;
+      text-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+      position: relative;
+      z-index: 1;
+      letter-spacing: 0.3px;
+    }
+    
+    .chart-container-advanced .chart-body {
+      padding: 1rem 1.25rem 1.25rem;
+      position: relative;
+      background: transparent;
+    }
+    
+    body:not(.dark-mode) .chart-container-advanced .chart-body {
+      background: #ffffff;
+    }
+    
+    body.dark-mode .chart-container-advanced .chart-body {
+      background: transparent;
+    }
+    
+    .chart-container-advanced canvas {
+      height: 200px !important;
+      width: 100% !important;
+      max-height: 200px !important;
+    }
+    
+    @media (max-width: 992px) {
+      .chart-container-advanced .chart-body {
+        padding: 0.875rem 1rem 1rem;
+      }
+      
+      .chart-container-advanced canvas {
+        height: 180px !important;
+        max-height: 180px !important;
+      }
+    }
+    
+    @media (max-width: 768px) {
+      .chart-container-advanced .chart-header {
+        padding: 0.75rem 1rem;
+      }
+      
+      .chart-container-advanced h6 {
+        font-size: 0.875rem;
+      }
+      
+      .chart-container-advanced .chart-body {
+        padding: 0.75rem;
+      }
+      
+      .chart-container-advanced canvas {
+        height: 160px !important;
+        max-height: 160px !important;
+      }
+    }
+    
+    /* Tabs */
+    .nav-tabs-modern {
+      border: none;
+      margin-bottom: 1.5rem;
+    }
+    
+    .nav-tabs-modern .nav-link {
+      border: none;
+      border-radius: 12px 12px 0 0;
+      padding: 0.75rem 1.5rem;
+      color: var(--text-secondary);
+      font-weight: 600;
+      transition: all 0.3s ease;
+    }
+    
+    body.dark-mode .nav-tabs-modern .nav-link {
+      color: var(--text-secondary);
+    }
+    
+    .nav-tabs-modern .nav-link.active {
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      color: white;
+    }
+    
+    /* Loading skeleton */
+    .skeleton {
+      background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+      background-size: 200% 100%;
+      animation: loading 1.5s infinite;
+    }
+    
+    @keyframes loading {
+      0% { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+    
+    /* Drag and Drop Kanban */
+    .kanban-column {
+      min-height: 400px;
+      transition: background-color 0.3s ease;
+    }
+    
+    .kanban-column.drag-over {
+      background-color: rgba(102, 126, 234, 0.1);
+      border: 2px dashed var(--primary);
+      border-radius: 12px;
+    }
+    
+    .kanban-card {
+      cursor: move;
+      transition: all 0.3s ease;
+      user-select: none;
+    }
+    
+    .kanban-card.dragging {
+      opacity: 0.5;
+      transform: rotate(2deg);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+    }
+    
+    .kanban-card.draggable {
+      cursor: grab;
+    }
+    
+    .kanban-card.draggable:active {
+      cursor: grabbing;
+    }
+    
+    .kanban-card.not-draggable {
+      cursor: default;
+      opacity: 0.7;
+    }
+    
+    .drag-hint {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(102, 126, 234, 0.9);
+      color: white;
+      padding: 0.5rem 1rem;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      pointer-events: none;
+      z-index: 1000;
+      display: none;
+    }
+    
+    .kanban-column.drag-over .drag-hint {
+      display: block;
+    }
+    
+    /* Toggle de modo escuro */
+    .theme-toggle {
+      background: rgba(255, 255, 255, 0.2);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      color: white;
+      padding: 0.5rem 1rem;
+      border-radius: 20px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.9rem;
+    }
+    
+    .theme-toggle:hover {
+      background: rgba(255, 255, 255, 0.3);
+      transform: scale(1.05);
+    }
+    
+    /* Ajustes de texto para modo escuro */
+    body.dark-mode .text-muted {
+      color: var(--text-muted) !important;
+    }
+    
+    body.dark-mode .text-secondary {
+      color: var(--text-secondary) !important;
+    }
+    
+    /* Ajustes para badges do Bootstrap no modo escuro */
+    body.dark-mode .badge.bg-secondary {
+      background-color: #6b7280 !important;
+      color: #f9fafb !important;
+    }
+    
+    body.dark-mode .badge.bg-primary {
+      background-color: var(--primary) !important;
+      color: white !important;
+    }
+    
+    body.dark-mode .badge.bg-success {
+      background-color: var(--success) !important;
+      color: white !important;
+    }
+    
+    body.dark-mode .badge.bg-warning {
+      background-color: var(--warning) !important;
+      color: #1f2937 !important;
+    }
+    
+    body.dark-mode .badge.bg-danger {
+      background-color: var(--danger) !important;
+      color: white !important;
+    }
+    
+    body.dark-mode .badge.bg-info {
+      background-color: var(--info) !important;
+      color: white !important;
+    }
+    
+    /* Ajustes para inputs e selects no modo escuro */
+    body.dark-mode .form-control,
+    body.dark-mode .form-select,
+    body.dark-mode .form-control-modern {
+      background-color: #4b5563;
+      border-color: #6b7280;
+      color: var(--text-primary);
+    }
+    
+    body.dark-mode .form-control:focus,
+    body.dark-mode .form-select:focus,
+    body.dark-mode .form-control-modern:focus {
+      background-color: #4b5563;
+      border-color: var(--primary);
+      color: var(--text-primary);
+    }
+    
+    /* Ajustes para modais no modo escuro */
+    body.dark-mode .modal-content {
+      background-color: var(--bg-card);
+      color: var(--text-primary);
+    }
+    
+    body.dark-mode .modal-header {
+      border-bottom-color: var(--border-color);
+    }
+    
+    body.dark-mode .modal-footer {
+      border-top-color: var(--border-color);
+    }
+    
+    /* Ajustes para listas e cards no modo escuro */
+    body.dark-mode .list-group-item {
+      background-color: var(--bg-card);
+      border-color: var(--border-color);
+      color: var(--text-primary);
+    }
+    
+    /* Ajustes para timeline e comentários */
+    body.dark-mode .timeline-item {
+      border-left-color: var(--border-color);
+    }
+    
+    body.dark-mode .comment-item {
+      background-color: rgba(255, 255, 255, 0.05);
+      border-color: var(--border-color);
+    }
+    
+    /* Ajustes para gráficos (Chart.js) */
+    body.dark-mode canvas {
+      filter: brightness(0.95);
+    }
+    
+    /* Ajustes para legendas no modo escuro */
+    body.dark-mode .chart-container-advanced .chart-body {
+      background: var(--bg-card);
+    }
+    
+    /* Tooltips no modo escuro */
+    body.dark-mode .chartjs-tooltip {
+      background-color: rgba(31, 41, 55, 0.95) !important;
+      border-color: rgba(102, 126, 234, 0.5) !important;
+      color: var(--text-primary) !important;
+    }
+    
+    /* Ajustes adicionais para modo escuro */
+    
+    body.dark-mode .upload-area {
+      border-color: rgba(255, 255, 255, 0.15);
+    }
+    
+    body.dark-mode .upload-area:hover {
+      background: rgba(102, 126, 234, 0.2);
+    }
+    
+    body.dark-mode .upload-area.dragover {
+      background: rgba(16, 185, 129, 0.25);
+    }
+    
+    /* Ajustes para alertas no modo escuro */
+    body.dark-mode .alert {
+      background-color: var(--bg-card);
+      border-color: var(--border-color);
+      color: var(--text-primary);
+    }
+    
+    body.dark-mode .alert-success {
+      background-color: rgba(16, 185, 129, 0.15);
+      border-color: rgba(16, 185, 129, 0.3);
+      color: #10b981;
+    }
+    
+    body.dark-mode .alert-danger {
+      background-color: rgba(239, 68, 68, 0.15);
+      border-color: rgba(239, 68, 68, 0.3);
+      color: #ef4444;
+    }
+    
+    body.dark-mode .alert-warning {
+      background-color: rgba(245, 158, 11, 0.15);
+      border-color: rgba(245, 158, 11, 0.3);
+      color: #f59e0b;
+    }
+    
+    body.dark-mode .alert-info {
+      background-color: rgba(59, 130, 246, 0.15);
+      border-color: rgba(59, 130, 246, 0.3);
+      color: #3b82f6;
+    }
+    
+    /* Ajustes para cards do Kanban */
+    body.dark-mode .kanban-column {
+      background-color: rgba(255, 255, 255, 0.02);
+    }
+    
+    /* Ajustes para tabelas */
+    body.dark-mode table {
+      color: var(--text-primary);
+    }
+    
+    body.dark-mode .table {
+      --bs-table-bg: var(--bg-card);
+      --bs-table-color: var(--text-primary);
+      --bs-table-border-color: var(--border-color);
+    }
+    
+    body.dark-mode .table-striped > tbody > tr:nth-of-type(odd) > td {
+      background-color: rgba(255, 255, 255, 0.03);
+    }
+    
+    /* Ajustes para spinners */
+    body.dark-mode .spinner-border {
+      border-color: var(--primary);
+      border-right-color: transparent;
+    }
+    
+    /* Ajustes para links */
+    body.dark-mode a {
+      color: var(--primary);
+    }
+    
+    body.dark-mode a:hover {
+      color: var(--primary-dark);
+    }
+    
+    /* Ajustes para hr */
+    body.dark-mode hr {
+      border-color: var(--border-color);
+      opacity: 0.5;
+    }
+    
+    /* Ajustes para botões do Bootstrap no modo escuro */
+    body.dark-mode .btn-light {
+      background-color: var(--bg-card);
+      border-color: var(--border-color);
+      color: var(--text-primary);
+    }
+    
+    body.dark-mode .btn-light:hover {
+      background-color: rgba(255, 255, 255, 0.1);
+      border-color: var(--border-color);
+      color: var(--text-primary);
+    }
+    
+    body.dark-mode .btn-secondary {
+      background-color: #4b5563;
+      border-color: #6b7280;
+      color: var(--text-primary);
+    }
+    
+    body.dark-mode .btn-secondary:hover {
+      background-color: #6b7280;
+      border-color: #9ca3af;
+      color: var(--text-primary);
+    }
+    
+    /* Ajustes para tabs no modo escuro */
+    body.dark-mode .nav-tabs-modern .nav-link {
+      color: var(--text-secondary);
+    }
+    
+    body.dark-mode .nav-tabs-modern .nav-link:hover {
+      color: var(--text-primary);
+      border-color: var(--border-color);
+    }
+    
+    body.dark-mode .nav-tabs-modern .nav-link.active {
+      color: white;
+    }
+    
+    /* Ajustes para labels */
+    body.dark-mode label {
+      color: var(--text-primary);
+    }
+    
+    body.dark-mode .form-label {
+      color: var(--text-primary);
+    }
+    
+    /* Ajustes para small e textos auxiliares */
+    body.dark-mode small {
+      color: var(--text-secondary);
+    }
+    
+    /* Ajustes para h1-h6 */
+    body.dark-mode h1,
+    body.dark-mode h2,
+    body.dark-mode h3,
+    body.dark-mode h4,
+    body.dark-mode h5,
+    body.dark-mode h6 {
+      color: var(--text-primary);
+    }
+    
+    /* Ajustes para user-badge */
+    body.dark-mode .user-badge {
+      background-color: rgba(255, 255, 255, 0.1);
+      color: white;
+    }
+    
+    /* Ajustes para skeleton loader no modo escuro */
+    body.dark-mode .skeleton {
+      background: linear-gradient(90deg, #374151 25%, #4b5563 50%, #374151 75%);
+      background-size: 200% 100%;
     }
   </style>
 </head>
@@ -180,7 +1131,14 @@
             <small>Gerencie seus chamados e solicitações</small>
           </div>
           <div class="d-flex align-items-center gap-3">
+            <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()" title="Alternar modo claro/escuro">
+              <i class="fas fa-moon" id="themeIcon"></i>
+              <span id="themeText">Modo Escuro</span>
+            </button>
             <span class="user-badge" id="currentUser">Carregando...</span>
+            <span id="adminBadge" class="badge bg-danger ms-2" style="display: none;">
+              <i class="fas fa-shield-alt me-1"></i>Admin
+            </span>
             <a href="portal.html" class="btn btn-light btn-sm">
               <i class="fas fa-home me-1"></i>Voltar
             </a>
@@ -191,88 +1149,311 @@
 
     <!-- Conteúdo -->
     <div class="container py-4">
-      <!-- Estatísticas -->
-      <div class="stats-grid">
-        <div class="stat-card">
-          <div class="stat-number text-primary" id="statAbertos">0</div>
-          <div class="text-muted">Abertos</div>
+      <!-- Dashboard Avançado -->
+      <div class="dashboard-advanced">
+        <div class="metric-card-advanced">
+          <div class="metric-icon text-primary"><i class="fas fa-folder-open"></i></div>
+          <div class="metric-value-large" id="statAbertos">0</div>
+          <div class="metric-label-advanced">Chamados Abertos</div>
+          <div class="metric-trend up" id="trendAbertos"><i class="fas fa-arrow-up"></i> <span id="trendAbertosVal">0%</span></div>
         </div>
-        <div class="stat-card">
-          <div class="stat-number text-warning" id="statEmAndamento">0</div>
-          <div class="text-muted">Em Andamento</div>
+        <div class="metric-card-advanced">
+          <div class="metric-icon text-warning"><i class="fas fa-spinner"></i></div>
+          <div class="metric-value-large" id="statEmAndamento">0</div>
+          <div class="metric-label-advanced">Em Andamento</div>
+          <div class="metric-trend up" id="trendAndamento"><i class="fas fa-arrow-up"></i> <span id="trendAndamentoVal">0%</span></div>
         </div>
-        <div class="stat-card">
-          <div class="stat-number text-success" id="statResolvidos">0</div>
-          <div class="text-muted">Resolvidos</div>
+        <div class="metric-card-advanced">
+          <div class="metric-icon text-success"><i class="fas fa-check-circle"></i></div>
+          <div class="metric-value-large" id="statResolvidos">0</div>
+          <div class="metric-label-advanced">Resolvidos</div>
+          <div class="metric-trend up" id="trendResolvidos"><i class="fas fa-arrow-up"></i> <span id="trendResolvidosVal">0%</span></div>
         </div>
-        <div class="stat-card">
-          <div class="stat-number text-info" id="statTotal">0</div>
-          <div class="text-muted">Total</div>
+        <div class="metric-card-advanced">
+          <div class="metric-icon text-danger"><i class="fas fa-exclamation-triangle"></i></div>
+          <div class="metric-value-large" id="statUrgentes">0</div>
+          <div class="metric-label-advanced">Urgentes</div>
+          <div class="metric-trend" id="trendUrgentes"><i class="fas fa-minus"></i> <span id="trendUrgentesVal">0</span></div>
+        </div>
+        <div class="metric-card-advanced">
+          <div class="metric-icon text-info"><i class="fas fa-clock"></i></div>
+          <div class="metric-value-large" id="statSLA">0%</div>
+          <div class="metric-label-advanced">SLA em Dia</div>
+          <div class="metric-trend up" id="trendSLA"><i class="fas fa-arrow-up"></i> <span id="trendSLAVal">0%</span></div>
+        </div>
+        <div class="metric-card-advanced">
+          <div class="metric-icon" style="color: #764ba2;"><i class="fas fa-tasks"></i></div>
+          <div class="metric-value-large" id="statTotal">0</div>
+          <div class="metric-label-advanced">Total de Chamados</div>
+          <div class="metric-trend up" id="trendTotal"><i class="fas fa-arrow-up"></i> <span id="trendTotalVal">0%</span></div>
         </div>
       </div>
-
-      <!-- Filtros e Ações -->
-      <div class="modern-card mb-4">
-        <div class="card-body p-4">
-          <div class="row g-3 align-items-end">
-            <div class="col-md-3">
-              <label class="form-label fw-bold">Status</label>
-              <select id="filtroStatus" class="form-select form-control-modern">
-                <option value="">Todos os status</option>
-                <option value="aberto">Aberto</option>
-                <option value="em_andamento">Em Andamento</option>
-                <option value="aguardando">Aguardando</option>
-                <option value="resolvido">Resolvido</option>
-                <option value="fechado">Fechado</option>
-                <option value="cancelado">Cancelado</option>
-              </select>
+      
+      <!-- Gráficos e Métricas -->
+      <div class="row mb-3">
+        <div class="col-xl-3 col-lg-6 col-md-6 mb-3">
+          <div class="chart-container-advanced">
+            <div class="chart-header">
+              <h6><i class="fas fa-chart-pie me-2"></i>Status</h6>
             </div>
-            <div class="col-md-3">
-              <label class="form-label fw-bold">Prioridade</label>
-              <select id="filtroPrioridade" class="form-select form-control-modern">
-                <option value="">Todas as prioridades</option>
-                <option value="baixa">Baixa</option>
-                <option value="media">Média</option>
-                <option value="alta">Alta</option>
-                <option value="urgente">Urgente</option>
-              </select>
+            <div class="chart-body">
+              <canvas id="chartStatus" height="200"></canvas>
             </div>
-            <div class="col-md-3">
-              <label class="form-label fw-bold">Categoria</label>
-              <select id="filtroCategoria" class="form-select form-control-modern">
-                <option value="">Todas as categorias</option>
-                <option value="bug">Bug</option>
-                <option value="melhoria">Melhoria</option>
-                <option value="duvida">Dúvida</option>
-                <option value="sugestao">Sugestão</option>
-                <option value="outro">Outro</option>
-              </select>
+          </div>
+        </div>
+        <div class="col-xl-3 col-lg-6 col-md-6 mb-3">
+          <div class="chart-container-advanced">
+            <div class="chart-header">
+              <h6><i class="fas fa-chart-bar me-2"></i>Prioridade</h6>
             </div>
-            <div class="col-md-3">
-              <button class="btn btn-modern btn-modern-primary w-100" onclick="abrirModalNovoChamado()">
-                <i class="fas fa-plus me-2"></i>Novo Chamado
-              </button>
+            <div class="chart-body">
+              <canvas id="chartPrioridade" height="200"></canvas>
+            </div>
+          </div>
+        </div>
+        <div class="col-xl-3 col-lg-6 col-md-6 mb-3">
+          <div class="chart-container-advanced">
+            <div class="chart-header">
+              <h6><i class="fas fa-chart-line me-2"></i>Evolução</h6>
+            </div>
+            <div class="chart-body">
+              <canvas id="chartEvolucao" height="200"></canvas>
+            </div>
+          </div>
+        </div>
+        <div class="col-xl-3 col-lg-6 col-md-6 mb-3">
+          <div class="chart-container-advanced">
+            <div class="chart-header">
+              <h6><i class="fas fa-tags me-2"></i>Categoria</h6>
+            </div>
+            <div class="chart-body">
+              <canvas id="chartCategoria" height="200"></canvas>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- Lista de Chamados -->
-      <div class="modern-card">
-        <div class="card-body p-4">
-          <h5 class="mb-4"><i class="fas fa-list me-2"></i>Meus Chamados</h5>
-          <div id="listaChamados">
-            <div class="text-center py-5">
-              <div class="spinner-border text-primary" role="status">
-                <span class="visually-hidden">Carregando...</span>
+      <!-- Filtros e Ações Avançados -->
+      <div class="filters-advanced">
+        <div class="row g-3 align-items-end mb-3">
+          <div class="col-md-12 mb-3">
+            <div class="search-advanced">
+              <i class="fas fa-search search-icon"></i>
+              <input type="text" id="buscaAvancada" class="form-control form-control-modern" placeholder="Buscar por título, descrição, número do chamado...">
+            </div>
+          </div>
+          <div class="col-md-2">
+            <label class="form-label fw-bold">Status</label>
+            <select id="filtroStatus" class="form-select form-control-modern">
+              <option value="">Todos</option>
+              <option value="aberto">Aberto</option>
+              <option value="em_andamento">Em Andamento</option>
+              <option value="aguardando">Aguardando</option>
+              <option value="resolvido">Resolvido</option>
+              <option value="fechado">Fechado</option>
+              <option value="cancelado">Cancelado</option>
+            </select>
+          </div>
+          <div class="col-md-2">
+            <label class="form-label fw-bold">Prioridade</label>
+            <select id="filtroPrioridade" class="form-select form-control-modern">
+              <option value="">Todas</option>
+              <option value="baixa">Baixa</option>
+              <option value="media">Média</option>
+              <option value="alta">Alta</option>
+              <option value="urgente">Urgente</option>
+            </select>
+          </div>
+          <div class="col-md-2">
+            <label class="form-label fw-bold">Categoria</label>
+            <select id="filtroCategoria" class="form-select form-control-modern">
+              <option value="">Todas</option>
+              <option value="bug">Bug</option>
+              <option value="melhoria">Melhoria</option>
+              <option value="duvida">Dúvida</option>
+              <option value="sugestao">Sugestão</option>
+              <option value="outro">Outro</option>
+            </select>
+          </div>
+          <div class="col-md-2">
+            <label class="form-label fw-bold">SLA</label>
+            <select id="filtroSLA" class="form-select form-control-modern">
+              <option value="">Todos</option>
+              <option value="ok">Em Dia</option>
+              <option value="warning">Atenção</option>
+              <option value="critical">Crítico</option>
+            </select>
+          </div>
+          <div class="col-md-2">
+            <label class="form-label fw-bold">Atribuído</label>
+            <select id="filtroAtribuido" class="form-select form-control-modern">
+              <option value="">Todos</option>
+              <option value="meus">Meus Chamados</option>
+              <option value="nao_atribuido">Não Atribuídos</option>
+            </select>
+          </div>
+          <div class="col-md-2">
+            <label class="form-label fw-bold">Data Início</label>
+            <input type="date" id="filtroDataInicio" class="form-control form-control-modern">
+          </div>
+          <div class="col-md-2">
+            <label class="form-label fw-bold">Data Fim</label>
+            <input type="date" id="filtroDataFim" class="form-control form-control-modern">
+          </div>
+        </div>
+        <div class="row g-3 align-items-end mb-3">
+          <div class="col-md-3">
+            <button class="btn btn-modern btn-modern-primary w-100" onclick="abrirModalNovoChamado()" title="Criar novo chamado (Ctrl+N)">
+              <i class="fas fa-plus me-2"></i>Novo Chamado
+            </button>
+          </div>
+          <div class="col-md-3">
+            <button class="btn btn-success w-100" onclick="exportarRelatorio()" title="Exportar relatório (Ctrl+E)">
+              <i class="fas fa-download me-2"></i>Exportar Relatório
+            </button>
+          </div>
+          <div class="col-md-3">
+            <button class="btn btn-secondary w-100" onclick="limparFiltros()">
+              <i class="fas fa-eraser me-2"></i>Limpar Filtros
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tabs de Visualização -->
+      <ul class="nav nav-tabs nav-tabs-modern" role="tablist">
+        <li class="nav-item" role="presentation">
+          <button class="nav-link active" id="tab-lista-tab" data-bs-toggle="tab" data-bs-target="#tab-lista" type="button" role="tab">
+            <i class="fas fa-list me-2"></i>Lista de Chamados
+          </button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button class="nav-link" id="tab-kanban-tab" data-bs-toggle="tab" data-bs-target="#tab-kanban" type="button" role="tab">
+            <i class="fas fa-columns me-2"></i>Kanban
+          </button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button class="nav-link" id="tab-relatorios-tab" data-bs-toggle="tab" data-bs-target="#tab-relatorios" type="button" role="tab">
+            <i class="fas fa-chart-bar me-2"></i>Relatórios
+          </button>
+        </li>
+      </ul>
+      
+      <!-- Conteúdo das Tabs -->
+      <div class="tab-content">
+        <!-- Tab Lista -->
+        <div class="tab-pane fade show active" id="tab-lista" role="tabpanel">
+          <div class="modern-card">
+            <div class="card-body p-4">
+              <div class="d-flex justify-content-between align-items-center mb-4">
+                <h5 class="mb-0"><i class="fas fa-list me-2"></i>Chamados</h5>
+                <div>
+                  <span class="badge bg-primary" id="contadorChamados">0 chamados</span>
+                </div>
               </div>
-              <p class="mt-3">Carregando chamados...</p>
+              <div id="listaChamados">
+                <div class="text-center py-5">
+                  <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Carregando...</span>
+                  </div>
+                  <p class="mt-3">Carregando chamados...</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Tab Kanban -->
+        <div class="tab-pane fade" id="tab-kanban" role="tabpanel">
+          <div class="row">
+            <div class="col-md-3 mb-3">
+              <div class="modern-card">
+                <div class="card-body p-3">
+                  <h6 class="mb-3"><i class="fas fa-folder-open me-2 text-primary"></i>Abertos <span class="badge bg-primary" id="kanbanAbertos">0</span></h6>
+                  <div id="kanbanColAbertos" class="kanban-column" data-status="aberto" style="min-height: 400px;">
+                    <div class="drag-hint">Solte aqui para mover</div>
+                    <!-- Cards serão inseridos aqui -->
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-3 mb-3">
+              <div class="modern-card">
+                <div class="card-body p-3">
+                  <h6 class="mb-3"><i class="fas fa-spinner me-2 text-warning"></i>Em Andamento <span class="badge bg-warning" id="kanbanAndamento">0</span></h6>
+                  <div id="kanbanColAndamento" class="kanban-column" data-status="em_andamento" style="min-height: 400px;">
+                    <div class="drag-hint">Solte aqui para mover</div>
+                    <!-- Cards serão inseridos aqui -->
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-3 mb-3">
+              <div class="modern-card">
+                <div class="card-body p-3">
+                  <h6 class="mb-3"><i class="fas fa-pause me-2 text-info"></i>Aguardando <span class="badge bg-info" id="kanbanAguardando">0</span></h6>
+                  <div id="kanbanColAguardando" class="kanban-column" data-status="aguardando" style="min-height: 400px;">
+                    <div class="drag-hint">Solte aqui para mover</div>
+                    <!-- Cards serão inseridos aqui -->
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-3 mb-3">
+              <div class="modern-card">
+                <div class="card-body p-3">
+                  <h6 class="mb-3"><i class="fas fa-check-circle me-2 text-success"></i>Resolvidos <span class="badge bg-success" id="kanbanResolvidos">0</span></h6>
+                  <div id="kanbanColResolvidos" class="kanban-column" data-status="resolvido" style="min-height: 400px;">
+                    <div class="drag-hint">Solte aqui para mover</div>
+                    <!-- Cards serão inseridos aqui -->
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Tab Relatórios -->
+        <div class="tab-pane fade" id="tab-relatorios" role="tabpanel">
+          <div class="row">
+            <div class="col-md-12">
+              <div class="modern-card">
+                <div class="card-body p-4">
+                  <h5 class="mb-4"><i class="fas fa-chart-bar me-2"></i>Relatórios e Métricas</h5>
+                  <div class="row">
+                    <div class="col-md-6 mb-4">
+                      <h6 class="mb-3">Tempo Médio de Resolução</h6>
+                      <div class="metric-value-large text-primary" id="tempoMedioResolucao">0h</div>
+                      <p class="text-muted">Baseado nos últimos 30 dias</p>
+                    </div>
+                    <div class="col-md-6 mb-4">
+                      <h6 class="mb-3">Taxa de Resolução</h6>
+                      <div class="metric-value-large text-success" id="taxaResolucao">0%</div>
+                      <p class="text-muted">Chamados resolvidos vs. total</p>
+                    </div>
+                    <div class="col-md-6 mb-4">
+                      <h6 class="mb-3">SLA Médio</h6>
+                      <div class="metric-value-large text-info" id="slaMedio">0%</div>
+                      <p class="text-muted">Percentual de chamados dentro do SLA</p>
+                    </div>
+                    <div class="col-md-6 mb-4">
+                      <h6 class="mb-3">Chamados por Usuário</h6>
+                      <div id="topUsuarios" class="mt-3">
+                        <!-- Lista será inserida aqui -->
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
       </div>
     </div>
   </div>
+  
+  <!-- Notificações em Tempo Real -->
+  <div id="notificationContainer" class="notification-badge"></div>
 
   <!-- Modal Novo Chamado -->
   <div class="modal fade" id="modalNovoChamado" tabindex="-1">
@@ -300,6 +1481,11 @@
               </select>
             </div>
             <div class="mb-3">
+              <label class="form-label fw-bold">Subcategoria</label>
+              <input type="text" id="novaSubcategoria" class="form-control form-control-modern" placeholder="Ex: Login, Dashboard, API, etc." maxlength="100">
+              <small class="text-muted">Opcional: especifique uma subcategoria para melhor organização</small>
+            </div>
+            <div class="mb-3">
               <label class="form-label fw-bold">Prioridade *</label>
               <select id="novaPrioridade" class="form-select form-control-modern" required>
                 <option value="baixa">🟢 Baixa</option>
@@ -307,6 +1493,27 @@
                 <option value="alta">🟠 Alta</option>
                 <option value="urgente">🔴 Urgente</option>
               </select>
+            </div>
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label class="form-label fw-bold">Ambiente</label>
+                <select id="novaAmbiente" class="form-select form-control-modern">
+                  <option value="">Selecione...</option>
+                  <option value="desenvolvimento">🛠️ Desenvolvimento</option>
+                  <option value="homologacao">🧪 Homologação</option>
+                  <option value="producao">🚀 Produção</option>
+                </select>
+              </div>
+              <div class="col-md-6 mb-3">
+                <label class="form-label fw-bold">Versão do Sistema</label>
+                <input type="text" id="novaVersao" class="form-control form-control-modern" placeholder="Ex: 1.2.7" maxlength="50">
+              </div>
+            </div>
+            <div class="mb-3">
+              <label class="form-label fw-bold">Tags</label>
+              <input type="text" id="novaTags" class="form-control form-control-modern" placeholder="Digite tags separadas por vírgula (Ex: urgente, frontend, api)">
+              <small class="text-muted">Separe múltiplas tags por vírgula. Ex: urgente, frontend, api</small>
+              <div id="tagsPreview" class="mt-2"></div>
             </div>
             <div class="mb-3">
               <label class="form-label fw-bold">Descrição *</label>
@@ -337,21 +1544,238 @@
 
   <!-- Modal Detalhes do Chamado -->
   <div class="modal fade" id="modalDetalhes" tabindex="-1">
-    <div class="modal-dialog modal-lg">
+    <div class="modal-dialog modal-xl">
       <div class="modal-content">
         <div class="modal-header bg-primary text-white">
           <h5 class="modal-title" id="detalhesTitulo">Detalhes do Chamado</h5>
           <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
         </div>
         <div class="modal-body">
-          <div id="detalhesConteudo">
-            <div class="text-center py-3">
-              <div class="spinner-border text-primary" role="status"></div>
+          <ul class="nav nav-tabs nav-tabs-modern mb-3" role="tablist">
+            <li class="nav-item" role="presentation">
+              <button class="nav-link active" id="tab-info-tab" data-bs-toggle="tab" data-bs-target="#tab-info" type="button" role="tab">
+                <i class="fas fa-info-circle me-2"></i>Informações
+              </button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" id="tab-comentarios-tab" data-bs-toggle="tab" data-bs-target="#tab-comentarios" type="button" role="tab">
+                <i class="fas fa-comments me-2"></i>Comentários
+              </button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" id="tab-historico-tab" data-bs-toggle="tab" data-bs-target="#tab-historico" type="button" role="tab">
+                <i class="fas fa-history me-2"></i>Histórico
+              </button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" id="tab-anexos-tab" data-bs-toggle="tab" data-bs-target="#tab-anexos" type="button" role="tab">
+                <i class="fas fa-paperclip me-2"></i>Anexos
+              </button>
+            </li>
+            <li class="nav-item" role="presentation" id="tab-satisfacao-item" style="display: none;">
+              <button class="nav-link" id="tab-satisfacao-tab" data-bs-toggle="tab" data-bs-target="#tab-satisfacao" type="button" role="tab">
+                <i class="fas fa-star me-2"></i>Avaliação
+              </button>
+            </li>
+          </ul>
+          
+          <div class="tab-content">
+            <!-- Tab Informações -->
+            <div class="tab-pane fade show active" id="tab-info" role="tabpanel">
+              <div id="detalhesConteudo">
+                <div class="text-center py-3">
+                  <div class="spinner-border text-primary" role="status"></div>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Tab Comentários -->
+            <div class="tab-pane fade" id="tab-comentarios" role="tabpanel">
+              <div id="comentariosContainer">
+                <div class="text-center py-3">
+                  <div class="spinner-border text-primary" role="status"></div>
+                </div>
+              </div>
+              <div class="mt-3">
+                <textarea id="novoComentario" class="form-control form-control-modern" rows="3" placeholder="Adicione um comentário..."></textarea>
+                <button class="btn btn-primary mt-2" onclick="adicionarComentario()">
+                  <i class="fas fa-paper-plane me-2"></i>Enviar Comentário
+                </button>
+              </div>
+            </div>
+            
+            <!-- Tab Histórico -->
+            <div class="tab-pane fade" id="tab-historico" role="tabpanel">
+              <div id="historicoContainer" class="timeline">
+                <div class="text-center py-3">
+                  <div class="spinner-border text-primary" role="status"></div>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Tab Anexos -->
+            <div class="tab-pane fade" id="tab-anexos" role="tabpanel">
+              <div id="anexosContainer">
+                <div class="text-center py-3">
+                  <div class="spinner-border text-primary" role="status"></div>
+                </div>
+              </div>
+              <div class="mt-3">
+                <input type="file" id="novoAnexo" class="form-control form-control-modern" multiple>
+                <button class="btn btn-primary mt-2" onclick="adicionarAnexo()">
+                  <i class="fas fa-upload me-2"></i>Enviar Anexo
+                </button>
+              </div>
+            </div>
+            
+            <!-- Tab Satisfação/Feedback -->
+            <div class="tab-pane fade" id="tab-satisfacao" role="tabpanel">
+              <div id="satisfacaoContainer">
+                <div class="text-center py-3">
+                  <div class="spinner-border text-primary" role="status"></div>
+                </div>
+              </div>
+              <div id="formSatisfacao" class="mt-3" style="display: none;">
+                <h6 class="mb-3">Como você avalia o atendimento deste chamado?</h6>
+                <div class="mb-3">
+                  <label class="form-label fw-bold">Nota (1 a 5 estrelas)</label>
+                  <div class="rating-stars mb-3">
+                    <input type="radio" id="star5" name="satisfacao" value="5">
+                    <label for="star5" class="star-label"><i class="fas fa-star"></i></label>
+                    <input type="radio" id="star4" name="satisfacao" value="4">
+                    <label for="star4" class="star-label"><i class="fas fa-star"></i></label>
+                    <input type="radio" id="star3" name="satisfacao" value="3">
+                    <label for="star3" class="star-label"><i class="fas fa-star"></i></label>
+                    <input type="radio" id="star2" name="satisfacao" value="2">
+                    <label for="star2" class="star-label"><i class="fas fa-star"></i></label>
+                    <input type="radio" id="star1" name="satisfacao" value="1">
+                    <label for="star1" class="star-label"><i class="fas fa-star"></i></label>
+                  </div>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label fw-bold">Feedback (opcional)</label>
+                  <textarea id="feedbackTexto" class="form-control form-control-modern" rows="4" placeholder="Compartilhe sua opinião sobre o atendimento..."></textarea>
+                </div>
+                <button class="btn btn-primary" onclick="enviarFeedback()">
+                  <i class="fas fa-paper-plane me-2"></i>Enviar Avaliação
+                </button>
+              </div>
             </div>
           </div>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+          <button type="button" class="btn btn-warning" id="btnEditarChamado" onclick="abrirModalEdicao()" style="display: none;" title="Editar chamado">
+            <i class="fas fa-edit me-2"></i>Editar
+          </button>
+          <button type="button" class="btn btn-info" id="btnDuplicarChamado" onclick="duplicarChamado(currentChamadoId)" title="Duplicar este chamado">
+            <i class="fas fa-copy me-2"></i>Duplicar
+          </button>
+          <button type="button" class="btn btn-primary" id="btnAtribuirChamado" onclick="abrirModalAtribuicao()" style="display: none;">
+            <i class="fas fa-user-plus me-2"></i>Atribuir
+          </button>
+          <button type="button" class="btn btn-success" id="btnResolverChamado" onclick="resolverChamado()" style="display: none;">
+            <i class="fas fa-check me-2"></i>Resolver
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Modal Atribuição -->
+  <div class="modal fade" id="modalAtribuicao" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header bg-primary text-white">
+          <h5 class="modal-title"><i class="fas fa-user-plus me-2"></i>Atribuir Chamado</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <label class="form-label fw-bold">Atribuir para:</label>
+          <select id="selectAtribuicao" class="form-select form-control-modern">
+            <option value="">Selecione um membro do time de projetos...</option>
+          </select>
+          <small class="text-muted">O chamado será automaticamente roteado para o time de projetos</small>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="button" class="btn btn-primary" onclick="confirmarAtribuicao()">
+            <i class="fas fa-check me-2"></i>Confirmar
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Modal Edição de Chamado -->
+  <div class="modal fade" id="modalEdicao" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header bg-warning text-dark">
+          <h5 class="modal-title"><i class="fas fa-edit me-2"></i>Editar Chamado</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <form id="formEdicaoChamado">
+            <div class="mb-3">
+              <label class="form-label fw-bold">Título *</label>
+              <input type="text" id="editarTitulo" class="form-control form-control-modern" required maxlength="200">
+            </div>
+            <div class="mb-3">
+              <label class="form-label fw-bold">Categoria *</label>
+              <select id="editarCategoria" class="form-select form-control-modern" required>
+                <option value="">Selecione...</option>
+                <option value="bug">🐛 Bug</option>
+                <option value="melhoria">✨ Melhoria</option>
+                <option value="duvida">❓ Dúvida</option>
+                <option value="sugestao">💡 Sugestão</option>
+                <option value="outro">📋 Outro</option>
+              </select>
+            </div>
+            <div class="mb-3">
+              <label class="form-label fw-bold">Subcategoria</label>
+              <input type="text" id="editarSubcategoria" class="form-control form-control-modern" maxlength="100">
+            </div>
+            <div class="mb-3">
+              <label class="form-label fw-bold">Prioridade *</label>
+              <select id="editarPrioridade" class="form-select form-control-modern" required>
+                <option value="baixa">🟢 Baixa</option>
+                <option value="media">🟡 Média</option>
+                <option value="alta">🟠 Alta</option>
+                <option value="urgente">🔴 Urgente</option>
+              </select>
+            </div>
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label class="form-label fw-bold">Ambiente</label>
+                <select id="editarAmbiente" class="form-select form-control-modern">
+                  <option value="">Selecione...</option>
+                  <option value="desenvolvimento">🛠️ Desenvolvimento</option>
+                  <option value="homologacao">🧪 Homologação</option>
+                  <option value="producao">🚀 Produção</option>
+                </select>
+              </div>
+              <div class="col-md-6 mb-3">
+                <label class="form-label fw-bold">Versão do Sistema</label>
+                <input type="text" id="editarVersao" class="form-control form-control-modern" maxlength="50">
+              </div>
+            </div>
+            <div class="mb-3">
+              <label class="form-label fw-bold">Tags</label>
+              <input type="text" id="editarTags" class="form-control form-control-modern" placeholder="Digite tags separadas por vírgula">
+              <div id="tagsPreviewEdicao" class="mt-2"></div>
+            </div>
+            <div class="mb-3">
+              <label class="form-label fw-bold">Descrição *</label>
+              <textarea id="editarDescricao" class="form-control form-control-modern" rows="6" required></textarea>
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="button" class="btn btn-warning" onclick="salvarEdicao()">
+            <i class="fas fa-save me-2"></i>Salvar Alterações
+          </button>
         </div>
       </div>
     </div>
@@ -359,11 +1783,59 @@
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
   <script>
+    // Sistema de Tema (Modo Claro/Escuro)
+    function initTheme() {
+      const savedTheme = localStorage.getItem('theme') || 'light';
+      applyTheme(savedTheme);
+    }
+    
+    function applyTheme(theme) {
+      const body = document.body;
+      const themeIcon = document.getElementById('themeIcon');
+      const themeText = document.getElementById('themeText');
+      
+      if (theme === 'dark') {
+        body.classList.add('dark-mode');
+        if (themeIcon) {
+          themeIcon.classList.remove('fa-moon');
+          themeIcon.classList.add('fa-sun');
+        }
+        if (themeText) {
+          themeText.textContent = 'Modo Claro';
+        }
+      } else {
+        body.classList.remove('dark-mode');
+        if (themeIcon) {
+          themeIcon.classList.remove('fa-sun');
+          themeIcon.classList.add('fa-moon');
+        }
+        if (themeText) {
+          themeText.textContent = 'Modo Escuro';
+        }
+      }
+      
+      localStorage.setItem('theme', theme);
+    }
+    
+    function toggleTheme() {
+      const currentTheme = localStorage.getItem('theme') || 'light';
+      const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+      applyTheme(newTheme);
+    }
+    
+    // Inicializar tema ao carregar a página
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initTheme);
+    } else {
+      initTheme();
+    }
+    
     let supabase;
     let todosChamados = [];
     let chamadosFiltrados = [];
     let currentUserId = null;
     let currentUserName = null;
+    let isAdmin = false;
 
     // Funções globais para acesso via HTML
     window.previewImagem = function(input) {
@@ -386,7 +1858,7 @@
     // Inicialização
     document.addEventListener('DOMContentLoaded', async () => {
       await inicializarSupabase();
-      await carregarUsuario();
+      await carregarUsuario(); // Carregar usuário primeiro para definir isAdmin
       await carregarChamados();
       inicializarEventListeners();
     });
@@ -503,6 +1975,50 @@
           currentUserId = user.id || user.email;
           currentUserName = user.nome || user.email;
           document.getElementById('currentUser').textContent = currentUserName;
+          
+          // Verificar se é admin - múltiplas verificações
+          isAdmin = false;
+          
+          // Verificação 1: localStorage
+          if (user.role === 'admin' || user.user_metadata?.role === 'admin') {
+            isAdmin = true;
+            console.log('✅ Admin detectado via localStorage');
+          }
+          
+          // Verificação 2: Banco de dados (se supabase estiver disponível)
+          if (!isAdmin && supabase) {
+            try {
+              const { data: usuarioDb, error } = await supabase
+                .from('usuarios')
+                .select('role')
+                .eq('id', currentUserId)
+                .single();
+              
+              if (!error && usuarioDb && (usuarioDb.role === 'admin' || usuarioDb.role === 'projetos')) {
+                isAdmin = true;
+                console.log('✅ Admin detectado via banco de dados');
+              }
+            } catch (e) {
+              console.log('⚠️ Não foi possível verificar role no banco:', e);
+            }
+          }
+          
+          // Verificação 3: Email específico (fallback para testes)
+          if (!isAdmin && currentUserName && (
+            currentUserName.toLowerCase().includes('admin') ||
+            currentUserName.toLowerCase().includes('multimodal')
+          )) {
+            console.log('⚠️ Tentando definir como admin por email');
+            // Não definir automaticamente, mas logar
+          }
+          
+          console.log('👤 Usuário:', currentUserName, '| Admin:', isAdmin);
+          
+          // Mostrar badge de admin se for admin
+          const adminBadge = document.getElementById('adminBadge');
+          if (adminBadge) {
+            adminBadge.style.display = isAdmin ? 'inline-block' : 'none';
+          }
         }
       } catch (error) {
         console.error('Erro ao carregar usuário:', error);
@@ -571,7 +2087,10 @@
                 <div class="d-flex gap-2 flex-wrap">
                   <span class="badge badge-status ${statusClass}">${statusText}</span>
                   <span class="badge bg-secondary">${chamado.categoria}</span>
+                  ${chamado.subcategoria ? `<span class="badge bg-secondary opacity-75">${chamado.subcategoria}</span>` : ''}
                   <span class="badge bg-info">${chamado.prioridade}</span>
+                  ${chamado.tags && chamado.tags.length > 0 ? chamado.tags.slice(0, 3).map(tag => `<span class="badge bg-primary">${tag}</span>`).join('') : ''}
+                  ${chamado.ambiente ? `<span class="badge bg-dark">${chamado.ambiente}</span>` : ''}
                 </div>
               </div>
               <div class="text-end">
@@ -744,21 +2263,39 @@
           imagemUrl = await uploadImagem(imagemInput.files[0]);
         }
 
-        const { data, error } = await supabase
+        // Processar tags
+      const tagsInput = document.getElementById('novaTags').value.trim();
+      const tags = tagsInput ? tagsInput.split(',').map(t => t.trim()).filter(t => t.length > 0) : [];
+      
+      // Obter outros campos
+      const subcategoria = document.getElementById('novaSubcategoria').value.trim() || null;
+      const ambiente = document.getElementById('novaAmbiente').value || null;
+      const versao = document.getElementById('novaVersao').value.trim() || null;
+
+      const { data, error } = await supabase
           .from('chamados')
           .insert([{
             titulo,
             descricao,
             categoria,
+            subcategoria,
             prioridade,
             status: 'aberto',
             usuario_id: currentUserId,
             usuario_nome: currentUserName,
-            imagem_url: imagemUrl
+            imagem_url: imagemUrl,
+            tags: tags.length > 0 ? tags : null,
+            ambiente,
+            versao_sistema: versao
           }])
           .select();
 
         if (error) throw error;
+
+        // Roteamento automático para time de projetos
+        if (data && data[0]) {
+          await rotearChamadoAutomaticamente(data[0]);
+        }
 
         mostrarSucesso('Chamado criado com sucesso!');
         bootstrap.Modal.getInstance(document.getElementById('modalNovoChamado')).hide();
@@ -783,8 +2320,19 @@
         <div class="mb-3">
           <span class="badge badge-status ${statusClass} me-2">${statusText}</span>
           <span class="badge bg-secondary me-2">${chamado.categoria}</span>
-          <span class="badge bg-info">${chamado.prioridade}</span>
+          ${chamado.subcategoria ? `<span class="badge bg-secondary opacity-75 me-2">${chamado.subcategoria}</span>` : ''}
+          <span class="badge bg-info me-2">${chamado.prioridade}</span>
+          ${chamado.ambiente ? `<span class="badge bg-dark me-2">${chamado.ambiente}</span>` : ''}
+          ${chamado.versao_sistema ? `<span class="badge bg-secondary me-2">v${chamado.versao_sistema}</span>` : ''}
         </div>
+        ${chamado.tags && chamado.tags.length > 0 ? `
+        <div class="mb-3">
+          <strong>Tags:</strong>
+          <div class="mt-2">
+            ${chamado.tags.map(tag => `<span class="badge bg-primary me-1 mb-1">${tag}</span>`).join('')}
+          </div>
+        </div>
+        ` : ''}
         <div class="mb-3">
           <strong>Descrição:</strong>
           <p class="mt-2">${chamado.descricao.replace(/\n/g, '<br>')}</p>
@@ -833,6 +2381,48 @@
       document.getElementById('filtroStatus').addEventListener('change', aplicarFiltros);
       document.getElementById('filtroPrioridade').addEventListener('change', aplicarFiltros);
       document.getElementById('filtroCategoria').addEventListener('change', aplicarFiltros);
+      document.getElementById('filtroDataInicio')?.addEventListener('change', aplicarFiltros);
+      document.getElementById('filtroDataFim')?.addEventListener('change', aplicarFiltros);
+      
+      // Preview de tags
+      const tagsInput = document.getElementById('novaTags');
+      if (tagsInput) {
+        tagsInput.addEventListener('input', function() {
+          const tags = this.value.split(',').map(t => t.trim()).filter(t => t.length > 0);
+          const preview = document.getElementById('tagsPreview');
+          if (preview) {
+            if (tags.length > 0) {
+              preview.innerHTML = tags.map(tag => 
+                `<span class="badge bg-primary me-1 mb-1">${tag}</span>`
+              ).join('');
+            } else {
+              preview.innerHTML = '';
+            }
+          }
+        });
+      }
+      
+      // Atalhos de teclado
+      document.addEventListener('keydown', function(e) {
+        // Ctrl+N: Novo chamado
+        if (e.ctrlKey && e.key === 'n' && !e.target.matches('input, textarea, select')) {
+          e.preventDefault();
+          abrirModalNovoChamado();
+        }
+        // Ctrl+E: Exportar
+        if (e.ctrlKey && e.key === 'e' && !e.target.matches('input, textarea, select')) {
+          e.preventDefault();
+          exportarRelatorio();
+        }
+        // ESC: Fechar modais
+        if (e.key === 'Escape') {
+          const modals = document.querySelectorAll('.modal.show');
+          modals.forEach(modal => {
+            const bsModal = bootstrap.Modal.getInstance(modal);
+            if (bsModal) bsModal.hide();
+          });
+        }
+      });
       
       // Listener para mudança de categoria no modal
       const selectCategoria = document.getElementById('novaCategoria');
@@ -884,7 +2474,1674 @@
       document.body.appendChild(alert);
       setTimeout(() => alert.remove(), 5000);
     }
+    
+    // ========== FUNCIONALIDADES AVANÇADAS ==========
+    
+    let currentChamadoId = null;
+    let charts = {};
+    let realtimeSubscription = null;
+    
+    // Dashboard Avançado - Gráficos
+    function getLegendColor() {
+      return document.body.classList.contains('dark-mode') 
+        ? 'rgba(255, 255, 255, 0.8)' 
+        : 'rgba(0, 0, 0, 0.7)';
+    }
+    
+    function inicializarGraficos() {
+      const legendColor = getLegendColor();
+      
+      // Gráfico de Status
+      const ctxStatus = document.getElementById('chartStatus');
+      if (ctxStatus) {
+        charts.status = new Chart(ctxStatus, {
+          type: 'doughnut',
+          data: {
+            labels: ['Abertos', 'Em Andamento', 'Aguardando', 'Resolvidos', 'Fechados'],
+            datasets: [{
+              data: [0, 0, 0, 0, 0],
+              backgroundColor: ['#3b82f6', '#f59e0b', '#6b7280', '#10b981', '#9ca3af']
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: {
+                position: 'bottom',
+                labels: {
+                  boxWidth: 14,
+                  padding: 12,
+                  font: {
+                    size: 12,
+                    weight: '500'
+                  },
+                  usePointStyle: true,
+                  color: legendColor
+                }
+              },
+              tooltip: {
+                backgroundColor: document.body.classList.contains('dark-mode') 
+                  ? 'rgba(31, 41, 55, 0.95)' 
+                  : 'rgba(0, 0, 0, 0.8)',
+                padding: 12,
+                titleFont: {
+                  size: 13,
+                  weight: '600'
+                },
+                bodyFont: {
+                  size: 12
+                },
+                borderColor: 'rgba(102, 126, 234, 0.5)',
+                borderWidth: 1,
+                cornerRadius: 8,
+                titleColor: document.body.classList.contains('dark-mode') 
+                  ? 'rgba(255, 255, 255, 0.9)' 
+                  : 'rgba(255, 255, 255, 0.9)',
+                bodyColor: document.body.classList.contains('dark-mode') 
+                  ? 'rgba(255, 255, 255, 0.8)' 
+                  : 'rgba(255, 255, 255, 0.8)'
+              }
+            }
+          }
+        });
+      }
+      
+      // Gráfico de Prioridade
+      const ctxPrioridade = document.getElementById('chartPrioridade');
+      if (ctxPrioridade) {
+        charts.prioridade = new Chart(ctxPrioridade, {
+          type: 'bar',
+          data: {
+            labels: ['Baixa', 'Média', 'Alta', 'Urgente'],
+            datasets: [{
+              label: 'Chamados',
+              data: [0, 0, 0, 0],
+              backgroundColor: ['#3b82f6', '#f59e0b', '#ef4444', '#dc2626']
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+              y: {
+                beginAtZero: true,
+                ticks: {
+                  font: { size: 11 },
+                  stepSize: 1,
+                  padding: 8
+                },
+                grid: {
+                  color: 'rgba(0,0,0,0.05)',
+                  drawBorder: false
+                }
+              },
+              x: {
+                ticks: {
+                  font: { size: 11 },
+                  padding: 8
+                },
+                grid: {
+                  display: false
+                }
+              }
+            },
+            plugins: {
+              legend: {
+                display: false
+              },
+              tooltip: {
+                backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                padding: 12,
+                titleFont: {
+                  size: 13,
+                  weight: '600'
+                },
+                bodyFont: {
+                  size: 12
+                },
+                borderColor: 'rgba(102, 126, 234, 0.5)',
+                borderWidth: 1,
+                cornerRadius: 8
+              }
+            }
+          }
+        });
+      }
+      
+      // Gráfico de Evolução
+      const ctxEvolucao = document.getElementById('chartEvolucao');
+      if (ctxEvolucao) {
+        charts.evolucao = new Chart(ctxEvolucao, {
+          type: 'line',
+          data: {
+            labels: [],
+            datasets: [{
+              label: 'Novos Chamados',
+              data: [],
+              borderColor: '#667eea',
+              backgroundColor: 'rgba(102, 126, 234, 0.1)',
+              fill: true,
+              tension: 0.4,
+              pointRadius: 2,
+              pointHoverRadius: 4
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+              y: {
+                beginAtZero: true,
+                ticks: {
+                  font: { size: 11 },
+                  stepSize: 1,
+                  padding: 8
+                },
+                grid: {
+                  color: 'rgba(0,0,0,0.08)',
+                  drawBorder: false
+                }
+              },
+              x: {
+                ticks: {
+                  font: { size: 11 },
+                  padding: 8,
+                  maxRotation: 0,
+                  minRotation: 0
+                },
+                grid: {
+                  display: false
+                }
+              }
+            },
+            plugins: {
+              legend: {
+                display: false
+              },
+              tooltip: {
+                backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                padding: 12,
+                titleFont: {
+                  size: 13,
+                  weight: '600'
+                },
+                bodyFont: {
+                  size: 12
+                },
+                borderColor: 'rgba(102, 126, 234, 0.5)',
+                borderWidth: 1,
+                cornerRadius: 8
+              }
+            },
+            elements: {
+              point: {
+                radius: 3,
+                hoverRadius: 5
+              },
+              line: {
+                borderWidth: 2
+              }
+            }
+          }
+        });
+      }
+      
+      // Gráfico de Categoria
+      const ctxCategoria = document.getElementById('chartCategoria');
+      if (ctxCategoria) {
+        charts.categoria = new Chart(ctxCategoria, {
+          type: 'pie',
+          data: {
+            labels: ['Bug', 'Melhoria', 'Dúvida', 'Sugestão', 'Outro'],
+            datasets: [{
+              data: [0, 0, 0, 0, 0],
+              backgroundColor: ['#ef4444', '#10b981', '#3b82f6', '#f59e0b', '#6b7280']
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: {
+                position: 'bottom',
+                labels: {
+                  boxWidth: 14,
+                  padding: 12,
+                  font: {
+                    size: 12,
+                    weight: '500'
+                  },
+                  usePointStyle: true,
+                  color: getLegendColor()
+                }
+              },
+              tooltip: {
+                backgroundColor: document.body.classList.contains('dark-mode') 
+                  ? 'rgba(31, 41, 55, 0.95)' 
+                  : 'rgba(0, 0, 0, 0.8)',
+                padding: 12,
+                titleFont: {
+                  size: 13,
+                  weight: '600'
+                },
+                bodyFont: {
+                  size: 12
+                },
+                borderColor: 'rgba(102, 126, 234, 0.5)',
+                borderWidth: 1,
+                cornerRadius: 8,
+                titleColor: document.body.classList.contains('dark-mode') 
+                  ? 'rgba(255, 255, 255, 0.9)' 
+                  : 'rgba(255, 255, 255, 0.9)',
+                bodyColor: document.body.classList.contains('dark-mode') 
+                  ? 'rgba(255, 255, 255, 0.8)' 
+                  : 'rgba(255, 255, 255, 0.8)'
+              }
+            }
+          }
+        });
+      }
+    }
+    
+    function atualizarGraficos() {
+      const statusCount = {
+        aberto: todosChamados.filter(c => c.status === 'aberto').length,
+        em_andamento: todosChamados.filter(c => c.status === 'em_andamento').length,
+        aguardando: todosChamados.filter(c => c.status === 'aguardando').length,
+        resolvido: todosChamados.filter(c => c.status === 'resolvido').length,
+        fechado: todosChamados.filter(c => c.status === 'fechado').length
+      };
+      
+      const prioridadeCount = {
+        baixa: todosChamados.filter(c => c.prioridade === 'baixa').length,
+        media: todosChamados.filter(c => c.prioridade === 'media').length,
+        alta: todosChamados.filter(c => c.prioridade === 'alta').length,
+        urgente: todosChamados.filter(c => c.prioridade === 'urgente').length
+      };
+      
+      const categoriaCount = {
+        bug: todosChamados.filter(c => c.categoria === 'bug').length,
+        melhoria: todosChamados.filter(c => c.categoria === 'melhoria').length,
+        duvida: todosChamados.filter(c => c.categoria === 'duvida').length,
+        sugestao: todosChamados.filter(c => c.categoria === 'sugestao').length,
+        outro: todosChamados.filter(c => c.categoria === 'outro').length
+      };
+      
+      if (charts.status) {
+        charts.status.data.datasets[0].data = [
+          statusCount.aberto,
+          statusCount.em_andamento,
+          statusCount.aguardando,
+          statusCount.resolvido,
+          statusCount.fechado
+        ];
+        charts.status.update();
+      }
+      
+      if (charts.prioridade) {
+        charts.prioridade.data.datasets[0].data = [
+          prioridadeCount.baixa,
+          prioridadeCount.media,
+          prioridadeCount.alta,
+          prioridadeCount.urgente
+        ];
+        charts.prioridade.update();
+      }
+      
+      if (charts.categoria) {
+        charts.categoria.data.datasets[0].data = [
+          categoriaCount.bug,
+          categoriaCount.melhoria,
+          categoriaCount.duvida,
+          categoriaCount.sugestao,
+          categoriaCount.outro
+        ];
+        charts.categoria.update();
+      }
+    }
+    
+    // Sistema de Roteamento Automático
+    async function rotearChamadoAutomaticamente(chamado) {
+      try {
+        // Buscar membros do time de projetos
+        const { data: usuarios, error } = await supabase
+          .from('usuarios')
+          .select('id, nome, email, role')
+          .eq('role', 'projetos')
+          .or('role.eq.admin,role.eq.projetos');
+        
+        if (error) throw error;
+        
+        if (usuarios && usuarios.length > 0) {
+          // Roteamento por carga de trabalho (menor número de chamados atribuídos)
+          const chamadosAtribuidos = await Promise.all(
+            usuarios.map(async (user) => {
+              const { count } = await supabase
+                .from('chamados')
+                .select('*', { count: 'exact', head: true })
+                .eq('atribuido_para', user.id)
+                .in('status', ['aberto', 'em_andamento', 'aguardando']);
+              return { user, count: count || 0 };
+            })
+          );
+          
+          // Ordenar por carga de trabalho
+          chamadosAtribuidos.sort((a, b) => a.count - b.count);
+          const usuarioSelecionado = chamadosAtribuidos[0].user;
+          
+          // Atribuir chamado
+          await supabase
+            .from('chamados')
+            .update({
+              atribuido_para: usuarioSelecionado.id,
+              atribuido_nome: usuarioSelecionado.nome,
+              status: 'em_andamento'
+            })
+            .eq('id', chamado.id);
+          
+          // Criar notificação
+          await criarNotificacao({
+            chamado_id: chamado.id,
+            usuario_id: usuarioSelecionado.id,
+            tipo: 'atribuicao',
+            mensagem: `Chamado #${chamado.numero_sequencial} foi atribuído automaticamente para você`
+          });
+          
+          mostrarSucesso(`Chamado roteado automaticamente para ${usuarioSelecionado.nome}`);
+        }
+      } catch (error) {
+        console.error('Erro no roteamento automático:', error);
+      }
+    }
+    
+    // Notificações em Tempo Real
+    function inicializarNotificacoesTempoReal() {
+      if (!supabase) return;
+      
+      realtimeSubscription = supabase
+        .channel('chamados-changes')
+        .on('postgres_changes', {
+          event: '*',
+          schema: 'public',
+          table: 'chamados'
+        }, (payload) => {
+          console.log('Mudança detectada:', payload);
+          if (payload.eventType === 'INSERT') {
+            mostrarNotificacao(`Novo chamado criado: ${payload.new.titulo}`, 'info');
+          } else if (payload.eventType === 'UPDATE') {
+            mostrarNotificacao(`Chamado atualizado: ${payload.new.titulo}`, 'info');
+          }
+          carregarChamados();
+        })
+        .on('postgres_changes', {
+          event: '*',
+          schema: 'public',
+          table: 'chamados_comentarios'
+        }, (payload) => {
+          if (payload.new.chamado_id === currentChamadoId) {
+            carregarComentarios(currentChamadoId);
+          }
+        })
+        .subscribe();
+    }
+    
+    function mostrarNotificacao(mensagem, tipo = 'info') {
+      const container = document.getElementById('notificationContainer');
+      if (!container) return;
+      
+      const notification = document.createElement('div');
+      notification.className = `notification-item alert alert-${tipo}`;
+      notification.innerHTML = `
+        <div class="d-flex justify-content-between align-items-start">
+          <div>${mensagem}</div>
+          <button type="button" class="btn-close" onclick="this.parentElement.parentElement.remove()"></button>
+        </div>
+      `;
+      
+      container.appendChild(notification);
+      setTimeout(() => notification.remove(), 5000);
+    }
+    
+    async function criarNotificacao(notificacao) {
+      try {
+        await supabase
+          .from('chamados_notificacoes')
+          .insert([notificacao]);
+      } catch (error) {
+        console.error('Erro ao criar notificação:', error);
+      }
+    }
+    
+    // Comentários
+    async function carregarComentarios(chamadoId) {
+      try {
+        const { data, error } = await supabase
+          .from('chamados_comentarios')
+          .select('*')
+          .eq('chamado_id', chamadoId)
+          .order('created_at', { ascending: false });
+        
+        if (error) throw error;
+        
+        const container = document.getElementById('comentariosContainer');
+        if (!container) return;
+        
+        if (!data || data.length === 0) {
+          container.innerHTML = '<p class="text-muted text-center py-3">Nenhum comentário ainda</p>';
+          return;
+        }
+        
+        let html = '';
+        data.forEach(comentario => {
+          const dataFormatada = new Date(comentario.created_at).toLocaleString('pt-BR');
+          html += `
+            <div class="comment-item">
+              <div class="comment-header">
+                <span class="comment-author">${comentario.usuario_nome || 'Usuário'}</span>
+                <span class="comment-date">${dataFormatada}</span>
+              </div>
+              <div class="comment-content">${comentario.comentario.replace(/\n/g, '<br>')}</div>
+            </div>
+          `;
+        });
+        
+        container.innerHTML = html;
+      } catch (error) {
+        console.error('Erro ao carregar comentários:', error);
+      }
+    }
+    
+    async function adicionarComentario() {
+      if (!currentChamadoId) return;
+      
+      const comentario = document.getElementById('novoComentario').value.trim();
+      if (!comentario) {
+        mostrarErro('Digite um comentário');
+        return;
+      }
+      
+      try {
+        const { error } = await supabase
+          .from('chamados_comentarios')
+          .insert([{
+            chamado_id: currentChamadoId,
+            usuario_id: currentUserId,
+            usuario_nome: currentUserName,
+            comentario: comentario
+          }]);
+        
+        if (error) throw error;
+        
+        document.getElementById('novoComentario').value = '';
+        await carregarComentarios(currentChamadoId);
+        mostrarSucesso('Comentário adicionado com sucesso!');
+      } catch (error) {
+        console.error('Erro ao adicionar comentário:', error);
+        mostrarErro('Erro ao adicionar comentário');
+      }
+    }
+    
+    // Histórico
+    async function carregarHistorico(chamadoId) {
+      try {
+        const container = document.getElementById('historicoContainer');
+        if (!container) return;
+        
+        const { data, error } = await supabase
+          .from('chamados_historico')
+          .select('*')
+          .eq('chamado_id', chamadoId)
+          .order('created_at', { ascending: false });
+        
+        if (error) {
+          console.error('❌ Erro ao carregar histórico:', error);
+          console.error('❌ Código:', error.code);
+          console.error('❌ Mensagem:', error.message);
+          
+          // Se for erro de permissão, mostrar mensagem amigável
+          if (error.code === '42501' || error.message?.includes('permission denied')) {
+            container.innerHTML = '<p class="text-muted text-center py-3">Histórico não disponível (sem permissão)</p>';
+            return;
+          }
+          
+          throw error;
+        }
+        
+        if (!data || data.length === 0) {
+          container.innerHTML = '<p class="text-muted text-center py-3">Nenhum histórico disponível</p>';
+          return;
+        }
+        
+        let html = '';
+        data.forEach(item => {
+          const dataFormatada = new Date(item.created_at).toLocaleString('pt-BR');
+          html += `
+            <div class="timeline-item">
+              <div class="timeline-content">
+                <strong>${item.campo_alterado}</strong>: ${item.valor_anterior || 'N/A'} → ${item.valor_novo || 'N/A'}<br>
+                <small class="text-muted">Por ${item.usuario_nome} em ${dataFormatada}</small>
+              </div>
+            </div>
+          `;
+        });
+        
+        container.innerHTML = html;
+      } catch (error) {
+        console.error('❌ Erro completo ao carregar histórico:', error);
+        const container = document.getElementById('historicoContainer');
+        if (container) {
+          container.innerHTML = '<p class="text-danger text-center py-3">Erro ao carregar histórico</p>';
+        }
+      }
+    }
+    
+    // SLA
+    function calcularSLA(chamado) {
+      if (!chamado.prazo_resposta) return null;
+      
+      const agora = new Date();
+      const prazo = new Date(chamado.prazo_resposta);
+      const diff = prazo - agora;
+      const horasRestantes = diff / (1000 * 60 * 60);
+      
+      if (horasRestantes < 0) return 'critical';
+      if (horasRestantes < 24) return 'warning';
+      return 'ok';
+    }
+    
+    function atualizarEstatisticasAvancadas() {
+      const abertos = todosChamados.filter(c => c.status === 'aberto').length;
+      const emAndamento = todosChamados.filter(c => c.status === 'em_andamento').length;
+      const resolvidos = todosChamados.filter(c => c.status === 'resolvido').length;
+      const urgentes = todosChamados.filter(c => c.prioridade === 'urgente' && c.status !== 'resolvido' && c.status !== 'fechado').length;
+      const total = todosChamados.length;
+      
+      // Calcular SLA
+      const chamadosComSLA = todosChamados.filter(c => c.prazo_resposta);
+      const slaEmDia = chamadosComSLA.filter(c => calcularSLA(c) === 'ok').length;
+      const percentualSLA = chamadosComSLA.length > 0 ? Math.round((slaEmDia / chamadosComSLA.length) * 100) : 0;
+      
+      document.getElementById('statAbertos').textContent = abertos;
+      document.getElementById('statEmAndamento').textContent = emAndamento;
+      document.getElementById('statResolvidos').textContent = resolvidos;
+      document.getElementById('statUrgentes').textContent = urgentes;
+      document.getElementById('statSLA').textContent = percentualSLA + '%';
+      document.getElementById('statTotal').textContent = total;
+      
+      // Atualizar gráficos
+      atualizarGraficos();
+    }
+    
+    // Atualizar função de inicialização
+    const originalCarregarChamados = carregarChamados;
+    carregarChamados = async function() {
+      await originalCarregarChamados();
+      atualizarEstatisticasAvancadas();
+      atualizarKanban();
+      atualizarMetricasRelatorios();
+    };
+    
+    // Kanban
+    function atualizarKanban() {
+      const abertos = todosChamados.filter(c => c.status === 'aberto');
+      const emAndamento = todosChamados.filter(c => c.status === 'em_andamento');
+      const aguardando = todosChamados.filter(c => c.status === 'aguardando');
+      const resolvidos = todosChamados.filter(c => c.status === 'resolvido');
+      
+      document.getElementById('kanbanAbertos').textContent = abertos.length;
+      document.getElementById('kanbanAndamento').textContent = emAndamento.length;
+      document.getElementById('kanbanAguardando').textContent = aguardando.length;
+      document.getElementById('kanbanResolvidos').textContent = resolvidos.length;
+      
+      renderizarKanbanColuna('kanbanColAbertos', abertos);
+      renderizarKanbanColuna('kanbanColAndamento', emAndamento);
+      renderizarKanbanColuna('kanbanColAguardando', aguardando);
+      renderizarKanbanColuna('kanbanColResolvidos', resolvidos);
+    }
+    
+    function renderizarKanbanColuna(containerId, chamados) {
+      const container = document.getElementById(containerId);
+      if (!container) return;
+      
+      // Preservar o drag-hint
+      const dragHint = container.querySelector('.drag-hint');
+      const dragHintHtml = dragHint ? dragHint.outerHTML : '<div class="drag-hint">Solte aqui para mover</div>';
+      
+      if (chamados.length === 0) {
+        container.innerHTML = dragHintHtml + '<p class="text-muted text-center py-3">Nenhum chamado</p>';
+        return;
+      }
+      
+      let html = dragHintHtml;
+      chamados.forEach(chamado => {
+        const prioridadeClass = `prioridade-${chamado.prioridade}`;
+        const draggableClass = isAdmin ? 'kanban-card draggable' : 'kanban-card not-draggable';
+        const dragIcon = isAdmin ? '<i class="fas fa-grip-vertical text-muted me-1" style="font-size: 0.7rem; cursor: grab;"></i>' : '';
+        const draggableAttr = isAdmin ? 'true' : 'false';
+        html += `
+          <div class="chamado-card modern-card p-2 mb-2 ${prioridadeClass} ${draggableClass}" 
+               data-chamado-id="${chamado.id}"
+               draggable="${draggableAttr}"
+               ondragstart="return handleDragStart(event, '${chamado.id}')"
+               ondragend="handleDragEnd(event)"
+               onclick="if(!event.target.closest('.kanban-card.dragging') && !event.target.closest('.fa-grip-vertical')) abrirDetalhes('${chamado.id}')">
+            ${dragIcon}
+            <div class="chamado-numero">#${chamado.numero_sequencial || chamado.id.substring(0, 8)}</div>
+            <h6 class="mb-1 fw-bold small">${chamado.titulo.substring(0, 50)}${chamado.titulo.length > 50 ? '...' : ''}</h6>
+            <div class="d-flex gap-1 flex-wrap">
+              <span class="badge bg-secondary small">${chamado.categoria}</span>
+              <span class="badge bg-info small">${chamado.prioridade}</span>
+              ${chamado.tags && chamado.tags.length > 0 ? chamado.tags.slice(0, 2).map(tag => `<span class="badge bg-primary small">${tag}</span>`).join('') : ''}
+            </div>
+          </div>
+        `;
+      });
+      
+      container.innerHTML = html;
+      
+      // Os event listeners já estão nas colunas, não precisamos re-inicializar
+      // Mas vamos garantir que os cards tenham os atributos corretos
+    }
+    
+    // Funções de Drag and Drop
+    let draggedChamadoId = null;
+    
+    function handleDragStart(e, chamadoId) {
+      console.log('🚀 Drag start:', chamadoId, 'isAdmin:', isAdmin);
+      
+      if (!isAdmin) {
+        console.log('❌ Usuário não é admin, bloqueando drag');
+        e.preventDefault();
+        return false;
+      }
+      
+      draggedChamadoId = chamadoId;
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', chamadoId);
+      e.dataTransfer.setData('application/json', JSON.stringify({ chamadoId }));
+      e.currentTarget.classList.add('dragging');
+      
+      console.log('✅ Drag iniciado com sucesso');
+      return true;
+    }
+    
+    function handleDragEnd(e) {
+      e.currentTarget.classList.remove('dragging');
+      // Remover classe drag-over de todas as colunas
+      document.querySelectorAll('.kanban-column').forEach(col => {
+        col.classList.remove('drag-over');
+      });
+    }
+    
+    // Flag para evitar múltiplos listeners
+    const dragDropInitialized = new Set();
+    
+    function inicializarDragAndDrop(container) {
+      if (!isAdmin) {
+        console.log('❌ Não é admin, não inicializando drag and drop para:', container.id);
+        return;
+      }
+      
+      const containerId = container.id;
+      if (dragDropInitialized.has(containerId)) {
+        console.log('⚠️ Drag and drop já inicializado para:', containerId);
+        return; // Já inicializado
+      }
+      
+      dragDropInitialized.add(containerId);
+      console.log('✅ Inicializando drag and drop para:', containerId);
+      
+      // Usar event delegation - listeners na coluna, não nos cards individuais
+      container.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        e.dataTransfer.dropEffect = 'move';
+        container.classList.add('drag-over');
+      }, false);
+      
+      container.addEventListener('dragenter', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        container.classList.add('drag-over');
+      }, false);
+      
+      container.addEventListener('dragleave', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        // Só remover se realmente saiu da coluna
+        if (!container.contains(e.relatedTarget)) {
+          container.classList.remove('drag-over');
+        }
+      }, false);
+      
+      container.addEventListener('drop', async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        container.classList.remove('drag-over');
+        
+        console.log('📦 Drop event:', draggedChamadoId);
+        
+        if (!draggedChamadoId) {
+          // Tentar pegar do dataTransfer
+          const data = e.dataTransfer.getData('text/plain') || e.dataTransfer.getData('application/json');
+          if (data) {
+            try {
+              const parsed = JSON.parse(data);
+              draggedChamadoId = parsed.chamadoId || data;
+            } catch {
+              draggedChamadoId = data;
+            }
+          }
+        }
+        
+        if (!draggedChamadoId) {
+          console.log('❌ Nenhum chamado ID encontrado');
+          return;
+        }
+        
+        const novoStatus = container.getAttribute('data-status');
+        if (!novoStatus) {
+          console.log('❌ Status não encontrado na coluna');
+          return;
+        }
+        
+        console.log('🔄 Movendo chamado', draggedChamadoId, 'para status', novoStatus);
+        
+        // Encontrar o chamado
+        const chamado = todosChamados.find(c => c.id === draggedChamadoId);
+        if (!chamado) return;
+        
+        // Se o status não mudou, não fazer nada
+        const statusAnterior = chamado.status;
+        if (statusAnterior === novoStatus) {
+          draggedChamadoId = null;
+          return;
+        }
+        
+        try {
+          console.log('🔄 Atualizando chamado:', draggedChamadoId, 'para status:', novoStatus);
+          console.log('👤 Usuário atual:', currentUserId, '| Admin:', isAdmin);
+          
+          // Atualizar status no banco
+          const { data: updatedData, error: updateError } = await supabase
+            .from('chamados')
+            .update({ status: novoStatus })
+            .eq('id', draggedChamadoId)
+            .select();
+          
+          if (updateError) {
+            console.error('❌ Erro ao atualizar chamado:', updateError);
+            console.error('❌ Código do erro:', updateError.code);
+            console.error('❌ Mensagem:', updateError.message);
+            console.error('❌ Detalhes:', updateError.details);
+            console.error('❌ Hint:', updateError.hint);
+            
+            // Se for erro de RLS, dar mensagem mais clara
+            if (updateError.code === '42501' || updateError.message?.includes('row-level security')) {
+              throw new Error('Permissão negada. Verifique se você tem permissão de admin ou se as políticas RLS estão configuradas corretamente.');
+            }
+            
+            throw new Error(updateError.message || JSON.stringify(updateError));
+          }
+          
+          console.log('✅ Chamado atualizado no banco:', updatedData);
+          
+          // Atualizar localmente
+          chamado.status = novoStatus;
+          
+          // Criar registro no histórico (pode falhar se a tabela não existir ou RLS bloquear, mas não deve bloquear)
+          try {
+            const historicoData = {
+              chamado_id: draggedChamadoId,
+              campo_alterado: 'status',
+              valor_anterior: statusAnterior || '',
+              valor_novo: novoStatus || '',
+              usuario_id: currentUserId || '',
+              usuario_nome: currentUserName || 'Sistema'
+            };
+            
+            console.log('📝 Tentando criar histórico:', historicoData);
+            
+            const { data: historicoResult, error: historicoError } = await supabase
+              .from('chamados_historico')
+              .insert([historicoData])
+              .select();
+            
+            if (historicoError) {
+              console.warn('⚠️ Erro ao criar histórico (não crítico):', historicoError);
+              console.warn('⚠️ Detalhes do erro:', JSON.stringify(historicoError, null, 2));
+              // Não bloquear se o histórico falhar - é apenas um log
+            } else {
+              console.log('✅ Histórico criado com sucesso:', historicoResult);
+            }
+          } catch (histError) {
+            console.warn('⚠️ Exceção ao criar histórico (não crítico):', histError);
+            console.warn('⚠️ Tipo:', typeof histError);
+            // Não bloquear se o histórico falhar
+          }
+          
+          // Recarregar kanban
+          atualizarKanban();
+          
+          mostrarSucesso(`Chamado movido para "${novoStatus.replace('_', ' ')}"`);
+          
+        } catch (error) {
+          console.error('❌ Erro completo ao mover chamado:', error);
+          console.error('❌ Tipo do erro:', typeof error);
+          console.error('❌ Erro stringificado:', JSON.stringify(error, null, 2));
+          
+          const errorMessage = error?.message || error?.error?.message || JSON.stringify(error) || 'Erro desconhecido';
+          mostrarErro('Erro ao mover chamado: ' + errorMessage);
+          
+          // Recarregar para reverter visualmente
+          atualizarKanban();
+        }
+        
+        draggedChamadoId = null;
+      });
+    }
+    
+    // Inicializar drag and drop em todas as colunas ao carregar
+    function inicializarTodosDragAndDrop() {
+      if (!isAdmin) {
+        console.log('❌ Não é admin, não inicializando drag and drop');
+        return;
+      }
+      
+      console.log('🔄 Inicializando drag and drop em todas as colunas...');
+      const colunas = ['kanbanColAbertos', 'kanbanColAndamento', 'kanbanColAguardando', 'kanbanColResolvidos'];
+      colunas.forEach(colId => {
+        const col = document.getElementById(colId);
+        if (col) {
+          console.log('✅ Inicializando coluna:', colId);
+          inicializarDragAndDrop(col);
+        } else {
+          console.log('⚠️ Coluna não encontrada:', colId);
+        }
+      });
+    }
+    
+    // Função de debug para testar drag and drop
+    window.debugDragDrop = function() {
+      console.log('🔍 Debug Drag and Drop:');
+      console.log('- isAdmin:', isAdmin);
+      console.log('- draggedChamadoId:', draggedChamadoId);
+      console.log('- dragDropInitialized:', Array.from(dragDropInitialized));
+      
+      const colunas = ['kanbanColAbertos', 'kanbanColAndamento', 'kanbanColAguardando', 'kanbanColResolvidos'];
+      colunas.forEach(colId => {
+        const col = document.getElementById(colId);
+        if (col) {
+          const cards = col.querySelectorAll('.kanban-card');
+          console.log(`- ${colId}: ${cards.length} cards, draggable:`, Array.from(cards).map(c => c.draggable));
+        }
+      });
+    };
+    
+    // Carregar anexos
+    async function carregarAnexos(chamadoId) {
+      try {
+        const chamado = todosChamados.find(c => c.id === chamadoId);
+        if (!chamado) return;
+        
+        const container = document.getElementById('anexosContainer');
+        if (!container) return;
+        
+        const anexos = chamado.anexos || [];
+        
+        if (anexos.length === 0) {
+          container.innerHTML = '<p class="text-muted text-center py-3">Nenhum anexo disponível</p>';
+          return;
+        }
+        
+        let html = '<div class="row g-2">';
+        anexos.forEach((anexo, index) => {
+          const isImage = anexo.tipo && anexo.tipo.startsWith('image/');
+          const isPdf = anexo.tipo === 'application/pdf';
+          const tamanhoFormatado = anexo.tamanho ? (anexo.tamanho / 1024).toFixed(2) + ' KB' : '';
+          
+          html += `
+            <div class="col-md-4">
+              <div class="card">
+                <div class="card-body p-2">
+                  ${isImage ? `<img src="${anexo.url}" class="img-thumbnail mb-2" style="max-height: 100px; width: 100%; object-fit: cover;" onclick="window.open('${anexo.url}', '_blank')">` : ''}
+                  ${isPdf ? `<div class="text-center mb-2"><i class="fas fa-file-pdf fa-3x text-danger"></i></div>` : ''}
+                  <h6 class="small mb-1" style="font-size: 0.75rem;">${anexo.nome || 'Anexo'}</h6>
+                  ${tamanhoFormatado ? `<small class="text-muted">${tamanhoFormatado}</small>` : ''}
+                  <div class="mt-2">
+                    <a href="${anexo.url}" target="_blank" class="btn btn-sm btn-primary">
+                      <i class="fas fa-download me-1"></i>Download
+                    </a>
+                    ${isImage ? `<button class="btn btn-sm btn-info" onclick="window.open('${anexo.url}', '_blank')">
+                      <i class="fas fa-eye me-1"></i>Ver
+                    </button>` : ''}
+                  </div>
+                </div>
+              </div>
+            </div>
+          `;
+        });
+        html += '</div>';
+        
+        container.innerHTML = html;
+      } catch (error) {
+        console.error('Erro ao carregar anexos:', error);
+        const container = document.getElementById('anexosContainer');
+        if (container) {
+          container.innerHTML = '<p class="text-danger text-center py-3">Erro ao carregar anexos</p>';
+        }
+      }
+    }
+    
+    // Esta função será sobrescrita mais abaixo para incluir todas as funcionalidades
+    
+    // Inicializar gráficos e notificações
+    document.addEventListener('DOMContentLoaded', async () => {
+      // Aguardar carregamento do usuário primeiro
+      await carregarUsuario();
+      
+      setTimeout(() => {
+        inicializarGraficos();
+        inicializarNotificacoesTempoReal();
+        inicializarTodosDragAndDrop();
+        
+        // Log para debug
+        console.log('🎯 Sistema inicializado. Admin:', isAdmin);
+        if (isAdmin) {
+          console.log('✅ Drag and drop habilitado para admin');
+        } else {
+          console.log('⚠️ Drag and drop desabilitado - usuário não é admin');
+        }
+      }, 1000);
+    });
+    
+    // Atualizar métricas avançadas nos relatórios
+    function atualizarMetricasRelatorios() {
+      const agora = new Date();
+      const trintaDiasAtras = new Date(agora.getTime() - 30 * 24 * 60 * 60 * 1000);
+      
+      // Filtrar chamados dos últimos 30 dias
+      const chamadosRecentes = todosChamados.filter(c => {
+        const dataCriacao = new Date(c.created_at);
+        return dataCriacao >= trintaDiasAtras;
+      });
+      
+      // Tempo médio de resolução
+      const resolvidos = chamadosRecentes.filter(c => c.fechado_em && c.tempo_resolucao_minutos);
+      if (resolvidos.length > 0) {
+        const tempoMedio = resolvidos.reduce((acc, c) => acc + (c.tempo_resolucao_minutos || 0), 0) / resolvidos.length;
+        const horas = Math.floor(tempoMedio / 60);
+        const minutos = Math.round(tempoMedio % 60);
+        document.getElementById('tempoMedioResolucao').textContent = horas > 0 ? `${horas}h ${minutos}min` : `${minutos}min`;
+      } else {
+        document.getElementById('tempoMedioResolucao').textContent = 'N/A';
+      }
+      
+      // Taxa de resolução
+      const totalRecentes = chamadosRecentes.length;
+      const resolvidosRecentes = chamadosRecentes.filter(c => c.status === 'resolvido' || c.status === 'fechado').length;
+      const taxaResolucao = totalRecentes > 0 ? Math.round((resolvidosRecentes / totalRecentes) * 100) : 0;
+      document.getElementById('taxaResolucao').textContent = `${taxaResolucao}%`;
+      
+      // SLA Médio
+      const chamadosComSLA = chamadosRecentes.filter(c => c.prazo_resolucao);
+      const slaEmDia = chamadosComSLA.filter(c => {
+        if (!c.fechado_em) return false;
+        const prazo = new Date(c.prazo_resolucao);
+        const resolvido = new Date(c.fechado_em);
+        return resolvido <= prazo;
+      }).length;
+      const slaMedio = chamadosComSLA.length > 0 ? Math.round((slaEmDia / chamadosComSLA.length) * 100) : 0;
+      document.getElementById('slaMedio').textContent = `${slaMedio}%`;
+      
+      // Top usuários
+      const usuariosMap = {};
+      chamadosRecentes.forEach(c => {
+        if (c.usuario_nome) {
+          if (!usuariosMap[c.usuario_nome]) {
+            usuariosMap[c.usuario_nome] = 0;
+          }
+          usuariosMap[c.usuario_nome]++;
+        }
+      });
+      
+      const topUsuarios = Object.entries(usuariosMap)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5);
+      
+      const topUsuariosContainer = document.getElementById('topUsuarios');
+      if (topUsuariosContainer) {
+        if (topUsuarios.length > 0) {
+          let html = '<ul class="list-group">';
+          topUsuarios.forEach(([nome, count], index) => {
+            html += `
+              <li class="list-group-item d-flex justify-content-between align-items-center">
+                <span>${index + 1}. ${nome}</span>
+                <span class="badge bg-primary rounded-pill">${count}</span>
+              </li>
+            `;
+          });
+          html += '</ul>';
+          topUsuariosContainer.innerHTML = html;
+        } else {
+          topUsuariosContainer.innerHTML = '<p class="text-muted">Nenhum dado disponível</p>';
+        }
+      }
+    }
+    
+    // A atualização de métricas já está integrada na função carregarChamados principal
+    
+    // Re-inicializar drag and drop quando o Kanban for atualizado
+    const originalAtualizarKanban = atualizarKanban;
+    atualizarKanban = function() {
+      originalAtualizarKanban();
+      if (isAdmin) {
+        setTimeout(() => {
+          inicializarTodosDragAndDrop();
+        }, 200);
+      }
+    };
+    
+    // Busca avançada
+    document.getElementById('buscaAvancada')?.addEventListener('input', function(e) {
+      const termo = e.target.value.toLowerCase();
+      aplicarFiltros();
+    });
+    
+    // Atualizar aplicarFiltros para incluir busca
+    const originalAplicarFiltros = aplicarFiltros;
+    aplicarFiltros = function() {
+      const busca = document.getElementById('buscaAvancada')?.value.toLowerCase() || '';
+      const status = document.getElementById('filtroStatus').value;
+      const prioridade = document.getElementById('filtroPrioridade').value;
+      const categoria = document.getElementById('filtroCategoria').value;
+      const sla = document.getElementById('filtroSLA')?.value;
+      const atribuido = document.getElementById('filtroAtribuido')?.value;
+      const dataInicio = document.getElementById('filtroDataInicio')?.value;
+      const dataFim = document.getElementById('filtroDataFim')?.value;
+      
+      chamadosFiltrados = todosChamados.filter(chamado => {
+        const matchStatus = !status || chamado.status === status;
+        const matchPrioridade = !prioridade || chamado.prioridade === prioridade;
+        const matchCategoria = !categoria || chamado.categoria === categoria;
+        const matchBusca = !busca || 
+          chamado.titulo.toLowerCase().includes(busca) ||
+          chamado.descricao.toLowerCase().includes(busca) ||
+          (chamado.numero_sequencial && chamado.numero_sequencial.toString().includes(busca)) ||
+          (chamado.tags && chamado.tags.some(tag => tag.toLowerCase().includes(busca)));
+        const matchSLA = !sla || calcularSLA(chamado) === sla;
+        const matchAtribuido = !atribuido || 
+          (atribuido === 'meus' && chamado.atribuido_para === currentUserId) ||
+          (atribuido === 'nao_atribuido' && !chamado.atribuido_para);
+        
+        // Filtro por data
+        let matchData = true;
+        if (dataInicio || dataFim) {
+          const chamadoData = new Date(chamado.created_at);
+          if (dataInicio) {
+            const inicio = new Date(dataInicio);
+            inicio.setHours(0, 0, 0, 0);
+            if (chamadoData < inicio) matchData = false;
+          }
+          if (dataFim) {
+            const fim = new Date(dataFim);
+            fim.setHours(23, 59, 59, 999);
+            if (chamadoData > fim) matchData = false;
+          }
+        }
+        
+        return matchStatus && matchPrioridade && matchCategoria && matchBusca && matchSLA && matchAtribuido && matchData;
+      });
+      
+      atualizarLista();
+      document.getElementById('contadorChamados').textContent = `${chamadosFiltrados.length} chamados`;
+    };
+    
+    // Limpar filtros
+    function limparFiltros() {
+      document.getElementById('buscaAvancada').value = '';
+      document.getElementById('filtroStatus').value = '';
+      document.getElementById('filtroPrioridade').value = '';
+      document.getElementById('filtroCategoria').value = '';
+      document.getElementById('filtroSLA').value = '';
+      document.getElementById('filtroAtribuido').value = '';
+      document.getElementById('filtroDataInicio').value = '';
+      document.getElementById('filtroDataFim').value = '';
+      aplicarFiltros();
+    }
+    
+    // Exportar relatório
+    async function exportarRelatorio() {
+      try {
+        const dados = chamadosFiltrados.length > 0 ? chamadosFiltrados : todosChamados;
+        
+        // Criar CSV
+        let csv = 'Número,Título,Categoria,Subcategoria,Prioridade,Status,Criado por,Data Criação,Atribuído para,Resolvido em\n';
+        
+        dados.forEach(chamado => {
+          const linha = [
+            chamado.numero_sequencial || 'N/A',
+            `"${(chamado.titulo || '').replace(/"/g, '""')}"`,
+            chamado.categoria || 'N/A',
+            chamado.subcategoria || 'N/A',
+            chamado.prioridade || 'N/A',
+            chamado.status || 'N/A',
+            `"${(chamado.usuario_nome || '').replace(/"/g, '""')}"`,
+            new Date(chamado.created_at).toLocaleString('pt-BR'),
+            `"${(chamado.atribuido_nome || 'Não atribuído').replace(/"/g, '""')}"`,
+            chamado.fechado_em ? new Date(chamado.fechado_em).toLocaleString('pt-BR') : 'Não resolvido'
+          ].join(',');
+          csv += linha + '\n';
+        });
+        
+        // Download
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+        link.setAttribute('href', url);
+        link.setAttribute('download', `chamados_${new Date().toISOString().split('T')[0]}.csv`);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        mostrarSucesso('Relatório exportado com sucesso!');
+      } catch (error) {
+        console.error('Erro ao exportar:', error);
+        mostrarErro('Erro ao exportar relatório');
+      }
+    }
+    
+    // Duplicar chamado
+    async function duplicarChamado(chamadoId) {
+      const chamado = todosChamados.find(c => c.id === chamadoId);
+      if (!chamado) return;
+      
+      if (!confirm(`Deseja duplicar o chamado #${chamado.numero_sequencial || chamadoId.substring(0, 8)}?`)) {
+        return;
+      }
+      
+      try {
+        const { data, error } = await supabase
+          .from('chamados')
+          .insert([{
+            titulo: `[CÓPIA] ${chamado.titulo}`,
+            descricao: chamado.descricao,
+            categoria: chamado.categoria,
+            subcategoria: chamado.subcategoria,
+            prioridade: chamado.prioridade,
+            status: 'aberto',
+            usuario_id: currentUserId,
+            usuario_nome: currentUserName,
+            imagem_url: chamado.imagem_url,
+            tags: chamado.tags,
+            ambiente: chamado.ambiente,
+            versao_sistema: chamado.versao_sistema
+          }])
+          .select();
+        
+        if (error) throw error;
+        
+        mostrarSucesso('Chamado duplicado com sucesso!');
+        await carregarChamados();
+      } catch (error) {
+        console.error('Erro ao duplicar:', error);
+        mostrarErro('Erro ao duplicar chamado');
+      }
+    }
+    
+    // Funções adicionais
+    async function abrirModalAtribuicao() {
+      try {
+        // Buscar membros do time de projetos
+        const { data: usuarios, error } = await supabase
+          .from('usuarios')
+          .select('id, nome, email')
+          .or('role.eq.admin,role.eq.projetos');
+        
+        if (error) throw error;
+        
+        const select = document.getElementById('selectAtribuicao');
+        select.innerHTML = '<option value="">Selecione um membro do time de projetos...</option>';
+        
+        if (usuarios && usuarios.length > 0) {
+          usuarios.forEach(user => {
+            const option = document.createElement('option');
+            option.value = user.id;
+            option.textContent = user.nome || user.email;
+            select.appendChild(option);
+          });
+        }
+        
+        new bootstrap.Modal(document.getElementById('modalAtribuicao')).show();
+      } catch (error) {
+        console.error('Erro ao carregar usuários:', error);
+        mostrarErro('Erro ao carregar lista de usuários');
+      }
+    }
+    
+    async function confirmarAtribuicao() {
+      if (!currentChamadoId) return;
+      
+      const usuarioId = document.getElementById('selectAtribuicao').value;
+      if (!usuarioId) {
+        mostrarErro('Selecione um usuário');
+        return;
+      }
+      
+      try {
+        const { data: usuario } = await supabase
+          .from('usuarios')
+          .select('nome')
+          .eq('id', usuarioId)
+          .single();
+        
+        const { error } = await supabase
+          .from('chamados')
+          .update({
+            atribuido_para: usuarioId,
+            atribuido_nome: usuario?.nome || 'Usuário',
+            status: 'em_andamento'
+          })
+          .eq('id', currentChamadoId);
+        
+        if (error) throw error;
+        
+        await criarNotificacao({
+          chamado_id: currentChamadoId,
+          usuario_id: usuarioId,
+          tipo: 'atribuicao',
+          mensagem: `Chamado foi atribuído para você`
+        });
+        
+        mostrarSucesso('Chamado atribuído com sucesso!');
+        bootstrap.Modal.getInstance(document.getElementById('modalAtribuicao')).hide();
+        await carregarChamados();
+        await abrirDetalhes(currentChamadoId);
+      } catch (error) {
+        console.error('Erro ao atribuir chamado:', error);
+        mostrarErro('Erro ao atribuir chamado');
+      }
+    }
+    
+    async function resolverChamado() {
+      if (!currentChamadoId) return;
+      
+      const resposta = prompt('Digite a resposta/solução para este chamado:');
+      if (!resposta) return;
+      
+      try {
+        const { error } = await supabase
+          .from('chamados')
+          .update({
+            status: 'resolvido',
+            resposta: resposta,
+            resposta_data: new Date().toISOString()
+          })
+          .eq('id', currentChamadoId);
+        
+        if (error) throw error;
+        
+        mostrarSucesso('Chamado resolvido com sucesso!');
+        await carregarChamados();
+        await abrirDetalhes(currentChamadoId);
+      } catch (error) {
+        console.error('Erro ao resolver chamado:', error);
+        mostrarErro('Erro ao resolver chamado');
+      }
+    }
+    
+    async function adicionarAnexo() {
+      if (!currentChamadoId) return;
+      
+      const input = document.getElementById('novoAnexo');
+      if (!input.files || input.files.length === 0) {
+        mostrarErro('Selecione pelo menos um arquivo');
+        return;
+      }
+      
+      try {
+        const anexos = [];
+        for (let file of input.files) {
+          const fileExt = file.name.split('.').pop();
+          const fileName = `${currentChamadoId}/${Date.now()}_${file.name}`;
+          
+          const { data, error: uploadError } = await supabase.storage
+            .from('chamados')
+            .upload(fileName, file);
+          
+          if (uploadError) throw uploadError;
+          
+          const { data: { publicUrl } } = supabase.storage
+            .from('chamados')
+            .getPublicUrl(fileName);
+          
+          anexos.push({
+            nome: file.name,
+            url: publicUrl,
+            tipo: file.type,
+            tamanho: file.size
+          });
+        }
+        
+        // Atualizar chamado com anexos
+        const chamado = todosChamados.find(c => c.id === currentChamadoId);
+        const anexosExistentes = chamado.anexos || [];
+        
+        await supabase
+          .from('chamados')
+          .update({
+            anexos: [...anexosExistentes, ...anexos]
+          })
+          .eq('id', currentChamadoId);
+        
+        input.value = '';
+        mostrarSucesso('Anexos adicionados com sucesso!');
+        await carregarChamados();
+      } catch (error) {
+        console.error('Erro ao adicionar anexo:', error);
+        mostrarErro('Erro ao adicionar anexo');
+      }
+    }
+    
+    // Expor funções globalmente
+    window.adicionarComentario = adicionarComentario;
+    window.adicionarAnexo = adicionarAnexo;
+    window.abrirModalAtribuicao = abrirModalAtribuicao;
+    // Edição de chamados
+    async function abrirModalEdicao() {
+      if (!currentChamadoId) return;
+      
+      const chamado = todosChamados.find(c => c.id === currentChamadoId);
+      if (!chamado) {
+        mostrarErro('Chamado não encontrado');
+        return;
+      }
+      
+      // Verificar permissão (admin ou criador)
+      const podeEditar = isAdmin || chamado.usuario_id === currentUserId;
+      if (!podeEditar) {
+        mostrarErro('Você não tem permissão para editar este chamado');
+        return;
+      }
+      
+      // Preencher campos
+      document.getElementById('editarTitulo').value = chamado.titulo || '';
+      document.getElementById('editarCategoria').value = chamado.categoria || '';
+      document.getElementById('editarSubcategoria').value = chamado.subcategoria || '';
+      document.getElementById('editarPrioridade').value = chamado.prioridade || 'media';
+      document.getElementById('editarAmbiente').value = chamado.ambiente || '';
+      document.getElementById('editarVersao').value = chamado.versao_sistema || '';
+      document.getElementById('editarTags').value = chamado.tags ? chamado.tags.join(', ') : '';
+      document.getElementById('editarDescricao').value = chamado.descricao || '';
+      
+      // Preview de tags
+      atualizarPreviewTagsEdicao();
+      
+      // Abrir modal
+      new bootstrap.Modal(document.getElementById('modalEdicao')).show();
+    }
+    
+    function atualizarPreviewTagsEdicao() {
+      const tagsInput = document.getElementById('editarTags');
+      const preview = document.getElementById('tagsPreviewEdicao');
+      if (tagsInput && preview) {
+        tagsInput.addEventListener('input', function() {
+          const tags = this.value.split(',').map(t => t.trim()).filter(t => t.length > 0);
+          if (tags.length > 0) {
+            preview.innerHTML = tags.map(tag => 
+              `<span class="badge bg-primary me-1 mb-1">${tag}</span>`
+            ).join('');
+          } else {
+            preview.innerHTML = '';
+          }
+        });
+      }
+    }
+    
+    async function salvarEdicao() {
+      if (!currentChamadoId) return;
+      
+      const chamado = todosChamados.find(c => c.id === currentChamadoId);
+      if (!chamado) {
+        mostrarErro('Chamado não encontrado');
+        return;
+      }
+      
+      // Verificar permissão
+      const podeEditar = isAdmin || chamado.usuario_id === currentUserId;
+      if (!podeEditar) {
+        mostrarErro('Você não tem permissão para editar este chamado');
+        return;
+      }
+      
+      const titulo = document.getElementById('editarTitulo').value.trim();
+      const categoria = document.getElementById('editarCategoria').value;
+      const prioridade = document.getElementById('editarPrioridade').value;
+      const descricao = document.getElementById('editarDescricao').value.trim();
+      
+      if (!titulo || !categoria || !prioridade || !descricao) {
+        mostrarErro('Preencha todos os campos obrigatórios');
+        return;
+      }
+      
+      // Processar tags
+      const tagsInput = document.getElementById('editarTags').value.trim();
+      const tags = tagsInput ? tagsInput.split(',').map(t => t.trim()).filter(t => t.length > 0) : [];
+      
+      const subcategoria = document.getElementById('editarSubcategoria').value.trim() || null;
+      const ambiente = document.getElementById('editarAmbiente').value || null;
+      const versao = document.getElementById('editarVersao').value.trim() || null;
+      
+      try {
+        // Preparar dados de atualização
+        const dadosAtualizacao = {
+          titulo,
+          categoria,
+          subcategoria,
+          prioridade,
+          descricao,
+          tags: tags.length > 0 ? tags : null,
+          ambiente,
+          versao_sistema: versao
+        };
+        
+        // Registrar alterações no histórico
+        const alteracoes = [];
+        if (chamado.titulo !== titulo) alteracoes.push({ campo: 'titulo', anterior: chamado.titulo, novo: titulo });
+        if (chamado.categoria !== categoria) alteracoes.push({ campo: 'categoria', anterior: chamado.categoria, novo: categoria });
+        if (chamado.prioridade !== prioridade) alteracoes.push({ campo: 'prioridade', anterior: chamado.prioridade, novo: prioridade });
+        if (chamado.descricao !== descricao) alteracoes.push({ campo: 'descricao', anterior: chamado.descricao.substring(0, 50) + '...', novo: descricao.substring(0, 50) + '...' });
+        
+        // Atualizar chamado
+        const { error } = await supabase
+          .from('chamados')
+          .update(dadosAtualizacao)
+          .eq('id', currentChamadoId);
+        
+        if (error) throw error;
+        
+        // Criar registros no histórico
+        for (const alteracao of alteracoes) {
+          try {
+            await supabase
+              .from('chamados_historico')
+              .insert([{
+                chamado_id: currentChamadoId,
+                campo_alterado: alteracao.campo,
+                valor_anterior: alteracao.anterior || '',
+                valor_novo: alteracao.novo || '',
+                usuario_id: currentUserId,
+                usuario_nome: currentUserName
+              }]);
+          } catch (histError) {
+            console.warn('Erro ao criar histórico (não crítico):', histError);
+          }
+        }
+        
+        mostrarSucesso('Chamado atualizado com sucesso!');
+        bootstrap.Modal.getInstance(document.getElementById('modalEdicao')).hide();
+        await carregarChamados();
+        await abrirDetalhes(currentChamadoId);
+      } catch (error) {
+        console.error('Erro ao editar chamado:', error);
+        mostrarErro('Erro ao editar chamado: ' + error.message);
+      }
+    }
+    
+    // Sistema de Satisfação/Feedback
+    async function carregarSatisfacao(chamadoId) {
+      try {
+        const chamado = todosChamados.find(c => c.id === chamadoId);
+        if (!chamado) return;
+        
+        const container = document.getElementById('satisfacaoContainer');
+        const formContainer = document.getElementById('formSatisfacao');
+        if (!container || !formContainer) return;
+        
+        // Verificar se o chamado está resolvido e se o usuário é o criador
+        const isResolvido = chamado.status === 'resolvido' || chamado.status === 'fechado';
+        const isCriador = chamado.usuario_id === currentUserId;
+        
+        if (!isResolvido) {
+          container.innerHTML = '<p class="text-muted text-center py-3">Este chamado ainda não foi resolvido. A avaliação estará disponível após a resolução.</p>';
+          formContainer.style.display = 'none';
+          return;
+        }
+        
+        if (!isCriador) {
+          container.innerHTML = '<p class="text-muted text-center py-3">Apenas o criador do chamado pode avaliar o atendimento.</p>';
+          formContainer.style.display = 'none';
+          return;
+        }
+        
+        // Verificar se já existe feedback
+        if (chamado.satisfacao) {
+          const estrelas = chamado.satisfacao;
+          const feedback = chamado.feedback || '';
+          
+          let estrelasHtml = '';
+          for (let i = 5; i >= 1; i--) {
+            const checked = i === estrelas ? 'checked' : '';
+            estrelasHtml += `<i class="fas fa-star ${i <= estrelas ? 'text-warning' : 'text-muted'}"></i>`;
+          }
+          
+          container.innerHTML = `
+            <div class="alert alert-success">
+              <h6><i class="fas fa-check-circle me-2"></i>Avaliação Enviada</h6>
+              <div class="mb-2">
+                <strong>Nota:</strong> ${estrelasHtml} (${estrelas}/5)
+              </div>
+              ${feedback ? `<div><strong>Feedback:</strong> ${feedback}</div>` : ''}
+              <small class="text-muted">Obrigado pela sua avaliação!</small>
+            </div>
+          `;
+          formContainer.style.display = 'none';
+        } else {
+          container.innerHTML = '<p class="text-muted">Avalie o atendimento deste chamado:</p>';
+          formContainer.style.display = 'block';
+          // Limpar formulário
+          document.querySelectorAll('input[name="satisfacao"]').forEach(radio => radio.checked = false);
+          document.getElementById('feedbackTexto').value = '';
+        }
+      } catch (error) {
+        console.error('Erro ao carregar satisfação:', error);
+        const container = document.getElementById('satisfacaoContainer');
+        if (container) {
+          container.innerHTML = '<p class="text-danger">Erro ao carregar avaliação</p>';
+        }
+      }
+    }
+    
+    async function enviarFeedback() {
+      if (!currentChamadoId) return;
+      
+      const chamado = todosChamados.find(c => c.id === currentChamadoId);
+      if (!chamado) {
+        mostrarErro('Chamado não encontrado');
+        return;
+      }
+      
+      // Verificar se é o criador
+      if (chamado.usuario_id !== currentUserId) {
+        mostrarErro('Apenas o criador do chamado pode avaliar');
+        return;
+      }
+      
+      const satisfacaoInput = document.querySelector('input[name="satisfacao"]:checked');
+      if (!satisfacaoInput) {
+        mostrarErro('Selecione uma nota de 1 a 5 estrelas');
+        return;
+      }
+      
+      const satisfacao = parseInt(satisfacaoInput.value);
+      const feedback = document.getElementById('feedbackTexto').value.trim() || null;
+      
+      try {
+        const { error } = await supabase
+          .from('chamados')
+          .update({
+            satisfacao,
+            feedback
+          })
+          .eq('id', currentChamadoId);
+        
+        if (error) throw error;
+        
+        mostrarSucesso('Avaliação enviada com sucesso! Obrigado pelo feedback.');
+        await carregarChamados();
+        await carregarSatisfacao(currentChamadoId);
+      } catch (error) {
+        console.error('Erro ao enviar feedback:', error);
+        mostrarErro('Erro ao enviar avaliação');
+      }
+    }
+    
+    // Atualizar abrirDetalhes para incluir todas as funcionalidades
+    const originalAbrirDetalhesBasico = abrirDetalhes;
+    abrirDetalhes = async function(id) {
+      currentChamadoId = id;
+      
+      // Chamar função original que exibe os detalhes básicos
+      await originalAbrirDetalhesBasico(id);
+      
+      const chamado = todosChamados.find(c => c.id === id);
+      if (chamado) {
+        // Mostrar botão de editar apenas para admins e criadores
+        const btnEditar = document.getElementById('btnEditarChamado');
+        if (btnEditar) {
+          const podeEditar = isAdmin || chamado.usuario_id === currentUserId;
+          btnEditar.style.display = podeEditar ? 'inline-block' : 'none';
+        }
+        
+        // Mostrar aba de satisfação apenas se resolvido e for o criador
+        const tabSatisfacaoItem = document.getElementById('tab-satisfacao-item');
+        if (tabSatisfacaoItem) {
+          const isResolvido = chamado.status === 'resolvido' || chamado.status === 'fechado';
+          const isCriador = chamado.usuario_id === currentUserId;
+          tabSatisfacaoItem.style.display = (isResolvido && isCriador) ? 'block' : 'none';
+        }
+        
+        // Carregar todas as abas
+        await carregarSatisfacao(id);
+      }
+      
+      await carregarComentarios(id);
+      await carregarHistorico(id);
+      await carregarAnexos(id);
+    };
+    
+    window.confirmarAtribuicao = confirmarAtribuicao;
+    window.resolverChamado = resolverChamado;
+    window.handleDragStart = handleDragStart;
+    window.handleDragEnd = handleDragEnd;
+    window.abrirModalEdicao = abrirModalEdicao;
+    window.salvarEdicao = salvarEdicao;
+    window.enviarFeedback = enviarFeedback;
+    window.toggleTheme = toggleTheme;
   </script>
 </body>
 </html>
+
 

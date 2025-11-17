@@ -610,11 +610,22 @@
       display: none;
       opacity: 0;
       transition: opacity 0.3s ease;
+      margin-top: 0;
+      padding-top: 0;
     }
     
     .tab-pane.active {
       display: block;
       opacity: 1;
+    }
+    
+    #gestao {
+      margin-top: 0 !important;
+      padding-top: 0 !important;
+    }
+    
+    #gestao .modern-card:first-child {
+      margin-top: 0 !important;
     }
     
     /* Navegação Moderna */
@@ -1109,8 +1120,8 @@
       </div>
 
       <!-- Aba: Gestão de Contatos -->
-      <div class="tab-pane" id="gestao">
-        <div class="modern-card">
+      <div class="tab-pane" id="gestao" style="margin-top: 0; padding-top: 0;">
+        <div class="modern-card" style="margin-top: 0;">
           <div class="card-header d-flex justify-content-between align-items-center">
             <span><i class="fas fa-users me-2"></i>Gestão de Motoristas Cadastrados</span>
             <div class="d-flex gap-2">
@@ -1119,7 +1130,7 @@
               </button>
             </div>
           </div>
-          <div class="card-body">
+          <div class="card-body" style="padding-top: 1.5rem;">
             
             <!-- Filtros Rápidos Modernos -->
             <div class="row g-3 mb-4">
@@ -1434,7 +1445,18 @@ class TabSystem {
     if (activeTab) activeTab.classList.add('active');
 
     const activePane = document.getElementById(tabId);
-    if (activePane) activePane.classList.add('active');
+    if (activePane) {
+      activePane.classList.add('active');
+      
+      // Scroll para o topo da aba quando for a aba de gestão
+      if (tabId === 'gestao') {
+        setTimeout(() => {
+          activePane.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          // Também garantir scroll para o topo da página
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }, 100);
+      }
+    }
   }
 }
 

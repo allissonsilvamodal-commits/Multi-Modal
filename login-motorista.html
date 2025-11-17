@@ -82,6 +82,8 @@
       width: min(540px, 100%);
       position: relative;
       z-index: 2;
+      max-height: calc(100vh - 64px);
+      display: flex;
     }
 
     .chat-card {
@@ -93,6 +95,8 @@
       flex-direction: column;
       overflow: hidden;
       backdrop-filter: blur(18px);
+      width: 100%;
+      max-height: 100%;
     }
 
     .chat-header {
@@ -111,6 +115,8 @@
     .chat-header p {
       font-size: 0.98rem;
       color: var(--text-secondary);
+      line-height: 1.5;
+      max-width: 460px;
     }
 
     .chat-header .status {
@@ -124,6 +130,9 @@
       color: #bae6fd;
       font-size: 0.85rem;
       border: 1px solid rgba(56, 189, 248, 0.25);
+      line-height: 1.4;
+      white-space: normal;
+      max-width: 100%;
     }
 
     .chat-body {
@@ -131,9 +140,10 @@
       display: flex;
       flex-direction: column;
       gap: 16px;
-      max-height: 55vh;
       overflow-y: auto;
       scroll-behavior: smooth;
+      flex: 1;
+      min-height: 0;
     }
 
     .chat-body::-webkit-scrollbar {
@@ -314,17 +324,35 @@
         padding: 32px 12px;
       }
 
+      .chat-wrapper {
+        max-height: calc(100vh - 48px);
+      }
+
       .chat-card {
         border-radius: 22px;
       }
 
       .chat-header {
         padding: 26px 22px 16px;
+        gap: 8px;
+      }
+
+      .chat-header h1 {
+        font-size: 1.45rem;
+      }
+
+      .chat-header p {
+        font-size: 0.9rem;
+      }
+
+      .chat-header .status {
+        font-size: 0.78rem;
+        padding: 6px 12px;
+        align-self: flex-start;
       }
 
       .chat-body {
         padding: 22px;
-        max-height: 60vh;
       }
 
       .chat-input {
@@ -411,8 +439,10 @@
         button.className = 'option-btn';
         button.textContent = option.label || option.value;
         button.dataset.value = option.value || option.label;
+        button.dataset.action = option.action || '';
+        button.dataset.label = option.label || option.value;
         button.addEventListener('click', () => {
-          sendOption(button.dataset.value);
+          sendOption(button.dataset.value, button.dataset.action, button.dataset.label);
         });
         chatOptionsEl.appendChild(button);
       });
@@ -424,13 +454,18 @@
       chatInput.disabled = state;
     }
 
-    async function sendOption(value) {
+    async function sendOption(value, action = '', label = '') {
       if (isWaitingResponse) return;
-      chatInput.value = value;
-      await handleSubmit();
+      const displayValue = label || value || 'Opção selecionada';
+      if (displayValue) {
+        createMessageElement(displayValue, 'user');
+      }
+      chatInput.value = '';
+      setOptions([]);
+      await sendMessage({ input: value, action: action || undefined, source: 'option' });
     }
 
-    async function handleSubmit(event) {
+    async function handleSubmit(event, forcedAction = null) {
       if (event) event.preventDefault();
       if (isWaitingResponse) return;
 
@@ -440,7 +475,7 @@
       createMessageElement(message, 'user');
       chatInput.value = '';
       setOptions([]);
-      await sendMessage({ input: message });
+      await sendMessage({ input: message, action: forcedAction || undefined });
     }
 
     chatForm.addEventListener('submit', handleSubmit);

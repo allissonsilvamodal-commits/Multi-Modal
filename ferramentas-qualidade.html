@@ -2953,6 +2953,8 @@
         }
         
         async function salvar5Porques() {
+            if (!verificarProjeto()) return;
+            
             const titulo = document.getElementById('titulo5porques').value;
             const problema = document.getElementById('problema5porques').value;
             
@@ -2961,16 +2963,18 @@
                 return;
             }
             
+            const porques = [
+                document.getElementById('porque1').value.trim(),
+                document.getElementById('porque2').value.trim(),
+                document.getElementById('porque3').value.trim(),
+                document.getElementById('porque4').value.trim(),
+                document.getElementById('porque5').value.trim()
+            ].filter(p => p); // Filtrar strings vazias
+            
             const dados = {
                 problema: problema,
-                porques: [
-                    document.getElementById('porque1').value,
-                    document.getElementById('porque2').value,
-                    document.getElementById('porque3').value,
-                    document.getElementById('porque4').value,
-                    document.getElementById('porque5').value
-                ],
-                causa_raiz: document.getElementById('causaRaiz').value
+                porques: porques,
+                causa_raiz: document.getElementById('causaRaiz').value.trim()
             };
             
             const tituloFinal = titulo || `5 Porquês: ${problema || 'Sem título'}`;
@@ -2979,13 +2983,14 @@
                 const headers = await getAuthHeaders();
                 const response = await fetch('/api/ferramentas-qualidade', {
                     method: 'POST',
-                    headers: headers,
+                    headers: { ...headers, 'Content-Type': 'application/json' },
                     credentials: 'include',
                     body: JSON.stringify({
                         id: ferramentaAtualId,
                         tipo_ferramenta: '5porques',
                         titulo: tituloFinal,
-                        dados: dados
+                        dados: dados,
+                        projeto_id: projetoAtual?.id || null
                     })
                 });
                 
@@ -3152,6 +3157,8 @@
         }
         
         async function salvar5W2H() {
+            if (!verificarProjeto()) return;
+            
             const titulo = document.getElementById('titulo5w2h').value;
             if (!titulo) {
                 alert('Por favor, preencha o título do 5W2H.');
@@ -3162,13 +3169,14 @@
                 const headers = await getAuthHeaders();
                 const response = await fetch('/api/ferramentas-qualidade', {
                     method: 'POST',
-                    headers: headers,
+                    headers: { ...headers, 'Content-Type': 'application/json' },
                     credentials: 'include',
                     body: JSON.stringify({
                         id: ferramentaAtualId,
                         tipo_ferramenta: '5w2h',
                         titulo: titulo,
-                        dados: { linhas: linhas5W2H }
+                        dados: { linhas: linhas5W2H },
+                        projeto_id: projetoAtual?.id || null
                     })
                 });
                 
@@ -3567,6 +3575,8 @@
         }
 
         async function salvarIshikawa() {
+            if (!verificarProjeto()) return;
+            
             const titulo = document.getElementById('tituloIshikawa').value;
             const problema = document.getElementById('problemaIshikawa').value;
             
@@ -3584,12 +3594,18 @@
                 { nome: 'Medição', id: 'ishikawa-medicao' }
             ];
             
+            // Converter array de categorias para objeto onde a chave é o nome da categoria
+            const categoriasObj = {};
+            categorias.forEach(cat => {
+                const causas = document.getElementById(cat.id).value.split('\n').filter(c => c.trim());
+                if (causas.length > 0) {
+                    categoriasObj[cat.nome] = causas;
+                }
+            });
+            
             const dados = {
                 problema: problema,
-                categorias: categorias.map(cat => ({
-                    nome: cat.nome,
-                    causas: document.getElementById(cat.id).value.split('\n').filter(c => c.trim())
-                }))
+                categorias: categoriasObj
             };
             
             const tituloFinal = titulo || `Diagrama de Ishikawa: ${problema || 'Sem título'}`;
@@ -3598,13 +3614,14 @@
                 const headers = await getAuthHeaders();
                 const response = await fetch('/api/ferramentas-qualidade', {
                     method: 'POST',
-                    headers: headers,
+                    headers: { ...headers, 'Content-Type': 'application/json' },
                     credentials: 'include',
                     body: JSON.stringify({
                         id: ferramentaAtualId,
                         tipo_ferramenta: 'ishikawa',
                         titulo: tituloFinal,
-                        dados: dados
+                        dados: dados,
+                        projeto_id: projetoAtual?.id || null
                     })
                 });
                 
@@ -3881,6 +3898,8 @@
         }
         
         async function salvarPlanoAcao() {
+            if (!verificarProjeto()) return;
+            
             const titulo = document.getElementById('tituloPlano').value;
             const objetivo = document.getElementById('objetivoPlano').value;
             
@@ -3893,7 +3912,7 @@
                 const headers = await getAuthHeaders();
                 const response = await fetch('/api/ferramentas-qualidade', {
                     method: 'POST',
-                    headers: headers,
+                    headers: { ...headers, 'Content-Type': 'application/json' },
                     credentials: 'include',
                     body: JSON.stringify({
                         id: ferramentaAtualId,
@@ -3903,19 +3922,23 @@
                             objetivo: objetivo,
                             acoes: acoesPlano.map(a => ({
                                 id: a.id,
-                                descricao: a.descricao,
+                                acao: a.descricao || a.acao, // Usar 'acao' como campo principal
+                                descricao: a.descricao || a.acao, // Manter compatibilidade
                                 gestor_imediato: a.gestor_imediato,
+                                responsavel: a.responsavel_id, // Backend também aceita 'responsavel'
                                 responsavel_id: a.responsavel_id,
                                 prioridade: a.prioridade,
                                 progresso: a.progresso,
                                 inicio: a.inicio,
                                 revisao: a.revisao,
                                 finalizacao: a.finalizacao,
+                                prazo: a.finalizacao || a.prazo, // Backend procura por 'prazo' ou 'finalizacao'
                                 status: a.status,
                                 obs: a.obs,
                                 acao_contingencia: a.acao_contingencia
                             }))
-                        }
+                        },
+                        projeto_id: projetoAtual?.id || null
                     })
                 });
                 
@@ -4279,18 +4302,28 @@
         }
         
         async function salvarPDCA() {
+            if (!verificarProjeto()) return;
+            
             const titulo = document.getElementById('tituloPDCA').value;
+            
+            // Estruturar dados do PDCA como arrays para cada etapa
             const dados = {
                 problema: document.getElementById('pdca-problema').value,
                 objetivo: document.getElementById('pdca-objetivo').value,
-                plano: document.getElementById('pdca-plano').value,
-                executado: document.getElementById('pdca-executado').value,
-                dificuldades: document.getElementById('pdca-dificuldades').value,
-                resultados: document.getElementById('pdca-resultados').value,
-                comparacao: document.getElementById('pdca-comparacao').value,
-                padronizacao: document.getElementById('pdca-padronizacao').value,
-                proximos: document.getElementById('pdca-proximos').value,
-                proximoCiclo: document.getElementById('pdca-proximo-ciclo').value
+                plan: document.getElementById('pdca-plano').value ? [document.getElementById('pdca-plano').value] : [],
+                do: document.getElementById('pdca-executado').value ? [document.getElementById('pdca-executado').value] : [],
+                check: document.getElementById('pdca-dificuldades').value || document.getElementById('pdca-resultados').value || document.getElementById('pdca-comparacao').value 
+                    ? [
+                        document.getElementById('pdca-dificuldades').value,
+                        document.getElementById('pdca-resultados').value,
+                        document.getElementById('pdca-comparacao').value
+                    ].filter(v => v.trim()) : [],
+                act: document.getElementById('pdca-padronizacao').value || document.getElementById('pdca-proximos').value || document.getElementById('pdca-proximo-ciclo').value
+                    ? [
+                        document.getElementById('pdca-padronizacao').value,
+                        document.getElementById('pdca-proximos').value,
+                        document.getElementById('pdca-proximo-ciclo').value
+                    ].filter(v => v.trim()) : []
             };
             
             if (!titulo && !dados.problema) {
@@ -4304,13 +4337,14 @@
                 const headers = await getAuthHeaders();
                 const response = await fetch('/api/ferramentas-qualidade', {
                     method: 'POST',
-                    headers: headers,
+                    headers: { ...headers, 'Content-Type': 'application/json' },
                     credentials: 'include',
                     body: JSON.stringify({
                         id: ferramentaAtualId,
                         tipo_ferramenta: 'pdca',
                         titulo: tituloFinal,
-                        dados: dados
+                        dados: dados,
+                        projeto_id: projetoAtual?.id || null
                     })
                 });
                 

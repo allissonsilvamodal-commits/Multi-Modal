@@ -239,6 +239,43 @@ const uploadMedia = multer({
   }
 });
 
+// Upload para documentos (imagens e PDFs)
+const uploadDocumentos = multer({
+  storage,
+  limits: {
+    fileSize: 10 * 1024 * 1024 // 10MB
+  },
+  fileFilter: (req, file, cb) => {
+    // Tipos MIME permitidos para documentos (imagens e PDFs)
+    const allowedMimes = [
+      'image/jpeg',
+      'image/jpg',
+      'image/png',
+      'image/gif',
+      'image/webp',
+      'image/bmp',
+      'application/pdf',
+      'application/x-pdf'
+    ];
+    
+    // Extensões permitidas
+    const allowedExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp', '.pdf'];
+    const fileExtension = path.extname(file.originalname).toLowerCase();
+    
+    // Verificar tipo MIME
+    if (allowedMimes.includes(file.mimetype)) {
+      // Verificar extensão também
+      if (allowedExtensions.includes(fileExtension)) {
+        cb(null, true);
+      } else {
+        cb(new Error('Extensão de arquivo não permitida. Apenas arquivos de imagem (JPG, PNG, GIF, WEBP, BMP) ou PDF são aceitos.'));
+      }
+    } else {
+      cb(new Error('Tipo de arquivo não permitido. Apenas arquivos de imagem (JPG, PNG, GIF, WEBP, BMP) ou PDF são aceitos.'));
+    }
+  }
+});
+
 // 🔥 IMPORT DO SUPABASE SEGURO
 const { supabase } = require('./supabase-secure.js');
 const { createClient } = require('@supabase/supabase-js');
@@ -2201,9 +2238,9 @@ app.post('/api/motoristas/chat-login', express.json(), async (req, res) => {
         state: 'awaiting_intent',
         reply: 'Olá! Eu sou o assistente virtual da Multimodal. Você quer fazer login ou se cadastrar?',
         options: [
-          { label: 'Fazer login', value: 'login' },
-          { label: 'Cadastrar', value: 'cadastro' },
-          { label: 'Falar com humano', value: 'humano' }
+          { label: 'Fazer login', value: 'login', action: 'login' },
+          { label: 'Cadastrar', value: 'cadastro', action: 'cadastro' },
+          { label: 'Falar com humano', value: 'humano', action: 'humano' }
         ]
       });
     }
@@ -2245,8 +2282,8 @@ app.post('/api/motoristas/chat-login', express.json(), async (req, res) => {
       return sendMessage({
         reply: 'Se preferir atendimento humano, fale com nossa equipe pelo WhatsApp (81) 9 99736-9039 ou envie um e-mail para suporte@logmultimodal.com.br. Posso continuar te ajudando?',
         options: [
-          { label: 'Fazer login', value: 'login' },
-          { label: 'Cadastrar', value: 'cadastro' }
+          { label: 'Fazer login', value: 'login', action: 'login' },
+          { label: 'Cadastrar', value: 'cadastro', action: 'cadastro' }
         ]
       });
     };
@@ -2279,9 +2316,9 @@ app.post('/api/motoristas/chat-login', express.json(), async (req, res) => {
       return sendMessage({
         reply: 'Não entendi. Você deseja fazer login ou se cadastrar?',
         options: [
-          { label: 'Fazer login', value: 'login' },
-          { label: 'Cadastrar', value: 'cadastro' },
-          { label: 'Falar com humano', value: 'humano' }
+          { label: 'Fazer login', value: 'login', action: 'login' },
+          { label: 'Cadastrar', value: 'cadastro', action: 'cadastro' },
+          { label: 'Falar com humano', value: 'humano', action: 'humano' }
         ]
       });
     }
@@ -2342,6 +2379,31 @@ app.post('/api/motoristas/chat-login', express.json(), async (req, res) => {
       }
 
       if (chatState.step === 'awaiting_login_password') {
+        if (actionRaw === 'cadastro') {
+          chatState.mode = 'signup';
+          chatState.step = 'awaiting_signup_name';
+          chatState.data = {};
+          chatState.attempts = {};
+          return sendMessage({
+            state: chatState.step,
+            reply: 'Vamos começar o cadastro. Qual é o seu nome completo?'
+          });
+        }
+
+        if (actionRaw === 'login') {
+          chatState.step = 'awaiting_login_phone';
+          chatState.data = {};
+          chatState.attempts = {};
+          return sendMessage({
+            state: chatState.step,
+            reply: 'Sem problema! Informe novamente seu telefone com DDD (ex: 5511999998888).'
+          });
+        }
+
+        if (actionRaw === 'humano') {
+          return showHelpMessage();
+        }
+
         const senha = inputRaw;
         if (!senha || senha.length < 6) {
           return sendMessage({
@@ -2362,9 +2424,9 @@ app.post('/api/motoristas/chat-login', express.json(), async (req, res) => {
             reply: 'Detectamos muitas tentativas inválidas. Vamos recomeçar? Você pode fazer login novamente ou solicitar cadastro.',
             error: true,
             options: [
-              { label: 'Fazer login', value: 'login' },
-              { label: 'Cadastrar', value: 'cadastro' },
-              { label: 'Falar com humano', value: 'humano' }
+              { label: 'Fazer login', value: 'login', action: 'login' },
+              { label: 'Cadastrar', value: 'cadastro', action: 'cadastro' },
+              { label: 'Falar com humano', value: 'humano', action: 'humano' }
             ]
           });
         }
@@ -2412,9 +2474,9 @@ app.post('/api/motoristas/chat-login', express.json(), async (req, res) => {
               state: chatState.step,
               error: true,
               options: [
-                { label: 'Tentar novamente', value: 'login' },
-                { label: 'Quero me cadastrar', value: 'cadastro' },
-                { label: 'Falar com humano', value: 'humano' }
+                { label: 'Tentar novamente', value: 'login', action: 'login' },
+                { label: 'Quero me cadastrar', value: 'cadastro', action: 'cadastro' },
+                { label: 'Falar com humano', value: 'humano', action: 'humano' }
               ]
             });
           }
@@ -2519,7 +2581,7 @@ app.post('/api/motoristas/chat-login', express.json(), async (req, res) => {
               state: chatState.step,
               reply: 'Encontramos um cadastro com esse telefone. Informe sua senha para entrar.',
               options: [
-                { label: 'Esqueci a senha', value: 'humano' }
+                { label: 'Esqueci a senha', value: 'humano', action: 'humano' }
               ]
             });
           }
@@ -2684,7 +2746,7 @@ app.post('/api/motoristas/chat-login', express.json(), async (req, res) => {
               state: chatState.step,
               reply: 'Esse telefone já possui cadastro. Informe sua senha para continuar.',
               options: [
-                { label: 'Esqueci a senha', value: 'humano' }
+                { label: 'Esqueci a senha', value: 'humano', action: 'humano' }
               ]
             });
           }
@@ -2702,8 +2764,8 @@ app.post('/api/motoristas/chat-login', express.json(), async (req, res) => {
               state: 'awaiting_intent',
               error: true,
               options: [
-                { label: 'Fazer login', value: 'login' },
-                { label: 'Falar com humano', value: 'humano' }
+                { label: 'Fazer login', value: 'login', action: 'login' },
+                { label: 'Falar com humano', value: 'humano', action: 'humano' }
               ]
             });
           }
@@ -2721,8 +2783,8 @@ app.post('/api/motoristas/chat-login', express.json(), async (req, res) => {
               state: 'awaiting_intent',
               error: true,
               options: [
-                { label: 'Fazer login', value: 'login' },
-                { label: 'Falar com humano', value: 'humano' }
+                { label: 'Fazer login', value: 'login', action: 'login' },
+                { label: 'Falar com humano', value: 'humano', action: 'humano' }
               ]
             });
           }
@@ -2777,7 +2839,7 @@ app.post('/api/motoristas/chat-login', express.json(), async (req, res) => {
             state: chatState.step,
             error: true,
             options: [
-              { label: 'Falar com humano', value: 'humano' }
+              { label: 'Falar com humano', value: 'humano', action: 'humano' }
             ]
           });
         }
@@ -2788,9 +2850,9 @@ app.post('/api/motoristas/chat-login', express.json(), async (req, res) => {
       reply: 'Desculpe, não entendi. Você deseja fazer login ou se cadastrar?',
       state: 'awaiting_intent',
       options: [
-        { label: 'Fazer login', value: 'login' },
-        { label: 'Cadastrar', value: 'cadastro' },
-        { label: 'Falar com humano', value: 'humano' }
+      { label: 'Fazer login', value: 'login', action: 'login' },
+      { label: 'Cadastrar', value: 'cadastro', action: 'cadastro' },
+      { label: 'Falar com humano', value: 'humano', action: 'humano' }
       ]
     });
   } catch (error) {
@@ -3230,14 +3292,111 @@ app.post('/api/motoristas/auth/profile', express.json(), async (req, res) => {
 
     let motoristaSelecionado = motoristaAtual || null;
 
-    const motoristasPorTelefone = await fetchMotoristasByPhone(normalizedPhone);
-    const motoristaPorTelefone = motoristasPorTelefone.find(m => phonesMatch(normalizedPhone, m.telefone1, m.telefone2));
+    // Verificar se já existe motorista vinculado a este usuário (prioridade 1)
+    if (!motoristaSelecionado) {
+      const { data: motoristaPorAuthUser, error: authUserError } = await supabaseAdmin
+        .from('motoristas')
+        .select('*')
+        .eq('auth_user_id', user.id)
+        .maybeSingle();
 
-    if (!motoristaSelecionado && motoristaPorTelefone) {
-      if (motoristaPorTelefone.auth_user_id && motoristaPorTelefone.auth_user_id !== user.id) {
-        return res.status(409).json({ success: false, error: 'Este telefone já está vinculado a outra conta. Contate a central.' });
+      if (authUserError && authUserError.code !== 'PGRST116') {
+        console.error('❌ Erro ao buscar motorista por auth_user_id:', authUserError);
+      } else if (motoristaPorAuthUser) {
+        motoristaSelecionado = motoristaPorAuthUser;
+        console.log('✅ Motorista encontrado vinculado ao usuário:', motoristaPorAuthUser.id);
       }
-      motoristaSelecionado = motoristaPorTelefone;
+    }
+
+    // Se ainda não encontrou, buscar por telefone (prioridade 2)
+    if (!motoristaSelecionado) {
+      const motoristasPorTelefone = await fetchMotoristasByPhone(normalizedPhone);
+      const motoristaPorTelefone = motoristasPorTelefone.find(m => phonesMatch(normalizedPhone, m.telefone1, m.telefone2));
+
+      if (motoristaPorTelefone) {
+        const authUserIdExistente = motoristaPorTelefone.auth_user_id;
+        
+        // Verificar se o auth_user_id existe e é válido (não vazio, não null)
+        const temAuthUserIdValido = authUserIdExistente && 
+                                     authUserIdExistente !== '' && 
+                                     authUserIdExistente !== null && 
+                                     authUserIdExistente !== undefined;
+        
+        if (temAuthUserIdValido && authUserIdExistente !== user.id) {
+          // Verificar se o usuário vinculado ainda existe
+          try {
+            const { data: authUserExistente, error: authError } = await supabaseAdmin.auth.admin.getUserById(authUserIdExistente);
+            
+            if (authError || !authUserExistente || !authUserExistente.user) {
+              // O usuário vinculado não existe mais, permitir vincular ao usuário atual
+              console.log('⚠️ Usuário vinculado não existe mais, permitindo re-vinculação:', {
+                motoristaId: motoristaPorTelefone.id,
+                authUserIdAntigo: authUserIdExistente,
+                authUserIdNovo: user.id
+              });
+              motoristaSelecionado = motoristaPorTelefone;
+            } else {
+              // Verificar se o email do usuário vinculado corresponde ao email do usuário atual
+              const emailVinculado = authUserExistente.user.email?.toLowerCase();
+              const emailAtual = user.email?.toLowerCase();
+              
+              if (emailVinculado && emailAtual && emailVinculado === emailAtual) {
+                // É o mesmo usuário (mesmo email), permitir atualização
+                console.log('✅ Mesmo usuário detectado pelo email, permitindo atualização:', {
+                  motoristaId: motoristaPorTelefone.id,
+                  authUserIdAntigo: authUserIdExistente,
+                  authUserIdNovo: user.id,
+                  email: emailAtual
+                });
+                motoristaSelecionado = motoristaPorTelefone;
+              } else {
+                // O usuário vinculado ainda existe e é diferente, retornar erro
+                console.error('❌ Conflito: telefone vinculado a outro usuário válido', {
+            telefone: normalizedPhone,
+            motoristaId: motoristaPorTelefone.id,
+                  authUserIdExistente: authUserIdExistente,
+                  emailVinculado: emailVinculado,
+                  authUserIdAtual: user.id,
+                  emailAtual: emailAtual
+          });
+          return res.status(409).json({ 
+            success: false, 
+            error: 'Este telefone já está vinculado a outra conta. Se você é o proprietário deste número, contate o suporte.' 
+          });
+        }
+            }
+          } catch (err) {
+            // Em caso de erro ao verificar, assumir que o vínculo é inválido e permitir re-vinculação
+            console.warn('⚠️ Erro ao verificar usuário vinculado, permitindo re-vinculação:', err);
+        motoristaSelecionado = motoristaPorTelefone;
+          }
+        } else {
+          // Se não tem auth_user_id válido ou é o mesmo usuário, usar este motorista
+          motoristaSelecionado = motoristaPorTelefone;
+          console.log('✅ Motorista encontrado por telefone:', motoristaPorTelefone.id, {
+            authUserId: authUserIdExistente,
+            novoAuthUserId: user.id
+          });
+        }
+      }
+    }
+
+    // Log para debug
+    if (motoristaSelecionado) {
+      console.log('📋 Motorista selecionado para atualização:', {
+        id: motoristaSelecionado.id,
+        nome: motoristaSelecionado.nome,
+        telefone: motoristaSelecionado.telefone1,
+        auth_user_id: motoristaSelecionado.auth_user_id,
+        auth_user_id_tipo: typeof motoristaSelecionado.auth_user_id,
+        novoAuthUserId: user.id,
+        telefoneNormalizado: normalizedPhone
+      });
+    } else {
+      console.log('📝 Nenhum motorista encontrado, será criado novo registro', {
+        telefoneNormalizado: normalizedPhone,
+        userId: user.id
+      });
     }
 
     const departamento = (body.departamento || 'portal-motorista').toString().trim() || 'portal-motorista';
@@ -3293,6 +3452,30 @@ app.post('/api/motoristas/auth/profile', express.json(), async (req, res) => {
     let resultData = null;
 
     if (motoristaSelecionado) {
+      // Verificar se o auth_user_id está sendo alterado e se já existe outro motorista com esse auth_user_id
+      if (payload.auth_user_id && payload.auth_user_id !== motoristaSelecionado.auth_user_id) {
+        const { data: motoristaComAuthUserId, error: checkError } = await supabaseAdmin
+          .from('motoristas')
+          .select('id, nome, telefone1')
+          .eq('auth_user_id', payload.auth_user_id)
+          .neq('id', motoristaSelecionado.id)
+          .maybeSingle();
+
+        if (checkError && checkError.code !== 'PGRST116') {
+          console.error('❌ Erro ao verificar auth_user_id:', checkError);
+        } else if (motoristaComAuthUserId) {
+          console.error('❌ Conflito: auth_user_id já está em uso por outro motorista', {
+            motoristaExistente: motoristaComAuthUserId.id,
+            motoristaAtual: motoristaSelecionado.id,
+            authUserId: payload.auth_user_id
+          });
+          return res.status(409).json({ 
+            success: false, 
+            error: 'Este usuário já possui um cadastro de motorista. Use o cadastro existente ou contate o suporte.'
+          });
+        }
+      }
+
       const { data, error: updateError } = await supabaseAdmin
         .from('motoristas')
         .update(payload)
@@ -3301,6 +3484,16 @@ app.post('/api/motoristas/auth/profile', express.json(), async (req, res) => {
         .single();
 
       if (updateError) {
+        console.error('❌ Erro ao atualizar motorista:', updateError);
+        // Verificar se é erro de constraint única
+        if (updateError.code === '23505' || updateError.message?.includes('duplicate') || updateError.message?.includes('unique')) {
+          console.error('❌ Erro de constraint única ao atualizar:', updateError);
+          return res.status(409).json({ 
+            success: false, 
+            error: 'Já existe um cadastro com estes dados. Se você acredita que isso é um erro, contate o suporte.',
+            details: process.env.NODE_ENV === 'development' ? updateError.message : undefined
+          });
+        }
         throw updateError;
       }
 
@@ -3314,10 +3507,66 @@ app.post('/api/motoristas/auth/profile', express.json(), async (req, res) => {
         .single();
 
       if (insertError) {
-        throw insertError;
+        // Verificar se é erro de constraint única
+        if (insertError.code === '23505' || insertError.message?.includes('duplicate') || insertError.message?.includes('unique')) {
+          console.error('❌ Erro de constraint única ao inserir:', insertError);
+          
+          // Tentar buscar o motorista existente
+          const { data: motoristaExistente } = await supabaseAdmin
+            .from('motoristas')
+            .select('*')
+            .or(`telefone1.eq.${normalizedPhone},telefone2.eq.${normalizedPhone},auth_user_id.eq.${user.id}`)
+            .maybeSingle();
+          
+          if (motoristaExistente) {
+            // Se encontrou e pertence ao mesmo usuário, atualizar
+            if (motoristaExistente.auth_user_id === user.id) {
+              console.log('✅ Motorista existente encontrado, atualizando...');
+              const { data: updatedData, error: updateError2 } = await supabaseAdmin
+                .from('motoristas')
+                .update(payload)
+                .eq('id', motoristaExistente.id)
+                .select(MOTORISTA_SELECT_FIELDS)
+                .single();
+              
+              if (updateError2) {
+                throw updateError2;
+              }
+              resultData = updatedData;
+            } else if (!motoristaExistente.auth_user_id) {
+              // Se o motorista existe mas não tem auth_user_id, vincular ao usuário atual
+              console.log('✅ Motorista existente sem vínculo, vinculando ao usuário atual...');
+              const { data: updatedData, error: updateError2 } = await supabaseAdmin
+                .from('motoristas')
+                .update(payload)
+                .eq('id', motoristaExistente.id)
+                .select(MOTORISTA_SELECT_FIELDS)
+                .single();
+              
+              if (updateError2) {
+                throw updateError2;
+              }
+              resultData = updatedData;
+            } else {
+              // Motorista existe e está vinculado a outro usuário
+              return res.status(409).json({ 
+                success: false, 
+                error: 'Já existe um cadastro com este telefone vinculado a outra conta. Se você é o proprietário deste número, contate o suporte.'
+              });
+            }
+          } else {
+            return res.status(409).json({ 
+              success: false, 
+              error: 'Já existe um cadastro com estes dados. Tente atualizar seu perfil existente.',
+              details: process.env.NODE_ENV === 'development' ? insertError.message : undefined
+            });
+          }
+        } else {
+          throw insertError;
+        }
+      } else {
+        resultData = data;
       }
-
-      resultData = data;
     }
 
     res.json({
@@ -3619,7 +3868,515 @@ app.post('/api/motoristas/oportunidades/:coletaId/assumir', async (req, res) => 
   }
 });
 
-app.post('/api/motoristas/coletas/:coletaId/documentos', upload.array('arquivos', 30), async (req, res) => {
+// ========== ROTAS DE RASTREAMENTO E MONITORAMENTO ==========
+
+// Verificar se termo de rastreamento foi aceito
+app.get('/api/rastreamento/verificar-termo', async (req, res) => {
+  try {
+    const { user, motorista, error } = await requireMotoristaAuth(req);
+    if (error) {
+      return res.status(error.status || 401).json({ success: false, error: error.message });
+    }
+
+    const { coletaId } = req.query;
+    if (!coletaId) {
+      return res.json({ termoAceito: false });
+    }
+
+    if (!motorista) {
+      return res.json({ termoAceito: false });
+    }
+
+    const { data: termo, error: termoError } = await supabaseAdmin
+      .from('rastreamento_termos')
+      .select('id, ativo')
+      .eq('motorista_id', motorista.id)
+      .eq('coleta_id', coletaId)
+      .eq('ativo', true)
+      .order('aceito_em', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (termoError && termoError.code !== 'PGRST116') {
+      console.error('Erro ao verificar termo:', termoError);
+      return res.json({ termoAceito: false });
+    }
+
+    return res.json({ termoAceito: !!termo });
+  } catch (error) {
+    console.error('❌ Erro ao verificar termo:', error);
+    res.json({ termoAceito: false });
+  }
+});
+
+// Aceitar termo de rastreamento
+app.post('/api/rastreamento/aceitar-termo', express.json(), async (req, res) => {
+  try {
+    const { user, motorista, error } = await requireMotoristaAuth(req);
+    if (error) {
+      return res.status(error.status || 401).json({ success: false, error: error.message });
+    }
+
+    const { coletaId, termoVersao, ipAddress, userAgent } = req.body;
+
+    if (!coletaId || !termoVersao) {
+      return res.status(400).json({ success: false, error: 'Dados incompletos.' });
+    }
+
+    if (!motorista) {
+      return res.status(409).json({ success: false, error: 'Complete seu cadastro primeiro.' });
+    }
+
+    // Verificar se já existe termo ativo
+    const { data: termoExistente } = await supabaseAdmin
+      .from('rastreamento_termos')
+      .select('id')
+      .eq('motorista_id', motorista.id)
+      .eq('coleta_id', coletaId)
+      .eq('ativo', true)
+      .limit(1)
+      .single();
+
+    if (termoExistente) {
+      return res.json({ success: true, message: 'Termo já aceito anteriormente.' });
+    }
+
+    // Inserir novo termo
+    const { data: novoTermo, error: insertError } = await supabaseAdmin
+      .from('rastreamento_termos')
+      .insert({
+        motorista_id: motorista.id,
+        coleta_id: coletaId,
+        termo_versao: termoVersao,
+        ip_address: ipAddress || req.ip || 'desconhecido',
+        user_agent: userAgent || req.headers['user-agent'] || 'desconhecido',
+        ativo: true
+      })
+      .select()
+      .single();
+
+    if (insertError) {
+      console.error('Erro ao inserir termo:', insertError);
+      return res.status(500).json({ success: false, error: 'Não foi possível registrar o aceite do termo.' });
+    }
+
+    // Registrar evento no histórico
+    await supabaseAdmin.from('rastreamento_historico').insert({
+      motorista_id: motorista.id,
+      coleta_id: coletaId,
+      evento_tipo: 'inicio',
+      descricao: 'Termo de rastreamento aceito e rastreamento iniciado'
+    });
+
+    res.json({ success: true, termo: novoTermo });
+  } catch (error) {
+    console.error('❌ Erro ao aceitar termo:', error);
+    res.status(500).json({ success: false, error: 'Erro ao processar aceite do termo.' });
+  }
+});
+
+// Enviar posição GPS
+app.post('/api/rastreamento/enviar-posicao', express.json(), async (req, res) => {
+  try {
+    const { user, motorista, error } = await requireMotoristaAuth(req);
+    if (error) {
+      return res.status(error.status || 401).json({ success: false, error: error.message });
+    }
+
+    const {
+      coletaId,
+      latitude,
+      longitude,
+      precisao,
+      altitude,
+      velocidade,
+      direcao,
+      endereco,
+      bateriaNivel,
+      conectadoWifi,
+      conectadoRedeCelular
+    } = req.body;
+
+    if (!motorista) {
+      return res.status(409).json({ success: false, error: 'Motorista não encontrado.' });
+    }
+
+    if (!latitude || !longitude) {
+      return res.status(400).json({ success: false, error: 'Coordenadas inválidas.' });
+    }
+
+    // Verificar se termo está aceito
+    if (coletaId) {
+      const { data: termo } = await supabaseAdmin
+        .from('rastreamento_termos')
+        .select('id')
+        .eq('motorista_id', motorista.id)
+        .eq('coleta_id', coletaId)
+        .eq('ativo', true)
+        .limit(1)
+        .single();
+
+      if (!termo) {
+        return res.status(403).json({ success: false, error: 'Termo de rastreamento não aceito para esta coleta.' });
+      }
+    }
+
+    // Inserir posição
+    const timestampAtual = new Date().toISOString();
+    const dadosInsercao = {
+        motorista_id: motorista.id,
+        coleta_id: coletaId || null,
+        latitude: parseFloat(latitude),
+        longitude: parseFloat(longitude),
+      timestamp_gps: timestampAtual, // Garantir que o timestamp seja preenchido
+        precisao: precisao ? parseFloat(precisao) : null,
+        altitude: altitude ? parseFloat(altitude) : null,
+        velocidade: velocidade ? parseFloat(velocidade) : null,
+        direcao: direcao ? parseFloat(direcao) : null,
+        endereco: endereco || null,
+        bateria_nivel: bateriaNivel || null,
+        conectado_wifi: conectadoWifi || false,
+        conectado_rede_celular: conectadoRedeCelular || false
+    };
+
+    console.log('📍 Recebendo posição GPS:', {
+      motorista_id: motorista.id,
+      motorista_nome: motorista.nome,
+      coleta_id: coletaId,
+      latitude: dadosInsercao.latitude,
+      longitude: dadosInsercao.longitude
+    });
+
+    const { data: posicao, error: insertError } = await supabaseAdmin
+      .from('rastreamento_posicoes')
+      .insert(dadosInsercao)
+      .select()
+      .single();
+
+    if (insertError) {
+      console.error('❌ Erro ao inserir posição GPS:', insertError);
+      console.error('❌ Dados que causaram erro:', dadosInsercao);
+      return res.status(500).json({ 
+        success: false, 
+        error: 'Erro ao salvar posição.',
+        details: process.env.NODE_ENV === 'development' ? insertError.message : undefined
+      });
+    }
+
+    console.log('✅ Posição GPS salva com sucesso:', {
+      posicao_id: posicao.id,
+      motorista_id: motorista.id,
+      coleta_id: coletaId
+    });
+
+    res.json({ success: true, posicao });
+  } catch (error) {
+    console.error('❌ Erro ao enviar posição:', error);
+    res.status(500).json({ success: false, error: 'Erro ao processar posição GPS.' });
+  }
+});
+
+// Verificar status do rastreamento do motorista
+app.get('/api/rastreamento/status/:coletaId', async (req, res) => {
+  try {
+    const { coletaId } = req.params;
+    const { user, motorista, error } = await requireMotoristaAuth(req);
+    
+    if (error) {
+      return res.status(error.status || 401).json({ success: false, error: error.message });
+    }
+
+    if (!motorista) {
+      return res.status(409).json({ success: false, error: 'Motorista não encontrado.' });
+    }
+
+    // Verificar termo aceito
+    const { data: termo } = await supabaseAdmin
+      .from('rastreamento_termos')
+      .select('id, aceito_em, ativo')
+      .eq('motorista_id', motorista.id)
+      .eq('coleta_id', coletaId)
+      .eq('ativo', true)
+      .maybeSingle();
+
+    // Verificar última posição enviada
+    const { data: ultimaPosicao } = await supabaseAdmin
+      .from('rastreamento_posicoes')
+      .select('id, timestamp_gps, latitude, longitude')
+      .eq('motorista_id', motorista.id)
+      .eq('coleta_id', coletaId)
+      .order('timestamp_gps', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    // Contar total de posições
+    const { count: totalPosicoes } = await supabaseAdmin
+      .from('rastreamento_posicoes')
+      .select('*', { count: 'exact', head: true })
+      .eq('motorista_id', motorista.id)
+      .eq('coleta_id', coletaId);
+
+    res.json({
+      success: true,
+      termoAceito: !!termo,
+      termo: termo,
+      rastreamentoAtivo: !!termo && termo.ativo,
+      ultimaPosicao: ultimaPosicao,
+      totalPosicoes: totalPosicoes || 0,
+      tempoDesdeUltimaPosicao: ultimaPosicao 
+        ? Math.floor((Date.now() - new Date(ultimaPosicao.timestamp_gps).getTime()) / 1000)
+        : null
+    });
+  } catch (error) {
+    console.error('❌ Erro ao verificar status do rastreamento:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Endpoint de diagnóstico para verificar posições
+app.get('/api/rastreamento/diagnostico/:coletaId', async (req, res) => {
+  try {
+    const { coletaId } = req.params;
+
+    // Buscar informações da coleta
+    const { data: coleta } = await supabaseAdmin
+      .from('coletas')
+      .select('id, motorista_id, status')
+      .eq('id', coletaId)
+      .maybeSingle();
+
+    if (!coleta) {
+      return res.json({ success: false, error: 'Coleta não encontrada' });
+    }
+
+    // Buscar todas as posições do motorista
+    const { data: todasPosicoes } = await supabaseAdmin
+      .from('rastreamento_posicoes')
+      .select('id, motorista_id, coleta_id, timestamp_gps, latitude, longitude')
+      .eq('motorista_id', coleta.motorista_id)
+      .order('timestamp_gps', { ascending: false })
+      .limit(20);
+
+    // Verificar termo aceito
+    const { data: termo } = await supabaseAdmin
+      .from('rastreamento_termos')
+      .select('id, aceito_em, ativo')
+      .eq('motorista_id', coleta.motorista_id)
+      .eq('coleta_id', coletaId)
+      .eq('ativo', true)
+      .maybeSingle();
+
+    res.json({
+      success: true,
+      coleta: {
+        id: coleta.id,
+        motorista_id: coleta.motorista_id,
+        status: coleta.status
+      },
+      termoAceito: !!termo,
+      termo: termo,
+      totalPosicoes: todasPosicoes?.length || 0,
+      posicoes: todasPosicoes || [],
+      posicoesComColetaId: todasPosicoes?.filter(p => p.coleta_id === coletaId).length || 0,
+      posicoesSemColetaId: todasPosicoes?.filter(p => !p.coleta_id).length || 0,
+      posicoesOutrasColetas: todasPosicoes?.filter(p => p.coleta_id && p.coleta_id !== coletaId).length || 0
+    });
+  } catch (error) {
+    console.error('❌ Erro no diagnóstico:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Obter posições de uma coleta (para monitoramento)
+async function usuarioAutenticadoMonitoramento(req) {
+  if (req.session && req.session.usuario) {
+    console.log('✅ Usuário autenticado via sessão:', req.session.usuario);
+    return true;
+  }
+
+  try {
+    const { user, error } = await getUserFromRequest(req);
+    if (user && !error) {
+      console.log('✅ Usuário autenticado via getUserFromRequest:', user.email || user.id);
+      return true;
+    }
+  } catch (authError) {
+    console.warn('⚠️ Erro ao verificar autenticação alternativa:', authError.message || authError);
+  }
+
+  return false;
+}
+
+async function fetchPosicoesResumoPorColeta(coletaId, janelaMinutos, includeSemColeta = true) {
+  const { data: coleta, error: coletaError } = await supabaseAdmin
+    .from('coletas')
+    .select('id, motorista_id, status')
+    .eq('id', coletaId)
+    .maybeSingle();
+
+  if (coletaError) {
+    throw coletaError;
+  }
+
+  if (!coleta) {
+    return { coleta: null, posicoes: [], info: null };
+  }
+
+  const { data: posicoesRpc, error: rpcError } = await supabaseAdmin.rpc('get_posicoes_resumo', {
+    p_coleta_id: coletaId,
+    p_include_sem_coleta: includeSemColeta,
+    p_max_minutes: janelaMinutos,
+    p_limit_por_motorista: 1
+  });
+
+  if (rpcError) {
+    throw rpcError;
+  }
+
+  const posicoes = (posicoesRpc || []).map(pos => ({
+    id: pos.id,
+    motorista_id: pos.motorista_id,
+    coleta_id: pos.coleta_id,
+    latitude: pos.latitude,
+    longitude: pos.longitude,
+    timestamp_gps: pos.timestamp_gps,
+    velocidade: pos.velocidade,
+    endereco: pos.endereco,
+    motoristas: {
+      id: pos.motorista_id,
+      nome: pos.motorista_nome,
+      telefone1: pos.motorista_telefone
+    }
+  }));
+
+  console.log('📊 Resumo de posições:', {
+    coletaId: coleta.id,
+    motoristaId: coleta.motorista_id,
+    janelaMinutos,
+    totalPosicoesRetornadas: posicoes.length
+  });
+
+  const info = {
+    coletaId: coleta.id,
+    motoristaId: coleta.motorista_id,
+    status: coleta.status,
+    temMotoristaVinculado: !!coleta.motorista_id,
+    janelaMinutos,
+    totalPosicoesEncontradas: posicoes.length
+  };
+
+  return { coleta, posicoes, info };
+}
+
+app.get('/api/rastreamento/posicoes', async (req, res) => {
+  try {
+    if (!(await usuarioAutenticadoMonitoramento(req))) {
+      console.warn('❌ Acesso não autorizado ao endpoint de múltiplas posições');
+      return res.status(401).json({ success: false, error: 'Não autenticado.' });
+    }
+
+    const coletasParam = (req.query.coletas || '').toString();
+    const coletaIds = coletasParam
+      .split(',')
+      .map(id => id.trim())
+      .filter(id => id && id !== 'null' && id !== 'undefined');
+
+    if (!coletaIds.length) {
+      return res.status(400).json({ success: false, error: 'Informe ao menos uma coleta.' });
+    }
+
+    const maxMinutesParam = parseInt(req.query.maxMinutes, 10);
+    const janelaMinutos = Number.isFinite(maxMinutesParam)
+      ? Math.max(5, Math.min(maxMinutesParam, 1440))
+      : 240;
+    const includeSemColeta = req.query.includeSemColeta !== 'false';
+
+    const resultados = [];
+    for (const coletaId of coletaIds) {
+      try {
+        const resultado = await fetchPosicoesResumoPorColeta(coletaId, janelaMinutos, includeSemColeta);
+        if (resultado.coleta) {
+          resultados.push(resultado);
+        }
+      } catch (fetchError) {
+        console.error(`❌ Erro ao buscar posições para coleta ${coletaId}:`, fetchError);
+      }
+    }
+
+    if (!resultados.length) {
+      return res.json({
+        success: true,
+        posicoes: [],
+        info: {
+          multi: coletaIds.length > 1,
+          janelaMinutos,
+          totalColetas: coletaIds.length,
+          coletas: []
+        }
+      });
+    }
+
+    const todasPosicoes = resultados.flatMap(r => r.posicoes);
+    const posicoesPorColetaMotorista = new Map();
+    todasPosicoes.forEach(pos => {
+      const key = `${pos.coleta_id}-${pos.motorista_id}`;
+      if (!posicoesPorColetaMotorista.has(key)) {
+        posicoesPorColetaMotorista.set(key, pos);
+      }
+    });
+
+    res.json({
+      success: true,
+      posicoes: Array.from(posicoesPorColetaMotorista.values()),
+      info: {
+        multi: coletaIds.length > 1,
+        janelaMinutos,
+        totalColetas: coletaIds.length,
+        coletas: resultados.map(r => r.info)
+      }
+    });
+  } catch (error) {
+    console.error('❌ Erro ao obter posições (multi):', error);
+    res.status(500).json({ success: false, error: 'Erro ao buscar posições.' });
+  }
+});
+
+app.get('/api/rastreamento/posicoes/:coletaId', async (req, res) => {
+  try {
+    if (!(await usuarioAutenticadoMonitoramento(req))) {
+      console.warn('❌ Acesso não autorizado ao endpoint de posições');
+      return res.status(401).json({ success: false, error: 'Não autenticado.' });
+    }
+
+    const { coletaId } = req.params;
+    const maxMinutesParam = parseInt(req.query.maxMinutes, 10);
+    const janelaMinutos = Number.isFinite(maxMinutesParam)
+      ? Math.max(5, Math.min(maxMinutesParam, 1440))
+      : 240;
+    const includeSemColeta = req.query.includeSemColeta !== 'false';
+
+    const { coleta, posicoes, info } = await fetchPosicoesResumoPorColeta(
+      coletaId,
+      janelaMinutos,
+      includeSemColeta
+    );
+
+    if (!coleta) {
+      return res.status(404).json({ success: false, error: 'Coleta não encontrada.' });
+    }
+
+    res.json({
+      success: true,
+      posicoes,
+      info
+    });
+  } catch (error) {
+    console.error('❌ Erro ao obter posições:', error);
+    res.status(500).json({ success: false, error: 'Erro ao buscar posições.' });
+  }
+});
+
+app.post('/api/motoristas/coletas/:coletaId/documentos', uploadDocumentos.array('arquivos', 30), async (req, res) => {
   try {
     const { user, motorista, error } = await requireMotoristaAuth(req);
     if (error) {
@@ -8122,16 +8879,46 @@ app.get('/api/relatorios/motoristas/filtros', async (req, res) => {
 app.get('/api/relatorios/motoristas/kpis', async (req, res) => {
   try {
     const { inicio, fim, usuarioId, departamento } = req.query;
-    let query = supabaseAdmin.from('motoristas').select('id, created_by, created_by_departamento, data_cadastro');
-    if (inicio) query = query.gte('data_cadastro', inicio);
-    if (fim) query = query.lte('data_cadastro', fim);
-    if (usuarioId) query = query.eq('created_by', usuarioId);
-    if (departamento) query = query.eq('created_by_departamento', departamento);
-    const { data: motoristas, error } = await query;
-    if (error) throw error;
+    
+    // Usar count para obter o total real, mesmo com muitos registros
+    let countQuery = supabaseAdmin.from('motoristas').select('*', { count: 'exact', head: true });
+    let dataQuery = supabaseAdmin.from('motoristas').select('id, created_by, created_by_departamento, data_cadastro');
+    
+    // Aplicar filtros em ambas as queries
+    if (inicio) {
+      countQuery = countQuery.gte('data_cadastro', inicio);
+      dataQuery = dataQuery.gte('data_cadastro', inicio);
+    }
+    if (fim) {
+      countQuery = countQuery.lte('data_cadastro', fim);
+      dataQuery = dataQuery.lte('data_cadastro', fim);
+    }
+    if (usuarioId) {
+      countQuery = countQuery.eq('created_by', usuarioId);
+      dataQuery = dataQuery.eq('created_by', usuarioId);
+    }
+    if (departamento) {
+      countQuery = countQuery.eq('created_by_departamento', departamento);
+      dataQuery = dataQuery.eq('created_by_departamento', departamento);
+    }
+    
+    // Obter o count exato
+    const { count: totalCount, error: countError } = await countQuery;
+    if (countError) throw countError;
+    
+    // Obter dados para calcular usuários e departamentos (com limite maior se necessário)
+    const { data: motoristas, error: dataError } = await dataQuery.limit(10000);
+    if (dataError) throw dataError;
+    
     const porUsuario = new Map();
     const userIds = new Set();
-    (motoristas || []).forEach(m => { if (m.created_by) { userIds.add(m.created_by); porUsuario.set(m.created_by, (porUsuario.get(m.created_by) || 0) + 1); } });
+    (motoristas || []).forEach(m => { 
+      if (m.created_by) { 
+        userIds.add(m.created_by); 
+        porUsuario.set(m.created_by, (porUsuario.get(m.created_by) || 0) + 1); 
+      } 
+    });
+    
     let idToPerfil = new Map();
     if (userIds.size) {
       const { data: perf } = await supabaseAdmin
@@ -8140,6 +8927,7 @@ app.get('/api/relatorios/motoristas/kpis', async (req, res) => {
         .in('id', Array.from(userIds));
       idToPerfil = new Map((perf || []).map(p => [p.id, p]));
     }
+    
     const porDept = new Map();
     porUsuario.forEach((count, uid) => {
       // Preferir departamento salvo no registro; se não houver, usar perfil
@@ -8148,7 +8936,13 @@ app.get('/api/relatorios/motoristas/kpis', async (req, res) => {
       if (departamento && dep !== departamento) return;
       porDept.set(dep, (porDept.get(dep) || 0) + count);
     });
-    res.json({ total: (motoristas || []).length, usuarios: porUsuario.size, departamentos: porDept.size });
+    
+    // Usar o count exato em vez do length do array
+    res.json({ 
+      total: totalCount || 0, 
+      usuarios: porUsuario.size, 
+      departamentos: porDept.size 
+    });
   } catch (error) {
     console.error('❌ Erro KPIs motoristas:', error);
     res.status(500).json({ error: 'Erro ao carregar KPIs' });
@@ -10952,9 +11746,13 @@ app.post('/api/ferramentas-qualidade', async (req, res) => {
       hoje.setHours(0, 0, 0, 0);
 
       for (const acao of dados.acoes) {
+        // Normalizar campos: aceitar 'acao' ou 'descricao', 'responsavel_id' ou 'responsavel'
+        const acaoTexto = acao.acao || acao.descricao || '';
+        const responsavelId = acao.responsavel_id || acao.responsavel;
+        
         // Usar finalizacao como prazo (ou prazo se existir)
         const prazoData = acao.prazo || acao.finalizacao;
-        if (prazoData && acao.responsavel_id) {
+        if (prazoData && responsavelId) {
           temPrazos = true;
           const prazoDate = new Date(prazoData);
           prazoDate.setHours(0, 0, 0, 0);
@@ -10964,7 +11762,7 @@ app.post('/api/ferramentas-qualidade', async (req, res) => {
           }
 
           // Buscar superior do responsável
-          const superior = await buscarSuperiorUsuario(acao.responsavel_id);
+          const superior = await buscarSuperiorUsuario(responsavelId);
 
           // Determinar status do prazo
           let status = 'pendente';
@@ -10978,7 +11776,7 @@ app.post('/api/ferramentas-qualidade', async (req, res) => {
           alertas.push({
             ferramenta_id: id || 'temp', // Será atualizado após criar a ferramenta
             acao_id: acao.id || Date.now().toString(),
-            responsavel_id: acao.responsavel_id,
+            responsavel_id: responsavelId,
             superior_id: superior?.id || null,
             prazo: prazoData,
             status,
@@ -11778,13 +12576,33 @@ app.get('/api/projetos-qualidade', async (req, res) => {
       return res.status(401).json({ success: false, error: 'Não autenticado' });
     }
 
+    // Verificar privilégios
+    const { data: userProfile } = await supabaseAdmin
+      .from('user_profiles')
+      .select('role')
+      .eq('id', userId)
+      .maybeSingle();
+
+    const isAdmin = userProfile?.role === 'admin';
+
+    const { data: permissoesQualidade } = await supabaseAdmin
+      .from('permissoes_portal')
+      .select('permissao_id')
+      .eq('usuario_id', userId)
+      .eq('tipo', 'qualidade');
+
+    const podeVerTodos = isAdmin || (permissoesQualidade && permissoesQualidade.length > 0);
+
     const { status, busca } = req.query;
 
     let query = supabaseAdmin
       .from('projetos_qualidade')
       .select('*')
-      .eq('criado_por', userId)
       .order('criado_em', { ascending: false });
+
+    if (!podeVerTodos) {
+      query = query.eq('criado_por', userId);
+    }
 
     if (status) {
       query = query.eq('status', status);
@@ -11837,13 +12655,33 @@ app.get('/api/projetos-qualidade/:id', async (req, res) => {
 
     const { id } = req.params;
 
+    const { data: userProfile } = await supabaseAdmin
+      .from('user_profiles')
+      .select('role')
+      .eq('id', userId)
+      .maybeSingle();
+
+    const isAdmin = userProfile?.role === 'admin';
+
+    const { data: permissoesQualidade } = await supabaseAdmin
+      .from('permissoes_portal')
+      .select('permissao_id')
+      .eq('usuario_id', userId)
+      .eq('tipo', 'qualidade');
+
+    const podeVerTodos = isAdmin || (permissoesQualidade && permissoesQualidade.length > 0);
+
     // Buscar projeto
-    const { data: projeto, error: projetoError } = await supabaseAdmin
+    let projetoQuery = supabaseAdmin
       .from('projetos_qualidade')
       .select('*')
-      .eq('id', id)
-      .eq('criado_por', userId)
-      .single();
+      .eq('id', id);
+
+    if (!podeVerTodos) {
+      projetoQuery = projetoQuery.eq('criado_por', userId);
+    }
+
+    const { data: projeto, error: projetoError } = await projetoQuery.single();
 
     if (projetoError || !projeto) {
       return res.status(404).json({ success: false, error: 'Projeto não encontrado' });

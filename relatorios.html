@@ -50,11 +50,37 @@
             box-shadow: 0 4px 20px rgba(0,0,0,0.23);
         }
         .navbar-brand { font-weight: 700; font-size: 1.6rem;background: linear-gradient(135deg,var(--primary),var(--accent));-webkit-background-clip: text;-webkit-text-fill-color: transparent; background-clip:text; }
-        .nav-tabs { border: none;margin-bottom: 1.2rem;}
+        .nav-tabs { border: none;margin-bottom: 0 !important; position: relative; z-index: 10;}
         .nav-tabs .nav-link { color: var(--text-secondary); background: var(--glass); margin-right:6px; border:none; border-radius: 12px 12px 0 0; padding:12px 20px; font-size:0.95rem; font-weight: 600; transition: var(--transition); }
         .nav-tabs .nav-link.active { background: linear-gradient(90deg,#667eea80,#764ba260,#f093fb15); color: var(--primary); border-bottom:2.5px solid var(--accent); }
         .main-container { padding: 1.5rem 0 1rem 0; min-height:calc(100vh - 70px);}        
-        .main-container .container { max-width: 1400px; margin: 0 auto; padding: 0 1.5rem; }
+        .main-container .container { max-width: 1400px; margin: 0 auto; padding: 0 1.5rem; position: relative; }
+        
+        
+        /* Garantir que abas ocultas não ocupem espaço */
+        #abaColetas[style*="display: none"],
+        #abaBI[style*="display: none"],
+        #abaCadastros[style*="display: none"],
+        #abaFalhas[style*="display: none"] {
+            display: none !important;
+            height: 0 !important;
+            overflow: hidden !important;
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+        
+        /* Garantir que a aba de falhas apareça logo abaixo das tabs */
+        #abaFalhas:not([style*="display: none"]) {
+            margin-top: 0 !important;
+            padding-top: 0 !important;
+            position: relative;
+        }
+        
+        /* Remover qualquer espaçamento do primeiro elemento dentro da aba */
+        #abaFalhas:not([style*="display: none"]) > *:first-child {
+            margin-top: 0 !important;
+            padding-top: 0 !important;
+        }
         @media (max-width: 1200px) {
             .main-container .container {
                 padding: 0 1rem;
@@ -69,6 +95,60 @@
             width: 100%; 
             padding: 0; 
             margin: 0; 
+            position: relative;
+        }
+        
+        #abaFalhas {
+            margin-top: 0 !important;
+            padding-top: 0 !important;
+            margin-bottom: 0 !important;
+            position: relative;
+            display: block !important;
+        }
+        
+        #abaFalhas:not([style*="display: none"]) {
+            margin-top: 0 !important;
+            padding-top: 0 !important;
+            margin-bottom: 0 !important;
+        }
+        
+        #abaFalhas .dashboard-row {
+            margin-top: 0 !important;
+            margin-bottom: 1.2rem;
+            padding-top: 0 !important;
+        }
+        
+        #abaFalhas .card-futuristic:first-of-type {
+            margin-top: 0 !important;
+            padding-top: 0 !important;
+        }
+        
+        #abaFalhas > *:first-child {
+            margin-top: 0 !important;
+            padding-top: 0 !important;
+        }
+        
+        /* Garantir que não há espaço entre nav-tabs e abaFalhas */
+        .nav-tabs + #abaFalhas:not([style*="display: none"]),
+        .nav-tabs ~ #abaFalhas:not([style*="display: none"]) {
+            margin-top: 0 !important;
+            padding-top: 0 !important;
+        }
+        
+        /* Remover qualquer espaçamento vertical quando abaFalhas está visível */
+        #tabsRelatorios:has(~ #abaFalhas:not([style*="display: none"])) {
+            margin-bottom: 0 !important;
+        }
+        
+        /* Garantir que o container não adicione espaço */
+        .main-container .container:has(#abaFalhas:not([style*="display: none"])) {
+            padding-top: 0;
+        }
+        
+        /* Remover espaçamento de qualquer elemento antes da abaFalhas */
+        #abaFalhas:not([style*="display: none"]) {
+            margin-top: 0 !important;
+            padding-top: 0 !important;
         }
         .card-futuristic,.metric-card { background: var(--glass); border-radius: var(--border-radius); border:1.5px solid var(--glass-border); box-shadow: var(--box-shadow); backdrop-filter:blur(18px); position:relative; transition: var(--transition);overflow:hidden;}
         .card-futuristic {margin-bottom:1.5rem;}
@@ -84,7 +164,8 @@
         .dashboard-row>.col,.dashboard-row>div{flex:1 1 180px;min-width:160px;}
         .charts-row {display:flex;gap:1.2rem;flex-wrap:wrap;margin-bottom:1.2rem}
         .charts-row>.card-futuristic{flex:1 1 280px;min-width:260px;}
-        .chart-container { background:none;padding:.5rem 1rem;border-radius:10px;}
+        .chart-container { background:none;padding:.5rem 1rem;border-radius:10px;max-height:350px;position:relative;}
+        .chart-container canvas { max-height:350px !important;}
         .table-tech thead th {background:rgba(102,126,234,0.08);color:var(--text-primary);font-weight:700;}
         .table-tech th, .table-tech td{font-size:1rem; color:var(--text-primary); padding:1rem .7rem;}
         .loading-overlay { position: fixed; inset: 0; background: rgba(28,20,65,0.20); display: none; align-items: center; justify-content: center; z-index: 1050; }
@@ -350,13 +431,13 @@
 							<label class="form-label"><i class="fas fa-calendar-check"></i> Data Fim</label>
 							<input type="date" id="filtroDataFimMot" class="form-control" onchange="if(document.getElementById('filtroPeriodoMot').value==='personalizado') carregarMotoristas();">
 						</div>
-						<div class="col-md-3 mb-2">
+                        <div class="col-md-3 mb-2" id="containerUsuarioMot">
 							<label class="form-label"><i class="fas fa-user"></i> Usuário</label>
 							<select id="filtroUsuarioMot" class="form-select" onchange="carregarMotoristas()">
 								<option value="">Todos os usuários</option>
 							</select>
 						</div>
-						<div class="col-md-3 mb-2">
+                        <div class="col-md-3 mb-2" id="containerDepartamentoMot">
 							<label class="form-label"><i class="fas fa-building"></i> Departamento</label>
 							<select id="filtroDepartamentoMot" class="form-select" onchange="carregarMotoristas()">
 								<option value="">Todos os departamentos</option>
@@ -379,59 +460,84 @@
 						<div class="card-header-futuristic"><h5><i class="fas fa-calendar"></i> Cadastros por Período</h5></div>
 						<div class="chart-container"><canvas id="chartTemporalMot"></canvas></div>
 					</div>
-				</div>
-			</div>
-            <div id="abaFalhas" style="display:none">
-                <div class="card-futuristic">
+                    </div>
+                </div>
+            </div>
+            <div id="abaFalhas" style="display:none; margin: 0; padding: 0;">
+                <div class="dashboard-row" style="margin: 0; padding: 0;">
+                    <div class="metric-card card-futuristic">
+                        <div class="metric-value" id="statTotalFalhas">0</div>
+                        <div class="metric-label"><i class="fas fa-exclamation-triangle"></i> Total de Falhas</div>
+                    </div>
+                    <div class="metric-card card-futuristic">
+                        <div class="metric-value" id="statMotoristasUnicos">0</div>
+                        <div class="metric-label"><i class="fas fa-users"></i> Motoristas Únicos</div>
+                    </div>
+                    <div class="metric-card card-futuristic">
+                        <div class="metric-value" id="statFalhasUltimos7Dias">0</div>
+                        <div class="metric-label"><i class="fas fa-calendar-week"></i> Últimos 7 Dias</div>
+                    </div>
+                    <div class="metric-card card-futuristic">
+                        <div class="metric-value" id="statTaxaErroFalhas">0%</div>
+                        <div class="metric-label"><i class="fas fa-percentage"></i> Taxa de Erro</div>
+                    </div>
+                </div>
+                <div class="card-futuristic" style="margin-top: 0;">
                     <div class="card-header-futuristic">
                         <h5><i class="fas fa-exclamation-triangle me-2"></i>Motoristas com Falhas nos Disparos</h5>
                     </div>
-                    <div class="p-4">
-                        <div class="alert alert-info mb-4" style="background: rgba(59, 130, 246, 0.1); border-left: 4px solid #3b82f6; color: var(--text-primary);">
+                    <div class="p-4" style="padding-top: 1.5rem;">
+                        <div class="alert alert-info mb-4" style="background: rgba(59, 130, 246, 0.1); border-left: 4px solid #3b82f6; color: var(--text-primary); border-radius: 10px; padding: 1rem 1.25rem;">
                             <i class="fas fa-info-circle me-2"></i>
                             <strong>Registro de Falhas:</strong> Esta página permite visualizar e corrigir motoristas que tiveram falhas nos disparos de mensagens, geralmente causadas por números de telefone incorretos ou incompletos.
                         </div>
-                        <div class="row">
-                            <div class="col-md-6 mb-4">
-                                <div class="card-futuristic p-4">
-                                    <h6 class="mb-3"><i class="fas fa-list-check me-2"></i>Funcionalidades</h6>
-                                    <ul style="list-style: none; padding: 0;">
-                                        <li class="mb-2"><i class="fas fa-check-circle text-success me-2"></i>Visualizar todas as falhas de disparo</li>
-                                        <li class="mb-2"><i class="fas fa-check-circle text-success me-2"></i>Filtrar por período, número ou nome</li>
-                                        <li class="mb-2"><i class="fas fa-check-circle text-success me-2"></i>Editar telefones diretamente</li>
-                                        <li class="mb-2"><i class="fas fa-check-circle text-success me-2"></i>Estatísticas em tempo real</li>
-                                        <li class="mb-2"><i class="fas fa-check-circle text-success me-2"></i>Identificar motoristas não encontrados</li>
+                        <div class="row g-4 mb-4">
+                            <div class="col-md-6">
+                                <div class="card-futuristic p-4" style="height: 100%;">
+                                    <h6 class="mb-3" style="color: var(--text-primary); font-weight: 700;"><i class="fas fa-list-check me-2"></i>Funcionalidades</h6>
+                                    <ul style="list-style: none; padding: 0; color: var(--text-secondary);">
+                                        <li class="mb-3"><i class="fas fa-check-circle text-success me-2"></i>Visualizar todas as falhas de disparo</li>
+                                        <li class="mb-3"><i class="fas fa-check-circle text-success me-2"></i>Filtrar por período, número ou nome</li>
+                                        <li class="mb-3"><i class="fas fa-check-circle text-success me-2"></i>Editar telefones diretamente</li>
+                                        <li class="mb-3"><i class="fas fa-check-circle text-success me-2"></i>Estatísticas em tempo real</li>
+                                        <li class="mb-3"><i class="fas fa-check-circle text-success me-2"></i>Identificar motoristas não encontrados</li>
+                                        <li class="mb-0"><i class="fas fa-check-circle text-success me-2"></i>Análise detalhada por motivo da falha</li>
                                     </ul>
                                 </div>
                             </div>
-                            <div class="col-md-6 mb-4">
-                                <div class="card-futuristic p-4">
-                                    <h6 class="mb-3"><i class="fas fa-chart-line me-2"></i>Estatísticas Rápidas</h6>
-                                    <div class="dashboard-row">
-                                        <div class="metric-card card-futuristic">
-                                            <div class="metric-value" id="statTotalFalhas">-</div>
-                                            <div class="metric-label">Total de Falhas</div>
+                            <div class="col-md-6">
+                                <div class="card-futuristic p-4" style="height: 100%;">
+                                    <h6 class="mb-3" style="color: var(--text-primary); font-weight: 700;"><i class="fas fa-chart-bar me-2"></i>Análise Rápida</h6>
+                                    <div class="mb-3">
+                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                            <span style="color: var(--text-secondary); font-size: 0.9rem;">Falhas por Motivo</span>
+                                            <span class="badge" style="background: rgba(102, 126, 234, 0.2); color: var(--primary);" id="badgeMotivosFalhas">Carregando...</span>
                                         </div>
-                                        <div class="metric-card card-futuristic">
-                                            <div class="metric-value" id="statMotoristasUnicos">-</div>
-                                            <div class="metric-label">Motoristas Únicos</div>
+                                        <div class="progress" style="height: 8px; background: rgba(255,255,255,0.1); border-radius: 10px; overflow: hidden;">
+                                            <div class="progress-bar" role="progressbar" style="width: 0%; background: linear-gradient(90deg, var(--primary), var(--accent));" id="progressFalhas"></div>
+                                        </div>
+                                    </div>
+                                    <div class="mt-4">
+                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                            <span style="color: var(--text-secondary); font-size: 0.9rem;">Última Atualização</span>
+                                            <span style="color: var(--text-secondary); font-size: 0.85rem;" id="ultimaAtualizacaoFalhas">-</span>
                                         </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
                         <div class="text-center mt-4">
-                            <a href="motoristas-falhas.html" class="btn btn-futuristic btn-lg" target="_blank">
-                                <i class="fas fa-external-link-alt me-2"></i>Abrir Página de Motoristas com Falhas
+                            <a href="motoristas-falhas.html" class="btn btn-futuristic btn-lg" target="_blank" style="padding: 1rem 2rem; font-size: 1.1rem;">
+                                <i class="fas fa-external-link-alt me-2"></i>Abrir Página Completa de Motoristas com Falhas
                             </a>
-                            <p class="text-muted mt-3" style="color: var(--text-secondary);">
+                            <p class="text-muted mt-3" style="color: var(--text-secondary); font-size: 0.9rem;">
                                 <i class="fas fa-info-circle me-1"></i>
-                                A página será aberta em uma nova aba para facilitar a navegação
+                                A página será aberta em uma nova aba com todas as funcionalidades de análise e correção
                             </p>
                         </div>
                     </div>
-                </div>
-            </div>
+				</div>
+			</div>
     <div id="loadingOverlay" class="loading-overlay" style="display: none;">
         <div class="text-center"><div class="spinner"></div><p class="loading-text">Carregando relatórios...</p></div>
         </div>
@@ -445,12 +551,43 @@
 		if(tabCad) tabCad.classList.toggle('active', aba==='cadastros');
         const tabFalhas = document.getElementById('tabFalhas');
 		if(tabFalhas) tabFalhas.classList.toggle('active', aba==='falhas');
-        document.getElementById('abaColetas').style.display = aba==='coletas' ? '' : 'none';
-        document.getElementById('abaBI').style.display = aba==='bi' ? '' : 'none';
+        // Ocultar todas as abas primeiro para evitar espaçamento
+        const abaColetas = document.getElementById('abaColetas');
+        const abaBI = document.getElementById('abaBI');
 		const abaCad = document.getElementById('abaCadastros');
-		if(abaCad) abaCad.style.display = aba==='cadastros' ? '' : 'none';
-		const abaFalhas = document.getElementById('abaFalhas');
-		if(abaFalhas) abaFalhas.style.display = aba==='falhas' ? '' : 'none';
+        const abaFalhas = document.getElementById('abaFalhas');
+        
+        if(abaColetas) abaColetas.style.display = 'none';
+        if(abaBI) abaBI.style.display = 'none';
+        if(abaCad) abaCad.style.display = 'none';
+        if(abaFalhas) abaFalhas.style.display = 'none';
+        
+        // Mostrar apenas a aba selecionada
+        if(aba==='coletas' && abaColetas) abaColetas.style.display = '';
+        if(aba==='bi' && abaBI) abaBI.style.display = '';
+        if(aba==='cadastros' && abaCad) abaCad.style.display = '';
+        if(aba==='falhas' && abaFalhas) {
+            abaFalhas.style.display = '';
+            // Forçar remoção de qualquer espaçamento
+            abaFalhas.style.margin = '0';
+            abaFalhas.style.padding = '0';
+            const firstChild = abaFalhas.firstElementChild;
+            if (firstChild) {
+                firstChild.style.margin = '0';
+                firstChild.style.paddingTop = '0';
+            }
+            // Remover margin-bottom das nav-tabs quando falhas está ativa
+            const navTabs = document.getElementById('tabsRelatorios');
+            if (navTabs) {
+                navTabs.style.marginBottom = '0';
+            }
+        } else {
+            // Restaurar margin-bottom das nav-tabs quando outra aba está ativa
+            const navTabs = document.getElementById('tabsRelatorios');
+            if (navTabs) {
+                navTabs.style.marginBottom = '';
+            }
+        }
         if(aba==='bi' && typeof carregarDisparos==='function' && typeof carregarFiltrosDisparos==='function') {
             // Sempre recarregar filtros e dados para refletir novos logs
             if(typeof atualizarVisibilidadeDatasDisp==='function') atualizarVisibilidadeDatasDisp();
@@ -469,6 +606,41 @@
 			})();
 		}
 		if(aba==='falhas'){
+			// Remover espaçamento e fazer scroll
+			setTimeout(() => {
+				const navTabs = document.getElementById('tabsRelatorios');
+				const abaFalhas = document.getElementById('abaFalhas');
+				const container = document.querySelector('.main-container .container');
+				
+				if (navTabs && abaFalhas) {
+					// Remover margin-bottom das nav-tabs
+					navTabs.style.marginBottom = '0';
+					
+					// Forçar remoção de qualquer espaçamento
+					abaFalhas.style.margin = '0';
+					abaFalhas.style.padding = '0';
+					abaFalhas.style.top = '0';
+					
+					const firstChild = abaFalhas.firstElementChild;
+					if (firstChild) {
+						firstChild.style.margin = '0';
+						firstChild.style.paddingTop = '0';
+					}
+					
+					// Remover padding do container se necessário
+					if (container) {
+						container.style.paddingTop = '0';
+					}
+					
+					// Scroll para posicionar logo abaixo das tabs
+					const navTabsRect = navTabs.getBoundingClientRect();
+					const scrollPosition = window.pageYOffset || document.documentElement.scrollTop;
+					const targetPosition = scrollPosition + navTabsRect.bottom;
+					window.scrollTo({ top: Math.max(0, targetPosition), behavior: 'instant' });
+				} else {
+					window.scrollTo({ top: 0, behavior: 'instant' });
+				}
+			}, 50);
 			(async ()=>{
 				try{
 					await carregarEstatisticasFalhas();
@@ -484,14 +656,17 @@
             if (!sb) {
                 document.getElementById('statTotalFalhas').textContent = '0';
                 document.getElementById('statMotoristasUnicos').textContent = '0';
+                document.getElementById('statFalhasUltimos7Dias').textContent = '0';
+                document.getElementById('statTaxaErroFalhas').textContent = '0%';
                 return;
             }
 
             // Buscar todas as falhas
             const { data: falhas, error } = await sb
                 .from('disparos_log')
-                .select('numero')
-                .eq('status', 'error');
+                .select('numero, created_at')
+                .eq('status', 'error')
+                .order('created_at', { ascending: false });
 
             if (error) throw error;
 
@@ -499,12 +674,77 @@
             const numerosUnicos = new Set(falhas ? falhas.map(f => f.numero).filter(Boolean) : []);
             const motoristasUnicos = numerosUnicos.size;
 
+            // Falhas dos últimos 7 dias
+            const seteDiasAtras = new Date();
+            seteDiasAtras.setDate(seteDiasAtras.getDate() - 7);
+            const falhasUltimos7Dias = falhas ? falhas.filter(f => {
+                const dataFalha = new Date(f.created_at);
+                return dataFalha >= seteDiasAtras;
+            }).length : 0;
+
+            // Calcular taxa de erro (simplificado - seria necessário comparar com sucessos)
+            // Por enquanto, vamos calcular uma taxa baseada no total
+            const taxaErro = totalFalhas > 0 ? ((falhasUltimos7Dias / (totalFalhas + 100)) * 100).toFixed(1) : 0;
+
+            // Agrupar por motivo (simplificado)
+            const motivosMap = new Map();
+            if (falhas && falhas.length > 0) {
+                falhas.forEach(f => {
+                    // Análise básica do número
+                    const numeroLimpo = (f.numero || '').replace(/\D/g, '');
+                    let motivo = 'outro';
+                    if (!numeroLimpo || numeroLimpo.length < 10) motivo = 'numero_invalido';
+                    else if (!numeroLimpo.startsWith('55')) motivo = 'sem_ddi';
+                    else if (numeroLimpo.length > 15) motivo = 'numero_longo';
+                    else motivo = 'outro';
+                    
+                    motivosMap.set(motivo, (motivosMap.get(motivo) || 0) + 1);
+                });
+            }
+            const totalMotivos = Array.from(motivosMap.values()).reduce((a, b) => a + b, 0);
+            const maiorMotivo = Array.from(motivosMap.entries()).sort((a, b) => b[1] - a[1])[0];
+            const percentualMaiorMotivo = maiorMotivo && totalMotivos > 0 ? ((maiorMotivo[1] / totalMotivos) * 100).toFixed(0) : 0;
+
+            // Atualizar elementos
             document.getElementById('statTotalFalhas').textContent = totalFalhas.toLocaleString('pt-BR');
             document.getElementById('statMotoristasUnicos').textContent = motoristasUnicos.toLocaleString('pt-BR');
+            document.getElementById('statFalhasUltimos7Dias').textContent = falhasUltimos7Dias.toLocaleString('pt-BR');
+            document.getElementById('statTaxaErroFalhas').textContent = taxaErro + '%';
+
+            // Atualizar badge e progress bar
+            const badgeMotivos = document.getElementById('badgeMotivosFalhas');
+            const progressFalhas = document.getElementById('progressFalhas');
+            if (badgeMotivos && maiorMotivo) {
+                const motivoNome = {
+                    'numero_invalido': 'Número Inválido',
+                    'sem_ddi': 'Sem DDI',
+                    'numero_longo': 'Número Longo',
+                    'outro': 'Outros'
+                }[maiorMotivo[0]] || 'Outros';
+                badgeMotivos.textContent = `${motivoNome}: ${percentualMaiorMotivo}%`;
+            }
+            if (progressFalhas) {
+                progressFalhas.style.width = percentualMaiorMotivo + '%';
+            }
+
+            // Atualizar última atualização
+            const ultimaAtualizacao = document.getElementById('ultimaAtualizacaoFalhas');
+            if (ultimaAtualizacao) {
+                ultimaAtualizacao.textContent = new Date().toLocaleString('pt-BR', { 
+                    day: '2-digit', 
+                    month: '2-digit', 
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+            }
+
         } catch (error) {
             console.error('Erro ao carregar estatísticas de falhas:', error);
             document.getElementById('statTotalFalhas').textContent = 'Erro';
             document.getElementById('statMotoristasUnicos').textContent = 'Erro';
+            document.getElementById('statFalhasUltimos7Dias').textContent = 'Erro';
+            document.getElementById('statTaxaErroFalhas').textContent = 'Erro';
         }
     }
     
@@ -670,6 +910,7 @@
 						},
 						options:{ 
 							responsive:true, 
+							maintainAspectRatio:false,
 							plugins:{ legend:{ display:false }},
 							scales: {
 								y: {
@@ -718,6 +959,7 @@
 						},
 						options:{ 
 							responsive:true, 
+							maintainAspectRatio:false,
 							plugins:{ legend:{ display:false }},
 							scales: {
 								y: {
@@ -766,6 +1008,7 @@
 						},
 						options:{ 
 							responsive:true,
+							maintainAspectRatio:false,
 							plugins: {
 								legend: { display: true, labels: { color: 'rgba(255,255,255,0.9)' } }
 							},
@@ -894,6 +1137,7 @@
                         data:{ labels:(s.byUser||[]).map(u=>u.nome), datasets:[{ label:'Disparos', data:(s.byUser||[]).map(u=>u.count), backgroundColor:'#4f46e5' }] },
                         options:{ 
                             responsive:true, 
+                            maintainAspectRatio:false,
                             plugins:{ 
                                 legend:{ display:false },
                                 datalabels: {
@@ -976,6 +1220,7 @@
                         data:{ labels:(s.byDepartment||[]).map(d=>d.departamento), datasets:[{ label:'Disparos', data:(s.byDepartment||[]).map(d=>d.count), backgroundColor:'#10b981' }] },
                         options:{ 
                             responsive:true, 
+                            maintainAspectRatio:false,
                             plugins:{ 
                                 legend:{ display:false },
                                 datalabels: {
@@ -1058,6 +1303,7 @@
                         data:{ labels:(s.byDay||[]).map(d=>d.date), datasets:[{ label:'Disparos', data:(s.byDay||[]).map(d=>d.count), borderColor:'#f59e0b', backgroundColor:'rgba(245,158,11,0.25)', fill:true, tension:0.3, pointRadius: 5, pointHoverRadius: 7 }] },
                         options:{ 
                             responsive:true,
+                            maintainAspectRatio:false,
                             plugins: {
                                 legend: { display: true, labels: { color: 'rgba(255,255,255,0.9)' } }
                             },

@@ -317,7 +317,11 @@
             margin-bottom: 2rem;
             transition: var(--transition);
             position: relative;
-            overflow: hidden;
+            overflow: visible;
+        }
+
+        .department-card.expanded {
+            overflow: visible;
         }
 
         .department-card::before {
@@ -413,14 +417,60 @@
 
         /* Módulos */
         .department-content {
-            padding: 0 2rem 2rem;
+            padding: 0 2rem 0;
             max-height: 0;
             overflow: hidden;
-            transition: var(--transition);
+            transition: max-height 0.4s ease-out, padding 0.4s ease-out;
         }
 
         .department-card.expanded .department-content {
-            max-height: 1000px;
+            max-height: 70vh;
+            overflow-y: auto;
+            overflow-x: hidden;
+            padding: 0 2rem 2rem;
+            -webkit-overflow-scrolling: touch;
+            display: block;
+            position: relative;
+        }
+        
+        /* Garantir que o scroll funcione mesmo durante a transição */
+        .department-card.expanded .department-content .module-grid {
+            display: grid;
+            position: relative;
+        }
+        
+        /* Forçar scroll quando o conteúdo exceder a altura */
+        .department-card.expanded .department-content::after {
+            content: '';
+            display: block;
+            height: 1px;
+            width: 100%;
+        }
+
+        /* Scrollbar customizada para os cards expandidos */
+        .department-card.expanded .department-content::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .department-card.expanded .department-content::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+        }
+
+        .department-card.expanded .department-content::-webkit-scrollbar-thumb {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            border-radius: 10px;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .department-card.expanded .department-content::-webkit-scrollbar-thumb:hover {
+            background: linear-gradient(135deg, var(--secondary), var(--accent));
+        }
+
+        /* Firefox scrollbar */
+        .department-card.expanded .department-content {
+            scrollbar-width: thin;
+            scrollbar-color: var(--primary) rgba(255, 255, 255, 0.05);
         }
 
         .module-grid {
@@ -428,6 +478,7 @@
             grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
             gap: 1.5rem;
             margin-top: 1rem;
+            min-height: min-content;
         }
 
         .module-item {
@@ -1805,6 +1856,14 @@
                         url: 'monitoramento.html',
                         permission: 'monitoramento',
                         adminOnly: true
+                    },
+                    { 
+                        name: 'Rastreamento GPS', 
+                        description: 'Monitoramento em tempo real de motoristas',
+                        icon: 'fas fa-map-marked-alt',
+                        url: 'monitoramento-rastreamento.html',
+                        permission: 'operacoes',
+                        adminOnly: false
                     }
                 ]
             },
@@ -2154,7 +2213,36 @@
 
         function toggleDepartment(departmentKey) {
             const card = document.querySelector(`[onclick="toggleDepartment('${departmentKey}')"]`).closest('.department-card');
+            const content = card.querySelector('.department-content');
+            const isExpanding = !card.classList.contains('expanded');
+            
             card.classList.toggle('expanded');
+            
+            if (isExpanding) {
+                // Quando expandindo, calcular altura real do conteúdo
+                setTimeout(() => {
+                    if (content) {
+                        // Remover max-height temporariamente para medir
+                        const originalMaxHeight = content.style.maxHeight;
+                        content.style.maxHeight = 'none';
+                        const scrollHeight = content.scrollHeight;
+                        content.style.maxHeight = originalMaxHeight;
+                        
+                        // Definir altura máxima baseada no conteúdo ou 70vh, o que for menor
+                        const maxViewportHeight = window.innerHeight * 0.7;
+                        const finalHeight = Math.min(scrollHeight + 40, maxViewportHeight); // +40 para padding
+                        
+                        content.style.maxHeight = finalHeight + 'px';
+                        content.style.overflowY = scrollHeight > maxViewportHeight ? 'auto' : 'visible';
+                    }
+                }, 450); // Após a transição de 0.4s
+            } else {
+                // Quando colapsando, resetar
+                if (content) {
+                    content.style.maxHeight = '';
+                    content.style.overflowY = 'hidden';
+                }
+            }
         }
 
         // ========== GRÁFICOS ==========

@@ -825,6 +825,13 @@
                                                 Selecione um usuário para gerenciar suas permissões
                                             </div>
                                         </div>
+
+                                        <label class="form-label mt-4">Permissões de Ferramentas</label>
+                                        <div id="containerPermissoesFerramentas" class="mt-3">
+                                            <div class="alert alert-info">
+                                                Selecione um usuário para habilitar o acesso às ferramentas avançadas
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -2379,6 +2386,7 @@
             if (!usuarioId) {
                 document.getElementById('containerPermissoesPortal').innerHTML = '<div class="alert alert-info">Selecione um usuário para gerenciar suas permissões</div>';
                 document.getElementById('containerPermissoesColetas').innerHTML = '<div class="alert alert-info">Selecione um usuário para gerenciar suas permissões</div>';
+                document.getElementById('containerPermissoesFerramentas').innerHTML = '<div class="alert alert-info">Selecione um usuário para gerenciar suas permissões</div>';
                 return;
             }
 
@@ -2391,6 +2399,7 @@
 
                 if (!errorPortal) {
                     renderizarPermissoesPortal(permissoesPortal || []);
+                    renderizarPermissoesFerramentas(permissoesPortal || []);
                 }
 
                 // Carregar permissões de coletas
@@ -2558,6 +2567,54 @@
                     </div>
                 </div>
                 `;
+        }
+
+        function renderizarPermissoesFerramentas(permissoes) {
+            const container = document.getElementById('containerPermissoesFerramentas');
+            const ferramentas = [
+                {
+                    id: 'monitoramento-avancado',
+                    label: 'Monitoramento Avançado (múltiplas coletas)',
+                    descricao: 'Habilita recursos de clusterização, filtros inteligentes e múltiplas coletas no monitoramento.'
+                },
+                {
+                    id: 'assistente-login-ia',
+                    label: 'Assistente de Login com IA',
+                    descricao: 'Permite usar o assistente conversacional no portal do motorista.'
+                },
+                {
+                    id: 'ferramentas-ia',
+                    label: 'Ferramentas Inteligentes (5W2H, Ishikawa, SWOT...)',
+                    descricao: 'Autoriza o uso das ferramentas analíticas recém-desenvolvidas no módulo de qualidade.'
+                },
+                {
+                    id: 'painel-monitoramento-externo',
+                    label: 'Painel de Monitoramento Externo',
+                    descricao: 'Disponibiliza o painel consolidado para times externos/gestores.'
+                }
+            ];
+
+            container.innerHTML = `
+                <div class="alert alert-info mb-3">
+                    <i class="fas fa-magic me-2"></i>
+                    Defina quem poderá utilizar as novas ferramentas e experiências avançadas liberadas recentemente.
+                </div>
+                <div class="row g-3">
+                    ${ferramentas.map(tool => `
+                        <div class="col-md-6">
+                            <div class="border rounded p-3 bg-light-subtle h-100">
+                                <div class="form-check form-switch mb-2">
+                                    <input class="form-check-input" type="checkbox" id="permFerramenta_${tool.id}"
+                                        ${permissoes.some(p => p.permissao_id === tool.id) ? 'checked' : ''}
+                                        onchange="salvarPermissaoPortal('${tool.id}', this.checked)">
+                                    <label class="form-check-label fw-semibold" for="permFerramenta_${tool.id}">${tool.label}</label>
+                                </div>
+                                <small class="text-muted d-block">${tool.descricao}</small>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
         }
 
         function renderizarPermissoesColetas(permissoes) {

@@ -219,6 +219,105 @@
             border-left-color: #fd7e14;
             background: #fff8f0;
         }
+        
+        .projeto-card {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+            border: 1px solid #dee2e6;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        
+        .projeto-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            border-color: #667eea;
+        }
+        
+        .projeto-card.expandido {
+            border-color: #667eea;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+        }
+        
+        .projeto-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .projeto-titulo {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #333;
+            margin: 0;
+        }
+        
+        .projeto-info {
+            display: flex;
+            gap: 1.5rem;
+            margin-top: 0.75rem;
+            color: #6c757d;
+            font-size: 0.9rem;
+        }
+        
+        .projeto-expand-icon {
+            transition: transform 0.3s ease;
+        }
+        
+        .projeto-card.expandido .projeto-expand-icon {
+            transform: rotate(180deg);
+        }
+        
+        .projeto-ferramentas {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid #e9ecef;
+        }
+        
+        .projeto-card.expandido .projeto-ferramentas {
+            max-height: 5000px;
+        }
+        
+        .ferramenta-item {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 0.75rem;
+            border-left: 4px solid #667eea;
+            transition: all 0.2s ease;
+        }
+        
+        .ferramenta-item:hover {
+            background: #e9ecef;
+            transform: translateX(5px);
+        }
+        
+        .status-badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+        
+        .status-em_andamento {
+            background: #ffc107;
+            color: #333;
+        }
+        
+        .status-concluido {
+            background: #28a745;
+            color: white;
+        }
+        
+        .status-pausado {
+            background: #6c757d;
+            color: white;
+        }
     </style>
 </head>
 <body>
@@ -246,6 +345,10 @@
         <!-- Estatísticas -->
         <div class="stats-grid" id="statsGrid">
             <div class="stat-card">
+                <h3 id="totalProjetos">0</h3>
+                <p>Total de Projetos</p>
+            </div>
+            <div class="stat-card">
                 <h3 id="totalFerramentas">0</h3>
                 <p>Total de Ferramentas</p>
             </div>
@@ -271,37 +374,12 @@
                     <input type="text" class="form-control" id="inputBusca" placeholder="Título ou descrição...">
                 </div>
                 <div class="col-md-2">
-                    <label class="form-label">Tipo de Ferramenta</label>
-                    <select class="form-select" id="filtroTipo">
-                        <option value="">Todos</option>
-                        <option value="5porques">5 Porquês</option>
-                        <option value="5w2h">5W2H</option>
-                        <option value="plano_acao">Plano de Ação</option>
-                        <option value="ishikawa">Ishikawa</option>
-                        <option value="pdca">PDCA</option>
-                        <option value="brainstorm">Brainstorming</option>
-                    </select>
-                </div>
-                <div class="col-md-2">
-                    <label class="form-label">Responsável</label>
-                    <select class="form-select" id="filtroResponsavel">
-                        <option value="">Todos</option>
-                    </select>
-                </div>
-                <div class="col-md-2">
-                    <label class="form-label">Status do Alerta</label>
+                    <label class="form-label">Status do Projeto</label>
                     <select class="form-select" id="filtroStatus">
                         <option value="">Todos</option>
-                        <option value="pendente">Pendente</option>
-                        <option value="em_alerta">Em Alerta</option>
-                        <option value="vencido">Vencido</option>
-                    </select>
-                </div>
-                <div class="col-md-2">
-                    <label class="form-label">Arquivadas</label>
-                    <select class="form-select" id="filtroArquivado">
-                        <option value="false">Não</option>
-                        <option value="true">Sim</option>
+                        <option value="em_andamento">Em Andamento</option>
+                        <option value="concluido">Concluído</option>
+                        <option value="pausado">Pausado</option>
                     </select>
                 </div>
                 <div class="col-md-1 d-flex align-items-end">
@@ -312,8 +390,8 @@
             </div>
         </div>
 
-        <!-- Lista de Ferramentas -->
-        <div id="listaFerramentas">
+        <!-- Lista de Projetos -->
+        <div id="listaProjetos">
             <div class="text-center py-5">
                 <div class="spinner-border text-primary" role="status">
                     <span class="visually-hidden">Carregando...</span>
@@ -321,11 +399,6 @@
             </div>
         </div>
 
-        <!-- Paginação -->
-        <nav aria-label="Paginação">
-            <ul class="pagination justify-content-center" id="paginacao">
-            </ul>
-        </nav>
     </div>
 
     <!-- Modal de Detalhes -->
@@ -357,19 +430,16 @@
     <script>
         let supabase = null;
         let currentUser = null;
-        let ferramentas = [];
+        let projetos = [];
+        let projetosExpandidos = new Set();
+        let ferramentasPorProjeto = {};
         let usuarios = [];
         let filtros = {
-            tipo_ferramenta: '',
-            arquivado: 'false',
-            responsavel_id: '',
-            status_alerta: '',
-            busca: '',
-            limit: 20,
-            offset: 0
+            status: '',
+            busca: ''
         };
+        let totalProjetos = 0;
         let totalFerramentas = 0;
-        let currentPage = 1;
 
         // Inicialização
         document.addEventListener('DOMContentLoaded', async function() {
@@ -378,7 +448,7 @@
             await inicializarSupabase();
             await verificarAutenticacao();
             await carregarUsuarios();
-            await carregarFerramentas();
+            await carregarProjetos();
         });
 
         // Inicializar Supabase
@@ -517,47 +587,40 @@
                     const data = await response.json();
                     usuarios = data.usuarios || [];
                     
+                    // Verificar se o elemento existe antes de tentar adicionar opções
                     const select = document.getElementById('filtroResponsavel');
-                    usuarios.forEach(usuario => {
-                        const option = document.createElement('option');
-                        option.value = usuario.id;
-                        option.textContent = usuario.nome || usuario.email;
-                        select.appendChild(option);
-                    });
+                    if (select) {
+                        usuarios.forEach(usuario => {
+                            const option = document.createElement('option');
+                            option.value = usuario.id;
+                            option.textContent = usuario.nome || usuario.email;
+                            select.appendChild(option);
+                        });
+                    }
                 }
             } catch (error) {
                 console.error('❌ Erro ao carregar usuários:', error);
             }
         }
 
-        // Carregar ferramentas
-        async function carregarFerramentas() {
+        // Carregar projetos
+        async function carregarProjetos() {
             try {
                 const headers = await getAuthHeaders();
-                console.log('📤 Headers de autenticação:', {
-                    hasAuth: !!headers['Authorization'],
-                    hasEmail: !!headers['X-User-Email'],
-                    hasUserId: !!headers['X-User-Id'],
-                    email: headers['X-User-Email']
-                });
                 
                 const params = new URLSearchParams();
                 
-                Object.keys(filtros).forEach(key => {
-                    if (filtros[key]) {
-                        params.append(key, filtros[key]);
-                    }
-                });
+                if (filtros.status) {
+                    params.append('status', filtros.status);
+                }
+                
+                if (filtros.busca) {
+                    params.append('busca', filtros.busca);
+                }
 
-                const response = await fetch(`/api/ferramentas-qualidade/painel?${params}`, {
+                const response = await fetch(`/api/projetos-qualidade?${params}`, {
                     headers: headers,
                     credentials: 'include'
-                });
-
-                console.log('📥 Resposta da API:', {
-                    status: response.status,
-                    statusText: response.statusText,
-                    ok: response.ok
                 });
 
                 if (response.status === 401) {
@@ -580,18 +643,20 @@
                 }
 
                 const data = await response.json();
-                ferramentas = data.ferramentas || [];
-                totalFerramentas = data.total || 0;
+                projetos = data.projetos || [];
+                totalProjetos = projetos.length;
+                
+                // Calcular total de ferramentas
+                totalFerramentas = projetos.reduce((sum, p) => sum + (p.total_ferramentas || 0), 0);
 
                 atualizarEstatisticas();
-                renderizarFerramentas();
-                renderizarPaginacao();
+                renderizarProjetos();
             } catch (error) {
-                console.error('❌ Erro ao carregar ferramentas:', error);
-                document.getElementById('listaFerramentas').innerHTML = `
+                console.error('❌ Erro ao carregar projetos:', error);
+                document.getElementById('listaProjetos').innerHTML = `
                     <div class="alert alert-danger">
                         <i class="fas fa-exclamation-triangle me-2"></i>
-                        Erro ao carregar ferramentas: ${error.message}
+                        Erro ao carregar projetos: ${error.message}
                         <br><small>Verifique o console para mais detalhes.</small>
                     </div>
                 `;
@@ -600,18 +665,23 @@
 
         // Atualizar estatísticas
         function atualizarEstatisticas() {
+            document.getElementById('totalProjetos').textContent = totalProjetos;
             document.getElementById('totalFerramentas').textContent = totalFerramentas;
             
+            // Calcular ações de todas as ferramentas de todos os projetos
             let totalAcoes = 0;
             let acoesPendentes = 0;
             let acoesVencidas = 0;
-
-            ferramentas.forEach(ferramenta => {
-                if (ferramenta.tipo_ferramenta === 'plano_acao') {
-                    totalAcoes += ferramenta.total_acoes || 0;
-                    acoesPendentes += ferramenta.acoes_pendentes || 0;
-                    acoesVencidas += ferramenta.acoes_vencidas || 0;
-                }
+            
+            // Iterar sobre projetos expandidos e suas ferramentas
+            Object.values(ferramentasPorProjeto).forEach(ferramentas => {
+                ferramentas.forEach(ferramenta => {
+                    if (ferramenta.tipo_ferramenta === 'plano_acao') {
+                        totalAcoes += ferramenta.total_acoes || 0;
+                        acoesPendentes += ferramenta.acoes_pendentes || 0;
+                        acoesVencidas += ferramenta.acoes_vencidas || 0;
+                    }
+                });
             });
 
             document.getElementById('totalAcoes').textContent = totalAcoes;
@@ -619,174 +689,158 @@
             document.getElementById('acoesVencidas').textContent = acoesVencidas;
         }
 
-        // Renderizar ferramentas
-        function renderizarFerramentas() {
-            const container = document.getElementById('listaFerramentas');
+        // Renderizar projetos
+        function renderizarProjetos() {
+            const container = document.getElementById('listaProjetos');
             
-            if (ferramentas.length === 0) {
+            if (projetos.length === 0) {
                 container.innerHTML = `
                     <div class="alert alert-info">
                         <i class="fas fa-info-circle me-2"></i>
-                        Nenhuma ferramenta encontrada com os filtros aplicados.
+                        Nenhum projeto encontrado com os filtros aplicados.
                     </div>
                 `;
                 return;
             }
 
-            container.innerHTML = ferramentas.map(ferramenta => {
-                const tipoLabels = {
-                    '5porques': '5 Porquês',
-                    '5w2h': '5W2H',
-                    'plano_acao': 'Plano de Ação',
-                    'ishikawa': 'Ishikawa',
-                    'pdca': 'PDCA',
-                    'brainstorm': 'Brainstorming'
+            container.innerHTML = projetos.map(projeto => {
+                const isExpandido = projetosExpandidos.has(projeto.id);
+                const statusLabels = {
+                    'em_andamento': 'Em Andamento',
+                    'concluido': 'Concluído',
+                    'pausado': 'Pausado'
                 };
-
-                const tipoLabel = tipoLabels[ferramenta.tipo_ferramenta] || ferramenta.tipo_ferramenta;
-                const criador = ferramenta.criado_por_user?.nome || ferramenta.criado_por_user?.email || 'Desconhecido';
-                const dataCriacao = new Date(ferramenta.criado_em).toLocaleDateString('pt-BR');
+                const statusLabel = statusLabels[projeto.status] || projeto.status;
+                const statusClass = `status-${projeto.status}`;
+                const dataCriacao = new Date(projeto.criado_em).toLocaleDateString('pt-BR');
+                const ferramentas = ferramentasPorProjeto[projeto.id] || [];
                 
-                let prioridadeClass = '';
-                if (ferramenta.acoes_vencidas > 0) {
-                    prioridadeClass = 'prioridade-alta';
-                } else if (ferramenta.acoes_pendentes > 0) {
-                    prioridadeClass = 'prioridade-media';
-                } else {
-                    prioridadeClass = 'prioridade-baixa';
-                }
-
-                let alertasHTML = '';
-                if (ferramenta.tipo_ferramenta === 'plano_acao') {
-                    const alertas = ferramenta.alertas || [];
-                    if (alertas.length > 0) {
-                        const vencidos = alertas.filter(a => a.status === 'vencido').length;
-                        const emAlerta = alertas.filter(a => a.status === 'em_alerta').length;
-                        const pendentes = alertas.filter(a => a.status === 'pendente').length;
-
-                        alertasHTML = `
-                            <div class="d-flex gap-2 mt-2">
-                                ${vencidos > 0 ? `<span class="badge-alerta badge-vencido">${vencidos} Vencidas</span>` : ''}
-                                ${emAlerta > 0 ? `<span class="badge-alerta badge-em-alerta">${emAlerta} Em Alerta</span>` : ''}
-                                ${pendentes > 0 ? `<span class="badge-alerta badge-pendente">${pendentes} Pendentes</span>` : ''}
+                let ferramentasHTML = '';
+                if (isExpandido && ferramentas.length > 0) {
+                    const tipoLabels = {
+                        '5porques': '5 Porquês',
+                        '5w2h': '5W2H',
+                        'plano_acao': 'Plano de Ação',
+                        'ishikawa': 'Ishikawa',
+                        'pdca': 'PDCA',
+                        'brainstorm': 'Brainstorming'
+                    };
+                    
+                    ferramentasHTML = ferramentas.map(ferramenta => {
+                        const tipoLabel = tipoLabels[ferramenta.tipo_ferramenta] || ferramenta.tipo_ferramenta;
+                        const dataCriacaoFerramenta = new Date(ferramenta.criado_em).toLocaleDateString('pt-BR');
+                        
+                        return `
+                            <div class="ferramenta-item" onclick="event.stopPropagation(); abrirDetalhes('${ferramenta.id}')">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div class="flex-grow-1">
+                                        <span class="ferramenta-tipo ${ferramenta.tipo_ferramenta}" style="font-size: 0.7rem;">${tipoLabel}</span>
+                                        <h6 class="mb-1 mt-1">${escapeHtml(ferramenta.titulo)}</h6>
+                                        <small class="text-muted">
+                                            <i class="fas fa-calendar"></i> ${dataCriacaoFerramenta}
+                                            ${ferramenta.tipo_ferramenta === 'plano_acao' && ferramenta.total_acoes ? ` | <i class="fas fa-tasks"></i> ${ferramenta.total_acoes} ações` : ''}
+                                        </small>
+                                    </div>
+                                    <div class="ms-2">
+                                        <button class="btn btn-sm btn-outline-primary" onclick="event.stopPropagation(); editarFerramenta('${ferramenta.id}')" title="Editar">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
                         `;
-                    }
+                    }).join('');
+                } else if (isExpandido && ferramentas.length === 0) {
+                    ferramentasHTML = `
+                        <div class="alert alert-info mb-0">
+                            <i class="fas fa-info-circle me-2"></i>
+                            Este projeto ainda não possui ferramentas vinculadas.
+                        </div>
+                    `;
                 }
 
                 return `
-                    <div class="ferramenta-card ${prioridadeClass}">
-                        <div class="ferramenta-actions">
-                            <button class="btn btn-sm btn-primary" onclick="event.stopPropagation(); editarFerramenta('${ferramenta.id}')" title="Editar">
-                                <i class="fas fa-edit"></i>
-                            </button>
-                            <button class="btn btn-sm btn-danger" onclick="event.stopPropagation(); excluirFerramenta('${ferramenta.id}', '${escapeHtml(ferramenta.titulo)}')" title="Excluir">
-                                <i class="fas fa-trash"></i>
-                            </button>
-                        </div>
-                        <div class="ferramenta-content" onclick="abrirDetalhes('${ferramenta.id}')">
-                            <div class="ferramenta-header">
-                                <div>
-                                    <span class="ferramenta-tipo ${ferramenta.tipo_ferramenta}">${tipoLabel}</span>
-                                    <h5 class="ferramenta-titulo">${escapeHtml(ferramenta.titulo)}</h5>
+                    <div class="projeto-card ${isExpandido ? 'expandido' : ''}" onclick="toggleProjeto('${projeto.id}')">
+                        <div class="projeto-header">
+                            <div class="flex-grow-1">
+                                <h5 class="projeto-titulo">${escapeHtml(projeto.titulo)}</h5>
+                                <div class="projeto-info">
+                                    <span class="status-badge ${statusClass}">${statusLabel}</span>
+                                    <span><i class="fas fa-tools me-1"></i>${projeto.total_ferramentas || 0} ferramenta(s)</span>
+                                    <span><i class="fas fa-calendar me-1"></i>${dataCriacao}</span>
                                 </div>
-                                ${ferramenta.acoes_vencidas > 0 ? '<i class="fas fa-exclamation-circle text-danger" style="font-size: 1.5rem;"></i>' : ''}
-                            </div>
-                            
-                            <div class="ferramenta-info">
-                                <div class="ferramenta-info-item">
-                                    <i class="fas fa-user"></i>
-                                    <span>${escapeHtml(criador)}</span>
-                                </div>
-                                <div class="ferramenta-info-item">
-                                    <i class="fas fa-calendar"></i>
-                                    <span>${dataCriacao}</span>
-                                </div>
-                                ${ferramenta.tipo_ferramenta === 'plano_acao' ? `
-                                    <div class="ferramenta-info-item">
-                                        <i class="fas fa-tasks"></i>
-                                        <span>${ferramenta.total_acoes || 0} ações</span>
-                                    </div>
+                                ${projeto.descricao ? `
+                                    <p class="text-muted mt-2 mb-0">${escapeHtml(projeto.descricao.substring(0, 150))}${projeto.descricao.length > 150 ? '...' : ''}</p>
                                 ` : ''}
                             </div>
-                            
-                            ${alertasHTML}
-                            
-                            ${ferramenta.observacoes ? `
-                                <div class="mt-2 text-muted">
-                                    <small>${escapeHtml(ferramenta.observacoes.substring(0, 100))}${ferramenta.observacoes.length > 100 ? '...' : ''}</small>
+                            <div class="ms-3">
+                                <i class="fas fa-chevron-down projeto-expand-icon"></i>
+                            </div>
+                        </div>
+                        <div class="projeto-ferramentas">
+                            ${isExpandido ? `
+                                <div class="mb-2">
+                                    <strong>Ferramentas do Projeto:</strong>
                                 </div>
+                                ${ferramentasHTML}
                             ` : ''}
                         </div>
                     </div>
                 `;
             }).join('');
         }
-
-        // Renderizar paginação
-        function renderizarPaginacao() {
-            const totalPages = Math.ceil(totalFerramentas / filtros.limit);
-            const container = document.getElementById('paginacao');
+        
+        // Toggle projeto (expandir/colapsar)
+        async function toggleProjeto(projetoId) {
+            const isExpandido = projetosExpandidos.has(projetoId);
             
-            if (totalPages <= 1) {
-                container.innerHTML = '';
-                return;
-            }
-
-            let html = '';
-            
-            // Botão anterior
-            html += `
-                <li class="page-item ${currentPage === 1 ? 'disabled' : ''}">
-                    <a class="page-link" href="#" onclick="mudarPagina(${currentPage - 1}); return false;">Anterior</a>
-                </li>
-            `;
-
-            // Páginas
-            for (let i = 1; i <= totalPages; i++) {
-                if (i === 1 || i === totalPages || (i >= currentPage - 2 && i <= currentPage + 2)) {
-                    html += `
-                        <li class="page-item ${i === currentPage ? 'active' : ''}">
-                            <a class="page-link" href="#" onclick="mudarPagina(${i}); return false;">${i}</a>
-                        </li>
-                    `;
-                } else if (i === currentPage - 3 || i === currentPage + 3) {
-                    html += '<li class="page-item disabled"><span class="page-link">...</span></li>';
+            if (isExpandido) {
+                // Colapsar
+                projetosExpandidos.delete(projetoId);
+            } else {
+                // Expandir - carregar ferramentas se ainda não foram carregadas
+                projetosExpandidos.add(projetoId);
+                
+                if (!ferramentasPorProjeto[projetoId]) {
+                    await carregarFerramentasProjeto(projetoId);
                 }
             }
-
-            // Botão próximo
-            html += `
-                <li class="page-item ${currentPage === totalPages ? 'disabled' : ''}">
-                    <a class="page-link" href="#" onclick="mudarPagina(${currentPage + 1}); return false;">Próximo</a>
-                </li>
-            `;
-
-            container.innerHTML = html;
-        }
-
-        // Mudar página
-        function mudarPagina(pagina) {
-            if (pagina < 1) return;
-            const totalPages = Math.ceil(totalFerramentas / filtros.limit);
-            if (pagina > totalPages) return;
             
-            currentPage = pagina;
-            filtros.offset = (pagina - 1) * filtros.limit;
-            carregarFerramentas();
+            renderizarProjetos();
+            atualizarEstatisticas();
         }
+        
+        // Carregar ferramentas de um projeto
+        async function carregarFerramentasProjeto(projetoId) {
+            try {
+                const headers = await getAuthHeaders();
+                const response = await fetch(`/api/projetos-qualidade/${projetoId}`, {
+                    headers: headers,
+                    credentials: 'include'
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`Erro ${response.status}`);
+                }
+                
+                const data = await response.json();
+                ferramentasPorProjeto[projetoId] = data.projeto.ferramentas || [];
+                
+                // Atualizar estatísticas após carregar ferramentas
+                atualizarEstatisticas();
+            } catch (error) {
+                console.error('❌ Erro ao carregar ferramentas do projeto:', error);
+                ferramentasPorProjeto[projetoId] = [];
+            }
+        }
+
 
         // Aplicar filtros
         function aplicarFiltros() {
-            filtros.tipo_ferramenta = document.getElementById('filtroTipo').value;
-            filtros.arquivado = document.getElementById('filtroArquivado').value;
-            filtros.responsavel_id = document.getElementById('filtroResponsavel').value;
-            filtros.status_alerta = document.getElementById('filtroStatus').value;
+            filtros.status = document.getElementById('filtroStatus').value;
             filtros.busca = document.getElementById('inputBusca').value.trim();
-            filtros.offset = 0;
-            currentPage = 1;
             
-            carregarFerramentas();
+            carregarProjetos();
         }
 
         // Abrir detalhes
@@ -835,57 +889,8 @@
                     </div>
                 `;
 
-                // Se for Plano de Ação, mostrar ações
-                if (ferramenta.tipo_ferramenta === 'plano_acao' && ferramenta.dados?.acoes) {
-                    html += '<h6 class="mt-4 mb-3">Ações do Plano:</h6>';
-                    html += '<div class="list-group">';
-                    
-                    ferramenta.dados.acoes.forEach((acao, index) => {
-                        const alerta = ferramenta.alertas?.find(a => a.acao_id === acao.id) || null;
-                        let statusClass = '';
-                        let statusBadge = '';
-                        
-                        if (alerta) {
-                            if (alerta.status === 'vencido') {
-                                statusClass = 'vencido';
-                                statusBadge = '<span class="badge bg-danger ms-2">Vencido</span>';
-                            } else if (alerta.status === 'em_alerta') {
-                                statusClass = 'em-alerta';
-                                statusBadge = '<span class="badge bg-warning text-dark ms-2">Em Alerta</span>';
-                            } else {
-                                statusBadge = '<span class="badge bg-info ms-2">Pendente</span>';
-                            }
-                        }
-
-                        const responsavel = usuarios.find(u => u.id === acao.responsavel) || null;
-                        const responsavelNome = responsavel ? responsavel.nome || responsavel.email : 'Não definido';
-
-                        html += `
-                            <div class="acao-item ${statusClass}">
-                                <div class="d-flex justify-content-between align-items-start">
-                                    <div class="flex-grow-1">
-                                        <strong>${index + 1}. ${escapeHtml(acao.acao || 'Sem descrição')}</strong>
-                                        ${statusBadge}
-                                        <div class="mt-2">
-                                            <small class="text-muted">
-                                                <strong>Responsável:</strong> ${escapeHtml(responsavelNome)}<br>
-                                                ${acao.prioridade ? `<strong>Prioridade:</strong> ${acao.prioridade}<br>` : ''}
-                                                ${acao.finalizacao ? `<strong>Prazo:</strong> ${new Date(acao.finalizacao).toLocaleDateString('pt-BR')}<br>` : ''}
-                                                ${acao.progresso ? `<strong>Progresso:</strong> ${acao.progresso}%<br>` : ''}
-                                            </small>
-                                        </div>
-                                        ${acao.obs ? `<div class="mt-2"><small>${escapeHtml(acao.obs)}</small></div>` : ''}
-                                    </div>
-                                </div>
-                            </div>
-                        `;
-                    });
-                    
-                    html += '</div>';
-                } else {
-                    // Mostrar dados da ferramenta
-                    html += '<pre class="bg-light p-3 rounded">' + escapeHtml(JSON.stringify(ferramenta.dados, null, 2)) + '</pre>';
-                }
+                // Renderizar dados formatados baseado no tipo
+                html += renderizarDadosFerramenta(ferramenta);
 
                 if (ferramenta.observacoes) {
                     html += `
@@ -962,6 +967,250 @@
             }
         }
         
+        // Renderizar dados formatados da ferramenta
+        function renderizarDadosFerramenta(ferramenta) {
+            const tipo = ferramenta.tipo_ferramenta;
+            const dados = ferramenta.dados || {};
+            
+            let html = '';
+            
+            switch(tipo) {
+                case 'plano_acao':
+                    if (dados.acoes && dados.acoes.length > 0) {
+                        html += '<h6 class="mt-4 mb-3"><i class="fas fa-tasks me-2"></i>Ações do Plano:</h6>';
+                        html += '<div class="list-group">';
+                        
+                        dados.acoes.forEach((acao, index) => {
+                            const alerta = ferramenta.alertas?.find(a => a.acao_id === acao.id) || null;
+                            let statusClass = '';
+                            let statusBadge = '';
+                            
+                            if (alerta) {
+                                if (alerta.status === 'vencido') {
+                                    statusClass = 'vencido';
+                                    statusBadge = '<span class="badge bg-danger ms-2">Vencido</span>';
+                                } else if (alerta.status === 'em_alerta') {
+                                    statusClass = 'em-alerta';
+                                    statusBadge = '<span class="badge bg-warning text-dark ms-2">Em Alerta</span>';
+                                } else {
+                                    statusBadge = '<span class="badge bg-info ms-2">Pendente</span>';
+                                }
+                            }
+
+                            const responsavel = usuarios.find(u => u.id === acao.responsavel) || null;
+                            const responsavelNome = responsavel ? responsavel.nome || responsavel.email : 'Não definido';
+
+                            html += `
+                                <div class="acao-item ${statusClass}">
+                                    <div class="d-flex justify-content-between align-items-start">
+                                        <div class="flex-grow-1">
+                                            <strong>${index + 1}. ${escapeHtml(acao.acao || 'Sem descrição')}</strong>
+                                            ${statusBadge}
+                                            <div class="mt-2">
+                                                <small class="text-muted">
+                                                    <strong>Responsável:</strong> ${escapeHtml(responsavelNome)}<br>
+                                                    ${acao.prioridade ? `<strong>Prioridade:</strong> ${acao.prioridade}<br>` : ''}
+                                                    ${acao.finalizacao ? `<strong>Prazo:</strong> ${new Date(acao.finalizacao).toLocaleDateString('pt-BR')}<br>` : ''}
+                                                    ${acao.progresso ? `<strong>Progresso:</strong> ${acao.progresso}%<br>` : ''}
+                                                </small>
+                                            </div>
+                                            ${acao.obs ? `<div class="mt-2"><small>${escapeHtml(acao.obs)}</small></div>` : ''}
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                        });
+                        
+                        html += '</div>';
+                    } else {
+                        html += '<div class="alert alert-info"><i class="fas fa-info-circle me-2"></i>Nenhuma ação cadastrada neste plano.</div>';
+                    }
+                    break;
+                    
+                case 'swot':
+                    html += '<div class="mt-4">';
+                    if (dados.contexto) {
+                        html += `<div class="mb-3"><strong>Contexto:</strong> <p class="text-muted mb-0">${escapeHtml(dados.contexto)}</p></div>`;
+                    }
+                    
+                    const itens = dados.itens || {};
+                    html += '<div class="row g-3">';
+                    
+                    // Forças
+                    html += '<div class="col-md-6">';
+                    html += '<div class="card border-success h-100">';
+                    html += '<div class="card-header bg-success text-white"><strong><i class="fas fa-check-circle me-2"></i>Forças</strong></div>';
+                    html += '<div class="card-body">';
+                    if (itens.forcas && itens.forcas.length > 0) {
+                        html += '<ul class="mb-0">';
+                        itens.forcas.forEach(f => {
+                            html += `<li>${escapeHtml(f)}</li>`;
+                        });
+                        html += '</ul>';
+                    } else {
+                        html += '<p class="text-muted mb-0">Nenhuma força registrada</p>';
+                    }
+                    html += '</div></div></div>';
+                    
+                    // Fraquezas
+                    html += '<div class="col-md-6">';
+                    html += '<div class="card border-danger h-100">';
+                    html += '<div class="card-header bg-danger text-white"><strong><i class="fas fa-times-circle me-2"></i>Fraquezas</strong></div>';
+                    html += '<div class="card-body">';
+                    if (itens.fraquezas && itens.fraquezas.length > 0) {
+                        html += '<ul class="mb-0">';
+                        itens.fraquezas.forEach(f => {
+                            html += `<li>${escapeHtml(f)}</li>`;
+                        });
+                        html += '</ul>';
+                    } else {
+                        html += '<p class="text-muted mb-0">Nenhuma fraqueza registrada</p>';
+                    }
+                    html += '</div></div></div>';
+                    
+                    // Oportunidades
+                    html += '<div class="col-md-6">';
+                    html += '<div class="card border-info h-100">';
+                    html += '<div class="card-header bg-info text-white"><strong><i class="fas fa-lightbulb me-2"></i>Oportunidades</strong></div>';
+                    html += '<div class="card-body">';
+                    if (itens.oportunidades && itens.oportunidades.length > 0) {
+                        html += '<ul class="mb-0">';
+                        itens.oportunidades.forEach(o => {
+                            html += `<li>${escapeHtml(o)}</li>`;
+                        });
+                        html += '</ul>';
+                    } else {
+                        html += '<p class="text-muted mb-0">Nenhuma oportunidade registrada</p>';
+                    }
+                    html += '</div></div></div>';
+                    
+                    // Ameaças
+                    html += '<div class="col-md-6">';
+                    html += '<div class="card border-warning h-100">';
+                    html += '<div class="card-header bg-warning text-dark"><strong><i class="fas fa-exclamation-triangle me-2"></i>Ameaças</strong></div>';
+                    html += '<div class="card-body">';
+                    if (itens.ameacas && itens.ameacas.length > 0) {
+                        html += '<ul class="mb-0">';
+                        itens.ameacas.forEach(a => {
+                            html += `<li>${escapeHtml(a)}</li>`;
+                        });
+                        html += '</ul>';
+                    } else {
+                        html += '<p class="text-muted mb-0">Nenhuma ameaça registrada</p>';
+                    }
+                    html += '</div></div></div>';
+                    
+                    html += '</div></div>';
+                    break;
+                    
+                case '5w2h':
+                    html += '<div class="mt-4">';
+                    if (dados.linhas && dados.linhas.length > 0) {
+                        html += '<div class="table-responsive">';
+                        html += '<table class="table table-bordered">';
+                        html += '<thead class="table-light">';
+                        html += '<tr><th>What</th><th>Why</th><th>Where</th><th>When</th><th>Who</th><th>How</th><th>How Much</th></tr>';
+                        html += '</thead><tbody>';
+                        
+                        dados.linhas.forEach(linha => {
+                            html += '<tr>';
+                            html += `<td>${escapeHtml(linha.what || '-')}</td>`;
+                            html += `<td>${escapeHtml(linha.why || '-')}</td>`;
+                            html += `<td>${escapeHtml(linha.where || '-')}</td>`;
+                            html += `<td>${escapeHtml(linha.when || '-')}</td>`;
+                            html += `<td>${escapeHtml(linha.who || '-')}</td>`;
+                            html += `<td>${escapeHtml(linha.how || '-')}</td>`;
+                            html += `<td>${escapeHtml(linha.how_much || '-')}</td>`;
+                            html += '</tr>';
+                        });
+                        
+                        html += '</tbody></table></div>';
+                    } else {
+                        html += '<div class="alert alert-info"><i class="fas fa-info-circle me-2"></i>Nenhum item cadastrado no 5W2H.</div>';
+                    }
+                    html += '</div>';
+                    break;
+                    
+                case 'ishikawa':
+                    html += '<div class="mt-4">';
+                    if (dados.categorias && Object.keys(dados.categorias).length > 0) {
+                        Object.keys(dados.categorias).forEach(categoria => {
+                            const causas = dados.categorias[categoria] || [];
+                            if (causas.length > 0) {
+                                html += `<div class="mb-4">`;
+                                html += `<h6 class="text-primary"><i class="fas fa-tag me-2"></i>${escapeHtml(categoria)}</h6>`;
+                                html += '<ul>';
+                                causas.forEach(causa => {
+                                    html += `<li>${escapeHtml(causa)}</li>`;
+                                });
+                                html += '</ul></div>';
+                            }
+                        });
+                    } else {
+                        html += '<div class="alert alert-info"><i class="fas fa-info-circle me-2"></i>Nenhuma causa cadastrada no diagrama de Ishikawa.</div>';
+                    }
+                    html += '</div>';
+                    break;
+                    
+                case '5porques':
+                    html += '<div class="mt-4">';
+                    if (dados.problema) {
+                        html += `<div class="mb-3"><strong>Problema:</strong> <p class="text-muted mb-0">${escapeHtml(dados.problema)}</p></div>`;
+                    }
+                    if (dados.porques && dados.porques.length > 0) {
+                        html += '<h6 class="mb-3">Análise dos 5 Porquês:</h6>';
+                        html += '<ol>';
+                        dados.porques.forEach((porque, index) => {
+                            html += `<li><strong>Por quê ${index + 1}:</strong> ${escapeHtml(porque)}</li>`;
+                        });
+                        html += '</ol>';
+                        if (dados.causa_raiz) {
+                            html += `<div class="alert alert-success mt-3"><strong>Causa Raiz Identificada:</strong> ${escapeHtml(dados.causa_raiz)}</div>`;
+                        }
+                    } else {
+                        html += '<div class="alert alert-info"><i class="fas fa-info-circle me-2"></i>Nenhuma análise dos 5 Porquês cadastrada.</div>';
+                    }
+                    html += '</div>';
+                    break;
+                    
+                case 'pdca':
+                    html += '<div class="mt-4">';
+                    const etapas = ['plan', 'do', 'check', 'act'];
+                    const etapasLabels = {
+                        'plan': 'Planejar (Plan)',
+                        'do': 'Executar (Do)',
+                        'check': 'Verificar (Check)',
+                        'act': 'Agir (Act)'
+                    };
+                    
+                    etapas.forEach(etapa => {
+                        if (dados[etapa] && dados[etapa].length > 0) {
+                            html += `<div class="mb-3">`;
+                            html += `<h6 class="text-primary"><i class="fas fa-circle-notch me-2"></i>${etapasLabels[etapa]}</h6>`;
+                            html += '<ul>';
+                            dados[etapa].forEach(item => {
+                                html += `<li>${escapeHtml(item)}</li>`;
+                            });
+                            html += '</ul></div>';
+                        }
+                    });
+                    
+                    if (!dados.plan && !dados.do && !dados.check && !dados.act) {
+                        html += '<div class="alert alert-info"><i class="fas fa-info-circle me-2"></i>Nenhuma etapa do PDCA cadastrada.</div>';
+                    }
+                    html += '</div>';
+                    break;
+                    
+                default:
+                    // Para outros tipos ou dados não reconhecidos, mostrar JSON formatado
+                    html += '<div class="mt-4">';
+                    html += '<pre class="bg-light p-3 rounded">' + escapeHtml(JSON.stringify(dados, null, 2)) + '</pre>';
+                    html += '</div>';
+            }
+            
+            return html;
+        }
+        
         // Escape HTML
         function escapeHtml(text) {
             if (!text) return '';
@@ -979,4 +1228,5 @@
     </script>
 </body>
 </html>
+
 

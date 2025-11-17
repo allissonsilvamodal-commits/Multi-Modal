@@ -1,0 +1,1982 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Monitoramento em Tempo Real - Rastreamento de Motoristas</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        :root {
+            --primary: #667eea;
+            --secondary: #764ba2;
+            --accent: #f093fb;
+            --success: #22c55e;
+            --warning: #facc15;
+            --danger: #ef4444;
+            --info: #3b82f6;
+            --bg-body: linear-gradient(135deg, #0f172a 0%, #1e293b 45%, #0b1120 100%);
+            --bg-card: rgba(15, 23, 42, 0.6);
+            --glass-border: rgba(148, 163, 184, 0.25);
+            --text-primary: #f8fafc;
+            --text-secondary: rgba(226, 232, 240, 0.8);
+            --shadow: 0 24px 60px rgba(15, 23, 42, 0.45);
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            --border-radius: 18px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--bg-body);
+            background-attachment: fixed;
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        body::before {
+            content: "";
+            position: fixed;
+            inset: 0;
+            background: radial-gradient(circle at 15% 20%, rgba(102, 126, 234, 0.15), transparent 55%),
+                        radial-gradient(circle at 85% 15%, rgba(118, 75, 162, 0.12), transparent 50%),
+                        radial-gradient(circle at 35% 80%, rgba(240, 147, 251, 0.1), transparent 50%);
+            z-index: -2;
+            pointer-events: none;
+        }
+
+        body::after {
+            content: "";
+            position: fixed;
+            inset: 0;
+            background: url('https://www.transparenttextures.com/patterns/black-twill.png');
+            opacity: 0.08;
+            z-index: -1;
+            pointer-events: none;
+        }
+
+        .header {
+            background: var(--bg-card);
+            backdrop-filter: blur(24px);
+            border-bottom: 1px solid var(--glass-border);
+            padding: 1.5rem 2rem;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            position: relative;
+        }
+
+        .header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--primary), var(--accent), transparent);
+            animation: shimmer 3s infinite;
+        }
+
+        @keyframes shimmer {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+
+        .header-content {
+            max-width: 1600px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .header h1 {
+            font-size: 1.75rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            text-shadow: 0 0 30px rgba(102, 126, 234, 0.5);
+        }
+
+        .header h1 i {
+            filter: drop-shadow(0 0 8px rgba(102, 126, 234, 0.6));
+        }
+
+        .controls {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: var(--transition);
+        }
+
+        .btn:hover::before {
+            left: 100%;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.5);
+        }
+
+        .btn-primary:active {
+            transform: translateY(0);
+        }
+
+        .btn-secondary {
+            background: rgba(148, 163, 184, 0.2);
+            color: var(--text-primary);
+            border: 1px solid var(--glass-border);
+            backdrop-filter: blur(10px);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(148, 163, 184, 0.3);
+            border-color: var(--primary);
+            transform: translateY(-2px);
+        }
+
+        .btn i {
+            transition: var(--transition);
+        }
+
+        .btn-primary:hover i {
+            transform: rotate(180deg);
+        }
+
+        .select-coleta {
+            padding: 0.75rem 1rem;
+            background: var(--bg-card);
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            color: var(--text-primary);
+            font-size: 0.95rem;
+            min-width: 300px;
+            backdrop-filter: blur(10px);
+            transition: var(--transition);
+            cursor: pointer;
+        }
+
+        .select-coleta:hover {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .select-coleta:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
+        }
+
+        .select-coleta option {
+            background: #1e293b;
+            color: var(--text-primary);
+            padding: 0.5rem;
+        }
+
+        .input-hint {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            margin-top: 0.25rem;
+            display: block;
+        }
+
+        .coletas-selector {
+            min-width: 320px;
+            background: rgba(15, 23, 42, 0.75);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            padding: 0.75rem 1rem;
+            max-height: 320px;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .checkbox-inline {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-weight: 600;
+            margin-bottom: 0.75rem;
+            cursor: pointer;
+        }
+
+        .checkbox-inline input {
+            accent-color: var(--primary);
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+
+        .checkbox-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.35rem;
+            overflow-y: auto;
+            max-height: 200px;
+        }
+
+        .checkbox-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.45rem;
+            padding: 0.4rem;
+            border-radius: 10px;
+            transition: background 0.2s ease;
+            cursor: pointer;
+        }
+
+        .checkbox-item:hover {
+            background: rgba(255, 255, 255, 0.06);
+        }
+
+        .checkbox-item input {
+            margin-top: 0.15rem;
+            accent-color: var(--secondary);
+            width: 16px;
+            height: 16px;
+            cursor: pointer;
+        }
+
+        .checkbox-item span {
+            font-size: 0.9rem;
+            color: var(--text-primary);
+        }
+        .coleta-search-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.55rem 0.75rem;
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            background: rgba(14, 23, 42, 0.85);
+        }
+
+        .coleta-search-wrapper i {
+            color: var(--text-secondary);
+        }
+
+        .coleta-search {
+            flex: 1;
+            background: transparent;
+            border: none;
+            color: var(--text-primary);
+            outline: none;
+            font-size: 0.9rem;
+        }
+
+        .select-tempo {
+            min-width: 180px;
+        }
+
+        .motorista-search-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.65rem 0.85rem;
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            background: rgba(15, 23, 42, 0.7);
+            margin-bottom: 0.75rem;
+        }
+
+        .motorista-search-wrapper i {
+            color: var(--text-secondary);
+        }
+
+        .motorista-search {
+            flex: 1;
+            background: transparent;
+            border: none;
+            color: var(--text-primary);
+            font-size: 0.95rem;
+            outline: none;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 2rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .main-layout {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) 360px;
+            gap: 1.5rem;
+            align-items: start;
+        }
+
+        .map-card {
+            padding: 0;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .map-card-header {
+            padding: 1.5rem;
+            border-bottom: 1px solid var(--glass-border);
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 1rem;
+        }
+
+        .map-card-header h3 {
+            margin-bottom: 0.25rem;
+        }
+
+        .map-card-header p {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .map-legend {
+            display: flex;
+            gap: 0.75rem;
+            align-items: center;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+
+        .map-legend .dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 0.35rem;
+        }
+
+        .map-legend .dot.online {
+            background: var(--success);
+        }
+
+        .map-legend .dot.offline {
+            background: var(--danger);
+        }
+
+        .map-card #map {
+            width: 100%;
+            height: 100%;
+            min-height: 560px;
+        }
+
+        .insights-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .card {
+            background: var(--bg-card);
+            backdrop-filter: blur(24px);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--border-radius);
+            padding: 1.5rem;
+            box-shadow: var(--shadow);
+            position: relative;
+            overflow: hidden;
+            transition: var(--transition);
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--primary), var(--accent));
+            opacity: 0;
+            transition: var(--transition);
+        }
+
+        .card:hover::before {
+            opacity: 1;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(102, 126, 234, 0.3);
+            border-color: rgba(102, 126, 234, 0.5);
+        }
+
+        .card h3 {
+            font-size: 1.1rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .card h3 i {
+            color: var(--primary);
+            filter: drop-shadow(0 0 6px rgba(102, 126, 234, 0.5));
+        }
+
+        .motorista-item {
+            padding: 1.25rem;
+            background: rgba(102, 126, 234, 0.1);
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            border-radius: 12px;
+            margin-bottom: 0.75rem;
+            cursor: pointer;
+            transition: var(--transition);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .motorista-item::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+            transition: var(--transition);
+        }
+
+        .motorista-item:hover::before {
+            left: 100%;
+        }
+
+        .motorista-item:hover {
+            background: rgba(102, 126, 234, 0.2);
+            border-color: var(--primary);
+            transform: translateX(6px);
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        }
+
+        .motorista-item.active {
+            background: rgba(102, 126, 234, 0.3);
+            border-color: var(--primary);
+            box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.5), 0 4px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .motorista-nome {
+            font-weight: 700;
+            font-size: 1rem;
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .motorista-nome i {
+            color: var(--primary);
+            font-size: 0.9rem;
+        }
+
+        .motorista-info {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            display: flex;
+            flex-direction: column;
+            gap: 0.4rem;
+        }
+
+        .motorista-info span {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .motorista-info i {
+            width: 16px;
+            color: var(--primary);
+            opacity: 0.7;
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.4rem 0.9rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-top: 0.75rem;
+            transition: var(--transition);
+        }
+
+        .status-online {
+            background: rgba(34, 197, 94, 0.25);
+            color: #6ee7b7;
+            border: 1px solid rgba(34, 197, 94, 0.4);
+            box-shadow: 0 0 10px rgba(34, 197, 94, 0.2);
+        }
+
+        .status-online i {
+            animation: pulse-dot 2s infinite;
+        }
+
+        .status-offline {
+            background: rgba(239, 68, 68, 0.25);
+            color: #fca5a5;
+            border: 1px solid rgba(239, 68, 68, 0.4);
+        }
+
+        @keyframes pulse-dot {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(0.8); }
+        }
+
+        .map-container {
+            position: relative;
+            border-radius: var(--border-radius);
+            overflow: hidden;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--glass-border);
+            background: var(--bg-card);
+            backdrop-filter: blur(24px);
+        }
+
+        .map-container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--primary), var(--accent));
+            z-index: 1000;
+        }
+
+        #map {
+            width: 100%;
+            height: calc(100vh - 200px);
+            min-height: 600px;
+            z-index: 1;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .stat-item {
+            text-align: left;
+            padding: 1.5rem;
+            background: rgba(102, 126, 234, 0.1);
+            border: 1px solid rgba(102, 126, 234, 0.2);
+            border-radius: 12px;
+            transition: var(--transition);
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .stat-item.primary {
+            background: rgba(102, 126, 234, 0.15);
+            border-color: rgba(102, 126, 234, 0.3);
+        }
+
+        .stat-item.success {
+            background: rgba(34, 197, 94, 0.15);
+            border-color: rgba(34, 197, 94, 0.3);
+        }
+
+        .stat-item.warning {
+            background: rgba(250, 204, 21, 0.15);
+            border-color: rgba(250, 204, 21, 0.3);
+        }
+
+        .stat-item.info {
+            background: rgba(59, 130, 246, 0.15);
+            border-color: rgba(59, 130, 246, 0.3);
+        }
+
+        .stat-item::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--primary), var(--accent));
+            transform: scaleX(0);
+            transition: var(--transition);
+        }
+
+        .stat-item.primary::before {
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+        }
+
+        .stat-item.success::before {
+            background: linear-gradient(90deg, var(--success), #16a34a);
+        }
+
+        .stat-item.warning::before {
+            background: linear-gradient(90deg, var(--warning), #f59e0b);
+        }
+
+        .stat-item.info::before {
+            background: linear-gradient(90deg, var(--info), #2563eb);
+        }
+
+        .stat-item:hover::before {
+            transform: scaleX(1);
+        }
+
+        .stat-item:hover {
+            background: rgba(102, 126, 234, 0.25);
+            border-color: var(--primary);
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .stat-item.success:hover {
+            background: rgba(34, 197, 94, 0.25);
+            border-color: var(--success);
+            box-shadow: 0 6px 20px rgba(34, 197, 94, 0.4);
+        }
+
+        .stat-item.warning:hover {
+            background: rgba(250, 204, 21, 0.25);
+            border-color: var(--warning);
+            box-shadow: 0 6px 20px rgba(250, 204, 21, 0.4);
+        }
+
+        .stat-item.info:hover {
+            background: rgba(59, 130, 246, 0.25);
+            border-color: var(--info);
+            box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
+        }
+
+        .stat-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+            background: rgba(102, 126, 234, 0.2);
+            color: var(--primary);
+        }
+
+        .stat-item.success .stat-icon {
+            background: rgba(34, 197, 94, 0.2);
+            color: var(--success);
+        }
+
+        .stat-item.warning .stat-icon {
+            background: rgba(250, 204, 21, 0.2);
+            color: var(--warning);
+        }
+
+        .stat-item.info .stat-icon {
+            background: rgba(59, 130, 246, 0.2);
+            color: var(--info);
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            line-height: 1.2;
+            margin: 0.25rem 0;
+        }
+
+        .stat-item.success .stat-value {
+            background: linear-gradient(135deg, var(--success), #16a34a);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .stat-item.warning .stat-value {
+            background: linear-gradient(135deg, var(--warning), #f59e0b);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .stat-item.info .stat-value {
+            background: linear-gradient(135deg, var(--info), #2563eb);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .stat-label {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .stat-sublabel {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            opacity: 0.7;
+            margin-top: 0.25rem;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 2rem;
+            color: var(--text-secondary);
+        }
+
+        .loading i {
+            animation: spin 1s linear infinite;
+            font-size: 2rem;
+            color: var(--primary);
+            margin-bottom: 1rem;
+        }
+
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 3rem 1rem;
+            color: var(--text-secondary);
+        }
+
+        .empty-state i {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+            opacity: 0.5;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .empty-state p {
+            font-size: 0.95rem;
+            margin-top: 0.5rem;
+        }
+
+        .notification {
+            position: fixed;
+            top: 100px;
+            right: 2rem;
+            background: var(--bg-card);
+            backdrop-filter: blur(24px);
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            padding: 1rem 1.5rem;
+            box-shadow: var(--shadow);
+            z-index: 2000;
+            display: none;
+            align-items: center;
+            gap: 1rem;
+            animation: slideInRight 0.3s ease-out;
+            max-width: 400px;
+        }
+
+        .notification.show {
+            display: flex;
+        }
+
+        .notification.success {
+            border-left: 4px solid var(--success);
+        }
+
+        .notification.error {
+            border-left: 4px solid var(--danger);
+        }
+
+        .notification.info {
+            border-left: 4px solid var(--info);
+        }
+
+        @keyframes slideInRight {
+            from {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        .lista-motoristas {
+            max-height: 500px;
+            overflow-y: auto;
+            overflow-x: hidden;
+            padding-right: 0.5rem;
+        }
+
+        .lista-motoristas::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .lista-motoristas::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+        }
+
+        .lista-motoristas::-webkit-scrollbar-thumb {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            border-radius: 10px;
+        }
+
+        .auto-refresh-indicator {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            background: var(--bg-card);
+            backdrop-filter: blur(24px);
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            padding: 0.75rem 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            box-shadow: var(--shadow);
+            z-index: 1000;
+        }
+
+        .auto-refresh-indicator i {
+            color: var(--success);
+            animation: pulse-dot 2s infinite;
+        }
+
+        @media (max-width: 1200px) {
+            .container {
+                grid-template-columns: 1fr;
+            }
+
+            .sidebar {
+                order: 2;
+                max-height: none;
+            }
+
+            .map-container {
+                order: 1;
+            }
+
+            #map {
+                height: 500px;
+                min-height: 500px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .header-content {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .controls {
+                flex-direction: column;
+            }
+
+            .select-coleta {
+                min-width: 100%;
+            }
+
+            .container {
+                padding: 1rem;
+            }
+
+            .main-layout {
+                grid-template-columns: 1fr;
+            }
+
+            .insights-panel {
+                order: 2;
+            }
+
+            .map-card {
+                order: 1;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (min-width: 769px) and (max-width: 1400px) {
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .main-layout {
+                grid-template-columns: minmax(0, 1fr) 320px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="header-content">
+            <h1><i class="fas fa-map-marked-alt"></i> Monitoramento em Tempo Real</h1>
+            <div class="controls">
+                <select id="filtroTempo" class="select-coleta select-tempo" title="Janela de tempo analisada">
+                    <option value="15">Últimos 15 min</option>
+                    <option value="30">Últimos 30 min</option>
+                    <option value="60" selected>Últimos 60 min</option>
+                    <option value="120">Últimas 2 horas</option>
+                    <option value="240">Últimas 4 horas</option>
+                </select>
+                <button class="btn btn-primary" id="btnAtualizar">
+                    <i class="fas fa-sync-alt"></i> Atualizar
+                </button>
+                <a href="portal.html" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left"></i> Voltar
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <section class="card stats-card">
+                <h3><i class="fas fa-chart-line"></i> Estatísticas em Tempo Real</h3>
+                <div class="stats-grid">
+                    <div class="stat-item primary">
+                        <div class="stat-header">
+                            <div class="stat-icon">
+                                <i class="fas fa-users"></i>
+                            </div>
+                        </div>
+                        <div class="stat-value" id="statTotal">0</div>
+                        <div class="stat-label">Total de Motoristas</div>
+                        <div class="stat-sublabel">Rastreados ativamente</div>
+                    </div>
+                    <div class="stat-item success">
+                        <div class="stat-header">
+                            <div class="stat-icon">
+                                <i class="fas fa-circle"></i>
+                            </div>
+                        </div>
+                        <div class="stat-value" id="statOnline">0</div>
+                        <div class="stat-label">Motoristas Online</div>
+                        <div class="stat-sublabel" id="statOnlinePercent">0% do total</div>
+                    </div>
+                    <div class="stat-item warning">
+                        <div class="stat-header">
+                            <div class="stat-icon">
+                                <i class="fas fa-tachometer-alt"></i>
+                            </div>
+                        </div>
+                        <div class="stat-value" id="statVelocidade">0</div>
+                        <div class="stat-label">Velocidade Média</div>
+                        <div class="stat-sublabel" id="statVelocidadeMax">Máx: 0 km/h</div>
+                    </div>
+                    <div class="stat-item info">
+                        <div class="stat-header">
+                            <div class="stat-icon">
+                                <i class="fas fa-clock"></i>
+                            </div>
+                        </div>
+                        <div class="stat-value" id="statTempoMedio">0</div>
+                        <div class="stat-label">Tempo Médio</div>
+                        <div class="stat-sublabel">Última atualização</div>
+                    </div>
+                </div>
+        </section>
+
+        <div class="main-layout">
+            <div class="card map-card">
+                <div class="map-card-header">
+                    <div>
+                        <h3><i class="fas fa-globe-americas"></i> Monitoramento ao Vivo</h3>
+                        <p>Atualizado às <span id="mapLastUpdate">--:--</span></p>
+                    </div>
+                    <div class="map-legend">
+                        <span><span class="dot online"></span>Online</span>
+                        <span><span class="dot offline"></span>Offline</span>
+                    </div>
+                </div>
+                <div id="map"></div>
+            </div>
+
+            <aside class="insights-panel">
+                <div class="card coletas-card">
+                    <h3><i class="fas fa-route"></i> Coletas Monitoradas</h3>
+                    <p class="input-hint">Selecione quais coletas deseja acompanhar em tempo real</p>
+                    <label class="checkbox-inline">
+                        <input type="checkbox" id="checkboxSelecionarTodos">
+                        <span>Selecionar todas as coletas exibidas</span>
+                    </label>
+                    <div class="coleta-search-wrapper">
+                        <i class="fas fa-search"></i>
+                        <input type="search" id="filtroColeta" class="coleta-search" placeholder="Filtrar por cliente, origem ou destino...">
+                    </div>
+                    <div class="checkbox-list" id="listaColetas">
+                        <p class="input-hint">Carregando coletas...</p>
+                    </div>
+                </div>
+
+                <div class="card motoristas-card">
+                <h3><i class="fas fa-users"></i> Motoristas Rastreados</h3>
+                    <div class="motorista-search-wrapper">
+                        <i class="fas fa-search"></i>
+                        <input type="search" id="filtroMotorista" class="motorista-search" placeholder="Filtrar por nome ou telefone">
+                    </div>
+                <div class="lista-motoristas" id="listaMotoristas">
+                    <div class="empty-state">
+                        <i class="fas fa-map-marker-alt"></i>
+                        <p>Selecione uma coleta para visualizar os motoristas</p>
+                    </div>
+                </div>
+            </div>
+            </aside>
+        </div>
+    </div>
+
+    <div class="auto-refresh-indicator" id="autoRefreshIndicator" style="display: none;">
+        <i class="fas fa-circle"></i>
+        <span>Atualização automática ativa</span>
+    </div>
+
+    <div class="notification" id="notification">
+        <i class="fas fa-info-circle"></i>
+        <span id="notificationText"></span>
+    </div>
+
+    <script>
+        let map = null;
+        let markerCluster = null;
+        let markers = new Map();
+        let selectedColetas = [];
+        let updateInterval = null;
+        let lastUpdateTime = null;
+        let supabase = null;
+        let filtroTempoMinutos = 60;
+        let filtroMotoristaTerm = '';
+        let ultimaListaPosicoes = [];
+        let coletasDisponiveis = [];
+        const listaColetasEl = document.getElementById('listaColetas');
+        const checkboxSelecionarTodos = document.getElementById('checkboxSelecionarTodos');
+        const filtroColetaInput = document.getElementById('filtroColeta');
+        let filtroColetaTerm = '';
+        
+        function atualizarSelecaoPorCheckbox({ dispararMonitoramento = true } = {}) {
+            if (!listaColetasEl) return;
+            selectedColetas = Array.from(listaColetasEl.querySelectorAll('input[type="checkbox"]:checked'))
+                .map(cb => cb.value)
+                .filter(Boolean);
+
+            if (checkboxSelecionarTodos) {
+                const total = coletasDisponiveis.length;
+                checkboxSelecionarTodos.checked = total > 0 && selectedColetas.length === total;
+            }
+
+            if (!dispararMonitoramento) return;
+
+            if (selectedColetas.length > 0) {
+                iniciarMonitoramento();
+            } else {
+                pararMonitoramento();
+            }
+        }
+
+        function renderizarListaColetas() {
+            if (!listaColetasEl) return;
+
+            listaColetasEl.innerHTML = '';
+
+            if (!coletasDisponiveis || coletasDisponiveis.length === 0) {
+                listaColetasEl.innerHTML = `
+                    <p class="input-hint">Nenhuma coleta em andamento disponível.</p>
+                `;
+                if (checkboxSelecionarTodos) checkboxSelecionarTodos.checked = false;
+                selectedColetas = [];
+                pararMonitoramento();
+                return;
+            }
+
+            const selecionadasAnteriormente = new Set(selectedColetas);
+            let possuiSelecaoValida = false;
+
+            const termo = filtroColetaTerm.toLowerCase();
+            const coletasFiltradas = coletasDisponiveis.filter(coleta => {
+                if (!termo) return true;
+                const texto = `${coleta.cliente || ''} ${coleta.origem || ''} ${coleta.destino || ''}`.toLowerCase();
+                return texto.includes(termo);
+            });
+
+            if (!coletasFiltradas.length) {
+                listaColetasEl.innerHTML = `<p class="input-hint">Nenhuma coleta encontrada para o filtro.</p>`;
+                if (checkboxSelecionarTodos) checkboxSelecionarTodos.checked = false;
+                return;
+            }
+
+            coletasFiltradas.forEach(coleta => {
+                const label = document.createElement('label');
+                label.className = 'checkbox-item coleta-checkbox';
+
+                const input = document.createElement('input');
+                input.type = 'checkbox';
+                input.value = coleta.id;
+                input.checked = selecionadasAnteriormente.has(coleta.id);
+                if (input.checked) {
+                    possuiSelecaoValida = true;
+                }
+                input.addEventListener('change', () => atualizarSelecaoPorCheckbox());
+
+                const span = document.createElement('span');
+                span.innerHTML = `<strong>${coleta.cliente || 'Sem cliente'}</strong><br><small>${coleta.origem || 'Origem'} → ${coleta.destino || 'Destino'}</small>`;
+
+                label.appendChild(input);
+                label.appendChild(span);
+                listaColetasEl.appendChild(label);
+            });
+
+            if (checkboxSelecionarTodos) {
+                const quantidadeFiltrada = coletasFiltradas.length;
+                const selecionadasNaLista = coletasFiltradas.filter(c => selectedColetas.includes(c.id)).length;
+                checkboxSelecionarTodos.checked = quantidadeFiltrada > 0 && selecionadasNaLista === quantidadeFiltrada;
+            }
+
+            if (possuiSelecaoValida) {
+                atualizarSelecaoPorCheckbox({ dispararMonitoramento: false });
+                if (selectedColetas.length > 0) {
+                    iniciarMonitoramento();
+                }
+            } else {
+                selectedColetas = [];
+                pararMonitoramento();
+            }
+        }
+
+        if (checkboxSelecionarTodos) {
+            checkboxSelecionarTodos.addEventListener('change', (event) => {
+                if (!listaColetasEl) return;
+                const checar = event.target.checked;
+                listaColetasEl.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+                    cb.checked = checar;
+                });
+                atualizarSelecaoPorCheckbox();
+            });
+        }
+
+        if (filtroColetaInput) {
+            filtroColetaInput.addEventListener('input', (event) => {
+                filtroColetaTerm = event.target.value.trim();
+                renderizarListaColetas();
+            });
+        }
+        
+        // Função para inicializar Supabase buscando credenciais do servidor
+        async function inicializarSupabase() {
+            try {
+                // Verificar se a biblioteca Supabase está carregada
+                if (!window.supabase || typeof window.supabase.createClient !== 'function') {
+                    console.warn('⚠️ Biblioteca Supabase ainda não carregada, tentando novamente...');
+                    return false;
+                }
+
+                // Buscar configurações do servidor de forma segura
+                const response = await fetch('/api/supabase-config');
+                if (!response.ok) {
+                    throw new Error('Erro ao buscar configurações do Supabase do servidor');
+                }
+                
+                const config = await response.json();
+                
+                if (!config.supabaseUrl || !config.supabaseAnonKey) {
+                    throw new Error('Configurações do Supabase não encontradas');
+                }
+
+                // Inicializar cliente Supabase com as credenciais do servidor
+                supabase = window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey);
+                console.log('✅ Supabase inicializado com sucesso (credenciais do servidor)');
+                return true;
+            } catch (error) {
+                console.error('❌ Erro ao inicializar Supabase:', error);
+                console.error('❌ Detalhes:', error.message);
+                return false;
+            }
+        }
+        
+        // Tentar inicializar imediatamente
+        inicializarSupabase().then(success => {
+            if (!success) {
+                // Se não funcionou, tentar novamente após um delay
+                setTimeout(() => {
+                    inicializarSupabase().then(success2 => {
+                        if (!success2) {
+                            console.error('❌ Não foi possível inicializar Supabase após tentativas');
+                            mostrarNotificacao('Erro ao conectar com o banco de dados. Recarregue a página.', 'error');
+                        }
+                    });
+                }, 500);
+            }
+        });
+
+        // Função para mostrar notificação
+        function mostrarNotificacao(mensagem, tipo = 'info') {
+            const notification = document.getElementById('notification');
+            const notificationText = document.getElementById('notificationText');
+            const icon = notification.querySelector('i');
+            
+            notificationText.textContent = mensagem;
+            notification.className = `notification ${tipo} show`;
+            
+            const icons = {
+                success: 'fa-check-circle',
+                error: 'fa-exclamation-circle',
+                info: 'fa-info-circle'
+            };
+            
+            icon.className = `fas ${icons[tipo] || icons.info}`;
+            
+            setTimeout(() => {
+                notification.classList.remove('show');
+            }, 3000);
+        }
+
+        // Inicializar mapa
+        function initMap() {
+            map = L.map('map', {
+                zoomControl: true,
+                attributionControl: true
+            }).setView([-23.5505, -46.6333], 6); // Centro do Brasil
+
+            // Tema claro do mapa para melhor visualização
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+                maxZoom: 19
+            }).addTo(map);
+
+            // Adicionar controles customizados
+            L.control.scale({ imperial: false }).addTo(map);
+
+            markerCluster = L.markerClusterGroup({
+                chunkedLoading: true,
+                maxClusterRadius: 70,
+                disableClusteringAtZoom: 14,
+                spiderfyOnMaxZoom: true,
+                showCoverageOnHover: false
+            });
+            map.addLayer(markerCluster);
+        }
+
+        // Carregar coletas disponíveis
+        async function carregarColetas() {
+            try {
+                // Verificar se o Supabase está inicializado
+                if (!supabase) {
+                    console.error('❌ Supabase não está inicializado');
+                    mostrarNotificacao('Erro: Supabase não inicializado. Recarregue a página.', 'error');
+                    return;
+                }
+
+                mostrarNotificacao('Carregando coletas...', 'info');
+                
+                const { data: coletas, error } = await supabase
+                    .from('coletas')
+                    .select('id, cliente, origem, destino, status, motorista_id')
+                    .eq('status', 'em_andamento')
+                    .not('motorista_id', 'is', null)
+                    .order('created_at', { ascending: false });
+
+                if (error) {
+                    console.error('❌ Erro na query do Supabase:', error);
+                    throw new Error(error.message || 'Erro ao buscar coletas no banco de dados');
+                }
+
+                coletasDisponiveis = coletas;
+                renderizarListaColetas();
+
+                mostrarNotificacao(`${coletas.length} coleta(s) encontrada(s)`, 'success');
+            } catch (error) {
+                console.error('❌ Erro ao carregar coletas:', error);
+                console.error('❌ Detalhes do erro:', {
+                    message: error.message,
+                    code: error.code,
+                    details: error.details,
+                    hint: error.hint
+                });
+                const errorMessage = error.message || 'Erro ao carregar coletas. Tente novamente.';
+                mostrarNotificacao(errorMessage, 'error');
+            }
+        }
+
+        // Verificar autenticação
+        async function verificarAutenticacao() {
+            try {
+                console.log('🔐 Verificando autenticação...');
+                
+                // Primeiro, tentar verificar sessão do servidor
+                try {
+                    const authResponse = await fetch('/api/auth/status', {
+                        method: 'GET',
+                        credentials: 'include',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        }
+                    });
+
+                    if (authResponse.ok) {
+                        const authData = await authResponse.json();
+                        if (authData.autenticado && authData.usuario) {
+                            console.log('✅ Usuário autenticado via servidor:', authData.usuario);
+                            return true;
+                        }
+                    }
+                } catch (authError) {
+                    console.warn('⚠️ Erro ao verificar autenticação no servidor:', authError);
+                }
+
+                // Fallback: verificar localStorage
+                const loggedInUserData = localStorage.getItem('loggedInUser');
+                if (loggedInUserData) {
+                    try {
+                        const userData = JSON.parse(loggedInUserData);
+                        
+                        // Verificar se tem dados básicos
+                        if (userData.username || userData.email || userData.id) {
+                            const now = Date.now();
+                            const loginTimestamp = userData.loginTimestamp || userData.timestamp || 0;
+                            const sessionAge = loginTimestamp > 0 ? now - loginTimestamp : 0;
+                            const SESSION_TIMEOUT = 12 * 60 * 60 * 1000; // 12 horas
+
+                            // Se não tem timestamp ou está dentro do timeout
+                            if (loginTimestamp === 0 || (sessionAge < SESSION_TIMEOUT && sessionAge >= 0)) {
+                                // Verificar se está marcado como autenticado (se existir)
+                                if (userData.authenticated !== false) {
+                                    console.log('✅ Usuário autenticado via localStorage:', userData.username || userData.email || userData.id);
+                                    return true;
+                                }
+                            }
+                        }
+                    } catch (parseError) {
+                        console.warn('⚠️ Erro ao fazer parse do localStorage:', parseError);
+                        // Se o parse falhar mas tiver dados, tentar usar como string
+                        if (loggedInUserData && loggedInUserData.length > 0) {
+                            console.log('✅ Usuário autenticado (formato string):', loggedInUserData);
+                            return true;
+                        }
+                    }
+                }
+
+                // Se chegou aqui, não está autenticado
+                console.log('❌ Usuário não autenticado, redirecionando...');
+                mostrarNotificacao('Sessão expirada. Redirecionando para login...', 'warning');
+                setTimeout(() => {
+                    window.location.href = 'login.html';
+                }, 2000);
+                return false;
+            } catch (error) {
+                console.error('❌ Erro ao verificar autenticação:', error);
+                // Não redirecionar imediatamente em caso de erro, apenas logar
+                mostrarNotificacao('Erro ao verificar autenticação. Tente recarregar a página.', 'error');
+                return false;
+            }
+        }
+
+        // Carregar posições dos motoristas
+        async function carregarPosicoes() {
+            if (!selectedColetas.length) return;
+
+            try {
+                // Preparar headers com informações do usuário (fallback se sessão não funcionar)
+                const headers = {
+                    'Content-Type': 'application/json'
+                };
+
+                // Tentar adicionar informações do usuário do localStorage
+                try {
+                    const loggedInUserData = localStorage.getItem('loggedInUser');
+                    if (loggedInUserData) {
+                        const userData = JSON.parse(loggedInUserData);
+                        if (userData.id) {
+                            headers['X-User-Id'] = userData.id;
+                        }
+                        if (userData.email) {
+                            headers['X-User-Email'] = userData.email;
+                        }
+                        if (userData.username) {
+                            headers['X-User-Username'] = userData.username;
+                        }
+                    }
+                } catch (e) {
+                    console.warn('⚠️ Erro ao adicionar headers de usuário:', e);
+                }
+
+                const params = new URLSearchParams();
+                params.set('coletas', selectedColetas.join(','));
+                params.set('maxMinutes', filtroTempoMinutos);
+
+                const response = await fetch(`/api/rastreamento/posicoes?${params.toString()}`, {
+                    method: 'GET',
+                    credentials: 'include', // Incluir cookies de sessão
+                    headers: headers
+                });
+
+                if (response.status === 401) {
+                    console.warn('⚠️ Erro 401 - Tentando verificar autenticação novamente...');
+                    
+                    // Tentar verificar autenticação antes de redirecionar
+                    const authCheck = await verificarAutenticacao();
+                    if (!authCheck) {
+                        // Se não estiver autenticado, a função já redireciona
+                        return;
+                    }
+                    
+                    // Se estiver autenticado mas ainda deu 401, pode ser problema de sessão
+                    console.error('❌ Sessão do servidor expirada, mas usuário está autenticado no cliente');
+                    mostrarNotificacao('Sessão expirada. Por favor, faça login novamente.', 'warning');
+                    setTimeout(() => {
+                        window.location.href = 'login.html';
+                    }, 3000);
+                    return;
+                }
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    let errorMessage = `Erro HTTP: ${response.status}`;
+                    try {
+                        const errorJson = JSON.parse(errorText);
+                        errorMessage = errorJson.error || errorMessage;
+                    } catch (e) {
+                        // Se não conseguir fazer parse, usar o texto original
+                        if (errorText) errorMessage = errorText;
+                    }
+                    throw new Error(errorMessage);
+                }
+
+                const result = await response.json();
+
+                if (!result.success) {
+                    throw new Error(result.error || 'Erro ao carregar posições');
+                }
+
+                lastUpdateTime = new Date();
+                const mapUpdateEl = document.getElementById('mapLastUpdate');
+                if (mapUpdateEl) {
+                    mapUpdateEl.textContent = lastUpdateTime.toLocaleTimeString('pt-BR', {
+                        hour: '2-digit',
+                        minute: '2-digit'
+                    });
+                }
+                
+                // Log informações para debug
+                if (result.info) {
+                    console.log('📊 Informações da coleta:', result.info);
+                    console.log('📍 Posições recebidas:', result.posicoes?.length || 0);
+                    if (result.posicoes && result.posicoes.length > 0) {
+                        console.log('📍 Primeira posição:', {
+                            motorista: result.posicoes[0].motoristas?.nome,
+                            lat: result.posicoes[0].latitude,
+                            lng: result.posicoes[0].longitude,
+                            timestamp: result.posicoes[0].timestamp_gps
+                        });
+                    } else if (selectedColetas.length === 1) {
+                        // Se não há posições, fazer diagnóstico
+                        console.warn('⚠️ Nenhuma posição encontrada, executando diagnóstico...');
+                        try {
+                        const diagResponse = await fetch(`/api/rastreamento/diagnostico/${selectedColetas[0]}`, {
+                                method: 'GET',
+                                credentials: 'include',
+                                headers: {
+                                    'Content-Type': 'application/json'
+                                }
+                            });
+                            
+                            if (diagResponse.ok) {
+                                const diagData = await diagResponse.json();
+                                console.log('🔍 Diagnóstico completo:', diagData);
+                                
+                                if (!diagData.termoAceito) {
+                                    mostrarNotificacao('⚠️ Termo de rastreamento não foi aceito pelo motorista. O rastreamento não está ativo.', 'warning');
+                                } else if (diagData.totalPosicoes === 0) {
+                                    mostrarNotificacao('⚠️ Motorista não está enviando posições GPS. Verifique se o rastreamento está ativo no portal do motorista.', 'warning');
+                                } else {
+                                    mostrarNotificacao(`ℹ️ Motorista tem ${diagData.totalPosicoes} posições, mas nenhuma corresponde a esta coleta.`, 'info');
+                                }
+                            }
+                        } catch (diagError) {
+                            console.error('❌ Erro ao executar diagnóstico:', diagError);
+                        }
+                    }
+                } else {
+                    console.warn('⚠️ Nenhuma informação adicional recebida do servidor');
+                }
+                
+                ultimaListaPosicoes = result.posicoes || [];
+                atualizarMapa(ultimaListaPosicoes, result.info);
+                atualizarListaMotoristas(ultimaListaPosicoes);
+                atualizarEstatisticas(ultimaListaPosicoes);
+            } catch (error) {
+                console.error('❌ Erro ao carregar posições:', error);
+                
+                // Se for erro de rede ou conexão, não redirecionar
+                if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+                    mostrarNotificacao('Erro de conexão. Verifique sua internet e tente novamente.', 'error');
+                    return;
+                }
+                
+                mostrarNotificacao(error.message || 'Erro ao carregar posições GPS', 'error');
+            }
+        }
+
+        // Atualizar mapa com marcadores
+        function atualizarMapa(posicoes, info = null) {
+            // Limpar marcadores antigos
+            if (markerCluster) {
+                markerCluster.clearLayers();
+            } else {
+            markers.forEach(marker => map.removeLayer(marker));
+            }
+            markers.clear();
+
+            if (posicoes.length === 0) {
+                // Mensagem mais informativa baseada nas informações da coleta
+                let mensagem = 'Nenhum motorista rastreado nesta coleta';
+                
+                if (info?.multi) {
+                    mensagem = `Nenhuma posição encontrada nas ${info.totalColetas || selectedColetas.length} coletas selecionadas nos últimos ${info.janelaMinutos || filtroTempoMinutos} minutos.`;
+                } else if (info) {
+                    if (!info.temMotoristaVinculado) {
+                        mensagem = 'Esta coleta não tem motorista vinculado ainda.';
+                    } else if (info.totalPosicoesEncontradas === 0) {
+                        mensagem = 'Motorista vinculado, mas ainda não há posições GPS registradas. O motorista precisa ativar o rastreamento.';
+                    } else {
+                        mensagem = 'Nenhuma posição GPS recente encontrada.';
+                    }
+                }
+                
+                mostrarNotificacao(mensagem, 'info');
+                return;
+            }
+
+            posicoes.forEach(pos => {
+                const motorista = pos.motoristas || {};
+                const isOnline = new Date(pos.timestamp_gps) > new Date(Date.now() - 5 * 60 * 1000);
+                const velocidade = pos.velocidade ? pos.velocidade.toFixed(0) : '0';
+
+                // Ícone customizado melhorado
+                const icon = L.divIcon({
+                    className: 'custom-marker',
+                    html: `
+                        <div style="
+                            position: relative;
+                            width: 40px;
+                            height: 40px;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                        ">
+                            <div style="
+                                background: ${isOnline ? 'linear-gradient(135deg, #22c55e, #16a34a)' : 'linear-gradient(135deg, #ef4444, #dc2626)'};
+                                width: 40px;
+                                height: 40px;
+                                border-radius: 50%;
+                                border: 4px solid white;
+                                box-shadow: 0 4px 15px ${isOnline ? 'rgba(34, 197, 94, 0.5)' : 'rgba(239, 68, 68, 0.5)'}, 0 0 20px ${isOnline ? 'rgba(34, 197, 94, 0.3)' : 'rgba(239, 68, 68, 0.3)'};
+                                display: flex;
+                                align-items: center;
+                                justify-content: center;
+                                color: white;
+                                font-size: 16px;
+                                animation: ${isOnline ? 'pulse-marker 2s infinite' : 'none'};
+                            ">
+                                <i class="fas fa-truck"></i>
+                            </div>
+                            ${isOnline ? `
+                                <div style="
+                                    position: absolute;
+                                    top: -2px;
+                                    right: -2px;
+                                    width: 12px;
+                                    height: 12px;
+                                    background: #22c55e;
+                                    border-radius: 50%;
+                                    border: 2px solid white;
+                                    animation: pulse-dot 2s infinite;
+                                "></div>
+                            ` : ''}
+                        </div>
+                    `,
+                    iconSize: [40, 40],
+                    iconAnchor: [20, 20]
+                });
+
+                const marker = L.marker([pos.latitude, pos.longitude], { icon })
+                    .bindPopup(`
+                        <div style="min-width: 200px;">
+                            <h4 style="margin: 0 0 0.5rem 0; color: #667eea; font-weight: 700;">
+                                <i class="fas fa-user"></i> ${motorista.nome || 'Motorista'}
+                            </h4>
+                            <div style="font-size: 0.9rem; line-height: 1.6;">
+                                <p style="margin: 0.25rem 0;">
+                                    <i class="fas fa-map-marker-alt" style="color: #667eea;"></i> 
+                                    ${pos.endereco || 'Endereço não disponível'}
+                                </p>
+                                <p style="margin: 0.25rem 0;">
+                                    <i class="fas fa-tachometer-alt" style="color: #667eea;"></i> 
+                                    <strong>${velocidade} km/h</strong>
+                                </p>
+                                <p style="margin: 0.25rem 0;">
+                                    <i class="fas fa-clock" style="color: #667eea;"></i> 
+                                    ${new Date(pos.timestamp_gps).toLocaleString('pt-BR')}
+                                </p>
+                                <p style="margin: 0.5rem 0 0 0;">
+                                    <span style="
+                                        display: inline-block;
+                                        padding: 0.25rem 0.75rem;
+                                        border-radius: 20px;
+                                        font-size: 0.75rem;
+                                        font-weight: 600;
+                                        background: ${isOnline ? 'rgba(34, 197, 94, 0.2)' : 'rgba(239, 68, 68, 0.2)'};
+                                        color: ${isOnline ? '#22c55e' : '#ef4444'};
+                                    ">
+                                        <i class="fas fa-circle"></i> ${isOnline ? 'Online' : 'Offline'}
+                                    </span>
+                                </p>
+                            </div>
+                        </div>
+                    `, {
+                        className: 'custom-popup'
+                    });
+
+                markers.set(pos.motorista_id, marker);
+                if (markerCluster) {
+                    markerCluster.addLayer(marker);
+                } else {
+                    marker.addTo(map);
+                }
+            });
+
+            // Ajustar zoom para mostrar todos os marcadores
+            const targetLayer = markerCluster && markerCluster.getLayers().length > 0
+                ? markerCluster
+                : (markers.size > 0 ? new L.featureGroup(Array.from(markers.values())) : null);
+
+            if (targetLayer) {
+                map.fitBounds(targetLayer.getBounds().pad(0.15));
+            }
+        }
+
+        // Atualizar lista de motoristas
+        function atualizarListaMotoristas(posicoes) {
+            const container = document.getElementById('listaMotoristas');
+            
+            const listaFiltrada = posicoes.filter(pos => {
+                if (!filtroMotoristaTerm) return true;
+                const nome = (pos.motoristas?.nome || '').toLowerCase();
+                const telefone = (pos.motoristas?.telefone1 || '').toLowerCase();
+                return nome.includes(filtroMotoristaTerm) || telefone.includes(filtroMotoristaTerm);
+            });
+
+            if (listaFiltrada.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-search"></i>
+                        <p>Nenhum motorista encontrado para o filtro aplicado</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = listaFiltrada.map(pos => {
+                const motorista = pos.motoristas || {};
+                const isOnline = new Date(pos.timestamp_gps) > new Date(Date.now() - 5 * 60 * 1000);
+                const tempoAtras = Math.floor((Date.now() - new Date(pos.timestamp_gps).getTime()) / 1000 / 60);
+                const tempoTexto = tempoAtras < 1 ? 'Agora' : tempoAtras === 1 ? '1 min atrás' : `${tempoAtras} min atrás`;
+
+                return `
+                    <div class="motorista-item" data-motorista-id="${pos.motorista_id}">
+                        <div class="motorista-nome">
+                            <i class="fas fa-user"></i>
+                            ${motorista.nome || 'Motorista'}
+                        </div>
+                        <div class="motorista-info">
+                            <span><i class="fas fa-phone"></i> ${motorista.telefone1 || 'N/A'}</span>
+                            <span><i class="fas fa-tachometer-alt"></i> ${pos.velocidade ? pos.velocidade.toFixed(0) : '0'} km/h</span>
+                            <span><i class="fas fa-clock"></i> ${tempoTexto}</span>
+                        </div>
+                        <span class="status-badge ${isOnline ? 'status-online' : 'status-offline'}">
+                            <i class="fas fa-circle"></i> ${isOnline ? 'Online' : 'Offline'}
+                        </span>
+                    </div>
+                `;
+            }).join('');
+
+            // Adicionar event listeners para focar no marcador ao clicar
+            container.querySelectorAll('.motorista-item').forEach(item => {
+                item.addEventListener('click', () => {
+                    const motoristaId = item.dataset.motoristaId;
+                    const marker = markers.get(motoristaId);
+                    if (marker) {
+                        map.setView(marker.getLatLng(), 15);
+                        marker.openPopup();
+                        
+                        // Destacar item
+                        container.querySelectorAll('.motorista-item').forEach(i => i.classList.remove('active'));
+                        item.classList.add('active');
+                        setTimeout(() => item.classList.remove('active'), 3000);
+                    }
+                });
+            });
+        }
+
+        // Atualizar estatísticas
+        function atualizarEstatisticas(posicoes) {
+            const total = posicoes.length;
+            const online = posicoes.filter(pos => 
+                new Date(pos.timestamp_gps) > new Date(Date.now() - 5 * 60 * 1000)
+            ).length;
+            const offline = total - online;
+            
+            const velocidades = posicoes.map(pos => pos.velocidade || 0).filter(v => v > 0);
+            const velocidadeMedia = velocidades.length > 0
+                ? velocidades.reduce((sum, v) => sum + v, 0) / velocidades.length
+                : 0;
+            const velocidadeMax = velocidades.length > 0
+                ? Math.max(...velocidades)
+                : 0;
+            
+            // Calcular tempo médio desde última atualização
+            const temposAtras = posicoes.map(pos => {
+                return Math.floor((Date.now() - new Date(pos.timestamp_gps).getTime()) / 1000 / 60);
+            });
+            const tempoMedio = temposAtras.length > 0
+                ? Math.round(temposAtras.reduce((sum, t) => sum + t, 0) / temposAtras.length)
+                : 0;
+            
+            const percentualOnline = total > 0 ? Math.round((online / total) * 100) : 0;
+
+            // Animar valores
+            animarValor('statTotal', total);
+            animarValor('statOnline', online);
+            animarValor('statVelocidade', Math.round(velocidadeMedia));
+            animarValor('statTempoMedio', tempoMedio);
+            
+            // Atualizar sublabels
+            document.getElementById('statOnlinePercent').textContent = `${percentualOnline}% do total`;
+            document.getElementById('statVelocidadeMax').textContent = `Máx: ${Math.round(velocidadeMax)} km/h`;
+        }
+
+        // Animar valor numérico
+        function animarValor(elementId, valorFinal) {
+            const element = document.getElementById(elementId);
+            const valorInicial = parseInt(element.textContent) || 0;
+            const incremento = (valorFinal - valorInicial) / 20;
+            let valorAtual = valorInicial;
+            
+            const intervalo = setInterval(() => {
+                valorAtual += incremento;
+                if ((incremento > 0 && valorAtual >= valorFinal) || (incremento < 0 && valorAtual <= valorFinal)) {
+                    element.textContent = valorFinal;
+                    clearInterval(intervalo);
+                } else {
+                    element.textContent = Math.round(valorAtual);
+                }
+            }, 30);
+        }
+
+        // Iniciar monitoramento
+        function iniciarMonitoramento() {
+            if (updateInterval) {
+                clearInterval(updateInterval);
+                updateInterval = null;
+            }
+            if (!selectedColetas.length) {
+                return;
+            }
+            carregarPosicoes();
+            updateInterval = setInterval(carregarPosicoes, 30000); // Atualizar a cada 30 segundos
+            document.getElementById('autoRefreshIndicator').style.display = 'flex';
+            mostrarNotificacao('Monitoramento em andamento. Atualização automática a cada 30 segundos.', 'success');
+        }
+
+        // Parar monitoramento
+        function pararMonitoramento() {
+            if (updateInterval) {
+                clearInterval(updateInterval);
+                updateInterval = null;
+            }
+            document.getElementById('autoRefreshIndicator').style.display = 'none';
+            if (markerCluster) {
+                markerCluster.clearLayers();
+            } else {
+            markers.forEach(marker => map.removeLayer(marker));
+            }
+            markers.clear();
+            ultimaListaPosicoes = [];
+            document.getElementById('listaMotoristas').innerHTML = `
+                <div class="empty-state">
+                    <i class="fas fa-map-marker-alt"></i>
+                    <p>Selecione uma coleta para visualizar os motoristas</p>
+                </div>
+            `;
+            
+            // Resetar estatísticas
+            document.getElementById('statTotal').textContent = '0';
+            document.getElementById('statOnline').textContent = '0';
+            document.getElementById('statVelocidade').textContent = '0';
+            document.getElementById('statTempoMedio').textContent = '0';
+            document.getElementById('statOnlinePercent').textContent = '0% do total';
+            document.getElementById('statVelocidadeMax').textContent = 'Máx: 0 km/h';
+        }
+
+        // Event listeners
+        document.getElementById('btnAtualizar').addEventListener('click', () => {
+            if (selectedColetas.length > 0) {
+                carregarPosicoes();
+                mostrarNotificacao('Posições atualizadas', 'success');
+            } else {
+                carregarColetas();
+            }
+        });
+
+        const filtroMotoristaInput = document.getElementById('filtroMotorista');
+        if (filtroMotoristaInput) {
+            filtroMotoristaInput.addEventListener('input', (event) => {
+                filtroMotoristaTerm = event.target.value.trim().toLowerCase();
+                atualizarListaMotoristas(ultimaListaPosicoes);
+            });
+        }
+
+        const filtroTempoSelect = document.getElementById('filtroTempo');
+        if (filtroTempoSelect) {
+            filtroTempoMinutos = parseInt(filtroTempoSelect.value, 10) || 60;
+            filtroTempoSelect.addEventListener('change', () => {
+                filtroTempoMinutos = parseInt(filtroTempoSelect.value, 10) || 60;
+                if (selectedColetas.length > 0) {
+                    carregarPosicoes();
+                }
+            });
+        }
+
+        // Adicionar estilo para popup do Leaflet (ajustado para mapa claro)
+        const style = document.createElement('style');
+        style.textContent = `
+            .custom-popup .leaflet-popup-content-wrapper {
+                background: rgba(255, 255, 255, 0.98);
+                backdrop-filter: blur(20px);
+                border: 2px solid rgba(102, 126, 234, 0.4);
+                border-radius: 12px;
+                color: #1e293b;
+                box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+            }
+            .custom-popup .leaflet-popup-content {
+                margin: 0;
+                padding: 0;
+            }
+            .custom-popup .leaflet-popup-tip {
+                background: rgba(255, 255, 255, 0.98);
+                border: 2px solid rgba(102, 126, 234, 0.4);
+            }
+            .custom-popup h4 {
+                color: #667eea !important;
+            }
+            .custom-popup i {
+                color: #667eea !important;
+            }
+            @keyframes pulse-marker {
+                0%, 100% { transform: scale(1); box-shadow: 0 4px 15px rgba(34, 197, 94, 0.5), 0 0 20px rgba(34, 197, 94, 0.3); }
+                50% { transform: scale(1.1); box-shadow: 0 6px 20px rgba(34, 197, 94, 0.7), 0 0 30px rgba(34, 197, 94, 0.5); }
+            }
+        `;
+        document.head.appendChild(style);
+
+        // Inicializar quando o DOM estiver pronto
+        async function inicializarAplicacao() {
+            // Verificar autenticação primeiro
+            const autenticado = await verificarAutenticacao();
+            if (!autenticado) {
+                return; // A função verificarAutenticacao já redireciona
+            }
+
+        initMap();
+            
+            // Aguardar Supabase estar pronto antes de carregar coletas
+            const tentarCarregarColetas = (tentativas = 0) => {
+                if (supabase) {
+        carregarColetas();
+                } else if (tentativas < 20) { // Máximo de 20 tentativas (4 segundos)
+                    console.warn(`⚠️ Aguardando Supabase inicializar... (tentativa ${tentativas + 1}/20)`);
+                    setTimeout(() => tentarCarregarColetas(tentativas + 1), 200);
+                } else {
+                    console.error('❌ Timeout ao aguardar Supabase inicializar');
+                    mostrarNotificacao('Erro: Não foi possível conectar ao banco de dados. Recarregue a página.', 'error');
+                }
+            };
+            
+            setTimeout(() => tentarCarregarColetas(), 500);
+        }
+        
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', inicializarAplicacao);
+        } else {
+            inicializarAplicacao();
+        }
+    </script>
+</body>
+</html>
