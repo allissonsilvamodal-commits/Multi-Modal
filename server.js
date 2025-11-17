@@ -11399,15 +11399,21 @@ app.get('/api/ferramentas-qualidade/painel/:id', async (req, res) => {
     const isAdmin = userProfile?.role === 'admin';
 
     // Verificar permissão - qualquer permissão de qualidade permite visualizar o painel
+    // Verificar tanto por tipo quanto por permissao_id para garantir compatibilidade
     const { data: permissoes } = await supabaseAdmin
       .from('permissoes_portal')
-      .select('permissao_id')
+      .select('permissao_id, tipo')
       .eq('usuario_id', userId)
-      .eq('tipo', 'qualidade');
+      .or('tipo.eq.qualidade,permissao_id.eq.qualidade');
 
     const temPermissao = isAdmin || (permissoes && permissoes.length > 0);
 
     if (!temPermissao) {
+      console.log('❌ Usuário sem permissão de qualidade:', {
+        userId,
+        isAdmin,
+        permissoes: permissoes || []
+      });
       return res.status(403).json({ 
         success: false, 
         error: 'Você não tem permissão para visualizar o painel de qualidade' 
@@ -11416,7 +11422,7 @@ app.get('/api/ferramentas-qualidade/painel/:id', async (req, res) => {
 
     const { id } = req.params;
 
-    // Buscar ferramenta
+    // Buscar ferramenta - SEM restrição de criador, qualquer usuário com permissão pode ver
     const { data: ferramenta, error } = await supabaseAdmin
       .from('ferramentas_qualidade')
       .select('*')
@@ -13011,15 +13017,21 @@ app.get('/api/ferramentas-qualidade/painel/:id', async (req, res) => {
     const isAdmin = userProfile?.role === 'admin';
 
     // Verificar permissão - qualquer permissão de qualidade permite visualizar o painel
+    // Verificar tanto por tipo quanto por permissao_id para garantir compatibilidade
     const { data: permissoes } = await supabaseAdmin
       .from('permissoes_portal')
-      .select('permissao_id')
+      .select('permissao_id, tipo')
       .eq('usuario_id', userId)
-      .eq('tipo', 'qualidade');
+      .or('tipo.eq.qualidade,permissao_id.eq.qualidade');
 
     const temPermissao = isAdmin || (permissoes && permissoes.length > 0);
 
     if (!temPermissao) {
+      console.log('❌ Usuário sem permissão de qualidade:', {
+        userId,
+        isAdmin,
+        permissoes: permissoes || []
+      });
       return res.status(403).json({ 
         success: false, 
         error: 'Você não tem permissão para visualizar o painel de qualidade' 
@@ -13028,7 +13040,7 @@ app.get('/api/ferramentas-qualidade/painel/:id', async (req, res) => {
 
     const { id } = req.params;
 
-    // Buscar ferramenta
+    // Buscar ferramenta - SEM restrição de criador, qualquer usuário com permissão pode ver
     const { data: ferramenta, error } = await supabaseAdmin
       .from('ferramentas_qualidade')
       .select('*')
