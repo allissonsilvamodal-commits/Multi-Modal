@@ -12605,7 +12605,31 @@ app.post('/api/ferramentas-qualidade', async (req, res) => {
         .eq('id', id)
         .maybeSingle();
 
-      if (!ferramentaExistente || ferramentaExistente.criado_por !== userId) {
+      if (!ferramentaExistente) {
+        return res.status(404).json({ success: false, error: 'Ferramenta não encontrada' });
+      }
+
+      // Verificar permissão: usuário pode atualizar se for o criador, admin, ou tiver permissão de qualidade
+      const { data: userProfile } = await supabaseAdmin
+        .from('user_profiles')
+        .select('role')
+        .eq('id', userId)
+        .maybeSingle();
+
+      const isAdmin = userProfile?.role === 'admin';
+      
+      // Verificar permissão de qualidade
+      const { data: permissaoQualidade } = await supabaseAdmin
+        .from('permissoes_portal')
+        .select('id')
+        .eq('usuario_id', userId)
+        .or('permissao_id.eq.qualidade,tipo.eq.qualidade')
+        .maybeSingle();
+
+      const temPermissaoQualidade = !!permissaoQualidade || isAdmin;
+      const isCriador = ferramentaExistente.criado_por === userId;
+
+      if (!isCriador && !temPermissaoQualidade) {
         return res.status(403).json({ success: false, error: 'Sem permissão para atualizar esta ferramenta' });
       }
 

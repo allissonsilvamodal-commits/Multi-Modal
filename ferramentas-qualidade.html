@@ -1428,6 +1428,16 @@
                         </div>
                         
                         <div class="mb-3">
+                            <label class="form-label fw-bold">Status:</label>
+                            <select class="form-select" id="status5w2h">
+                                <option value="pendente">Pendente</option>
+                                <option value="em_andamento">Em andamento</option>
+                                <option value="finalizado">Finalizado</option>
+                                <option value="atrasado">Atrasado</option>
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3">
                             <div class="d-flex justify-content-between align-items-center mb-2">
                                 <label class="form-label fw-bold mb-0">Linhas de Informação:</label>
                                 <button class="btn btn-sm btn-primary" onclick="adicionarLinha5W2H()">
@@ -2678,6 +2688,8 @@
                         
                     case '5w2h':
                         document.getElementById('titulo5w2h').value = ferramenta.titulo || '';
+                        const status5w2h = dados.status || 'pendente';
+                        document.getElementById('status5w2h').value = status5w2h;
                         linhas5W2H = dados.linhas || [];
                         if (usuariosPlataforma.length === 0) {
                             await carregarUsuarios();
@@ -3042,6 +3054,17 @@
         }
 
         // ========== 5W2H ==========
+        // Filtros para 5W2H
+        let filtros5W2H = {
+            what: '',
+            why: '',
+            where: '',
+            when: '',
+            who: '',
+            how: '',
+            status: ''
+        };
+        
         function adicionarLinha5W2H() {
             const linha = {
                 id: Date.now(),
@@ -3052,7 +3075,8 @@
                 who: '',
                 how: '',
                 howMuch: '',
-                howMany: ''
+                howMany: '',
+                status: 'pendente' // Status padrão por linha
             };
             linhas5W2H.push(linha);
             renderizarLinhas5W2H();
@@ -3090,102 +3114,356 @@
             }
         }
         
-        function renderizarLinhas5W2H() {
+        function aplicarFiltros5W2H() {
+            renderizarLinhas5W2H();
+        }
+        
+        function limparFiltros5W2H() {
+            filtros5W2H = {
+                what: '',
+                why: '',
+                where: '',
+                when: '',
+                who: '',
+                how: '',
+                status: ''
+            };
+            // Atualizar inputs de filtro
+            document.querySelectorAll('#filtros5w2h input, #filtros5w2h select').forEach(input => {
+                if (input.type === 'text' || input.type === 'date') {
+                    input.value = '';
+                } else if (input.tagName === 'SELECT') {
+                    input.value = '';
+                }
+            });
+            renderizarLinhas5W2H();
+        }
+        
+        async function renderizarLinhas5W2H() {
             const container = document.getElementById('linhas5w2h');
-            container.innerHTML = '';
             
-            linhas5W2H.forEach((linha, index) => {
-                const div = document.createElement('div');
-                div.className = 'card mb-3';
-                div.innerHTML = `
-                    <div class="card-header d-flex justify-content-between align-items-center">
-                        <strong>Linha ${index + 1}</strong>
-                        <button class="btn btn-sm btn-danger" onclick="removerLinha5W2H(${linha.id})">
-                            <i class="fas fa-trash"></i>
+            // Garantir que os usuários estejam carregados antes de renderizar o filtro
+            if (usuariosPlataforma.length === 0) {
+                await carregarUsuarios();
+            }
+            
+            // Filtrar linhas
+            let linhasFiltradas = linhas5W2H.filter(linha => {
+                const matchWhat = !filtros5W2H.what || (linha.what || '').toLowerCase().includes(filtros5W2H.what.toLowerCase());
+                const matchWhy = !filtros5W2H.why || (linha.why || '').toLowerCase().includes(filtros5W2H.why.toLowerCase());
+                const matchWhere = !filtros5W2H.where || (linha.where || '').toLowerCase().includes(filtros5W2H.where.toLowerCase());
+                const matchWhen = !filtros5W2H.when || (linha.when || '').includes(filtros5W2H.when);
+                
+                // Filtro Who: pode ser ID, email ou nome
+                let matchWho = true;
+                if (filtros5W2H.who) {
+                    const whoFilter = filtros5W2H.who.toLowerCase();
+                    const linhaWho = (linha.who || '').toString().toLowerCase();
+                    // Verificar se é ID exato ou se contém o texto
+                    matchWho = linhaWho === whoFilter || linhaWho.includes(whoFilter);
+                    
+                    // Se não encontrou, verificar se o filtro é um ID e buscar pelo nome do usuário
+                    if (!matchWho && usuariosPlataforma.length > 0) {
+                        const usuarioFiltro = usuariosPlataforma.find(u => 
+                            u.id === filtros5W2H.who || 
+                            u.email?.toLowerCase() === whoFilter || 
+                            u.nome?.toLowerCase() === whoFilter
+                        );
+                        if (usuarioFiltro) {
+                            // Verificar se a linha tem o ID, email ou nome do usuário
+                            matchWho = linhaWho === usuarioFiltro.id.toLowerCase() ||
+                                      linhaWho === usuarioFiltro.email?.toLowerCase() ||
+                                      linhaWho === usuarioFiltro.nome?.toLowerCase() ||
+                                      linhaWho.includes(usuarioFiltro.nome?.toLowerCase() || '') ||
+                                      linhaWho.includes(usuarioFiltro.email?.toLowerCase() || '');
+                        }
+                    }
+                }
+                
+                const matchHow = !filtros5W2H.how || (linha.how || '').toLowerCase().includes(filtros5W2H.how.toLowerCase());
+                const matchStatus = !filtros5W2H.status || (linha.status || 'pendente') === filtros5W2H.status;
+                
+                return matchWhat && matchWhy && matchWhere && matchWhen && matchWho && matchHow && matchStatus;
+            });
+            
+            // Buscar nome do usuário para exibição
+            const getWhoDisplay = (whoId) => {
+                if (!whoId) return '';
+                const usuario = usuariosPlataforma.find(u => u.id === whoId);
+                if (usuario) {
+                    return usuario.nome || usuario.email || '';
+                }
+                return whoId;
+            };
+            
+            let html = `
+                <style>
+                    .planilha-5w2h {
+                        background: white;
+                        border-radius: 12px;
+                        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+                        overflow: hidden;
+                    }
+                    .planilha-5w2h table {
+                        margin: 0;
+                        border-collapse: separate;
+                        border-spacing: 0;
+                    }
+                    .planilha-5w2h thead th {
+                        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                        color: white;
+                        font-weight: 600;
+                        padding: 0.75rem;
+                        border: 1px solid rgba(255,255,255,0.2);
+                        position: sticky;
+                        top: 0;
+                        z-index: 10;
+                        white-space: nowrap;
+                    }
+                    .planilha-5w2h tbody td {
+                        padding: 0.5rem;
+                        border: 1px solid #e9ecef;
+                        vertical-align: middle;
+                    }
+                    .planilha-5w2h tbody tr:hover {
+                        background-color: #f8f9fa;
+                    }
+                    .planilha-5w2h tbody tr:nth-child(even) {
+                        background-color: #f8f9fa;
+                    }
+                    .planilha-5w2h tbody tr:nth-child(even):hover {
+                        background-color: #e9ecef;
+                    }
+                    .planilha-5w2h input, .planilha-5w2h select {
+                        border: none;
+                        background: transparent;
+                        width: 100%;
+                        padding: 0.25rem;
+                        font-size: 0.875rem;
+                    }
+                    .planilha-5w2h input:focus, .planilha-5w2h select:focus {
+                        outline: 2px solid #667eea;
+                        outline-offset: -2px;
+                        background: white;
+                        border-radius: 4px;
+                    }
+                    .planilha-5w2h .btn-remover-linha {
+                        padding: 0.25rem 0.5rem;
+                        font-size: 0.75rem;
+                    }
+                    .filtros-5w2h {
+                        background: linear-gradient(135deg, #f8f9ff 0%, #e8edff 100%);
+                        padding: 1rem;
+                        border-radius: 12px;
+                        margin-bottom: 1rem;
+                        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+                    }
+                    .filtros-5w2h .filtro-item {
+                        margin-bottom: 0.5rem;
+                    }
+                    .filtros-5w2h input, .filtros-5w2h select {
+                        border: 1px solid #dee2e6;
+                        border-radius: 6px;
+                        padding: 0.5rem;
+                        font-size: 0.875rem;
+                    }
+                </style>
+                
+                <!-- Filtros -->
+                <div id="filtros5w2h" class="filtros-5w2h">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h6 class="mb-0"><i class="fas fa-filter me-2"></i>Filtros</h6>
+                        <button class="btn btn-sm btn-outline-secondary" onclick="limparFiltros5W2H()">
+                            <i class="fas fa-times me-1"></i>Limpar
                         </button>
                     </div>
-                    <div class="card-body">
                         <div class="row g-2">
-                            <div class="col-md-6">
-                                <label class="form-label small">O QUÊ (What)?</label>
+                        <div class="col-md-3 col-lg-2">
                                 <input type="text" class="form-control form-control-sm" 
-                                       value="${linha.what || ''}" 
-                                       onchange="atualizarLinha5W2H(${linha.id}, 'what', this.value)">
+                                   placeholder="Filtrar What..." 
+                                   value="${filtros5W2H.what}"
+                                   oninput="filtros5W2H.what = this.value; aplicarFiltros5W2H();">
                             </div>
-                            <div class="col-md-6">
-                                <label class="form-label small">POR QUÊ (Why)?</label>
+                        <div class="col-md-3 col-lg-2">
                                 <input type="text" class="form-control form-control-sm" 
-                                       value="${linha.why || ''}" 
-                                       onchange="atualizarLinha5W2H(${linha.id}, 'why', this.value)">
+                                   placeholder="Filtrar Why..." 
+                                   value="${filtros5W2H.why}"
+                                   oninput="filtros5W2H.why = this.value; aplicarFiltros5W2H();">
                             </div>
-                            <div class="col-md-6">
-                                <label class="form-label small">ONDE (Where)?</label>
+                        <div class="col-md-3 col-lg-2">
                                 <input type="text" class="form-control form-control-sm" 
-                                       value="${linha.where || ''}" 
-                                       onchange="atualizarLinha5W2H(${linha.id}, 'where', this.value)">
+                                   placeholder="Filtrar Where..." 
+                                   value="${filtros5W2H.where}"
+                                   oninput="filtros5W2H.where = this.value; aplicarFiltros5W2H();">
                             </div>
-                            <div class="col-md-6">
-                                <label class="form-label small">QUANDO (When)?</label>
+                        <div class="col-md-3 col-lg-2">
                                 <input type="date" class="form-control form-control-sm" 
-                                       id="when-${linha.id}"
-                                       value="${linha.when ? (typeof linha.when === 'string' && linha.when.match(/^\d{4}-\d{2}-\d{2}$/) ? linha.when : new Date(linha.when).toISOString().split('T')[0]) : ''}" 
-                                       onchange="atualizarLinha5W2H(${linha.id}, 'when', this.value)">
+                                   placeholder="Filtrar When..." 
+                                   value="${filtros5W2H.when}"
+                                   onchange="filtros5W2H.when = this.value; aplicarFiltros5W2H();">
                             </div>
-                            <div class="col-md-6">
-                                <label class="form-label small">QUEM (Who)?</label>
+                        <div class="col-md-3 col-lg-2">
+                            <select class="form-select form-select-sm" 
+                                    onchange="filtros5W2H.who = this.value; aplicarFiltros5W2H();">
+                                <option value="">Todos os usuários</option>
+                                ${usuariosPlataforma.map(u => {
+                                    const displayName = u.nome ? `${u.nome}${u.departamento ? ' - ' + u.departamento : ''}` : u.email || u.id;
+                                    const isSelected = filtros5W2H.who === u.id || filtros5W2H.who === u.email || filtros5W2H.who === u.nome;
+                                    return `<option value="${u.id}" ${isSelected ? 'selected' : ''}>${displayName}</option>`;
+                                }).join('')}
+                            </select>
+                        </div>
+                        <div class="col-md-3 col-lg-2">
+                            <input type="text" class="form-control form-control-sm" 
+                                   placeholder="Filtrar How..." 
+                                   value="${filtros5W2H.how}"
+                                   oninput="filtros5W2H.how = this.value; aplicarFiltros5W2H();">
+                        </div>
+                        <div class="col-md-3 col-lg-2">
                                 <select class="form-select form-select-sm" 
-                                        id="who-select-${linha.id}"
+                                    onchange="filtros5W2H.status = this.value; aplicarFiltros5W2H();">
+                                <option value="">Todos os status</option>
+                                <option value="pendente" ${filtros5W2H.status === 'pendente' ? 'selected' : ''}>Pendente</option>
+                                <option value="em_andamento" ${filtros5W2H.status === 'em_andamento' ? 'selected' : ''}>Em andamento</option>
+                                <option value="finalizado" ${filtros5W2H.status === 'finalizado' ? 'selected' : ''}>Finalizado</option>
+                                <option value="atrasado" ${filtros5W2H.status === 'atrasado' ? 'selected' : ''}>Atrasado</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mt-2 text-muted small">
+                        <i class="fas fa-info-circle me-1"></i>
+                        Mostrando ${linhasFiltradas.length} de ${linhas5W2H.length} linha(s)
+                    </div>
+                </div>
+                
+                <!-- Planilha -->
+                <div class="planilha-5w2h">
+                    <div class="table-responsive" style="max-height: 600px; overflow-y: auto;">
+                        <table class="table table-sm mb-0">
+                            <thead>
+                                <tr>
+                                    <th style="min-width: 50px; width: 50px;">#</th>
+                                    <th style="min-width: 200px;"><i class="fas fa-question-circle me-1"></i>What</th>
+                                    <th style="min-width: 200px;"><i class="fas fa-lightbulb me-1"></i>Why</th>
+                                    <th style="min-width: 150px;"><i class="fas fa-map-marker-alt me-1"></i>Where</th>
+                                    <th style="min-width: 120px;"><i class="fas fa-calendar-alt me-1"></i>When</th>
+                                    <th style="min-width: 180px;"><i class="fas fa-user me-1"></i>Who</th>
+                                    <th style="min-width: 200px;"><i class="fas fa-cogs me-1"></i>How</th>
+                                    <th style="min-width: 120px;"><i class="fas fa-dollar-sign me-1"></i>How Much</th>
+                                    <th style="min-width: 100px;"><i class="fas fa-hashtag me-1"></i>How Many</th>
+                                    <th style="min-width: 150px;"><i class="fas fa-flag me-1"></i>Status</th>
+                                    <th style="min-width: 60px; width: 60px;">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+            `;
+            
+            if (linhasFiltradas.length === 0) {
+                html += `
+                    <tr>
+                        <td colspan="11" class="text-center py-4 text-muted">
+                            <i class="fas fa-inbox me-2"></i>Nenhuma linha encontrada
+                        </td>
+                    </tr>
+                `;
+            } else {
+                linhasFiltradas.forEach((linha, index) => {
+                    const whoDisplay = getWhoDisplay(linha.who);
+                    const whenValue = linha.when ? (typeof linha.when === 'string' && linha.when.match(/^\d{4}-\d{2}-\d{2}$/) ? linha.when : new Date(linha.when).toISOString().split('T')[0]) : '';
+                    const howMuchValue = linha.howMuch ? parseFloat(linha.howMuch.toString().replace(/[^\d,.-]/g, '').replace(',', '.')) || '' : '';
+                    const statusValue = linha.status || 'pendente';
+                    
+                    html += `
+                        <tr>
+                            <td class="text-center">${index + 1}</td>
+                            <td>
+                                <input type="text" 
+                                       value="${(linha.what || '').replace(/"/g, '&quot;')}" 
+                                       placeholder="O quê?"
+                                       onchange="atualizarLinha5W2H(${linha.id}, 'what', this.value)">
+                            </td>
+                            <td>
+                                <input type="text" 
+                                       value="${(linha.why || '').replace(/"/g, '&quot;')}" 
+                                       placeholder="Por quê?"
+                                       onchange="atualizarLinha5W2H(${linha.id}, 'why', this.value)">
+                            </td>
+                            <td>
+                                <input type="text" 
+                                       value="${(linha.where || '').replace(/"/g, '&quot;')}" 
+                                       placeholder="Onde?"
+                                       onchange="atualizarLinha5W2H(${linha.id}, 'where', this.value)">
+                            </td>
+                            <td>
+                                <input type="date" 
+                                       value="${whenValue}" 
+                                       onchange="atualizarLinha5W2H(${linha.id}, 'when', this.value)">
+                            </td>
+                            <td>
+                                <select class="form-select form-select-sm" 
                                        onchange="atualizarLinha5W2H(${linha.id}, 'who', this.value)">
-                                    <option value="">Selecione um usuário...</option>
+                                    <option value="">Selecione...</option>
                                     ${usuariosPlataforma.map(u => `
                                         <option value="${u.id}" ${linha.who === u.id ? 'selected' : ''}>
                                             ${u.nome}${u.departamento ? ' - ' + u.departamento : ''}
                                         </option>
                                     `).join('')}
                                 </select>
-                                ${!linha.who || !usuariosPlataforma.find(u => u.id === linha.who) ? `
-                                    <input type="text" class="form-control form-control-sm mt-1" 
-                                           id="who-input-${linha.id}"
-                                           value="${(linha.who && !usuariosPlataforma.find(u => u.id === linha.who) ? linha.who : '').replace(/"/g, "&quot;")}" 
-                                           placeholder="Ou digite o nome do responsável"
-                                           onchange="atualizarLinha5W2H(${linha.id}, 'who', this.value)">
-                                ` : ''}
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label small">COMO (How)?</label>
-                                <input type="text" class="form-control form-control-sm" 
-                                       value="${linha.how || ''}" 
+                            </td>
+                            <td>
+                                <input type="text" 
+                                       value="${(linha.how || '').replace(/"/g, '&quot;')}" 
+                                       placeholder="Como?"
                                        onchange="atualizarLinha5W2H(${linha.id}, 'how', this.value)">
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label small">QUANTO (How much)?</label>
+                            </td>
+                            <td>
                                 <div class="input-group input-group-sm">
-                                    <span class="input-group-text">R$</span>
-                                    <input type="number" class="form-control" 
-                                           id="howMuch-${linha.id}"
+                                    <span class="input-group-text" style="border: none; background: transparent; padding: 0.25rem 0.25rem 0.25rem 0;">R$</span>
+                                    <input type="number" 
                                            step="0.01" 
                                            min="0" 
+                                           value="${howMuchValue}"
                                            placeholder="0,00"
-                                           value="${linha.howMuch ? parseFloat(linha.howMuch.toString().replace(/[^\d,.-]/g, '').replace(',', '.')) || '' : ''}" 
-                                           onchange="atualizarLinha5W2H(${linha.id}, 'howMuch', this.value)"
-                                           onblur="formatarMoeda('howMuch-${linha.id}')">
+                                           onchange="atualizarLinha5W2H(${linha.id}, 'howMuch', this.value)">
                                 </div>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label small">QUANTIDADE (How many)?</label>
-                                <input type="number" class="form-control form-control-sm" 
-                                       id="howMany-${linha.id}"
+                            </td>
+                            <td>
+                                <input type="number" 
                                        step="1" 
                                        min="0" 
-                                       placeholder="0"
                                        value="${linha.howMany || ''}" 
+                                       placeholder="0"
                                        onchange="atualizarLinha5W2H(${linha.id}, 'howMany', this.value)">
-                            </div>
+                            </td>
+                            <td>
+                                <select class="form-select form-select-sm" 
+                                        onchange="atualizarLinha5W2H(${linha.id}, 'status', this.value)">
+                                    <option value="pendente" ${statusValue === 'pendente' ? 'selected' : ''}>Pendente</option>
+                                    <option value="em_andamento" ${statusValue === 'em_andamento' ? 'selected' : ''}>Em andamento</option>
+                                    <option value="finalizado" ${statusValue === 'finalizado' ? 'selected' : ''}>Finalizado</option>
+                                    <option value="atrasado" ${statusValue === 'atrasado' ? 'selected' : ''}>Atrasado</option>
+                                </select>
+                            </td>
+                            <td class="text-center">
+                                <button class="btn btn-sm btn-danger btn-remover-linha" 
+                                        onclick="removerLinha5W2H(${linha.id})"
+                                        title="Remover linha">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                });
+            }
+            
+            html += `
+                            </tbody>
+                        </table>
                         </div>
                     </div>
                 `;
-                container.appendChild(div);
-            });
+            
+            container.innerHTML = html;
         }
         
         async function salvar5W2H() {
@@ -3197,6 +3475,8 @@
                 return;
             }
             
+            const status = document.getElementById('status5w2h').value || 'pendente';
+            
             try {
                 const headers = await getAuthHeaders();
                 const response = await fetch('/api/ferramentas-qualidade', {
@@ -3207,7 +3487,10 @@
                         id: ferramentaAtualId,
                         tipo_ferramenta: '5w2h',
                         titulo: titulo,
-                        dados: { linhas: linhas5W2H },
+                        dados: { 
+                            linhas: linhas5W2H,
+                            status: status
+                        },
                         projeto_id: projetoAtual?.id || null
                     })
                 });
@@ -3271,6 +3554,7 @@
 
         function limpar5W2H() {
             document.getElementById('titulo5w2h').value = '';
+            document.getElementById('status5w2h').value = 'pendente';
             linhas5W2H = [];
             ferramentaAtualId = null;
             renderizarLinhas5W2H();
@@ -4159,6 +4443,8 @@
                     
                     if (f.tipo_ferramenta === '5w2h') {
                         document.getElementById('titulo5w2h').value = f.titulo || '';
+                        const status5w2h = f.dados?.status || 'pendente';
+                        document.getElementById('status5w2h').value = status5w2h;
                         linhas5W2H = f.dados?.linhas || [];
                         // Garantir que usuários estejam carregados antes de renderizar
                         if (usuariosPlataforma.length === 0) {
