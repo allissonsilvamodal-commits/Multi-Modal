@@ -5591,20 +5591,32 @@ app.get('/api/user-activity/:userId', async (req, res) => {
       console.error('❌ Erro ao buscar activity logs:', activityError);
     }
     
+    // Buscar contagem total de activity logs
+    const { count: totalActivityLogs } = await supabaseAdmin
+      .from('user_activity_logs')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', userId);
+    
     // Buscar último login do user_profiles
     const { data: profile, error: profileError } = await supabaseAdmin
       .from('user_profiles')
-      .select('last_login, created_at')
+      .select('last_login, created_at, nome, email')
       .eq('id', userId)
       .maybeSingle();
     
-    // Buscar histórico de coletas
+    // Buscar histórico de coletas - usar historico_movimentacoes que tem usuario_id
     const { data: coletasHistory, error: coletasError } = await supabaseAdmin
-      .from('historico_coletas')
+      .from('historico_movimentacoes')
       .select('acao, detalhes, created_at')
-      .ilike('usuario', userId) // Usar ilike para buscar por string
+      .eq('usuario_id', userId)
       .order('created_at', { ascending: false })
       .limit(50);
+    
+    // Buscar contagem total de coletas (usando historico_movimentacoes)
+    const { count: totalColetas } = await supabaseAdmin
+      .from('historico_movimentacoes')
+      .select('*', { count: 'exact', head: true })
+      .eq('usuario_id', userId);
     
     // Buscar disparos de mensagens
     const { data: disparos, error: disparosError } = await supabaseAdmin
@@ -5614,6 +5626,12 @@ app.get('/api/user-activity/:userId', async (req, res) => {
       .order('created_at', { ascending: false })
       .limit(50);
     
+    // Buscar contagem total de disparos
+    const { count: totalDisparos } = await supabaseAdmin
+      .from('disparos_log')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', userId);
+    
     // Buscar uso do chat com IA
     const { data: chatIA, error: chatError } = await supabaseAdmin
       .from('chat_ia_conversas')
@@ -5621,6 +5639,12 @@ app.get('/api/user-activity/:userId', async (req, res) => {
       .eq('user_id', userId)
       .order('created_at', { ascending: false })
       .limit(50);
+    
+    // Buscar contagem total de chat IA
+    const { count: totalChatIA } = await supabaseAdmin
+      .from('chat_ia_conversas')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', userId);
     
     // Buscar histórico de movimentações em coletas
     const { data: movimentacoes, error: movError } = await supabaseAdmin
@@ -5630,6 +5654,12 @@ app.get('/api/user-activity/:userId', async (req, res) => {
       .order('created_at', { ascending: false })
       .limit(50);
     
+    // Buscar contagem total de movimentações
+    const { count: totalMovimentacoes } = await supabaseAdmin
+      .from('historico_movimentacoes')
+      .select('*', { count: 'exact', head: true })
+      .eq('usuario_id', userId);
+    
     // Buscar cadastros de motoristas realizados pelo usuário
     const { data: cadastros, error: cadastrosError } = await supabaseAdmin
       .from('motoristas')
@@ -5637,6 +5667,12 @@ app.get('/api/user-activity/:userId', async (req, res) => {
       .eq('created_by', userId)
       .order('data_cadastro', { ascending: false })
       .limit(50);
+    
+    // Buscar contagem total de cadastros
+    const { count: totalCadastros } = await supabaseAdmin
+      .from('motoristas')
+      .select('*', { count: 'exact', head: true })
+      .eq('created_by', userId);
     
     if (cadastrosError) {
       console.error('❌ Erro ao buscar cadastros:', cadastrosError);
@@ -5664,7 +5700,14 @@ app.get('/api/user-activity/:userId', async (req, res) => {
         disparos: disparos || [],
         chatIA: chatIA || [],
         movimentacoes: movimentacoes || [],
-        cadastros: cadastros || []
+        cadastros: cadastros || [],
+        // Contagens totais para estatísticas
+        totalActivityLogs: totalActivityLogs || 0,
+        totalColetas: totalColetas || 0,
+        totalDisparos: totalDisparos || 0,
+        totalChatIA: totalChatIA || 0,
+        totalMovimentacoes: totalMovimentacoes || 0,
+        totalCadastros: totalCadastros || 0
       }
     });
   } catch (error) {
@@ -6098,6 +6141,159 @@ app.get('/api/evolution-config', requireAuth, async (req, res) => {
   }
 });
 
+// ========== ATUALIZAR API URL GLOBALMENTE ==========
+app.put('/api/evolution-api/atualizar-url-global', async (req, res) => {
+  try {
+    // Autenticação flexível
+    console.log('🔍 Iniciando autenticação para atualização global de URL...');
+    console.log('📋 Headers recebidos:', {
+      authorization: req.headers.authorization ? 'Presente' : 'Ausente',
+      'x-user-email': req.headers['x-user-email'],
+      'x-user-id': req.headers['x-user-id']
+    });
+    
+    const userInfo = await getUserFromRequest(req);
+    
+    console.log('📋 Resultado getUserFromRequest:', {
+      hasUserInfo: !!userInfo,
+      hasUser: !!(userInfo && userInfo.user),
+      hasUserId: !!(userInfo && userInfo.user && userInfo.user.id),
+      hasError: !!(userInfo && userInfo.error),
+      userId: userInfo?.user?.id,
+      userEmail: userInfo?.user?.email,
+      error: userInfo?.error
+    });
+    
+    // Verificar se há erro ou se não tem usuário
+    if (userInfo?.error || !userInfo?.user || !userInfo.user.id) {
+      const errorMessage = userInfo?.error?.message || 'Não autenticado';
+      console.log('❌ Autenticação falhou - retornando 401:', errorMessage);
+      return res.status(401).json({
+        success: false,
+        error: errorMessage
+      });
+    }
+
+    const userId = userInfo.user.id;
+    const userEmail = userInfo.user.email;
+    
+    console.log('✅ Usuário autenticado:', { userId, userEmail });
+
+    // Verificar se é admin
+    const { data: userProfile, error: profileError } = await supabaseAdmin
+      .from('user_profiles')
+      .select('role')
+      .eq('id', userId)
+      .single();
+
+    if (profileError || !userProfile) {
+      return res.status(403).json({
+        success: false,
+        error: 'Erro ao verificar permissões do usuário'
+      });
+    }
+
+    if (userProfile.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        error: 'Apenas administradores podem atualizar a URL globalmente'
+      });
+    }
+
+    const { api_url } = req.body;
+
+    if (!api_url || typeof api_url !== 'string' || api_url.trim() === '') {
+      return res.status(400).json({
+        success: false,
+        error: 'URL da API é obrigatória'
+      });
+    }
+
+    // Validar formato da URL
+    try {
+      new URL(api_url);
+    } catch (urlError) {
+      return res.status(400).json({
+        success: false,
+        error: 'URL inválida. Use o formato: http://exemplo.com ou https://exemplo.com'
+      });
+    }
+
+    console.log(`🔄 Atualizando API URL globalmente para: ${api_url}`);
+    console.log(`👤 Solicitado por: ${userEmail} (${userId})`);
+
+    // Buscar todas as credenciais para obter os IDs
+    const { data: todasCredenciais, error: fetchError } = await supabaseAdmin
+      .from('user_evolution_apis')
+      .select('id');
+
+    if (fetchError) {
+      console.error('❌ Erro ao buscar credenciais:', fetchError);
+      return res.status(500).json({
+        success: false,
+        error: 'Erro ao buscar credenciais no banco de dados',
+        details: fetchError.message
+      });
+    }
+
+    if (!todasCredenciais || todasCredenciais.length === 0) {
+      return res.json({
+        success: true,
+        message: 'Nenhuma credencial encontrada para atualizar',
+        api_url: api_url.trim(),
+        total_credenciais: 0,
+        total_atualizadas: 0,
+        atualizado_por: userEmail
+      });
+    }
+
+    const ids = todasCredenciais.map(c => c.id);
+    const totalCredenciais = ids.length;
+
+    console.log(`📋 Encontradas ${totalCredenciais} credenciais para atualizar`);
+
+    // Atualizar todas as credenciais usando .in() com os IDs
+    const { data: updated, error: updateError } = await supabaseAdmin
+      .from('user_evolution_apis')
+      .update({ 
+        api_url: api_url.trim(),
+        updated_at: new Date().toISOString()
+      })
+      .in('id', ids)
+      .select('id, user_id, instance_name, api_url');
+
+    if (updateError) {
+      console.error('❌ Erro ao atualizar URLs:', updateError);
+      return res.status(500).json({
+        success: false,
+        error: 'Erro ao atualizar URLs no banco de dados',
+        details: updateError.message
+      });
+    }
+
+    const totalAtualizadas = updated?.length || 0;
+
+    console.log(`✅ API URL atualizada globalmente. Total de credenciais atualizadas: ${totalAtualizadas} de ${totalCredenciais}`);
+
+    res.json({
+      success: true,
+      message: `URL da API atualizada globalmente para ${totalAtualizadas} credenciais`,
+      api_url: api_url.trim(),
+      total_credenciais: totalCredenciais,
+      total_atualizadas: totalAtualizadas,
+      atualizado_por: userEmail
+    });
+
+  } catch (error) {
+    console.error('❌ Erro inesperado ao atualizar URL global:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Erro interno ao atualizar URL',
+      details: error.message
+    });
+  }
+});
+
 // ========== WEBHOOK STATUS EVOLUTION (ALTERNATIVA SEGURA) ==========
 app.get('/webhook/status-evolution', async (req, res) => {
   try {
@@ -6430,8 +6626,31 @@ app.post('/webhook/send-supabase', (req, res, next) => {
     next();
   });
 }, async (req, res) => {
-  const { number, message, usuario, userId } = req.body;
-  const mediaFile = req.file;
+  // Inicializar variáveis no escopo do endpoint
+  let userIdentity = null;
+  let mediaFile = null;
+  let mediaData = null;
+  let number = null;
+  let message = null;
+  let usuario = null;
+  let userId = null;
+  
+  // Função de limpeza definida no início para estar disponível em todo o escopo
+  const cleanupFile = () => {
+    // Com memoryStorage, não há arquivo no disco para deletar
+    // Apenas limpar referências se necessário
+    if (mediaFile) {
+      console.log('🧹 Limpando referências do arquivo de mídia');
+    }
+  };
+
+  try {
+    // Extrair dados do body
+    number = req.body?.number;
+    message = req.body?.message;
+    usuario = req.body?.usuario;
+    userId = req.body?.userId;
+    mediaFile = req.file;
 
   console.log('📤 Nova requisição de envio via Supabase:');
   console.log('👤 Usuário:', usuario);
@@ -6451,15 +6670,6 @@ app.post('/webhook/send-supabase', (req, res, next) => {
     });
   }
   
-  const cleanupFile = () => {
-    // Com memoryStorage, não há arquivo no disco para deletar
-    // Apenas limpar referências se necessário
-    if (mediaFile) {
-      console.log('🧹 Limpando referências do arquivo de mídia');
-    }
-  };
-
-  let mediaData = null;
   if (mediaFile) {
     const isImage = mediaFile.mimetype.startsWith('image/');
     const isAudio = mediaFile.mimetype.startsWith('audio/');
@@ -6584,9 +6794,8 @@ app.post('/webhook/send-supabase', (req, res, next) => {
     }
   }
 
-  try {
     // ✅ Usar userId direto do body se disponível
-    let userIdentity = userId;
+    userIdentity = userId;
 
     // Se userId não foi fornecido, buscar pelo email
     if (!userId && usuario) {
@@ -6655,12 +6864,37 @@ app.post('/webhook/send-supabase', (req, res, next) => {
       });
     }
 
+    // Teste de conexão com a tabela user_evolution_apis
+    console.log('🧪 Testando acesso à tabela user_evolution_apis...');
+    try {
+      const { data: testData, error: testError, count } = await supabaseAdmin
+        .from('user_evolution_apis')
+        .select('*', { count: 'exact', head: true });
+      
+      if (testError) {
+        console.error('❌ Erro ao testar acesso à tabela:', {
+          message: testError.message,
+          code: testError.code,
+          details: testError.details,
+          hint: testError.hint
+        });
+      } else {
+        console.log('✅ Acesso à tabela OK. Total de registros:', count);
+      }
+    } catch (testErr) {
+      console.error('❌ Erro inesperado ao testar tabela:', testErr.message);
+    }
+
     // Buscar credenciais da Evolution API do usuário
     console.log('🔍 Buscando credenciais para user_id:', userIdentity);
+    console.log('🔗 Supabase URL:', process.env.SUPABASE_URL ? 'Configurado' : 'NÃO CONFIGURADO');
+    console.log('🔑 Service Key:', serviceKey ? 'Configurado' : 'NÃO CONFIGURADO');
 
     let userCreds = null;
     let credsError = null;
 
+    try {
+      console.log('📡 Executando query na tabela user_evolution_apis...');
     const { data, error } = await supabaseAdmin
       .from('user_evolution_apis')
       .select('*')
@@ -6673,21 +6907,64 @@ app.post('/webhook/send-supabase', (req, res, next) => {
     userCreds = data;
     credsError = error;
 
+      if (error) {
+        console.error('❌ Erro ao buscar credenciais:', {
+          message: error.message,
+          code: error.code,
+          details: error.details,
+          hint: error.hint
+        });
+      } else {
+        console.log('✅ Query executada com sucesso');
+        if (userCreds) {
+          console.log('✅ Credenciais encontradas:', {
+            instance_name: userCreds.instance_name,
+            api_url: userCreds.api_url,
+            has_api_key: !!userCreds.api_key,
+            active: userCreds.active
+          });
+        } else {
+          console.log('⚠️ Nenhuma credencial ativa encontrada');
+        }
+      }
+
     if (!userCreds) {
       console.log('🔍 Tentando buscar sem filtro de active...');
-      const { data: allCreds } = await supabaseAdmin
+        const { data: allCreds, error: allCredsError } = await supabaseAdmin
         .from('user_evolution_apis')
         .select('*')
         .eq('user_id', userIdentity);
 
-      if (allCreds) {
-        console.log('📋 Credenciais encontradas (ativas e inativas):', allCreds);
+        if (allCredsError) {
+          console.error('❌ Erro ao buscar todas as credenciais:', {
+            message: allCredsError.message,
+            code: allCredsError.code,
+            details: allCredsError.details
+          });
+        } else if (allCreds && allCreds.length > 0) {
+          console.log('📋 Credenciais encontradas (ativas e inativas):', allCreds.map(c => ({
+            instance_name: c.instance_name,
+            active: c.active,
+            is_valid: c.is_valid
+          })));
+        } else {
+          console.log('⚠️ Nenhuma credencial encontrada para este usuário');
+        }
       }
+    } catch (queryError) {
+      console.error('❌ Erro inesperado ao executar query:', {
+        message: queryError.message,
+        stack: queryError.stack
+      });
+      credsError = queryError;
     }
 
     console.log('📋 Resultado da busca:', {
       tem_credenciais: !!userCreds,
-      erro: credsError,
+      erro: credsError ? {
+        message: credsError.message,
+        code: credsError.code
+      } : null,
       user_id_buscado: userIdentity
     });
 
@@ -6812,10 +7089,27 @@ app.post('/webhook/send-supabase', (req, res, next) => {
       }
 
       const errorText = await response.text();
-      console.log('❌ Erro da Evolution (texto):', errorText);
+      console.log('❌ Erro da Evolution (texto):', errorText.substring(0, 500)); // Limitar log a 500 caracteres
       
       // Identificar tipo de erro
-      const tipoErro = identificarTipoErro(null, response, errorText);
+      let tipoErro = 'desconhecido';
+      try {
+        tipoErro = identificarTipoErro(null, response, errorText);
+      } catch (identifyErr) {
+        console.error('❌ Erro ao identificar tipo de erro:', identifyErr.message);
+      }
+      
+      // Extrair mensagem de erro mais amigável se for HTML do ngrok
+      let errorMessage = `❌ Erro ${response.status} do Evolution`;
+      let errorDetails = errorText;
+      
+      if (errorText.includes('ngrok') || errorText.includes('ERR_NGROK')) {
+        errorMessage = '❌ Servidor Evolution API offline (ngrok desconectado)';
+        errorDetails = 'O endpoint do ngrok está offline. Verifique se o servidor Evolution está rodando e se o túnel ngrok está ativo.';
+      } else if (errorText.length > 500) {
+        // Se o erro for muito longo (como HTML), truncar
+        errorDetails = errorText.substring(0, 500) + '... (resposta truncada)';
+      }
       
       // Registrar falha no BI
       try {
@@ -6833,14 +7127,23 @@ app.post('/webhook/send-supabase', (req, res, next) => {
       } catch (logErr) {
         console.error('❌ Falha ao registrar disparo (erro texto):', logErr.message, logErr);
       }
+      
       cleanupFile();
+      
+      // Verificar se a resposta já foi enviada
+      if (!res.headersSent) {
       return res.status(500).json({
         success: false,
-        error: `❌ Erro ${response.status} do Evolution`,
-        details: errorText
+          error: errorMessage,
+          details: errorDetails,
+          statusCode: response.status
       });
+      } else {
+        console.error('❌ Resposta já foi enviada, não é possível enviar erro');
+      }
     }
 
+  // Se chegou aqui, mediaData existe
     const isImage = mediaData.mimetype.startsWith('image/');
     const isAudio = mediaData.mimetype.startsWith('audio/');
     const rawBase64 = mediaData.base64;
@@ -7025,7 +7328,7 @@ app.post('/webhook/send-supabase', (req, res, next) => {
             caption: message
           }
         }
-      },
+    }
     ];
 
     const attemptLogs = [];
@@ -7095,9 +7398,18 @@ app.post('/webhook/send-supabase', (req, res, next) => {
           break;
         }
 
-        const errorText = await response.text();
+      let errorText = '';
+      try {
+        errorText = await response.text();
+        // Limitar log a 500 caracteres para evitar poluição do console
+        const errorTextLog = errorText.length > 500 ? errorText.substring(0, 500) + '... (truncado)' : errorText;
+        attemptLogs.push({ endpoint: attempt.name, status: response.status, body: errorTextLog });
+        console.log(`⚠️ Evolution respondeu ${response.status} em ${attempt.name}:`, errorTextLog);
+      } catch (textErr) {
+        console.error(`❌ Erro ao ler resposta de erro de ${attempt.name}:`, textErr.message);
+        errorText = `Erro ao ler resposta: ${textErr.message}`;
         attemptLogs.push({ endpoint: attempt.name, status: response.status, body: errorText });
-        console.log(`⚠️ Evolution respondeu ${response.status} em ${attempt.name}:`, errorText);
+      }
 
         lastErrorText = errorText;
 
@@ -7176,8 +7488,25 @@ app.post('/webhook/send-supabase', (req, res, next) => {
       });
     }
 
-    // Identificar tipo de erro
-    const tipoErro = identificarTipoErro(null, lastStatus ? { status: lastStatus } : null, lastErrorText);
+  // Identificar tipo de erro
+  let tipoErro = 'desconhecido';
+  try {
+    tipoErro = identificarTipoErro(null, lastStatus ? { status: lastStatus } : null, lastErrorText);
+  } catch (identifyErr) {
+    console.error('❌ Erro ao identificar tipo de erro (mídia):', identifyErr.message);
+  }
+
+  // Extrair mensagem de erro mais amigável se for HTML do ngrok
+  let errorMessage = lastStatus ? `❌ Erro ${lastStatus} do Evolution` : '❌ Evolution não respondeu';
+  let errorDetails = lastErrorText || 'Erro desconhecido';
+  
+  if (lastErrorText && (lastErrorText.includes('ngrok') || lastErrorText.includes('ERR_NGROK'))) {
+    errorMessage = '❌ Servidor Evolution API offline (ngrok desconectado)';
+    errorDetails = 'O endpoint do ngrok está offline. Verifique se o servidor Evolution está rodando e se o túnel ngrok está ativo.';
+  } else if (lastErrorText && lastErrorText.length > 500) {
+    // Se o erro for muito longo (como HTML), truncar
+    errorDetails = lastErrorText.substring(0, 500) + '... (resposta truncada)';
+    }
 
     // Registrar falha no BI
     try {
@@ -7187,50 +7516,77 @@ app.post('/webhook/send-supabase', (req, res, next) => {
           departamento: req.session?.userData?.departamento || null,
           numero: formattedNumber,
           mensagem_tamanho: (message || '').length,
-          status: 'error',
-          tipo_erro: tipoErro
+        status: 'error',
+        tipo_erro: tipoErro
         }
       ]);
-      console.log(`✅ Falha de disparo registrada no BI (mídia) - tipo: ${tipoErro || 'desconhecido'}`);
+    console.log(`✅ Falha de disparo registrada no BI (mídia) - tipo: ${tipoErro || 'desconhecido'}`);
     } catch (logErr) {
       console.error('❌ Falha ao registrar disparo (erro mídia):', logErr.message, logErr);
     }
 
+  // Verificar se a resposta já foi enviada
+  if (!res.headersSent) {
     return res.status(500).json({
       success: false,
-      error: lastStatus ? `❌ Erro ${lastStatus} do Evolution` : '❌ Evolution não respondeu',
-      details: lastErrorText,
+      error: errorMessage,
+      details: errorDetails,
+      statusCode: lastStatus || null,
       tentativas: attemptLogs
     });
+  } else {
+    console.error('❌ Resposta já foi enviada, não é possível enviar erro');
+  }
 
   } catch (error) {
-    console.log('❌ Erro:', error.message);
+    console.error('❌ Erro inesperado no endpoint /webhook/send-supabase:', error);
+    console.error('❌ Stack trace:', error.stack);
     
     // Identificar tipo de erro (geralmente será erro de conexão em catch)
-    const tipoErro = identificarTipoErro(error, null, null);
+    let tipoErro = 'desconhecido';
+    try {
+      tipoErro = identificarTipoErro(error, null, null);
+    } catch (identifyErr) {
+      console.error('❌ Erro ao identificar tipo de erro:', identifyErr);
+    }
     
-    // Registrar falha inesperada no BI
+    // Registrar falha inesperada no BI (apenas se tivermos dados mínimos)
+    if (userIdentity || userId || usuario) {
     try {
       await supabaseAdmin.from('disparos_log').insert([
         {
-          user_id: userIdentity || null,
+            user_id: userIdentity || userId || null,
           departamento: req.session?.userData?.departamento || null,
           numero: (typeof number !== 'undefined') ? String(number) : null,
-          mensagem_tamanho: (message || '').length,
-          status: 'error',
-          tipo_erro: tipoErro
+            mensagem_tamanho: (message || '').length || 0,
+            status: 'error',
+            tipo_erro: tipoErro
         }
       ]);
-      console.log(`✅ Falha inesperada de disparo registrada no BI - tipo: ${tipoErro || 'desconhecido'}`);
+        console.log(`✅ Falha inesperada de disparo registrada no BI - tipo: ${tipoErro || 'desconhecido'}`);
     } catch (logErr) {
       console.error('❌ Falha ao registrar disparo (erro catch):', logErr.message, logErr);
     }
+    }
+    
+    // Limpar arquivo se existir
+    try {
     cleanupFile();
+    } catch (cleanupErr) {
+      console.warn('⚠️ Erro ao limpar arquivo:', cleanupErr.message);
+    }
+    
+    // Retornar resposta de erro
+    if (!res.headersSent) {
     res.status(500).json({
       success: false,
       error: '❌ Erro ao processar envio',
-      details: error.message
+        details: error.message || 'Erro desconhecido',
+        stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
+    } else {
+      console.error('❌ Resposta já foi enviada, não é possível enviar erro');
+    }
   }
 });
 

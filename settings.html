@@ -853,6 +853,45 @@
                                     <strong>Importante:</strong> Cada usuário deve ter suas próprias credenciais da Evolution API para evitar que todas as mensagens saiam do mesmo número. Gerencie suas credenciais aqui.
                                 </div>
                                 
+                                <!-- Atualização Global de URL (Apenas Admin) -->
+                                <div id="secaoAtualizacaoGlobal" class="card mb-4" style="display: none;">
+                                    <div class="card-header bg-warning text-dark">
+                                        <h6 class="mb-0">
+                                            <i class="fas fa-globe me-2"></i>
+                                            Atualização Global de URL da API
+                                        </h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="alert alert-warning mb-3">
+                                            <i class="fas fa-exclamation-triangle me-2"></i>
+                                            <strong>Atenção:</strong> Esta ação atualizará a URL da API para <strong>TODAS</strong> as credenciais de todos os usuários. Use apenas quando o servidor Evolution API mudar de endereço (ex: atualização do ngrok).
+                                        </div>
+                                        <form id="formAtualizarUrlGlobal" onsubmit="atualizarUrlGlobal(event)">
+                                            <div class="row">
+                                                <div class="col-md-8">
+                                                    <label class="form-label">Nova URL da API *</label>
+                                                    <input 
+                                                        type="url" 
+                                                        id="novaUrlGlobal" 
+                                                        class="form-control" 
+                                                        required 
+                                                        placeholder="https://exemplo.ngrok-free.app ou http://127.0.0.1:8080"
+                                                    >
+                                                    <small class="form-text text-muted">
+                                                        Esta URL será aplicada a todas as credenciais existentes
+                                                    </small>
+                                                </div>
+                                                <div class="col-md-4 d-flex align-items-end">
+                                                    <button type="submit" class="btn btn-warning w-100">
+                                                        <i class="fas fa-sync-alt me-2"></i>
+                                                        Atualizar Todas
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+                                
                                 <div class="mb-4">
                                     <button class="btn btn-primary" onclick="abrirModalNovaCredencial()">
                                         <i class="fas fa-plus me-2"></i>Adicionar Credencial
@@ -1599,7 +1638,22 @@
         
         // ========== FUNÇÃO PARA RENDERIZAR HISTÓRICO ==========
         function renderizarHistoricoUsuario(container, data) {
-            const { lastLogin, accountCreated, activityLogs, coletasHistory, disparos, chatIA, movimentacoes, cadastros } = data;
+            const { 
+                lastLogin, 
+                accountCreated, 
+                activityLogs, 
+                coletasHistory, 
+                disparos, 
+                chatIA, 
+                movimentacoes, 
+                cadastros,
+                totalActivityLogs,
+                totalColetas,
+                totalDisparos,
+                totalChatIA,
+                totalMovimentacoes,
+                totalCadastros
+            } = data;
             
             let html = '';
             
@@ -1650,37 +1704,37 @@
                                 <div class="row g-2">
                                     <div class="col-6">
                                         <div class="text-center p-2 bg-light rounded">
-                                            <div class="h4 mb-0 text-primary">${disparos.length}</div>
+                                            <div class="h4 mb-0 text-primary">${totalDisparos || 0}</div>
                                             <small class="text-muted">Disparos</small>
                                         </div>
                                     </div>
                                     <div class="col-6">
                                         <div class="text-center p-2 bg-light rounded">
-                                            <div class="h4 mb-0 text-success">${coletasHistory.length}</div>
+                                            <div class="h4 mb-0 text-success">${totalColetas || 0}</div>
                                             <small class="text-muted">Coletas</small>
                                         </div>
                                     </div>
                                     <div class="col-6">
                                         <div class="text-center p-2 bg-light rounded">
-                                            <div class="h4 mb-0 text-info">${chatIA.length}</div>
+                                            <div class="h4 mb-0 text-info">${totalChatIA || 0}</div>
                                             <small class="text-muted">Chat IA</small>
                                         </div>
                                     </div>
                                     <div class="col-6">
                                         <div class="text-center p-2 bg-light rounded">
-                                            <div class="h4 mb-0 text-warning">${activityLogs.length}</div>
+                                            <div class="h4 mb-0 text-warning">${totalActivityLogs || 0}</div>
                                             <small class="text-muted">Logs</small>
                                         </div>
                                     </div>
                                     <div class="col-6">
                                         <div class="text-center p-2 bg-light rounded">
-                                            <div class="h4 mb-0 text-secondary">${cadastros ? cadastros.length : 0}</div>
+                                            <div class="h4 mb-0 text-secondary">${totalCadastros || 0}</div>
                                             <small class="text-muted">Cadastros</small>
                                         </div>
                                     </div>
                                     <div class="col-6">
                                         <div class="text-center p-2 bg-light rounded">
-                                            <div class="h4 mb-0 text-dark">${movimentacoes.length}</div>
+                                            <div class="h4 mb-0 text-dark">${totalMovimentacoes || 0}</div>
                                             <small class="text-muted">Movimentações</small>
                                         </div>
                                     </div>
@@ -1698,27 +1752,27 @@
                 <ul class="nav nav-tabs mb-3" role="tablist">
                     <li class="nav-item" role="presentation">
                         <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#modal-tab-disparos-${timestamp}" type="button">
-                            <i class="fas fa-paper-plane me-1"></i>Disparos (${disparos.length})
+                            <i class="fas fa-paper-plane me-1"></i>Disparos (${totalDisparos || 0})
                         </button>
                     </li>
                     <li class="nav-item" role="presentation">
                         <button class="nav-link" data-bs-toggle="tab" data-bs-target="#modal-tab-cadastros-${timestamp}" type="button">
-                            <i class="fas fa-user-plus me-1"></i>Cadastros (${cadastros ? cadastros.length : 0})
+                            <i class="fas fa-user-plus me-1"></i>Cadastros (${totalCadastros || 0})
                         </button>
                     </li>
                     <li class="nav-item" role="presentation">
                         <button class="nav-link" data-bs-toggle="tab" data-bs-target="#modal-tab-coletas-${timestamp}" type="button">
-                            <i class="fas fa-clipboard-list me-1"></i>Coletas (${coletasHistory.length})
+                            <i class="fas fa-clipboard-list me-1"></i>Coletas (${totalColetas || 0})
                         </button>
                     </li>
                     <li class="nav-item" role="presentation">
                         <button class="nav-link" data-bs-toggle="tab" data-bs-target="#modal-tab-chat-${timestamp}" type="button">
-                            <i class="fas fa-robot me-1"></i>Chat IA (${chatIA.length})
+                            <i class="fas fa-robot me-1"></i>Chat IA (${totalChatIA || 0})
                         </button>
                     </li>
                     <li class="nav-item" role="presentation">
                         <button class="nav-link" data-bs-toggle="tab" data-bs-target="#modal-tab-logs-${timestamp}" type="button">
-                            <i class="fas fa-history me-1"></i>Logs (${activityLogs.length})
+                            <i class="fas fa-history me-1"></i>Logs (${totalActivityLogs || 0})
                         </button>
                     </li>
                 </ul>
@@ -2826,6 +2880,12 @@
                 
                 renderizarCredenciaisAPI();
                 console.log('✅ Credenciais carregadas:', credenciaisAPI.length);
+                
+                // Mostrar seção de atualização global apenas para admins
+                const secaoAtualizacaoGlobal = document.getElementById('secaoAtualizacaoGlobal');
+                if (secaoAtualizacaoGlobal && currentUser.isAdmin) {
+                    secaoAtualizacaoGlobal.style.display = 'block';
+                }
             } catch (error) {
                 console.error('❌ Erro ao carregar credenciais:', error);
                 credenciaisAPI = [];
@@ -2836,6 +2896,98 @@
                         </td>
                     </tr>
                 `;
+            }
+        }
+
+        async function atualizarUrlGlobal(event) {
+            event.preventDefault();
+            
+            if (!currentUser || !currentUser.isAdmin) {
+                mostrarErro('Apenas administradores podem atualizar a URL globalmente');
+                return;
+            }
+
+            const novaUrl = document.getElementById('novaUrlGlobal').value.trim();
+            
+            if (!novaUrl) {
+                mostrarErro('Por favor, informe a nova URL');
+                return;
+            }
+
+            // Validar formato da URL
+            try {
+                new URL(novaUrl);
+            } catch (urlError) {
+                mostrarErro('URL inválida. Use o formato: http://exemplo.com ou https://exemplo.com');
+                return;
+            }
+
+            // Confirmar ação
+            const confirmar = confirm(
+                `⚠️ ATENÇÃO!\n\n` +
+                `Esta ação atualizará a URL da API para TODAS as credenciais de todos os usuários.\n\n` +
+                `Nova URL: ${novaUrl}\n\n` +
+                `Deseja continuar?`
+            );
+
+            if (!confirmar) {
+                return;
+            }
+
+            try {
+                // Preparar headers de autenticação
+                let authHeaders = {
+                    'Content-Type': 'application/json'
+                };
+                
+                // Tentar obter token do Supabase
+                if (window.supabase) {
+                    try {
+                        const { data: { session } } = await window.supabase.auth.getSession();
+                        if (session && session.access_token) {
+                            authHeaders['Authorization'] = `Bearer ${session.access_token}`;
+                        }
+                    } catch (tokenError) {
+                        console.warn('⚠️ Erro ao obter token:', tokenError);
+                    }
+                }
+                
+                // Adicionar headers de usuário se disponíveis
+                if (currentUser && currentUser.email) {
+                    authHeaders['X-User-Email'] = currentUser.email;
+                }
+                if (currentUser && currentUser.id) {
+                    authHeaders['X-User-Id'] = currentUser.id;
+                }
+
+                const response = await fetch('/api/evolution-api/atualizar-url-global', {
+                    method: 'PUT',
+                    headers: authHeaders,
+                    credentials: 'include',
+                    body: JSON.stringify({ api_url: novaUrl })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Erro ao atualizar URL');
+                }
+
+                mostrarSucesso(
+                    `${data.message}\n` +
+                    `Total de credenciais: ${data.total_credenciais}\n` +
+                    `Atualizadas: ${data.total_atualizadas}`
+                );
+
+                // Limpar campo
+                document.getElementById('novaUrlGlobal').value = '';
+
+                // Recarregar credenciais para mostrar a atualização
+                await carregarCredenciaisAPI();
+
+            } catch (error) {
+                console.error('❌ Erro ao atualizar URL global:', error);
+                mostrarErro(`Erro ao atualizar URL: ${error.message}`);
             }
         }
 

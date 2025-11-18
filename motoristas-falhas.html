@@ -20,20 +20,7 @@
             --dark: #1f2937;
             --light: #f8fafc;
             
-            /* Variáveis para modo claro (padrão) */
-            --bg-body: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            --bg-container: #ffffff;
-            --bg-card: #ffffff;
-            --text-primary: #1f2937;
-            --text-secondary: #6b7280;
-            --text-muted: #9ca3af;
-            --border-color: rgba(0,0,0,0.08);
-            --shadow-card: 0 4px 20px rgba(0,0,0,0.08);
-            --shadow-card-hover: 0 8px 30px rgba(0,0,0,0.12);
-        }
-        
-        /* Variáveis para modo escuro */
-        body.dark-mode {
+            /* Variáveis padrão (modo escuro) */
             --bg-body: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
             --bg-container: #1f2937;
             --bg-card: #374151;
@@ -43,6 +30,19 @@
             --border-color: rgba(255,255,255,0.1);
             --shadow-card: 0 4px 20px rgba(0,0,0,0.3);
             --shadow-card-hover: 0 8px 30px rgba(0,0,0,0.4);
+        }
+        
+        /* Variáveis para modo claro */
+        body.light-mode {
+            --bg-body: linear-gradient(135deg, #eef2ff 0%, #faf5ff 55%, #ffffff 100%);
+            --bg-container: #f8fafc;
+            --bg-card: #ffffff;
+            --text-primary: #0f172a;
+            --text-secondary: #475569;
+            --text-muted: #94a3b8;
+            --border-color: rgba(15,23,42,0.08);
+            --shadow-card: 0 10px 25px rgba(15,23,42,0.08);
+            --shadow-card-hover: 0 15px 32px rgba(15,23,42,0.12);
         }
         
         * {
@@ -80,9 +80,17 @@
             overflow: hidden;
         }
         
-        body:not(.dark-mode) .header {
-            background: linear-gradient(135deg, var(--primary), var(--secondary));
-            border: none;
+        body.light-mode .header {
+            background: rgba(255, 255, 255, 0.95);
+            border: 1px solid rgba(15, 23, 42, 0.08);
+            color: var(--text-primary);
+            box-shadow: 0 15px 35px rgba(15, 23, 42, 0.1);
+        }
+        body.light-mode .header h1 {
+            color: var(--text-primary);
+        }
+        body.light-mode .header p {
+            color: var(--text-secondary);
         }
         
         .header::before {
@@ -140,9 +148,10 @@
             transform: scale(1.05);
         }
         
-        body:not(.dark-mode) .theme-toggle {
-            background: rgba(102, 126, 234, 0.9);
-            border-color: rgba(255, 255, 255, 0.3);
+        body.light-mode .theme-toggle {
+            background: rgba(255, 255, 255, 0.9);
+            border-color: rgba(15, 23, 42, 0.1);
+            color: var(--text-primary);
         }
         
         /* Cards Modernos */
@@ -154,6 +163,15 @@
             margin-bottom: 1.5rem;
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             overflow: hidden;
+        }
+
+        body.light-mode .card,
+        body.light-mode .filter-card,
+        body.light-mode .stats-card,
+        body.light-mode .metric-card {
+            background: var(--bg-card);
+            border: 1px solid rgba(15,23,42,0.08);
+            box-shadow: var(--shadow-card);
         }
         
         .card:hover {
@@ -205,7 +223,7 @@
             overflow: hidden;
         }
         
-        body:not(.dark-mode) .stats-card {
+        body.light-mode .stats-card {
             background: #ffffff;
             border: 1px solid rgba(102, 126, 234, 0.25);
             box-shadow: 0 2px 12px rgba(102, 126, 234, 0.1), 
@@ -1060,10 +1078,12 @@
             
             if (theme === 'dark') {
                 body.classList.add('dark-mode');
+                body.classList.remove('light-mode');
                 if (themeIcon) themeIcon.className = 'fas fa-moon';
                 if (themeText) themeText.textContent = 'Modo Escuro';
             } else {
                 body.classList.remove('dark-mode');
+                body.classList.add('light-mode');
                 if (themeIcon) themeIcon.className = 'fas fa-sun';
                 if (themeText) themeText.textContent = 'Modo Claro';
             }
