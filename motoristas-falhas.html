@@ -319,17 +319,61 @@
         }
         
         .table thead {
-            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            background: linear-gradient(135deg, var(--primary), var(--secondary)) !important;
+            background-color: var(--primary) !important;
         }
         
         .table thead th {
-            border: none;
-            font-weight: 700;
-            color: white;
+            border: none !important;
+            font-weight: 700 !important;
+            color: #ffffff !important;
             text-transform: uppercase;
             font-size: 0.8rem;
             letter-spacing: 0.5px;
             padding: 1rem;
+            background: transparent !important;
+        }
+        
+        /* Garantir visibilidade do thead em todos os modos */
+        body.dark-mode .table thead,
+        body.light-mode .table thead,
+        .table thead {
+            background: linear-gradient(135deg, #667eea, #764ba2) !important;
+            background-color: #667eea !important;
+        }
+        
+        body.dark-mode .table thead th,
+        body.light-mode .table thead th,
+        .table thead th,
+        table.table thead th,
+        .table.table-hover thead th {
+            color: #ffffff !important;
+            background: transparent !important;
+            border: none !important;
+        }
+        
+        /* Sobrescrever qualquer estilo do Bootstrap */
+        .table-hover thead th {
+            color: #ffffff !important;
+        }
+        
+        /* Regras adicionais para garantir visibilidade */
+        .table-responsive .table thead th,
+        .card-body .table thead th,
+        #tableContainer .table thead th {
+            color: #ffffff !important;
+            background: transparent !important;
+        }
+        
+        .table-responsive .table thead {
+            background: linear-gradient(135deg, #667eea, #764ba2) !important;
+        }
+        
+        /* Garantir que o texto seja sempre branco no thead */
+        thead th,
+        table thead th,
+        .table thead tr th {
+            color: #ffffff !important;
         }
         
         .table tbody tr {
@@ -350,6 +394,50 @@
         
         body.dark-mode .table tbody tr:hover {
             background: rgba(102, 126, 234, 0.1);
+        }
+        
+        /* Estilos específicos para modo escuro na tabela */
+        body.dark-mode .table {
+            background: var(--bg-card);
+            color: var(--text-primary);
+        }
+        
+        body.dark-mode .table tbody {
+            background: var(--bg-card);
+        }
+        
+        body.dark-mode .table tbody tr {
+            background: var(--bg-card);
+            border-bottom-color: var(--border-color);
+        }
+        
+        body.dark-mode .table tbody td {
+            background: var(--bg-card);
+            color: var(--text-primary);
+        }
+        
+        body.dark-mode .table tbody td code {
+            background: var(--bg-container);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+        }
+        
+        /* Garantir que todos os textos na tabela sejam visíveis no modo escuro */
+        body.dark-mode .table tbody td,
+        body.dark-mode .table tbody td * {
+            color: var(--text-primary) !important;
+        }
+        
+        body.dark-mode .table tbody td code {
+            color: var(--text-primary) !important;
+        }
+        
+        body.dark-mode .table tbody td span {
+            color: var(--text-primary) !important;
+        }
+        
+        body.dark-mode .table tbody td .text-muted {
+            color: var(--text-secondary) !important;
         }
         .badge-status {
             padding: 0.4rem 0.8rem;
@@ -964,17 +1052,17 @@
                 <div id="tableContainer" style="display: none;">
                     <div class="table-responsive">
                         <table class="table table-hover">
-                            <thead>
+                            <thead style="background: linear-gradient(135deg, #667eea, #764ba2) !important; background-color: #667eea !important;">
                                 <tr>
-                                    <th>Data/Hora</th>
-                                    <th>Número</th>
-                                    <th>Motorista</th>
-                                    <th>Telefone 1</th>
-                                    <th>Telefone 2</th>
-                                    <th>Motivo da Falha</th>
-                                    <th>Status</th>
-                                    <th>Usuário</th>
-                                    <th>Ações</th>
+                                    <th style="color: #ffffff !important; background: transparent !important; border: none !important;">Data/Hora</th>
+                                    <th style="color: #ffffff !important; background: transparent !important; border: none !important;">Número</th>
+                                    <th style="color: #ffffff !important; background: transparent !important; border: none !important;">Motorista</th>
+                                    <th style="color: #ffffff !important; background: transparent !important; border: none !important;">Telefone 1</th>
+                                    <th style="color: #ffffff !important; background: transparent !important; border: none !important;">Telefone 2</th>
+                                    <th style="color: #ffffff !important; background: transparent !important; border: none !important;">Motivo da Falha</th>
+                                    <th style="color: #ffffff !important; background: transparent !important; border: none !important;">Status</th>
+                                    <th style="color: #ffffff !important; background: transparent !important; border: none !important;">Usuário</th>
+                                    <th style="color: #ffffff !important; background: transparent !important; border: none !important;">Ações</th>
                                 </tr>
                             </thead>
                             <tbody id="falhasTableBody">
@@ -1695,10 +1783,10 @@
                 
                 row.innerHTML = `
                     <td style="color: var(--text-primary);">${dataFalha.toLocaleString('pt-BR')}</td>
-                    <td><code style="background: var(--bg-card); padding: 0.25rem 0.5rem; border-radius: 6px; color: var(--primary);">${falha.numero}</code></td>
+                    <td><code style="background: var(--bg-container); padding: 0.25rem 0.5rem; border-radius: 6px; color: var(--primary); border: 1px solid var(--border-color);">${falha.numero}</code></td>
                     <td style="color: var(--text-primary); font-weight: 600;">${motorista ? motorista.nome : '<span style="color: var(--text-muted);">Não encontrado</span>'}</td>
-                    <td><code style="background: var(--bg-card); padding: 0.25rem 0.5rem; border-radius: 6px; color: var(--text-primary);">${motorista ? (motorista.telefone1 || '-') : '-'}</code></td>
-                    <td><code style="background: var(--bg-card); padding: 0.25rem 0.5rem; border-radius: 6px; color: var(--text-primary);">${motorista ? (motorista.telefone2 || '-') : '-'}</code></td>
+                    <td><code style="background: var(--bg-container); padding: 0.25rem 0.5rem; border-radius: 6px; color: var(--text-primary); border: 1px solid var(--border-color);">${motorista ? (motorista.telefone1 || '-') : '-'}</code></td>
+                    <td><code style="background: var(--bg-container); padding: 0.25rem 0.5rem; border-radius: 6px; color: var(--text-primary); border: 1px solid var(--border-color);">${motorista ? (motorista.telefone2 || '-') : '-'}</code></td>
                     <td>
                         <span class="badge badge-status ${badgeClass}" title="${motivo.descricao}">
                             <i class="fas ${motivo.icone} me-1"></i>${motivo.descricao}

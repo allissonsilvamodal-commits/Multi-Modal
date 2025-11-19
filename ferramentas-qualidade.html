@@ -1456,6 +1456,9 @@
                             <button class="btn btn-primary" onclick="exportar5W2H()">
                                 <i class="fas fa-download me-2"></i>Exportar PDF
                             </button>
+                            <button class="btn btn-info" onclick="exportar5W2HExcel()">
+                                <i class="fas fa-file-excel me-2"></i>Exportar Excel
+                            </button>
                             <button class="btn btn-secondary" onclick="limpar5W2H()">
                                 <i class="fas fa-redo me-2"></i>Limpar
                             </button>
@@ -2691,6 +2694,11 @@
                         const status5w2h = dados.status || 'pendente';
                         document.getElementById('status5w2h').value = status5w2h;
                         linhas5W2H = dados.linhas || [];
+                        // Garantir que todas as linhas tenham o campo observacao (compatibilidade com dados antigos)
+                        linhas5W2H = linhas5W2H.map(linha => ({
+                            ...linha,
+                            observacao: linha.observacao || ''
+                        }));
                         if (usuariosPlataforma.length === 0) {
                             await carregarUsuarios();
                         }
@@ -3076,7 +3084,8 @@
                 how: '',
                 howMuch: '',
                 howMany: '',
-                status: 'pendente' // Status padrão por linha
+                status: 'pendente', // Status padrão por linha
+                observacao: '' // Campo de observação
             };
             linhas5W2H.push(linha);
             renderizarLinhas5W2H();
@@ -3091,6 +3100,23 @@
             const linha = linhas5W2H.find(l => l.id === id);
             if (linha) {
                 linha[campo] = valor;
+                
+                // Se o campo for "status", atualizar a cor do select
+                if (campo === 'status') {
+                    const selectElement = document.getElementById(`status-select-${id}`);
+                    if (selectElement) {
+                        const statusColors = {
+                            'finalizado': { bg: '#28a745', text: 'white' },
+                            'em_andamento': { bg: '#ffc107', text: '#000' },
+                            'atrasado': { bg: '#dc3545', text: 'white' },
+                            'pendente': { bg: '#6c757d', text: 'white' }
+                        };
+                        const colors = statusColors[valor] || statusColors['pendente'];
+                        selectElement.style.backgroundColor = colors.bg;
+                        selectElement.style.color = colors.text;
+                        selectElement.style.fontWeight = '600';
+                    }
+                }
                 
                 // Se o campo for "who", sincronizar select e input
                 if (campo === 'who') {
@@ -3251,6 +3277,31 @@
                         padding: 0.25rem 0.5rem;
                         font-size: 0.75rem;
                     }
+                    .planilha-5w2h .status-badge {
+                        padding: 0.25rem 0.5rem;
+                        border-radius: 4px;
+                        font-size: 0.75rem;
+                        font-weight: 600;
+                        display: inline-block;
+                        width: 100%;
+                        text-align: center;
+                    }
+                    .planilha-5w2h .status-pendente {
+                        background-color: #6c757d;
+                        color: white;
+                    }
+                    .planilha-5w2h .status-em_andamento {
+                        background-color: #ffc107;
+                        color: #000;
+                    }
+                    .planilha-5w2h .status-finalizado {
+                        background-color: #28a745;
+                        color: white;
+                    }
+                    .planilha-5w2h .status-atrasado {
+                        background-color: #dc3545;
+                        color: white;
+                    }
                     .filtros-5w2h {
                         background: linear-gradient(135deg, #f8f9ff 0%, #e8edff 100%);
                         padding: 1rem;
@@ -3352,6 +3403,7 @@
                                     <th style="min-width: 120px;"><i class="fas fa-dollar-sign me-1"></i>How Much</th>
                                     <th style="min-width: 100px;"><i class="fas fa-hashtag me-1"></i>How Many</th>
                                     <th style="min-width: 150px;"><i class="fas fa-flag me-1"></i>Status</th>
+                                    <th style="min-width: 200px;"><i class="fas fa-comment me-1"></i>Observação</th>
                                     <th style="min-width: 60px; width: 60px;">Ações</th>
                                 </tr>
                             </thead>
@@ -3361,13 +3413,17 @@
             if (linhasFiltradas.length === 0) {
                 html += `
                     <tr>
-                        <td colspan="11" class="text-center py-4 text-muted">
+                        <td colspan="12" class="text-center py-4 text-muted">
                             <i class="fas fa-inbox me-2"></i>Nenhuma linha encontrada
                         </td>
                     </tr>
                 `;
             } else {
                 linhasFiltradas.forEach((linha, index) => {
+                    // Garantir que campos opcionais existam
+                    if (!linha.observacao) linha.observacao = '';
+                    if (!linha.status) linha.status = 'pendente';
+                    
                     const whoDisplay = getWhoDisplay(linha.who);
                     const whenValue = linha.when ? (typeof linha.when === 'string' && linha.when.match(/^\d{4}-\d{2}-\d{2}$/) ? linha.when : new Date(linha.when).toISOString().split('T')[0]) : '';
                     const howMuchValue = linha.howMuch ? parseFloat(linha.howMuch.toString().replace(/[^\d,.-]/g, '').replace(',', '.')) || '' : '';
@@ -3436,13 +3492,20 @@
                                        onchange="atualizarLinha5W2H(${linha.id}, 'howMany', this.value)">
                             </td>
                             <td>
-                                <select class="form-select form-select-sm" 
-                                        onchange="atualizarLinha5W2H(${linha.id}, 'status', this.value)">
+                                <select id="status-select-${linha.id}" class="form-select form-select-sm status-select" 
+                                        onchange="atualizarLinha5W2H(${linha.id}, 'status', this.value)"
+                                        style="background-color: ${statusValue === 'finalizado' ? '#28a745' : statusValue === 'em_andamento' ? '#ffc107' : statusValue === 'atrasado' ? '#dc3545' : '#6c757d'}; color: ${statusValue === 'em_andamento' ? '#000' : 'white'}; font-weight: 600;">
                                     <option value="pendente" ${statusValue === 'pendente' ? 'selected' : ''}>Pendente</option>
                                     <option value="em_andamento" ${statusValue === 'em_andamento' ? 'selected' : ''}>Em andamento</option>
                                     <option value="finalizado" ${statusValue === 'finalizado' ? 'selected' : ''}>Finalizado</option>
                                     <option value="atrasado" ${statusValue === 'atrasado' ? 'selected' : ''}>Atrasado</option>
                                 </select>
+                            </td>
+                            <td>
+                                <input type="text" 
+                                       value="${(linha.observacao || '').replace(/"/g, '&quot;')}" 
+                                       placeholder="Observações..."
+                                       onchange="atualizarLinha5W2H(${linha.id}, 'observacao', this.value)">
                             </td>
                             <td class="text-center">
                                 <button class="btn btn-sm btn-danger btn-remover-linha" 
@@ -3513,7 +3576,33 @@
         function exportar5W2H() {
             const titulo = document.getElementById('titulo5w2h').value || 'Análise 5W2H';
             
-            let htmlLinhas = linhas5W2H.map((linha, index) => `
+            // Função para obter o texto do status
+            const getStatusText = (status) => {
+                switch(status) {
+                    case 'finalizado': return 'Finalizado';
+                    case 'em_andamento': return 'Em andamento';
+                    case 'atrasado': return 'Atrasado';
+                    default: return 'Pendente';
+                }
+            };
+            
+            // Função para obter a cor do status
+            const getStatusColor = (status) => {
+                switch(status) {
+                    case 'finalizado': return '#28a745';
+                    case 'em_andamento': return '#ffc107';
+                    case 'atrasado': return '#dc3545';
+                    default: return '#6c757d';
+                }
+            };
+            
+            let htmlLinhas = linhas5W2H.map((linha, index) => {
+                const status = linha.status || 'pendente';
+                const statusText = getStatusText(status);
+                const statusColor = getStatusColor(status);
+                const textColor = status === 'em_andamento' ? '#000' : '#fff';
+                
+                return `
                 <tr>
                     <td><strong>Linha ${index + 1}</strong></td>
                     <td>${linha.what || '-'}</td>
@@ -3524,32 +3613,150 @@
                     <td>${linha.how || '-'}</td>
                     <td>${formatarExibicaoMoeda(linha.howMuch)}</td>
                     <td>${linha.howMany || '-'}</td>
+                    <td style="background-color: ${statusColor}; color: ${textColor}; font-weight: 600; text-align: center;">${statusText}</td>
+                    <td>${linha.observacao || '-'}</td>
                 </tr>
-            `).join('');
+            `;
+            }).join('');
             
             const conteudo = `
                 <h2>${titulo}</h2>
-                <table class="table table-bordered">
+                <table class="table table-bordered" style="width: 100%; border-collapse: collapse;">
                     <thead>
-                        <tr>
-                            <th>#</th>
-                            <th>O QUÊ</th>
-                            <th>POR QUÊ</th>
-                            <th>ONDE</th>
-                            <th>QUANDO</th>
-                            <th>QUEM</th>
-                            <th>COMO</th>
-                            <th>QUANTO</th>
-                            <th>QUANTIDADE</th>
+                        <tr style="background-color: #667eea; color: white;">
+                            <th style="padding: 8px; border: 1px solid #ddd;">#</th>
+                            <th style="padding: 8px; border: 1px solid #ddd;">O QUÊ</th>
+                            <th style="padding: 8px; border: 1px solid #ddd;">POR QUÊ</th>
+                            <th style="padding: 8px; border: 1px solid #ddd;">ONDE</th>
+                            <th style="padding: 8px; border: 1px solid #ddd;">QUANDO</th>
+                            <th style="padding: 8px; border: 1px solid #ddd;">QUEM</th>
+                            <th style="padding: 8px; border: 1px solid #ddd;">COMO</th>
+                            <th style="padding: 8px; border: 1px solid #ddd;">QUANTO</th>
+                            <th style="padding: 8px; border: 1px solid #ddd;">QUANTIDADE</th>
+                            <th style="padding: 8px; border: 1px solid #ddd;">STATUS</th>
+                            <th style="padding: 8px; border: 1px solid #ddd;">OBSERVAÇÃO</th>
                         </tr>
                     </thead>
                     <tbody>
-                        ${htmlLinhas || '<tr><td colspan="9">Nenhuma linha cadastrada</td></tr>'}
+                        ${htmlLinhas || '<tr><td colspan="11">Nenhuma linha cadastrada</td></tr>'}
                     </tbody>
                 </table>
             `;
             
             imprimirConteudo(conteudo, titulo);
+        }
+
+        function exportar5W2HExcel() {
+            const titulo = document.getElementById('titulo5w2h').value || 'Análise 5W2H';
+            
+            // Função para obter o texto do status
+            const getStatusText = (status) => {
+                switch(status) {
+                    case 'finalizado': return 'Finalizado';
+                    case 'em_andamento': return 'Em andamento';
+                    case 'atrasado': return 'Atrasado';
+                    default: return 'Pendente';
+                }
+            };
+            
+            // Cabeçalhos
+            const headers = [
+                '#',
+                'O QUÊ',
+                'POR QUÊ',
+                'ONDE',
+                'QUANDO',
+                'QUEM',
+                'COMO',
+                'QUANTO',
+                'QUANTIDADE',
+                'STATUS',
+                'OBSERVAÇÃO'
+            ];
+            
+            // Criar conteúdo HTML para Excel
+            let htmlContent = `
+                <html>
+                    <head>
+                        <meta charset="UTF-8">
+                        <style>
+                            table { border-collapse: collapse; width: 100%; }
+                            th { background-color: #667eea; color: white; font-weight: bold; padding: 8px; text-align: left; border: 1px solid #ddd; }
+                            td { padding: 8px; border: 1px solid #ddd; }
+                            tr:nth-child(even) { background-color: #f2f2f2; }
+                            .status-finalizado { background-color: #28a745; color: white; font-weight: 600; }
+                            .status-em_andamento { background-color: #ffc107; color: #000; font-weight: 600; }
+                            .status-pendente { background-color: #6c757d; color: white; font-weight: 600; }
+                            .status-atrasado { background-color: #dc3545; color: white; font-weight: 600; }
+                        </style>
+                    </head>
+                    <body>
+                        <h2>${titulo}</h2>
+                        <table>
+                            <thead>
+                                <tr>
+                                    ${headers.map(h => `<th>${h}</th>`).join('')}
+                                </tr>
+                            </thead>
+                            <tbody>
+            `;
+            
+            linhas5W2H.forEach((linha, index) => {
+                const status = linha.status || 'pendente';
+                const statusText = getStatusText(status);
+                const statusClass = `status-${status}`;
+                
+                const escaparHTML = (texto) => {
+                    if (texto === null || texto === undefined) return '';
+                    return String(texto)
+                        .replace(/&/g, '&amp;')
+                        .replace(/</g, '&lt;')
+                        .replace(/>/g, '&gt;')
+                        .replace(/"/g, '&quot;')
+                        .replace(/'/g, '&#39;');
+                };
+                
+                const whoDisplay = linha.who && usuariosPlataforma.find(u => u.id === linha.who) 
+                    ? usuariosPlataforma.find(u => u.id === linha.who).nome 
+                    : linha.who || '-';
+                
+                htmlContent += '<tr>';
+                htmlContent += `<td>${index + 1}</td>`;
+                htmlContent += `<td>${escaparHTML(linha.what || '-')}</td>`;
+                htmlContent += `<td>${escaparHTML(linha.why || '-')}</td>`;
+                htmlContent += `<td>${escaparHTML(linha.where || '-')}</td>`;
+                htmlContent += `<td>${formatarData5W2H(linha.when)}</td>`;
+                htmlContent += `<td>${escaparHTML(whoDisplay)}</td>`;
+                htmlContent += `<td>${escaparHTML(linha.how || '-')}</td>`;
+                htmlContent += `<td>${formatarExibicaoMoeda(linha.howMuch)}</td>`;
+                htmlContent += `<td>${linha.howMany || '-'}</td>`;
+                htmlContent += `<td class="${statusClass}">${statusText}</td>`;
+                htmlContent += `<td>${escaparHTML(linha.observacao || '-')}</td>`;
+                htmlContent += '</tr>';
+            });
+            
+            htmlContent += `
+                            </tbody>
+                        </table>
+                    </body>
+                </html>
+            `;
+            
+            // Criar arquivo e fazer download
+            const blob = new Blob(['\ufeff' + htmlContent], { type: 'application/vnd.ms-excel;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            const dataAtual = new Date().toISOString().split('T')[0];
+            const nomeArquivo = `${titulo.replace(/[^a-z0-9]/gi, '_')}_${dataAtual}.xls`;
+
+            link.setAttribute('href', url);
+            link.setAttribute('download', nomeArquivo);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            alert(`✅ Arquivo Excel exportado com sucesso!\n\nTotal de registros: ${linhas5W2H.length}`);
         }
 
         function limpar5W2H() {
@@ -4446,6 +4653,11 @@
                         const status5w2h = f.dados?.status || 'pendente';
                         document.getElementById('status5w2h').value = status5w2h;
                         linhas5W2H = f.dados?.linhas || [];
+                        // Garantir que todas as linhas tenham o campo observacao (compatibilidade com dados antigos)
+                        linhas5W2H = linhas5W2H.map(linha => ({
+                            ...linha,
+                            observacao: linha.observacao || ''
+                        }));
                         // Garantir que usuários estejam carregados antes de renderizar
                         if (usuariosPlataforma.length === 0) {
                             await carregarUsuarios();

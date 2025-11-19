@@ -1519,6 +1519,14 @@
                     console.log('📊 Status disponível:', dados.status);
                     console.log('📊 Linhas disponíveis:', dados.linhas?.length || 0);
                     
+                    // Garantir que todas as linhas tenham o campo observacao (compatibilidade com dados antigos)
+                    if (dados.linhas && Array.isArray(dados.linhas)) {
+                        dados.linhas = dados.linhas.map(linha => ({
+                            ...linha,
+                            observacao: linha.observacao || ''
+                        }));
+                    }
+                    
                     html += '<div class="mt-4">';
                     
                     // Header com status destacado
@@ -1721,10 +1729,17 @@
                                                 <th style="min-width: 120px;"><i class="fas fa-dollar-sign me-1"></i>How Much</th>
                                                 <th style="min-width: 100px;"><i class="fas fa-hashtag me-1"></i>How Many</th>
                                                 <th style="min-width: 150px;"><i class="fas fa-flag me-1"></i>Status</th>
+                                                <th style="min-width: 200px;"><i class="fas fa-comment me-1"></i>Observação</th>
                                             </tr>
                                         </thead>
                                         <tbody>
                         `;
+                        
+                        // Garantir que todas as linhas tenham o campo observacao (compatibilidade com dados antigos)
+                        linhasFiltradas = linhasFiltradas.map(linha => ({
+                            ...linha,
+                            observacao: linha.observacao || ''
+                        }));
                         
                         linhasFiltradas.forEach((linha, index) => {
                             const rowClass = index % 2 === 0 ? '' : 'bg-light';
@@ -1768,15 +1783,15 @@
                                 ? linha.howMany.toString() 
                                 : ((linha.how_many !== undefined && linha.how_many !== null && linha.how_many !== '') ? linha.how_many.toString() : '-');
                             
-                            // Status
+                            // Status com cores corretas
                             const statusValue = linha.status || 'pendente';
                             const statusLabels = {
-                                'pendente': { label: 'Pendente', class: 'warning' },
-                                'em_andamento': { label: 'Em andamento', class: 'info' },
-                                'finalizado': { label: 'Finalizado', class: 'success' },
-                                'atrasado': { label: 'Atrasado', class: 'danger' }
+                                'pendente': { label: 'Pendente', class: 'secondary', color: '#6c757d' },
+                                'em_andamento': { label: 'Em andamento', class: 'warning', color: '#ffc107' },
+                                'finalizado': { label: 'Finalizado', class: 'success', color: '#28a745' },
+                                'atrasado': { label: 'Atrasado', class: 'danger', color: '#dc3545' }
                             };
-                            const statusInfo = statusLabels[statusValue] || { label: statusValue, class: 'secondary' };
+                            const statusInfo = statusLabels[statusValue] || { label: statusValue, class: 'secondary', color: '#6c757d' };
                             
                             html += `
                                 <tr class="${rowClass}">
@@ -1789,7 +1804,8 @@
                                     <td>${escapeHtml(linha.how || '-')}</td>
                                     <td><strong style="color: #28a745;">${escapeHtml(howMuchDisplay)}</strong></td>
                                     <td><span class="badge bg-secondary">${escapeHtml(howManyDisplay)}</span></td>
-                                    <td><span class="badge bg-${statusInfo.class}">${statusInfo.label}</span></td>
+                                    <td><span class="badge" style="background-color: ${statusInfo.color}; color: ${statusValue === 'em_andamento' ? '#000' : '#fff'}; font-weight: 600;">${statusInfo.label}</span></td>
+                                    <td>${escapeHtml(linha.observacao || '-')}</td>
                                 </tr>
                             `;
                         });
