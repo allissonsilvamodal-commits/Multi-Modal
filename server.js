@@ -2296,7 +2296,7 @@ app.post('/api/motoristas/chat-login', express.json(), async (req, res) => {
         chatState.step = 'awaiting_login_phone';
         return sendMessage({
           state: chatState.step,
-          reply: 'Perfeito! Informe seu telefone com DDD (ex: 5511999998888) para buscarmos sua conta.'
+          reply: 'Perfeito! Informe seu telefone com DDD (ex: 11999998888). O código do país (55) será adicionado automaticamente.'
         });
       }
 
@@ -2326,26 +2326,44 @@ app.post('/api/motoristas/chat-login', express.json(), async (req, res) => {
     if (chatState.mode === 'login') {
       if (chatState.step === 'awaiting_login_phone') {
         const rawDigits = inputRaw.replace(/\D/g, '');
-        const normalizedPhone = normalizePhone(rawDigits);
-        if (!normalizedPhone || normalizedPhone.length < 10 || normalizedPhone.length > 11) {
+        
+        // Aceitar apenas DDD + 9 + número (11 dígitos) - o 55 será adicionado automaticamente
+        let phoneWithCountryCode = rawDigits;
+        
+        // Se já começar com 55, remover para validar apenas o formato brasileiro
+        if (rawDigits.startsWith('55') && rawDigits.length === 13) {
+          phoneWithCountryCode = rawDigits.slice(2); // Remove o 55
+        }
+        
+        // Validar formato: DDD (2 dígitos) + 9 + número (8 dígitos) = 11 dígitos
+        // Também aceitar números antigos sem o 9 (10 dígitos) para compatibilidade
+        const isValidFormat = /^\d{2}9\d{8}$/.test(phoneWithCountryCode) || 
+                              (phoneWithCountryCode.length === 10 && /^\d{2}\d{8}$/.test(phoneWithCountryCode));
+        
+        if (!isValidFormat) {
           return sendMessage({
-            reply: 'O telefone informado parece inválido. Envie novamente usando apenas números, incluindo o DDD.',
+            reply: 'O telefone informado parece inválido. Informe no formato DDD + 9 + número (ex: 11999998888). O código do país (55) será adicionado automaticamente.',
             state: chatState.step,
             error: true
           });
         }
 
+        // Adicionar 55 automaticamente se não estiver presente
+        const fullPhoneNumber = rawDigits.startsWith('55') ? rawDigits : '55' + phoneWithCountryCode;
+        const normalizedPhone = normalizePhone(fullPhoneNumber);
+
         chatState.step = 'awaiting_login_password';
-        const candidateEmails = buildMotoristaEmailVariations(rawDigits || normalizedPhone);
+        const candidateEmails = buildMotoristaEmailVariations(fullPhoneNumber || normalizedPhone);
         const phoneCandidates = Array.from(new Set([
           normalizedPhone,
-          rawDigits || '',
+          fullPhoneNumber,
+          phoneWithCountryCode,
           rawDigits?.startsWith('55') && rawDigits.length > 2 ? rawDigits.slice(2) : null,
           normalizedPhone.length > 7 ? normalizedPhone.slice(-7) : null
         ].filter(Boolean)));
 
         chatState.data.telefone = normalizedPhone;
-        chatState.data.telefoneCompleto = rawDigits || normalizedPhone;
+        chatState.data.telefoneCompleto = fullPhoneNumber;
         chatState.data.emailCandidates = candidateEmails;
         chatState.data.email = candidateEmails[0] || buildMotoristaEmail(normalizedPhone);
 
@@ -2552,21 +2570,33 @@ app.post('/api/motoristas/chat-login', express.json(), async (req, res) => {
         chatState.step = 'awaiting_signup_phone';
         return sendMessage({
           state: chatState.step,
-      reply: 'Informe seu telefone principal no formato 55DDDNXXXXXXXX (ex: 5581999998888).'
+      reply: 'Informe seu telefone principal no formato DDD + 9 + número (ex: 81999998888). O código do país (55) será adicionado automaticamente.'
         });
       }
 
       if (chatState.step === 'awaiting_signup_phone') {
     const digits = inputRaw.replace(/\D/g, '');
-    if (!/^55\d{2}9\d{8}$/.test(digits)) {
+    
+    // Aceitar apenas DDD + 9 + número (11 dígitos) - o 55 será adicionado automaticamente
+    let phoneWithCountryCode = digits;
+    
+    // Se já começar com 55, remover para validar apenas o formato brasileiro
+    if (digits.startsWith('55') && digits.length === 13) {
+      phoneWithCountryCode = digits.slice(2); // Remove o 55
+    }
+    
+    // Validar formato: DDD (2 dígitos) + 9 + número (8 dígitos) = 11 dígitos
+    if (!/^\d{2}9\d{8}$/.test(phoneWithCountryCode)) {
           return sendMessage({
-        reply: 'O número precisa seguir o padrão 55 + DDD + 9 + número (ex: 5581999998888).',
+        reply: 'O número precisa seguir o padrão DDD + 9 + número (ex: 81999998888). O código do país (55) será adicionado automaticamente.',
             state: chatState.step,
             error: true
           });
         }
 
-    const normalizedPhone = normalizePhone(digits);
+    // Adicionar 55 automaticamente se não estiver presente
+    const fullPhoneNumber = digits.startsWith('55') ? digits : '55' + phoneWithCountryCode;
+    const normalizedPhone = normalizePhone(fullPhoneNumber);
         const email = buildMotoristaEmail(normalizedPhone);
         try {
           const { data: existingUser } = await supabaseAdmin.auth.admin.getUserByEmail(email);
@@ -2576,7 +2606,7 @@ app.post('/api/motoristas/chat-login', express.json(), async (req, res) => {
             chatState.data.telefone = normalizedPhone;
             chatState.data.email = email;
             chatState.data.supabaseUserId = existingUser.user.id;
-        chatState.data.telefoneCompleto = digits;
+        chatState.data.telefoneCompleto = fullPhoneNumber;
             return sendMessage({
               state: chatState.step,
               reply: 'Encontramos um cadastro com esse telefone. Informe sua senha para entrar.',
@@ -2592,7 +2622,7 @@ app.post('/api/motoristas/chat-login', express.json(), async (req, res) => {
         }
 
     chatState.data.telefone = normalizedPhone;
-    chatState.data.telefoneCompleto = digits;
+    chatState.data.telefoneCompleto = fullPhoneNumber;
         chatState.data.email = email;
     chatState.step = 'awaiting_signup_state';
         return sendMessage({
@@ -3639,7 +3669,13 @@ app.get('/api/motoristas/documentos/status', async (req, res) => {
       .order('created_at', { ascending: false });
 
     if (docsError) {
+      console.error('❌ Erro ao buscar documentos do motorista:', docsError);
       throw docsError;
+    }
+
+    console.log('📋 Documentos encontrados para motorista', motorista.id, ':', documentos?.length || 0);
+    if (documentos && documentos.length > 0) {
+      console.log('📄 Documentos:', JSON.stringify(documentos.map(d => ({ id: d.id, categoria: d.categoria, nome: d.nome_arquivo })), null, 2));
     }
 
     const documentosComUrls = await injectSignedUrls(documentos || []);
@@ -4550,9 +4586,11 @@ app.post('/api/motoristas/coletas/:coletaId/documentos', uploadDocumentos.array(
 
       if (motoristaDocsPayload.length) {
         console.log('📁 Tentando inserir', motoristaDocsPayload.length, 'documento(s) permanente(s) do motorista');
-        const { error: motoristaDocsError } = await supabaseAdmin
+        console.log('📋 Payload dos documentos:', JSON.stringify(motoristaDocsPayload, null, 2));
+        const { data: motoristaDocsInseridos, error: motoristaDocsError } = await supabaseAdmin
           .from('motorista_documentos')
-          .insert(motoristaDocsPayload);
+          .insert(motoristaDocsPayload)
+          .select('id, categoria, motorista_id, nome_arquivo');
 
         if (motoristaDocsError) {
           // Se a tabela não existir, apenas logar como aviso
@@ -4561,10 +4599,14 @@ app.post('/api/motoristas/coletas/:coletaId/documentos', uploadDocumentos.array(
               motoristaDocsError.message?.includes('motorista_documentos')) {
             console.warn('⚠️ Tabela motorista_documentos não encontrada. Documentos serão salvos apenas em anexos.');
           } else {
+            console.error('❌ Erro ao inserir documentos do motorista:', motoristaDocsError);
             throw motoristaDocsError;
           }
         } else {
-          console.log('✅ Documentos permanentes do motorista inseridos com sucesso');
+          console.log('✅ Documentos permanentes do motorista inseridos com sucesso:', motoristaDocsInseridos?.length || 0);
+          if (motoristaDocsInseridos && motoristaDocsInseridos.length > 0) {
+            console.log('📄 Documentos inseridos:', JSON.stringify(motoristaDocsInseridos, null, 2));
+          }
         }
       }
     } catch (docError) {
