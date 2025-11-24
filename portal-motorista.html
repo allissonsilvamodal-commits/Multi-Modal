@@ -2540,7 +2540,10 @@
     // Função para verificar se o cadastro está completo
     function isCadastroCompleto() {
       const motorista = state.motorista;
-      if (!motorista) return false;
+      if (!motorista) {
+        console.log('❌ isCadastroCompleto: Sem motorista');
+        return false;
+      }
       
       // Verificar se tem nome válido
       const nome = motorista.nome || '';
@@ -2552,12 +2555,45 @@
       const telefoneValido = telefoneLimpo.length >= 12 || (telefoneLimpo.length >= 10 && !telefoneLimpo.startsWith('55'));
       
       // Verificar campos obrigatórios
-      const temEstado = !!motorista.estado;
+      // Normalizar estado - pode vir como string, null, undefined ou objeto vazio
+      let estadoValue = motorista.estado;
+      
+      // Se estado vier como objeto, tentar extrair o valor
+      if (estadoValue && typeof estadoValue === 'object' && estadoValue !== null) {
+        // Tentar extrair valor de objeto
+        estadoValue = estadoValue.value || estadoValue.estado || String(estadoValue);
+        console.warn('⚠️ Estado veio como objeto, tentando extrair:', {
+          estadoOriginal: motorista.estado,
+          estadoExtraido: estadoValue
+        });
+      }
+      
+      // Normalizar para string
+      const estadoNormalizado = (estadoValue && (typeof estadoValue === 'string' || typeof estadoValue === 'number')) 
+        ? String(estadoValue).trim().toUpperCase() 
+        : null;
+      
+      const temEstado = !!estadoNormalizado && estadoNormalizado.length === 2 && estadoNormalizado !== 'NULL' && estadoNormalizado !== 'UNDEFINED';
       const temClasseVeiculo = !!(motorista.classeVeiculo || motorista.classe_veiculo);
       const temTipoVeiculo = !!(motorista.tipoVeiculo || motorista.tipo_veiculo);
       const temTipoCarroceria = !!(motorista.tipoCarroceria || motorista.tipo_carroceria);
       
-      return isNomeValido && telefoneValido && temEstado && temClasseVeiculo && temTipoVeiculo && temTipoCarroceria;
+      const resultado = isNomeValido && telefoneValido && temEstado && temClasseVeiculo && temTipoVeiculo && temTipoCarroceria;
+      
+      console.log('🔍 isCadastroCompleto:', {
+        isNomeValido,
+        telefoneValido,
+        temEstado,
+        estado: motorista.estado,
+        estadoNormalizado: estadoNormalizado,
+        estadoType: typeof motorista.estado,
+        temClasseVeiculo,
+        temTipoVeiculo,
+        temTipoCarroceria,
+        resultado
+      });
+      
+      return resultado;
     }
 
     async function prepararAssumirOportunidade(coletaId) {
@@ -2575,7 +2611,12 @@
           if (viagensResult.motorista) {
             state.motorista = viagensResult.motorista;
             atualizarCabecalho();
-            console.log('✅ Dados do motorista recarregados antes de verificar cadastro:', state.motorista);
+            console.log('✅ Dados do motorista recarregados antes de verificar cadastro:', {
+              ...state.motorista,
+              estado: state.motorista.estado,
+              temEstado: !!state.motorista.estado,
+              estadoType: typeof state.motorista.estado
+            });
           }
         }
       } catch (reloadError) {
@@ -3203,13 +3244,16 @@
         return;
       }
 
+      // Normalizar estado para maiúsculo e garantir 2 caracteres
+      const estadoNormalizado = estado ? estado.trim().toUpperCase().substring(0, 2) : null;
+      
       const payload = {
         nome,
         cnh: elements.campoCnh?.value.trim() || null,
         categoriaCnh: elements.campoCategoriaCnh?.value || null,
         telefone: telefone1,
         telefoneSecundario: telefone2,
-        estado: estado,
+        estado: estadoNormalizado,
         classeVeiculo: classeVeiculoSelecionada,
         tipoVeiculo: tipoVeiculo,
         tipoCarroceria: tipoCarroceria,
@@ -3218,6 +3262,8 @@
         placaCarreta2: normalizePlate(elements.campoPlacaCarreta2?.value || ''),
         placaCarreta3: normalizePlate(elements.campoPlacaCarreta3?.value || '')
       };
+      
+      console.log('📤 Enviando payload de cadastro:', { ...payload, telefone: '***', telefoneSecundario: '***' });
 
       try {
         elements.btnSalvarCadastro.disabled = true;
@@ -4063,10 +4109,15 @@
 
     async function salvarCadastroViaChat() {
       try {
+        // Normalizar estado para maiúsculo e garantir 2 caracteres
+        const estadoNormalizado = chatCadastroState.data.estado 
+          ? chatCadastroState.data.estado.trim().toUpperCase().substring(0, 2) 
+          : null;
+        
         const payload = {
           nome: chatCadastroState.data.nome,
           telefone: chatCadastroState.data.telefone,
-          estado: chatCadastroState.data.estado,
+          estado: estadoNormalizado,
           classeVeiculo: chatCadastroState.data.classeVeiculo,
           tipoVeiculo: chatCadastroState.data.tipoVeiculo,
           tipoCarroceria: chatCadastroState.data.tipoCarroceria,
@@ -4075,6 +4126,8 @@
           placaCarreta2: null,
           placaCarreta3: null
         };
+        
+        console.log('📤 Enviando payload de cadastro via chat:', { ...payload, telefone: '***' });
 
         const response = await fetch('/api/motoristas/auth/profile', {
           method: 'POST',
@@ -4113,7 +4166,13 @@
             if (viagensResult.motorista) {
               state.motorista = viagensResult.motorista;
               atualizarCabecalho();
-              console.log('✅ Dados do motorista recarregados após salvamento:', state.motorista);
+              console.log('✅ Dados do motorista recarregados após salvamento:', {
+                ...state.motorista,
+                estado: state.motorista.estado,
+                estadoType: typeof state.motorista.estado,
+                estadoValue: state.motorista.estado,
+                temEstado: !!state.motorista.estado
+              });
             }
           }
         } catch (reloadError) {

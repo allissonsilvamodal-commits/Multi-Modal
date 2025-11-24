@@ -2354,6 +2354,28 @@
                 
                 console.log('✅ Supabase inicializado com sucesso!');
                 
+                // Configurar listener de autenticação para detectar sessões expiradas
+                supabase.auth.onAuthStateChange((event, session) => {
+                    console.log('🔐 Mudança de autenticação detectada:', event);
+                    
+                    if (event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED') {
+                        // Limpar cache de token quando sessão expira ou é atualizada
+                        supabaseAccessToken = null;
+                        supabaseTokenExpiry = 0;
+                        
+                        if (event === 'SIGNED_OUT') {
+                            console.log('🚪 Sessão expirada, redirecionando para login...');
+                            localStorage.removeItem('loggedInUser');
+                            window.location.href = 'login.html';
+                        } else if (event === 'TOKEN_REFRESHED' && session?.access_token) {
+                            // Atualizar token em cache quando for atualizado
+                            supabaseAccessToken = session.access_token;
+                            supabaseTokenExpiry = session.expires_at ? session.expires_at * 1000 : Date.now() + (60 * 60 * 1000);
+                            console.log('✅ Token atualizado com sucesso');
+                        }
+                    }
+                });
+                
                 // Inicializar chat IA após Supabase estar pronto
                 if (window.inicializarChatIA) {
                     window.inicializarChatIA();
@@ -2427,20 +2449,49 @@
         async function getSupabaseAuthHeaders() {
             try {
                 if (!supabase) {
+                    console.warn('⚠️ Supabase não inicializado ao obter headers');
                     return {};
                 }
 
                 const now = Date.now();
-                if (supabaseAccessToken && supabaseTokenExpiry - now > 60000) {
+                // Verificar se o token em cache ainda é válido (com margem de 5 minutos)
+                if (supabaseAccessToken && supabaseTokenExpiry && supabaseTokenExpiry - now > 300000) {
                     return {
                         Authorization: `Bearer ${supabaseAccessToken}`
                     };
                 }
 
+                // Tentar obter a sessão atual
                 const { data, error } = await supabase.auth.getSession();
 
                 if (error) {
                     console.error('❌ Erro ao obter sessão do Supabase:', error);
+                    
+                    // Se o erro indica sessão expirada, limpar cache e tentar refresh
+                    if (error.message && (error.message.includes('session') || error.message.includes('expired') || error.message.includes('invalid'))) {
+                        console.warn('⚠️ Sessão expirada ou inválida, tentando refresh...');
+                        supabaseAccessToken = null;
+                        supabaseTokenExpiry = 0;
+                        
+                        try {
+                            const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+                            if (!refreshError && refreshData?.session?.access_token) {
+                                supabaseAccessToken = refreshData.session.access_token;
+                                supabaseTokenExpiry = refreshData.session.expires_at ? refreshData.session.expires_at * 1000 : now + (60 * 60 * 1000);
+                                console.log('✅ Sessão atualizada com sucesso via refresh');
+                                return {
+                                    Authorization: `Bearer ${supabaseAccessToken}`
+                                };
+                            } else {
+                                console.error('❌ Erro ao fazer refresh da sessão:', refreshError);
+                                // Se o refresh falhar, pode ser que a sessão esteja completamente expirada
+                                // O listener de autenticação deve lidar com isso
+                            }
+                        } catch (refreshErr) {
+                            console.error('❌ Erro ao tentar refresh da sessão:', refreshErr);
+                        }
+                    }
+                    
                     return {};
                 }
 
@@ -2453,6 +2504,7 @@
                     };
                 }
 
+                console.warn('⚠️ Sessão não encontrada ao obter headers');
                 return {};
             } catch (error) {
                 console.error('❌ Erro ao construir headers de autenticação:', error);
@@ -2526,6 +2578,9 @@
                 
                 // Carregar dados do Supabase
                 await carregarColetas();
+                
+                // Configurar listener em tempo real para atualizações de coletas
+                configurarRealtimeColetas();
                 
                 console.log('✅ Sistema de Coletas inicializado com sucesso!');
             } catch (error) {
@@ -2945,8 +3000,35 @@
             }
 
             try {
+                // Obter headers de autenticação
                 const headers = await getSupabaseAuthHeaders();
+                
+                // Verificar se o token foi obtido
+                if (!headers.Authorization) {
+                    console.error('❌ Token de autenticação não disponível');
+                    // Tentar obter sessão novamente
+                    if (supabase) {
+                        const { data, error } = await supabase.auth.getSession();
+                        if (error) {
+                            throw new Error('Erro ao obter sessão: ' + error.message);
+                        }
+                        if (data?.session?.access_token) {
+                            headers.Authorization = `Bearer ${data.session.access_token}`;
+                        } else {
+                            throw new Error('Sessão não encontrada. Faça login novamente.');
+                        }
+                    } else {
+                        throw new Error('Supabase não inicializado. Recarregue a página.');
+                    }
+                }
+                
                 headers['Content-Type'] = 'application/json';
+                
+                console.log('📤 Enviando solicitação de atualização de documento:', {
+                    coletaId,
+                    categoria,
+                    temToken: !!headers.Authorization
+                });
                 
                 const response = await fetch(`/api/coletas/${encodeURIComponent(coletaId)}/solicitar-atualizacao-documento`, {
                     method: 'POST',
@@ -2958,6 +3040,9 @@
                 const result = await response.json();
 
                 if (!response.ok) {
+                    if (response.status === 401) {
+                        throw new Error('Não autenticado. Faça login novamente.');
+                    }
                     throw new Error(result.error || 'Erro ao criar solicitação');
                 }
 
@@ -3725,6 +3810,204 @@
         }
 
         // ========== FUNÇÕES SUPABASE - COLETAS ==========
+        let coletasRealtimeChannel = null;
+        
+        function configurarRealtimeColetas() {
+            if (!supabase) {
+                console.warn('⚠️ Supabase não inicializado, pulando configuração de realtime');
+                return;
+            }
+            
+            // Remover listener anterior se existir
+            if (coletasRealtimeChannel) {
+                supabase.removeChannel(coletasRealtimeChannel);
+            }
+            
+            // Configurar listener para mudanças na tabela coletas
+            coletasRealtimeChannel = supabase
+                .channel('coletas-changes')
+                .on('postgres_changes', {
+                    event: '*', // Escutar todos os eventos (INSERT, UPDATE, DELETE)
+                    schema: 'public',
+                    table: 'coletas'
+                }, (payload) => {
+                    console.log('🔄 Mudança detectada na tabela coletas:', payload);
+                    
+                    // Se foi uma atualização (UPDATE)
+                    if (payload.eventType === 'UPDATE') {
+                        const coletaAtualizada = payload.new;
+                        const coletaAntiga = payload.old;
+                        
+                        // Verificar se o motorista_id foi alterado
+                        if (coletaAtualizada.motorista_id !== coletaAntiga.motorista_id) {
+                            console.log('🚗 Motorista vinculado/desvinculado detectado:', {
+                                coletaId: coletaAtualizada.id,
+                                motoristaAntigo: coletaAntiga.motorista_id,
+                                motoristaNovo: coletaAtualizada.motorista_id
+                            });
+                            
+                            // Atualizar os dados locais
+                            const index = coletasData.findIndex(c => c.id === coletaAtualizada.id);
+                            if (index !== -1) {
+                                // Atualizar o objeto na lista
+                                coletasData[index] = { ...coletasData[index], ...coletaAtualizada };
+                                
+                                // Atualizar coletas ativas/arquivadas
+                                if (!coletaAtualizada.arquivado) {
+                                    const indexAtiva = window.coletasAtivas.findIndex(c => c.id === coletaAtualizada.id);
+                                    if (indexAtiva !== -1) {
+                                        window.coletasAtivas[indexAtiva] = { ...window.coletasAtivas[indexAtiva], ...coletaAtualizada };
+                                    } else if (!coletaAtualizada.arquivado) {
+                                        // Se não estava nas ativas e não está arquivada, adicionar
+                                        window.coletasAtivas.push(coletaAtualizada);
+                                    }
+                                }
+                                
+                                // Re-renderizar apenas o card da coleta afetada
+                                atualizarCardColeta(coletaAtualizada.id);
+                            } else {
+                                // Se não encontrou, recarregar todas as coletas para evitar duplicações
+                                console.log('⚠️ Coleta não encontrada localmente, recarregando todas...');
+                                carregarColetas();
+                            }
+                        } else {
+                            // Outra atualização (não relacionada a motorista)
+                            // Atualizar apenas o card específico
+                            const index = coletasData.findIndex(c => c.id === coletaAtualizada.id);
+                            if (index !== -1) {
+                                coletasData[index] = { ...coletasData[index], ...coletaAtualizada };
+                                
+                                // Atualizar coletas ativas/arquivadas
+                                if (!coletaAtualizada.arquivado) {
+                                    const indexAtiva = window.coletasAtivas.findIndex(c => c.id === coletaAtualizada.id);
+                                    if (indexAtiva !== -1) {
+                                        window.coletasAtivas[indexAtiva] = { ...window.coletasAtivas[indexAtiva], ...coletaAtualizada };
+                                    }
+                                }
+                                
+                                atualizarCardColeta(coletaAtualizada.id);
+                            }
+                        }
+                    } else if (payload.eventType === 'INSERT') {
+                        // Nova coleta adicionada
+                        console.log('➕ Nova coleta detectada, recarregando...');
+                        carregarColetas();
+                    } else if (payload.eventType === 'DELETE') {
+                        // Coleta removida
+                        console.log('➖ Coleta removida, recarregando...');
+                        carregarColetas();
+                    }
+                })
+                .subscribe((status) => {
+                    if (status === 'SUBSCRIBED') {
+                        console.log('✅ Listener de realtime configurado com sucesso');
+                    } else if (status === 'CHANNEL_ERROR') {
+                        console.error('❌ Erro no canal de realtime');
+                    }
+                });
+        }
+        
+        async function atualizarCardColeta(coletaId) {
+            try {
+                // Buscar a coleta atualizada do banco
+                const { data: coletaAtualizada, error } = await supabase
+                    .from('coletas')
+                    .select('*')
+                    .eq('id', coletaId)
+                    .single();
+                
+                if (error) throw error;
+                
+                // Atualizar na lista local
+                const index = coletasData.findIndex(c => c.id === coletaId);
+                if (index !== -1) {
+                    coletasData[index] = coletaAtualizada;
+                }
+                
+                // Atualizar coletas ativas/arquivadas
+                if (!coletaAtualizada.arquivado) {
+                    const indexAtiva = window.coletasAtivas.findIndex(c => c.id === coletaId);
+                    if (indexAtiva !== -1) {
+                        window.coletasAtivas[indexAtiva] = coletaAtualizada;
+                    }
+                }
+                
+                // Encontrar o card existente (pode haver múltiplos se houver duplicação)
+                const grid = document.getElementById('coletasGrid');
+                const cardsExistentes = grid.querySelectorAll(`[data-coleta-id="${coletaId}"]`);
+                
+                // Se houver múltiplos cards com o mesmo ID, remover os duplicados
+                if (cardsExistentes.length > 1) {
+                    console.warn('⚠️ Detectados múltiplos cards com o mesmo ID, removendo duplicados:', coletaId);
+                    // Manter apenas o primeiro, remover os demais
+                    for (let i = 1; i < cardsExistentes.length; i++) {
+                        cardsExistentes[i].remove();
+                    }
+                }
+                
+                const cardExistente = cardsExistentes[0];
+                
+                if (cardExistente) {
+                    // Se a coleta foi arquivada ou mudou de status de forma que não deve mais aparecer, remover o card
+                    if (coletaAtualizada.arquivado) {
+                        console.log('🗑️ Coleta arquivada, removendo card:', coletaId);
+                        cardExistente.remove();
+                        updateStats(window.coletasAtivas || coletasData.filter(c => !c.arquivado));
+                        return;
+                    }
+                    
+                    // Verificar novamente se não há duplicatas antes de substituir
+                    const grid = document.getElementById('coletasGrid');
+                    const todosCards = grid.querySelectorAll(`[data-coleta-id="${coletaId}"]`);
+                    if (todosCards.length > 1) {
+                        console.warn('⚠️ Múltiplos cards detectados antes de atualizar, removendo duplicados:', coletaId);
+                        // Manter apenas o primeiro, remover os demais
+                        for (let i = 1; i < todosCards.length; i++) {
+                            todosCards[i].remove();
+                        }
+                    }
+                    
+                    // Carregar anexos
+                    coletaAtualizada.anexos = await carregarAnexos(coletaId);
+                    
+                    // Substituir o card
+                    const novoCard = createColetaCard(coletaAtualizada);
+                    novoCard.setAttribute('data-coleta-id', coletaId);
+                    cardExistente.replaceWith(novoCard);
+                    
+                    // Verificar se não foi criado um duplicado após a substituição
+                    const cardsAposSubstituicao = grid.querySelectorAll(`[data-coleta-id="${coletaId}"]`);
+                    if (cardsAposSubstituicao.length > 1) {
+                        console.warn('⚠️ Duplicata criada após substituição, removendo:', coletaId);
+                        for (let i = 1; i < cardsAposSubstituicao.length; i++) {
+                            cardsAposSubstituicao[i].remove();
+                        }
+                    }
+                    
+                    // Carregar informações do motorista se houver vinculação
+                    if (coletaAtualizada.motorista_id) {
+                        await carregarInfoMotorista(coletaId, coletaAtualizada.motorista_id, coletaAtualizada.anexos);
+                    }
+                } else {
+                    // Se não encontrou o card, verificar se não está duplicado em outro lugar
+                    const grid = document.getElementById('coletasGrid');
+                    const cardsComMesmoId = grid.querySelectorAll(`[data-coleta-id="${coletaId}"]`);
+                    if (cardsComMesmoId.length > 0) {
+                        console.warn('⚠️ Card encontrado mas não foi retornado pela query, recarregando todas as coletas...');
+                        await carregarColetas();
+                    } else {
+                        // Se realmente não existe, recarregar todas as coletas
+                        console.log('⚠️ Card não encontrado, recarregando todas as coletas...');
+                        await carregarColetas();
+                    }
+                }
+            } catch (error) {
+                console.error('❌ Erro ao atualizar card da coleta:', error);
+                // Em caso de erro, recarregar todas as coletas
+                await carregarColetas();
+            }
+        }
+        
         async function carregarColetas() {
             try {
                 // Verificar se o Supabase está inicializado
@@ -3743,8 +4026,18 @@
 
                 if (error) throw error;
 
-                coletasData = data || [];
-                console.log('📦 Coletas carregadas:', coletasData.length);
+                // Remover duplicatas baseado no ID antes de atribuir
+                const coletasUnicas = [];
+                const idsVistos = new Set();
+                (data || []).forEach(coleta => {
+                    if (coleta && coleta.id && !idsVistos.has(coleta.id)) {
+                        idsVistos.add(coleta.id);
+                        coletasUnicas.push(coleta);
+                    }
+                });
+
+                coletasData = coletasUnicas;
+                console.log('📦 Coletas carregadas (após remoção de duplicatas):', coletasData.length);
                 
                 // Separar ativas e arquivadas
                 window.coletasAtivas = coletasData.filter(c => !c.arquivado);
@@ -3923,8 +4216,33 @@
         }
 
         // ========== FUNÇÕES SUPABASE - ANEXOS ==========
+        // Cache de anexos para evitar requisições duplicadas
+        const anexosCache = new Map();
+        const anexosCarregando = new Set();
+        
         async function carregarAnexos(coletaId) {
             try {
+                // Verificar cache primeiro
+                if (anexosCache.has(coletaId)) {
+                    return anexosCache.get(coletaId);
+                }
+                
+                // Se já está carregando, aguardar
+                if (anexosCarregando.has(coletaId)) {
+                    // Aguardar até 5 segundos para a requisição anterior completar
+                    let tentativas = 0;
+                    while (anexosCarregando.has(coletaId) && tentativas < 50) {
+                        await new Promise(resolve => setTimeout(resolve, 100));
+                        tentativas++;
+                        if (anexosCache.has(coletaId)) {
+                            return anexosCache.get(coletaId);
+                        }
+                    }
+                }
+                
+                // Marcar como carregando
+                anexosCarregando.add(coletaId);
+                
                 const headers = await getSupabaseAuthHeaders();
                 const response = await fetch(`/api/anexos/coleta/${encodeURIComponent(coletaId)}`, {
                     credentials: 'include',
@@ -3936,10 +4254,29 @@
                     throw new Error(result.error || 'Erro ao carregar anexos.');
                 }
 
-                return result?.anexos || [];
+                const anexos = result?.anexos || [];
+                
+                // Armazenar no cache
+                anexosCache.set(coletaId, anexos);
+                
+                // Remover do set de carregando
+                anexosCarregando.delete(coletaId);
+                
+                return anexos;
             } catch (error) {
                 console.error('❌ Erro ao carregar anexos:', error);
+                // Remover do set de carregando em caso de erro
+                anexosCarregando.delete(coletaId);
                 return [];
+            }
+        }
+        
+        // Função para invalidar cache de anexos quando necessário
+        function invalidarCacheAnexos(coletaId) {
+            if (coletaId) {
+                anexosCache.delete(coletaId);
+            } else {
+                anexosCache.clear();
             }
         }
 
@@ -3969,6 +4306,9 @@
                     throw new Error(result.error || 'Erro ao enviar arquivo.');
                 }
 
+                // Invalidar cache de anexos para esta coleta
+                invalidarCacheAnexos(coletaId);
+                
                 return { success: true, anexo: result.anexo };
             } catch (error) {
                 console.error('❌ Erro no upload:', error);
@@ -4066,6 +4406,17 @@
 
         async function excluirAnexo(anexoId) {
             try {
+                // Buscar informações do anexo para obter o coletaId
+                let coletaId = null;
+                try {
+                    const anexoInfo = await buscarAnexoPorId(anexoId);
+                    if (anexoInfo && anexoInfo.coleta_id) {
+                        coletaId = anexoInfo.coleta_id;
+                    }
+                } catch (err) {
+                    console.warn('⚠️ Não foi possível obter coletaId do anexo:', err);
+                }
+                
                 const headers = await getSupabaseAuthHeaders();
                 const response = await fetch(`/api/anexos/${encodeURIComponent(anexoId)}`, {
                     method: 'DELETE',
@@ -4077,6 +4428,14 @@
 
                 if (!response.ok) {
                     throw new Error(result.error || 'Erro ao excluir anexo.');
+                }
+
+                // Invalidar cache de anexos para esta coleta (ou todas se não encontrou o coletaId)
+                if (coletaId) {
+                    invalidarCacheAnexos(coletaId);
+                } else {
+                    // Se não encontrou o coletaId, invalidar todo o cache
+                    invalidarCacheAnexos();
                 }
 
                 showNotification('Anexo excluído com sucesso', 'success');
@@ -4306,42 +4665,127 @@
         }
 
         // ========== RENDERIZAÇÃO DE COLETAS ==========
+        let renderizandoColetas = false;
+        let ultimaRenderizacao = 0;
+        
         async function renderColetas(filteredData = null) {
-            const grid = document.getElementById('coletasGrid');
-            // Por padrão, mostrar apenas coletas ativas (não arquivadas)
-            let dataToRender = filteredData || window.coletasAtivas || coletasData.filter(c => !c.arquivado);
+            // Proteção contra renderizações simultâneas
+            if (renderizandoColetas) {
+                console.warn('⚠️ Renderização já em andamento, ignorando chamada duplicada');
+                return;
+            }
+            
+            // Debounce: se foi chamada há menos de 100ms, aguardar
+            const agora = Date.now();
+            if (agora - ultimaRenderizacao < 100) {
+                console.warn('⚠️ Renderização muito rápida, aguardando...');
+                await new Promise(resolve => setTimeout(resolve, 100));
+            }
+            ultimaRenderizacao = agora;
+            
+            renderizandoColetas = true;
+            
+            try {
+                const grid = document.getElementById('coletasGrid');
+                if (!grid) {
+                    console.error('❌ Grid de coletas não encontrado');
+                    return;
+                }
+                
+                // Por padrão, mostrar apenas coletas ativas (não arquivadas)
+                let dataToRender = filteredData || window.coletasAtivas || coletasData.filter(c => !c.arquivado);
 
-            grid.innerHTML = '';
+                // Remover duplicatas baseado no ID da coleta
+                const coletasUnicas = [];
+                const idsVistos = new Set();
+                for (const coleta of dataToRender) {
+                    if (coleta && coleta.id && !idsVistos.has(coleta.id)) {
+                        idsVistos.add(coleta.id);
+                        coletasUnicas.push(coleta);
+                    }
+                }
+                dataToRender = coletasUnicas;
 
-            if (dataToRender.length === 0) {
-                grid.innerHTML = `
-                    <div style="grid-column: 1 / -1; text-align: center; padding: 3rem; color: #6c757d;">
-                        <i class="fas fa-inbox" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.5;"></i>
-                        <h3>Nenhuma coleta encontrada</h3>
-                        <p>Tente ajustar os filtros para ver mais resultados</p>
-                    </div>
-                `;
+                // Verificar cards existentes ANTES de limpar o grid
+                const cardsExistentes = grid.querySelectorAll('[data-coleta-id]');
+                const idsExistentes = new Set();
+                cardsExistentes.forEach(card => {
+                    const id = card.getAttribute('data-coleta-id');
+                    if (id) idsExistentes.add(id);
+                });
+
+                // Limpar o grid completamente antes de renderizar
+                grid.innerHTML = '';
+
+                if (dataToRender.length === 0) {
+                    grid.innerHTML = `
+                        <div style="grid-column: 1 / -1; text-align: center; padding: 3rem; color: #6c757d;">
+                            <i class="fas fa-inbox" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.5;"></i>
+                            <h3>Nenhuma coleta encontrada</h3>
+                            <p>Tente ajustar os filtros para ver mais resultados</p>
+                        </div>
+                    `;
                     return;
                 }
 
-            // Carregar anexos para cada coleta
-            for (const coleta of dataToRender) {
-                coleta.anexos = await carregarAnexos(coleta.id);
-                const card = createColetaCard(coleta);
-                grid.appendChild(card);
-                
-                // Carregar informações do motorista se houver vinculação
-                if (coleta.motorista_id) {
-                    await carregarInfoMotorista(coleta.id, coleta.motorista_id, coleta.anexos);
+                // Carregar anexos para cada coleta e adicionar apenas se não existir
+                for (const coleta of dataToRender) {
+                    // Verificar novamente se não foi adicionado durante o loop
+                    const cardJaExiste = grid.querySelector(`[data-coleta-id="${coleta.id}"]`);
+                    if (cardJaExiste) {
+                        console.warn('⚠️ Card já existe no grid, pulando:', coleta.id);
+                        continue;
+                    }
+                    
+                    coleta.anexos = await carregarAnexos(coleta.id);
+                    const card = createColetaCard(coleta);
+                    card.setAttribute('data-coleta-id', coleta.id);
+                    
+                    // Verificar uma última vez antes de adicionar
+                    const cardDuplicado = grid.querySelector(`[data-coleta-id="${coleta.id}"]`);
+                    if (!cardDuplicado) {
+                        grid.appendChild(card);
+                        
+                        // Carregar informações do motorista se houver vinculação
+                        if (coleta.motorista_id) {
+                            await carregarInfoMotorista(coleta.id, coleta.motorista_id, coleta.anexos);
+                        }
+                    } else {
+                        console.warn('⚠️ Card duplicado detectado no último momento, removendo:', coleta.id);
+                        cardDuplicado.remove();
+                        grid.appendChild(card);
+                        
+                        if (coleta.motorista_id) {
+                            await carregarInfoMotorista(coleta.id, coleta.motorista_id, coleta.anexos);
+                        }
+                    }
                 }
-            }
 
-            updateStats(dataToRender);
+                // Verificação final: remover qualquer duplicata que possa ter sido criada
+                const todosCards = grid.querySelectorAll('[data-coleta-id]');
+                const idsFinais = new Map();
+                todosCards.forEach(card => {
+                    const id = card.getAttribute('data-coleta-id');
+                    if (id) {
+                        if (idsFinais.has(id)) {
+                            console.warn('⚠️ Duplicata final detectada, removendo:', id);
+                            card.remove();
+                        } else {
+                            idsFinais.set(id, card);
+                        }
+                    }
+                });
+
+                updateStats(dataToRender);
+            } finally {
+                renderizandoColetas = false;
+            }
         }
 
         function createColetaCard(coleta) {
             const card = document.createElement('div');
             card.className = `coleta-card ${coleta.status} collapsed`;
+            card.setAttribute('data-coleta-id', coleta.id);
             card.onclick = () => openEditColetaModal(coleta.id);
 
             const progresso = calcularProgressoEtapas(coleta);

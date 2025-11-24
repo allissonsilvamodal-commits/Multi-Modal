@@ -1377,7 +1377,7 @@ function phonesMatch(inputPhone, ...storedPhones) {
     .some(stored => normalizedInput.endsWith(stored) || stored.endsWith(normalizedInput));
 }
 
-const MOTORISTA_SELECT_FIELDS = 'id, nome, status, telefone1, telefone2, placa_cavalo, placa_carreta1, placa_carreta2, placa_carreta3, classe_veiculo, tipo_veiculo, tipo_carroceria, created_by_departamento, auth_user_id, created_by, usuario_id';
+const MOTORISTA_SELECT_FIELDS = 'id, nome, status, telefone1, telefone2, estado, placa_cavalo, placa_carreta1, placa_carreta2, placa_carreta3, classe_veiculo, tipo_veiculo, tipo_carroceria, created_by_departamento, auth_user_id, created_by, usuario_id';
 
 async function fetchMotoristasByPhone(normalizedPhone) {
   if (!normalizedPhone) return [];
@@ -1431,6 +1431,31 @@ async function fetchMotoristasByPhone(normalizedPhone) {
 
 function mapMotoristaResponse(motorista) {
   if (!motorista) return null;
+  
+  // Normalizar estado - garantir que seja sempre string quando existir
+  let estadoNormalizado = null;
+  if (motorista.estado) {
+    if (typeof motorista.estado === 'string') {
+      estadoNormalizado = motorista.estado.trim().toUpperCase();
+      if (estadoNormalizado.length === 0) estadoNormalizado = null;
+    } else if (typeof motorista.estado === 'object' && motorista.estado !== null) {
+      // Se vier como objeto, tentar extrair o valor
+      estadoNormalizado = String(motorista.estado).trim().toUpperCase();
+      if (estadoNormalizado.length === 0 || estadoNormalizado === '[OBJECT OBJECT]') estadoNormalizado = null;
+    } else {
+      estadoNormalizado = String(motorista.estado).trim().toUpperCase();
+      if (estadoNormalizado.length === 0) estadoNormalizado = null;
+    }
+  }
+  
+  // Log para debug do estado
+  console.log('🗺️ mapMotoristaResponse - estado:', {
+    estadoOriginal: motorista.estado,
+    estadoType: typeof motorista.estado,
+    estadoNormalizado: estadoNormalizado,
+    temEstado: !!estadoNormalizado
+  });
+  
   return {
     id: motorista.id,
     nome: motorista.nome,
@@ -1447,7 +1472,7 @@ function mapMotoristaResponse(motorista) {
     tipoVeiculo: motorista.tipo_veiculo || null,
     tipoCarroceria: motorista.tipo_carroceria || null,
     cidade: motorista.cidade || null,
-    estado: motorista.estado || null,
+    estado: estadoNormalizado,
     empresa: motorista.empresa || null,
     createdAt: motorista.created_at || null,
     departamento: motorista.created_by_departamento || null
@@ -1969,6 +1994,14 @@ async function requireMotoristaAuth(req) {
         return { error: { status: 401, message: 'Sessão expirada. Faça login novamente.' } };
       }
 
+      // Log para verificar se o estado está sendo retornado da sessão
+      console.log('🔍 requireMotoristaAuth (sessão) - Motorista encontrado:', {
+        id: motorista.id,
+        estado: motorista.estado,
+        temEstado: !!motorista.estado,
+        estadoType: typeof motorista.estado
+      });
+
       const email = req.session.motorista.email || buildMotoristaEmail(motorista.telefone1 || '');
       return {
         user: {
@@ -2001,6 +2034,16 @@ async function requireMotoristaAuth(req) {
       .select(MOTORISTA_SELECT_FIELDS)
       .eq('auth_user_id', result.user.id)
       .maybeSingle();
+    
+    // Log para verificar se o estado está sendo retornado
+    if (data) {
+      console.log('🔍 requireMotoristaAuth - Motorista encontrado:', {
+        id: data.id,
+        estado: data.estado,
+        temEstado: !!data.estado,
+        estadoType: typeof data.estado
+      });
+    }
 
     if (error && error.code !== 'PGRST116') {
       console.error('❌ Erro ao buscar motorista por auth_user_id:', error);
@@ -3446,6 +3489,35 @@ app.post('/api/motoristas/auth/profile', express.json(), async (req, res) => {
       payload.telefone2 = null;
     }
 
+    // Tratar estado separadamente para garantir que seja sempre salvo quando fornecido
+    // IMPORTANTE: Sempre atualizar o estado se fornecido, mesmo que já exista no banco
+    if (body.estado !== undefined && body.estado !== null && body.estado !== '') {
+      const estadoNormalizado = body.estado.toString().trim().toUpperCase().substring(0, 2);
+      if (estadoNormalizado && estadoNormalizado.length === 2) {
+        payload.estado = estadoNormalizado;
+        console.log('✅ Estado normalizado e adicionado ao payload:', {
+          estadoOriginal: body.estado,
+          estadoNormalizado: estadoNormalizado,
+          motoristaId: motoristaSelecionado?.id,
+          estadoAtualNoBanco: motoristaSelecionado?.estado,
+          seraAtualizado: true
+        });
+      } else {
+        console.warn('⚠️ Estado fornecido inválido (não tem 2 caracteres):', {
+          estadoOriginal: body.estado,
+          estadoNormalizado: estadoNormalizado,
+          length: estadoNormalizado?.length
+        });
+      }
+    } else {
+      console.log('⚠️ Estado não fornecido no body:', {
+        bodyKeys: Object.keys(body),
+        temEstado: !!body.estado,
+        estadoValue: body.estado,
+        estadoType: typeof body.estado
+      });
+    }
+
     const optionalFields = {
       cnh: body.cnh ? body.cnh.trim() : null,
       categoria_cnh: body.categoriaCnh ? body.categoriaCnh.trim() : null,
@@ -3457,7 +3529,6 @@ app.post('/api/motoristas/auth/profile', express.json(), async (req, res) => {
       tipo_veiculo: body.tipoVeiculo ? normalizeTipoVeiculo(body.tipoVeiculo) : null,
       tipo_carroceria: body.tipoCarroceria ? normalizeTipoCarroceria(body.tipoCarroceria) : null,
       cidade: body.cidade ? body.cidade.trim() : null,
-      estado: body.estado ? body.estado.trim() : null,
       empresa: body.empresa ? body.empresa.trim() : null
     };
 
@@ -3506,6 +3577,26 @@ app.post('/api/motoristas/auth/profile', express.json(), async (req, res) => {
         }
       }
 
+      // Log do payload antes de atualizar (para debug)
+      console.log('📝 Atualizando motorista com payload:', {
+        id: motoristaSelecionado.id,
+        estado: payload.estado,
+        temEstado: !!payload.estado,
+        estadoOriginal: body.estado,
+        estadoAtualNoBanco: motoristaSelecionado.estado,
+        payloadKeys: Object.keys(payload),
+        payloadCompleto: JSON.stringify(payload, null, 2)
+      });
+      
+      // Garantir que o estado seja sempre atualizado se fornecido
+      if (body.estado !== undefined && body.estado !== null && body.estado !== '') {
+        const estadoNormalizado = body.estado.toString().trim().toUpperCase().substring(0, 2);
+        if (estadoNormalizado && estadoNormalizado.length === 2) {
+          payload.estado = estadoNormalizado;
+          console.log('🔧 Forçando atualização do estado no payload:', estadoNormalizado);
+        }
+      }
+
       const { data, error: updateError } = await supabaseAdmin
         .from('motoristas')
         .update(payload)
@@ -3528,8 +3619,24 @@ app.post('/api/motoristas/auth/profile', express.json(), async (req, res) => {
       }
 
       resultData = data;
+      
+      // Log após atualização para verificar se o estado foi salvo
+      console.log('✅ Motorista atualizado com sucesso:', {
+        id: resultData?.id,
+        estado: resultData?.estado,
+        temEstado: !!resultData?.estado,
+        camposRetornados: Object.keys(resultData || {})
+      });
     } else {
       payload.status = body.status ? body.status.trim() : 'ativo';
+      
+      // Log do payload antes de inserir (para debug)
+      console.log('📝 Criando novo motorista com payload:', {
+        estado: payload.estado,
+        temEstado: !!payload.estado,
+        payloadKeys: Object.keys(payload)
+      });
+      
       const { data, error: insertError } = await supabaseAdmin
         .from('motoristas')
         .insert(payload)
@@ -3599,6 +3706,15 @@ app.post('/api/motoristas/auth/profile', express.json(), async (req, res) => {
       }
     }
 
+    // Log antes de retornar para verificar se o estado está na resposta
+    const motoristaMapeado = mapMotoristaResponse(resultData);
+    console.log('📤 Retornando resposta com motorista:', {
+      motoristaId: resultData?.id,
+      estadoNoBanco: resultData?.estado,
+      estadoNaResposta: motoristaMapeado?.estado,
+      temEstado: !!motoristaMapeado?.estado
+    });
+    
     res.json({
       success: true,
       user: {
@@ -3606,7 +3722,7 @@ app.post('/api/motoristas/auth/profile', express.json(), async (req, res) => {
         email: user.email,
         nome
       },
-      motorista: mapMotoristaResponse(resultData)
+      motorista: motoristaMapeado
     });
   } catch (error) {
     console.error('❌ Erro ao vincular perfil de motorista:', error);
@@ -3755,13 +3871,37 @@ app.get('/api/motoristas/oportunidades', async (req, res) => {
 });
 app.get('/api/motoristas/viagens', async (req, res) => {
   try {
-    const { motorista, error } = await requireMotoristaAuth(req);
+    let { motorista, error } = await requireMotoristaAuth(req);
     if (error) {
       return res.status(error.status || 401).json({ success: false, error: error.message });
     }
 
     if (!motorista) {
       return res.json({ success: true, cadastroPendente: true, viagens: [] });
+    }
+
+    // Recarregar motorista do banco para garantir dados atualizados (especialmente o estado)
+    const { data: motoristaAtualizado, error: reloadError } = await supabaseAdmin
+      .from('motoristas')
+      .select(MOTORISTA_SELECT_FIELDS)
+      .eq('id', motorista.id)
+      .single();
+
+    if (reloadError) {
+      console.warn('⚠️ Erro ao recarregar motorista, usando dados da sessão:', reloadError);
+    } else if (motoristaAtualizado) {
+      console.log('🔄 Motorista recarregado do banco:', {
+        id: motoristaAtualizado.id,
+        estado: motoristaAtualizado.estado,
+        estadoType: typeof motoristaAtualizado.estado,
+        estadoValue: motoristaAtualizado.estado,
+        estadoString: String(motoristaAtualizado.estado),
+        temEstado: !!motoristaAtualizado.estado,
+        camposCompletos: Object.keys(motoristaAtualizado)
+      });
+      motorista = motoristaAtualizado;
+    } else {
+      console.warn('⚠️ Motorista não encontrado ao recarregar do banco, usando dados da sessão');
     }
 
     const { data: viagensData, error: viagensError } = await supabaseAdmin
@@ -3774,9 +3914,20 @@ app.get('/api/motoristas/viagens', async (req, res) => {
       throw viagensError;
     }
 
+    const motoristaMapeado = mapMotoristaResponse(motorista);
+    console.log('📤 Retornando motorista no endpoint viagens:', {
+      id: motoristaMapeado?.id,
+      estado: motoristaMapeado?.estado,
+      estadoType: typeof motoristaMapeado?.estado,
+      estadoOriginal: motorista?.estado,
+      estadoOriginalType: typeof motorista?.estado,
+      temEstado: !!motoristaMapeado?.estado,
+      motoristaRaw: motorista
+    });
+
     res.json({
       success: true,
-      motorista: mapMotoristaResponse(motorista),
+      motorista: motoristaMapeado,
       viagens: (viagensData || []).map(mapColetaOpportunity)
     });
   } catch (error) {

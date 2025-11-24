@@ -1,741 +1,378 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Treinamento - Disparador de Mensagens</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <title>Treinamento – Disparador de Mensagens</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        :root { --primary:#667eea; --secondary:#764ba2; --success:#10b981; --warning:#f59e0b; --danger:#ef4444; }
-        body{ background:linear-gradient(135deg,#f5f7fa,#c3cfe2); font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding:2rem 0; }
-        .container-max{ max-width:900px; margin:0 auto; }
-        .header{ background:linear-gradient(135deg,var(--primary),var(--secondary)); color:#fff; padding:2rem; border-radius:18px; box-shadow:0 8px 24px rgba(0,0,0,.12); }
-        .section{ background:#fff; border:1px solid #e5e7eb; border-radius:16px; padding:1.5rem; margin-top:1rem; box-shadow:0 6px 18px rgba(0,0,0,.06); }
-        .title{ display:flex; align-items:center; gap:.6rem; color:#1f2937; font-weight:800; font-size:1.2rem; margin-bottom:1rem; }
-        .step{ background:#f8fafc; border-left:4px solid var(--primary); padding:1rem 1.25rem; border-radius:10px; margin:.9rem 0; }
-        .muted{ color:#6b7280; }
-        .tag{ display:inline-block; background:#e0e7ff; color:#334155; border-radius:999px; padding:.2rem .6rem; font-weight:700; font-size:.8rem; }
-        .btn-back{ background:#6b7280; color:#fff; border:none; border-radius:12px; padding:.6rem 1rem; text-decoration:none; display:inline-flex; align-items:center; gap:.5rem; margin:.8rem 0 1rem 0; }
-        .sig{ background:#fff; border:2px dashed #d1d5db; border-radius:12px; padding:1rem; margin-top:1rem; }
-        .sig label{ font-weight:600; color:#374151; margin-top:.6rem; }
-        .sig input{ width:100%; padding:.7rem; border:2px solid #e5e7eb; border-radius:8px; }
-        .sig input:focus{ outline:none; border-color:var(--primary); }
-        .signature-canvas {
-            border: 2px solid #e5e7eb;
-            border-radius: 8px;
-            cursor: crosshair;
-            background: white;
-            width: 100%;
-            max-width: 600px;
-            margin: 0 auto;
-            display: block;
-            touch-action: none;
+        :root {
+            --primary:#6759ff;
+            --secondary:#8b5cf6;
+            --bg-page:#edf2ff;
+            --bg-card:#ffffff;
+            --text:#1f2937;
         }
-        .training-image {
-            width: 100%;
-            max-width: 900px;
-            border: 3px solid #e5e7eb;
-            border-radius: 12px;
-            margin: 1.5rem auto;
-            box-shadow: 0 8px 24px rgba(0,0,0,.15);
-            display: block;
-            cursor: pointer;
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        body{
+            font-family:"Segoe UI",system-ui,-apple-system,BlinkMacSystemFont,sans-serif;
+            background:var(--bg-page);
+            padding:2rem 0;
+            color:var(--text);
         }
-        .training-image:hover {
-            transform: scale(1.02);
-            box-shadow: 0 12px 32px rgba(0,0,0,.2);
+        .container-training{max-width:960px;margin:0 auto;}
+        .hero{
+            background:linear-gradient(135deg,var(--primary),var(--secondary));
+            color:#fff;border-radius:20px;padding:2rem;
+            box-shadow:0 18px 40px rgba(103,89,255,.25);
         }
-        .image-placeholder {
-            background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
-            border: 3px dashed #9ca3af;
-            border-radius: 12px;
-            padding: 4rem 2rem;
-            text-align: center;
-            color: #6b7280;
-            margin: 1.5rem 0;
-            font-style: italic;
-            position: relative;
-            min-height: 200px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
+        .hero h1{font-weight:800;margin-bottom:.4rem;}
+        .hero p{opacity:.9;margin:0;}
+        .hero .tag{display:inline-flex;align-items:center;gap:.4rem;background:rgba(0,0,0,.25);padding:.2rem .8rem;border-radius:999px;font-weight:600;}
+        a.btn-back{
+            display:inline-flex;align-items:center;gap:.5rem;
+            padding:.55rem 1rem;border-radius:999px;
+            background:#111827;color:#fff;text-decoration:none;
+            margin-bottom:1.25rem;font-weight:600;
         }
-        .image-placeholder::before {
-            content: "📸";
-            font-size: 3rem;
-            display: block;
-            margin-bottom: 1rem;
+        section.training-block{
+            margin-top:1.5rem;
+            background:var(--bg-card);
+            border-radius:18px;
+            padding:1.75rem;
+            box-shadow:0 16px 35px rgba(31,41,55,.08);
         }
-        .image-placeholder strong {
-            display: block;
-            color: #374151;
-            font-size: 1.1rem;
-            margin-bottom: 0.5rem;
-            font-style: normal;
+        section.training-block h2{
+            font-size:1.2rem;
+            font-weight:800;
+            margin-bottom:1rem;
+            display:flex;
+            align-items:center;
+            gap:.5rem;
         }
-        .image-placeholder small {
-            display: block;
-            color: #9ca3af;
-            font-size: 0.9rem;
-            margin-top: 0.5rem;
+        .step-card{
+            border-left:4px solid var(--primary);
+            background:#f8fafc;
+            padding:1rem 1.25rem;
+            border-radius:12px;
+            margin:.8rem 0;
+            box-shadow:0 8px 18px rgba(0,0,0,.05);
         }
-        .image-caption {
-            text-align: center;
-            color: #6b7280;
-            font-size: 0.9rem;
-            margin-top: 0.5rem;
-            margin-bottom: 1.5rem;
-            font-style: italic;
-            padding: 0.5rem;
-            background: #f9fafb;
-            border-radius: 6px;
+        .media-figure{
+            margin:1.5rem 0;
+            text-align:center;
         }
-        .highlight-box {
-            background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
-            border-left: 5px solid #f59e0b;
-            padding: 1.25rem;
-            border-radius: 10px;
-            margin: 1.5rem 0;
-            box-shadow: 0 4px 12px rgba(245, 158, 11, 0.1);
+        .media-figure img{
+            width:100%;
+            border-radius:16px;
+            border:3px solid #e5e7eb;
+            box-shadow:0 20px 45px rgba(15,23,42,.18);
         }
-        .warning-box {
-            background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
-            border-left: 5px solid #ef4444;
-            padding: 1.25rem;
-            border-radius: 10px;
-            margin: 1.5rem 0;
-            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.1);
+        .media-figure figcaption{
+            margin-top:.6rem;font-size:.9rem;color:#4b5563;
+            background:#f3f4f6;border-radius:10px;padding:.75rem 1rem;
         }
-        .info-box {
-            background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
-            border-left: 5px solid #3b82f6;
-            padding: 1.25rem;
-            border-radius: 10px;
-            margin: 1.5rem 0;
-            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.1);
+        .info-box,.warning-box,.tip-box{
+            padding:1rem 1.2rem;border-radius:12px;margin:1rem 0;
         }
-        .step-number {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            width: 32px;
-            height: 32px;
-            background: linear-gradient(135deg, var(--primary), var(--secondary));
-            color: white;
-            border-radius: 50%;
-            font-weight: 700;
-            font-size: 0.95rem;
-            margin-right: 0.75rem;
-            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+        .info-box{background:#e0f2fe;border-left:5px solid #0284c7;}
+        .warning-box{background:#fee2e2;border-left:5px solid #dc2626;}
+        .tip-box{background:#fef3c7;border-left:5px solid #f59e0b;}
+        .signature-card{
+            border:2px dashed #cbd5f5;
+            padding:1.25rem;
+            border-radius:16px;
+            background:#f8fafc;
         }
-        .step-content {
-            display: flex;
-            align-items: flex-start;
-            gap: 1rem;
-        }
-        .image-container {
-            text-align: center;
-            margin: 2rem 0;
+        .signature-card label{font-weight:600;color:#111827;margin-top:.75rem;}
+        canvas.signature-canvas{
+            width:100%;height:200px;
+            border:2px solid #e2e8f0;
+            border-radius:12px;
+            background:#fff;
         }
     </style>
 </head>
 <body>
-<div class="container-max">
-    <a class="btn-back" href="treinamentos.html"><i class="fas fa-arrow-left"></i> Voltar aos Treinamentos</a>
-    <div class="header">
-        <h2 class="m-0"><i class="fas fa-paper-plane me-2"></i>Treinamento - Disparador de Mensagens</h2>
-        <p class="m-0 mt-2">Uso correto do painel de disparos (painel.html): filtros, seleção, envio e logs.</p>
-    </div>
+<main class="container-training">
+    <a class="btn-back" href="treinamentos.html"><i class="fas fa-chevron-left"></i>Voltar para Treinamentos</a>
+    <header class="hero">
+        <span class="tag"><i class="fas fa-user-graduate"></i> Treinamento obrigatório</span>
+        <h1><i class="fas fa-paper-plane me-2"></i>Disparador de Mensagens WhatsApp</h1>
+        <p>Este guia mostra, em detalhes, como sair do “painel vazio” até o preenchimento da declaração final, evitando erros que podem bloquear a linha ou gerar disparos incorretos.</p>
+        <ul style="margin-top:1rem;padding-left:1.25rem;list-style:disc;opacity:.9">
+            <li><strong>Tempo estimado:</strong> 15 minutos para ler + 5 minutos para assinar.</li>
+            <li><strong>Público:</strong> times Operacional, Comercial e Monitoramento que utilizam o disparador.</li>
+            <li><strong>Objetivo:</strong> garantir envios rastreáveis, seguros e relevantes para motoristas.</li>
+        </ul>
+    </header>
 
-    <div class="section">
-        <div class="title"><i class="fas fa-list-ol"></i> Objetivo</div>
-        <p class="muted">Capacitar o usuário a realizar disparos com segurança, rastreabilidade e conformidade.
-            <span class="tag">Obrigatório</span>
-        </p>
-    </div>
+    <section class="training-block" id="preparacao">
+        <h2><i class="fas fa-filter"></i>1. Preparação e leitura do painel</h2>
+        <p>Antes de clicar em qualquer botão, reserve 30 segundos para entender o cenário do dia. As decisões tomadas na preparação evitam retrabalho, mensagens fora do contexto e disparos para motoristas errados.</p>
+        <div class="step-card">
+            <strong>1.1 Acesso inicial</strong>
+            <ul>
+                <li>Abra <strong>Dashboard ▸ Disparador</strong> e confirme se você está logado com um usuário autorizado.</li>
+                <li>Leia os indicadores do topo (Total, Ativos, Categoria ativa) para entender o contexto antes de qualquer filtro.</li>
+                <li>Escolha a categoria operacional do dia (leve, médio ou pesado). Todo o restante do fluxo partirá dessa escolha.</li>
+            </ul>
+            <p class="mb-0">Se algum indicador estiver com valor incoerente (ex.: “Motoristas ativos = 0”), acione o time de dados antes de continuar.</p>
+        </div>
+        <figure class="media-figure">
+            <img src="treinamento-imagens/painel-inicial.png?v=20251124T03" alt="Tela inicial do painel">
+            <figcaption>IMAGEM 1 – Painel com cards de categoria e indicadores principais.</figcaption>
+        </figure>
+        <div class="step-card">
+            <strong>1.2 Cards de categoria</strong>
+            <p>Cada card dispara a atualização da base e dos indicadores. Aguarde a animação de carregamento terminar antes de aplicar filtros adicionais para evitar consultas duplicadas.</p>
+            <p class="mb-0">Use a legenda da linha superior (“Categoria ativa”) para validar se você está disparando para o público correto.</p>
+        </div>
+        <figure class="media-figure">
+            <img src="treinamento-imagens/cards-categorias.png?v=20251124T03" alt="Cards de categorias">
+            <figcaption>IMAGEM 2 – Destaque visual de um card selecionado.</figcaption>
+        </figure>
+        <div class="step-card">
+            <strong>1.3 Filtros combinados</strong>
+            <p>Recomendações para cada filtro:</p>
+            <ul>
+                <li><strong>Tipo de veículo</strong>: restringe o porte (Truck, Carreta etc.). Combine com categoria para listas menores.</li>
+                <li><strong>Carroceria</strong>: útil para operações específicas (Sider, Baú, Plataforma).</li>
+                <li><strong>Estado + Status</strong>: identifique motoristas disponíveis na região da coleta.</li>
+                <li><strong>Busca livre</strong>: aceita nome, telefone ou parte do e-mail.</li>
+                <li><strong>Apenas favoritos</strong>: reduz para motoristas previamente homologados.</li>
+            </ul>
+            <p>Preencha os filtros de cima para baixo; cada alteração executa uma nova consulta. Se precisar trocar tudo, clique primeiro em “Limpar filtros” para não herdar parâmetros antigos.</p>
+            <p class="mb-0"><strong>Boa prática:</strong> anote em um bloco quais filtros foram usados. Isso facilita replicar o disparo ou explicar a estratégia posteriormente.</p>
+        </div>
+        <figure class="media-figure">
+            <img src="treinamento-imagens/filtros.png?v=20251124T03" alt="Seção de filtros">
+            <figcaption>IMAGEM 3 – Área completa de filtros com ações rápidas.</figcaption>
+        </figure>
+        <figure class="media-figure">
+            <img src="treinamento-imagens/favoritos-lista.png?v=20251124T03" alt="Botão de favoritos na lista">
+            <figcaption>IMAGEM 4 – Estrelar motoristas cria uma curadoria própria por usuário.</figcaption>
+        </figure>
+        <figure class="media-figure">
+            <img src="treinamento-imagens/filtro-favoritos.png?v=20251124T03" alt="Filtro apenas favoritos">
+            <figcaption>IMAGEM 5 – Ative “Apenas favoritos” quando precisar disparar somente para motoristas validados.</figcaption>
+        </figure>
+        <div class="tip-box mb-0">Dica: combine “Categoria pesada + Carreta + Estado SP + Favoritos” para disparos cirúrgicos em operações urgentes.</div>
+    </section>
 
-    <div class="section">
-        <div class="title"><i class="fas fa-filter"></i> 1) Preparação e Filtros</div>
-        
-        <div class="step">
-            <div class="step-content">
-                <span class="step-number">1.1</span>
-                <div style="flex: 1;">
-                    <strong>Acessando o Painel de Disparo</strong><br>
-                    - Acesse o menu <strong>Dashboard</strong> no sistema.<br>
-                    - Você verá o painel de disparo com estatísticas no topo e cards de categorias de veículos.
-                </div>
-            </div>
+    <section class="training-block" id="selecao">
+        <h2><i class="fas fa-users"></i>2. Seleção de motoristas</h2>
+        <div class="step-card">
+            <strong>2.1 Seleção individual</strong>
+            <p>Ao clicar em um motorista, o card fica azul e o contador “X selecionados” sobe. Essa confirmação visual evita disparos para perfis indevidos.</p>
+            <p class="mb-0">Passe o mouse sobre o card para ver telefone, classe e carroceria antes de confirmar a seleção.</p>
         </div>
-        
-        <div class="image-container">
-            <div class="image-placeholder">
-                <strong>IMAGEM 1: Tela Inicial do Painel</strong>
-                <small>Capture a tela inicial do painel.html mostrando:<br>
-                • Estatísticas no topo (Total de Motoristas, Motoristas Ativos, etc.)<br>
-                • Os 3 cards de categorias (Leve, Médio, Pesado) com contadores</small>
-            </div>
-            <!-- Substitua o placeholder acima por: <img src="treinamento-imagens/painel-inicial.png" alt="Tela inicial do painel" class="training-image"> -->
+        <figure class="media-figure">
+            <img src="treinamento-imagens/motoristas-selecionados.png?v=20251124T03" alt="Motoristas selecionados">
+            <figcaption>IMAGEM 6 – Destaque e contador “X selecionados”.</figcaption>
+        </figure>
+        <div class="step-card">
+            <strong>2.2 Seleção em massa</strong>
+            <ul>
+                <li><strong>Selecionar Todos:</strong> aplica-se a todos os resultados filtrados (use somente após revisar o filtro).</li>
+                <li><strong>Selecionar Página:</strong> marca apenas os itens visíveis. Ideal para lotes menores ou validação por páginas.</li>
+                <li><strong>Limpar Seleção:</strong> remove tudo para reiniciar o processo com segurança.</li>
+            </ul>
+            <p class="mb-0">Regra de ouro: nunca clique em “Selecionar Todos” sem antes testar a mensagem em alguns contatos.</p>
         </div>
-        
-        <div class="step">
-            <div class="step-content">
-                <span class="step-number">1.2</span>
-                <div style="flex: 1;">
-                    <strong>Selecionando a Categoria de Veículo</strong><br>
-                    - Clique em um dos cards: <strong>Leve</strong>, <strong>Médio</strong> ou <strong>Pesado</strong>.<br>
-                    - O card selecionado ficará destacado (borda mais espessa, cor diferente).<br>
-                    - A lista de motoristas será carregada automaticamente para a categoria selecionada.<br>
-                    - Observe que a "Categoria Ativa" no topo será atualizada.
-                </div>
-            </div>
-        </div>
-        
-        <div class="image-container">
-            <div class="image-placeholder">
-                <strong>IMAGEM 2: Cards de Categorias</strong>
-                <small>Capture os cards de categorias com um deles selecionado (destacado):<br>
-                • Mostre os 3 cards lado a lado<br>
-                • Destaque visual do card selecionado (ex: card "Pesado" ativo)</small>
-            </div>
-            <!-- Substitua por: <img src="treinamento-imagens/cards-categorias.png" alt="Cards de categorias" class="training-image"> -->
-        </div>
-        
-        <div class="step">
-            <div class="step-content">
-                <span class="step-number">1.3</span>
-                <div style="flex: 1;">
-                    <strong>Utilizando os Filtros</strong><br>
-                    - <strong>Tipo de Veículo:</strong> Selecione um tipo específico (ex: Carreta, Truck, Bitrem).<br>
-                    - <strong>Carroceria:</strong> Filtre por tipo de carroceria (ex: Baú, Sider, Plataforma).<br>
-                    - <strong>Estado:</strong> Selecione um estado específico (ex: SP, RJ, MG).<br>
-                    - <strong>Status:</strong> Filtre por motoristas Ativos ou Inativos.<br>
-                    - <strong>Busca:</strong> Digite nome ou telefone para busca rápida.<br>
-                    - Os filtros podem ser combinados para refinar ainda mais a busca.
-                </div>
-            </div>
-        </div>
-        
-        <div class="image-container">
-            <div class="image-placeholder">
-                <strong>IMAGEM 3: Seção de Filtros</strong>
-                <small>Capture a área completa de filtros mostrando:<br>
-                • Todos os campos de filtro (Tipo de Veículo, Carroceria, Estado, Status, Busca)<br>
-                • O checkbox "Apenas Favoritos"<br>
-                • Os botões de ação (Buscar, Selecionar Todos, etc.)</small>
-            </div>
-            <!-- Substitua por: <img src="treinamento-imagens/filtros.png" alt="Seção de filtros" class="training-image"> -->
-        </div>
-        
-        <div class="highlight-box">
-            <strong>💡 Dica:</strong> Os filtros podem ser combinados! Por exemplo, você pode filtrar por "Pesado" + "Carreta" + "SP" + "Ativo" + "Favoritos" para encontrar apenas suas carretas pesadas favoritas ativas em São Paulo.
-        </div>
-        
-        <div class="step">
-            <div class="step-content">
-                <span class="step-number">1.4</span>
-                <div style="flex: 1;">
-                    <strong>⭐ Funcionalidade de Favoritos</strong><br>
-                    - Cada motorista na lista possui um ícone de <strong>estrela (⭐)</strong> ao lado direito, antes do checkbox de seleção.<br>
-                    - Clique na estrela para marcar/desmarcar como favorito (a estrela fica amarela quando ativa).<br>
-                    - Os favoritos são salvos automaticamente e ficam disponíveis para uso futuro.<br>
-                    - Use o checkbox <strong>"Apenas Favoritos"</strong> na seção de filtros para exibir somente os motoristas favoritados.<br>
-                    - O filtro de favoritos pode ser combinado com outros filtros para refinar ainda mais sua busca.
-                </div>
-            </div>
-        </div>
-        
-        <div class="image-container">
-            <div class="image-placeholder">
-                <strong>IMAGEM 4: Botão de Favorito na Lista</strong>
-                <small>Capture alguns itens da lista de motoristas mostrando:<br>
-                • O botão de estrela ao lado de cada motorista<br>
-                • Alguns motoristas com estrela amarela (favoritados)<br>
-                • Alguns motoristas com estrela cinza (não favoritados)<br>
-                • O checkbox de seleção ao lado da estrela</small>
-            </div>
-            <!-- Substitua por: <img src="treinamento-imagens/favoritos-lista.png" alt="Botão de favorito" class="training-image"> -->
-        </div>
-        
-        <div class="image-container">
-            <div class="image-placeholder">
-                <strong>IMAGEM 5: Checkbox de Favoritos nos Filtros</strong>
-                <small>Capture o checkbox "Apenas Favoritos" na seção de filtros:<br>
-                • Mostre o checkbox marcado e desmarcado<br>
-                • Contexto da área de filtros</small>
-            </div>
-            <!-- Substitua por: <img src="treinamento-imagens/filtro-favoritos.png" alt="Filtro de favoritos" class="training-image"> -->
-        </div>
-        
+        <figure class="media-figure">
+            <img src="treinamento-imagens/botoes-selecao.png?v=20251124T03" alt="Botões de seleção">
+            <figcaption>IMAGEM 7 – Botões de seleção em massa.</figcaption>
+        </figure>
         <div class="info-box">
-            <strong>ℹ️ Importante:</strong> Os favoritos são salvos por usuário. Cada pessoa tem sua própria lista de favoritos, permitindo criar listas personalizadas de motoristas com quem trabalha frequentemente.
+            <strong>Checklist rápido antes de seguir para a mensagem:</strong>
+            <ul class="mb-0">
+                <li>O contador “X selecionados” corresponde ao que você pretende disparar?</li>
+                <li>Há pelo menos um favorito na seleção? (Evite listas totalmente frias).</li>
+                <li>Os motoristas selecionados fazem sentido para o filtro/região? Revise se necessário.</li>
+            </ul>
         </div>
-    </div>
+        <div class="warning-box mb-0">Atenção: sempre valide se os números possuem DDI + DDD antes de disparar.</div>
+    </section>
 
-    <div class="section">
-        <div class="title"><i class="fas fa-users"></i> 2) Seleção de Motoristas</div>
-        
-        <div class="step">
-            <div class="step-content">
-                <span class="step-number">2.1</span>
-                <div style="flex: 1;">
-                    <strong>Seleção Individual</strong><br>
-                    - Clique em um motorista na lista para selecioná-lo (o item ficará destacado em azul).<br>
-                    - Um checkmark (✓) aparecerá no canto direito do item selecionado.<br>
-                    - Clique novamente para desmarcar.
-                </div>
-            </div>
+    <section class="training-block" id="mensagem">
+        <h2><i class="fas fa-comment-dots"></i>3. Composição da mensagem</h2>
+        <div class="step-card">
+            <strong>Variáveis suportadas</strong>
+            <p>Use variáveis para personalizar o texto automaticamente:</p>
+            <p class="mb-2"><code>{{name}}</code>, <code>{{telefone}}</code>, <code>{{estado}}</code>, <code>{{classe_veiculo}}</code>, <code>{{tipo_veiculo}}</code>, <code>{{tipo_carroceria}}</code></p>
+            <p class="mb-0">Exemplo: <code>Olá {{name}}, temos vaga urgente para {{classe_veiculo}} em {{estado}}.</code></p>
         </div>
-        
-        <div class="image-container">
-            <div class="image-placeholder">
-                <strong>IMAGEM 6: Motoristas Selecionados</strong>
-                <small>Capture a lista mostrando motoristas selecionados:<br>
-                • Alguns itens destacados em azul (selecionados)<br>
-                • Checkmark visível nos itens selecionados<br>
-                • Contador "X selecionados" no topo</small>
-            </div>
-            <!-- Substitua por: <img src="treinamento-imagens/motoristas-selecionados.png" alt="Motoristas selecionados" class="training-image"> -->
+        <figure class="media-figure">
+            <img src="treinamento-imagens/composicao-mensagem.png?v=20251124T03" alt="Composição de mensagem">
+            <figcaption>IMAGEM 8 – Campo de mensagem com variáveis e exemplo.</figcaption>
+        </figure>
+        <div class="step-card">
+            <strong>Boas práticas</strong>
+            <ul>
+                <li>Seja direto e respeitoso; evite letras maiúsculas em excesso.</li>
+                <li>Compartilhe links apenas de domínios confiáveis (site institucional, formulários oficiais).</li>
+                <li>Evite prometer valores ou vantagens que não estejam confirmados.</li>
+                <li>Teste a mensagem após cada ajuste para ver como as variáveis serão renderizadas.</li>
+            </ul>
+            <p class="mb-0"><strong>Modelo sugerido:</strong> “{{name}}, a Multimodal tem carga para {{classe_veiculo}} com carroceria {{tipo_carroceria}} saindo de {{estado}}. Interesse? Responda SIM.”</p>
         </div>
-        
-        <div class="step">
-            <div class="step-content">
-                <span class="step-number">2.2</span>
-                <div style="flex: 1;">
-                    <strong>Seleção em Massa</strong><br>
-                    - <strong>Selecionar Todos:</strong> Seleciona todos os motoristas da lista filtrada (até o limite da página).<br>
-                    - <strong>Selecionar Página:</strong> Seleciona apenas os motoristas da página atual (útil para grandes listas).<br>
-                    - <strong>Limpar Seleção:</strong> Remove todas as seleções.
-                </div>
-            </div>
-        </div>
-        
-        <div class="image-container">
-            <div class="image-placeholder">
-                <strong>IMAGEM 7: Botões de Seleção em Massa</strong>
-                <small>Capture os botões de ação de seleção:<br>
-                • Botão "Selecionar Todos"<br>
-                • Botão "Selecionar Página"<br>
-                • Botão "Limpar Seleção"<br>
-                • Contexto da área de filtros/ações</small>
-            </div>
-            <!-- Substitua por: <img src="treinamento-imagens/botoes-selecao.png" alt="Botões de seleção" class="training-image"> -->
-        </div>
-        
-        <div class="step">
-            <div class="step-content">
-                <span class="step-number">2.3</span>
-                <div style="flex: 1;">
-                    <strong>Controle de Seleção</strong><br>
-                    - O contador no topo mostra quantos motoristas estão selecionados: <strong>"X selecionados"</strong>.<br>
-                    - Revise o total antes de disparar para evitar envios acidentais.<br>
-                    - Use a paginação para navegar entre páginas e selecionar motoristas de diferentes páginas.
-                </div>
-            </div>
-        </div>
-        
-        <div class="warning-box">
-            <strong>⚠️ Atenção:</strong> Verifique se os números de telefone estão completos (com DDI e DDD) antes de disparar. Números incompletos resultarão em falha no envio.
-        </div>
-    </div>
+        <div class="tip-box mb-0">Use emoji com moderação (até 2). Eles ajudam a humanizar, mas excesso pode aumentar taxa de bloqueio.</div>
+    </section>
 
-    <div class="section">
-        <div class="title"><i class="fas fa-comment-dots"></i> 3) Composição da Mensagem</div>
-        
-        <div class="step">
-            <div class="step-content">
-                <span class="step-number">3.1</span>
-                <div style="flex: 1;">
-                    <strong>Variáveis Disponíveis</strong><br>
-                    Você pode usar as seguintes variáveis na mensagem, que serão substituídas automaticamente:<br>
-                    - <code>{{name}}</code> - Nome do motorista<br>
-                    - <code>{{telefone}}</code> - Telefone principal<br>
-                    - <code>{{estado}}</code> - Estado do motorista<br>
-                    - <code>{{classe_veiculo}}</code> - Classe (leve, médio, pesado)<br>
-                    - <code>{{tipo_veiculo}}</code> - Tipo de veículo<br>
-                    - <code>{{tipo_carroceria}}</code> - Tipo de carroceria
-                </div>
-            </div>
+    <section class="training-block" id="seguranca">
+        <h2><i class="fas fa-user-shield"></i>4. Parâmetros de segurança</h2>
+        <figure class="media-figure">
+            <img src="treinamento-imagens/configuracoes-seguranca.png?v=20251124T03" alt="Modal de configurações de segurança">
+            <figcaption>IMAGEM 9 – Limites, intervalos e simulação de digitação.</figcaption>
+        </figure>
+        <div class="step-card">
+            <strong>Checklist obrigatório</strong>
+            <ul>
+                <li>Intervalo aleatório ≥ 3 segundos para manter ritmo humano.</li>
+                <li>Limite por janela: máximo 50 mensagens a cada 5 minutos.</li>
+                <li>Cooldown: respeite de 15 a 30 minutos quando atingir o limite.</li>
+                <li>Simulação de digitação: mantenha ativa para reduzir bloqueios.</li>
+            </ul>
+            <p class="mb-0">Antes de salvar, verbalize os valores em voz alta. Parece exagero, mas ajuda a evitar números errados.</p>
+            <div class="warning-box mt-3 mb-0">Alterações agressivas são responsabilidade do operador e podem bloquear a linha definitivamente.</div>
         </div>
-        
-        <div class="image-container">
-            <div class="image-placeholder">
-                <strong>IMAGEM 8: Campo de Mensagem com Variáveis</strong>
-                <small>Capture o campo de texto da mensagem mostrando:<br>
-                • Um exemplo de mensagem usando variáveis como {{name}} e {{classe_veiculo}}<br>
-                • A área de informações sobre variáveis disponíveis<br>
-                • O campo de upload de imagem (opcional)</small>
-            </div>
-            <!-- Substitua por: <img src="treinamento-imagens/composicao-mensagem.png" alt="Composição de mensagem" class="training-image"> -->
-        </div>
-        
-        <div class="step">
-            <div class="step-content">
-                <span class="step-number">3.2</span>
-                <div style="flex: 1;">
-                    <strong>Exemplo de Mensagem</strong><br>
-                    <code>Olá {{name}}, temos uma viagem disponível para você na categoria {{classe_veiculo}}.</code><br><br>
-                    Será enviado como:<br>
-                    <code>Olá João Silva, temos uma viagem disponível para você na categoria pesado.</code>
-                </div>
-            </div>
-        </div>
-        
-        <div class="step">
-            <div class="step-content">
-                <span class="step-number">3.3</span>
-                <div style="flex: 1;">
-                    <strong>Boas Práticas</strong><br>
-                    - Mantenha linguagem profissional e objetiva.<br>
-                    - Evite links suspeitos e conteúdos bloqueados pelas políticas do WhatsApp.<br>
-                    - Teste a mensagem antes de enviar em massa usando o botão "Testar Mensagem".
-                </div>
-            </div>
-        </div>
-        
-        <div class="step">
-            <div class="step-content">
-                <span class="step-number">3.4</span>
-                <div style="flex: 1;">
-                    <strong>Envio de Imagem (Opcional)</strong><br>
-                    - Você pode anexar uma imagem à mensagem usando o campo "Imagem (opcional)".<br>
-                    - Formatos aceitos: JPG, JPEG, PNG, WEBP (máximo 5MB).<br>
-                    - A imagem será enviada junto com a mensagem de texto.
-                </div>
-            </div>
-        </div>
-    </div>
+    </section>
 
-    <div class="section">
-        <div class="title"><i class="fas fa-user-shield"></i> 4) Parâmetros de Segurança do Disparador</div>
-        
-        <div class="info-box">
-            <strong>🔒 Importante:</strong> Estes parâmetros são essenciais para evitar bloqueios do WhatsApp. Alterações inadequadas podem resultar no bloqueio permanente da linha.
+    <section class="training-block" id="teste-disparo">
+        <h2><i class="fas fa-clipboard-check"></i>5. Testes e disparo</h2>
+        <figure class="media-figure">
+            <img src="treinamento-imagens/area-testes.png?v=20251124T03" alt="Área de testes">
+            <figcaption>IMAGEM 10 – Telefone de teste e botões “Enviar teste” / “Testar mensagem”.</figcaption>
+        </figure>
+        <figure class="media-figure">
+            <img src="treinamento-imagens/disparo-progresso.png?v=20251124T03" alt="Progresso do disparo">
+            <figcaption>IMAGEM 11 – Botões Iniciar/Parar e contadores.</figcaption>
+        </figure>
+        <div class="step-card">
+            <strong>Fluxo recomendado para disparar</strong>
+            <ol class="mb-0">
+                <li>Preencha o campo “Telefone para teste” e clique em <strong>Enviar teste</strong>.</li>
+                <li>Use o botão <strong>Testar mensagem</strong> para revisar a formatação e variáveis.</li>
+                <li>Valide manualmente o retorno dos três primeiros contatos reais.</li>
+                <li>Só então clique em <strong>Iniciar disparo</strong>. Durante o envio, monitore “Enviados, Falhas, Total”.</li>
+                <li>Caso precise pausar, use o botão <strong>Parar disparo</strong>; retomar manualmente evita filas duplicadas.</li>
+            </ol>
         </div>
-        
-        <div class="image-container">
-            <div class="image-placeholder">
-                <strong>IMAGEM 9: Modal de Configurações</strong>
-                <small>Capture o modal de configurações do sistema mostrando:<br>
-                • Todos os campos de configuração (Intervalo min/max, Limite de mensagens, etc.)<br>
-                • Checkbox de "Simular digitação"<br>
-                • Botões de ação (Aplicar, Cancelar)</small>
-            </div>
-            <!-- Substitua por: <img src="treinamento-imagens/configuracoes-seguranca.png" alt="Configurações de segurança" class="training-image"> -->
-        </div>
-        
-        <div class="step">
-            <div class="step-content">
-                <span class="step-number">4.1</span>
-                <div style="flex: 1;">
-                    <strong>Intervalo aleatório entre mensagens</strong><br>
-                    - O sistema envia cada mensagem com um tempo aleatório entre o mínimo e o máximo configurados para simular ritmo humano.<br>
-                    - Intervalos repetitivos e muito curtos são detectados como automação pelo WhatsApp.<br>
-                    - <strong>Recomendação:</strong> Mínimo de 3-5 segundos, máximo de 10-15 segundos.
-                </div>
-            </div>
-        </div>
-        
-        <div class="step">
-            <div class="step-content">
-                <span class="step-number">4.2</span>
-                <div style="flex: 1;">
-                    <strong>Limite de mensagens por bloco e janela (min)</strong><br>
-                    - Define quantas mensagens podem ser enviadas dentro de um período específico.<br>
-                    - Após atingir o limite, uma pausa automática é aplicada para evitar saturar o número.<br>
-                    - Esse comportamento protege a reputação da linha e reduz a chance de bloqueios.<br>
-                    - <strong>Recomendação:</strong> 30-50 mensagens por janela de 5 minutos.
-                </div>
-            </div>
-        </div>
-        
-        <div class="step">
-            <div class="step-content">
-                <span class="step-number">4.3</span>
-                <div style="flex: 1;">
-                    <strong>Pausa automática (cooldown)</strong><br>
-                    - Quando o limite é atingido, o disparo é interrompido e só pode ser retomado depois de alguns minutos.<br>
-                    - Pausas são essenciais: o WhatsApp monitora sequências contínuas de envio agressivo.<br>
-                    - <strong>Recomendação:</strong> Cooldown de 15-30 minutos após atingir o limite.
-                </div>
-            </div>
-        </div>
-        
-        <div class="step">
-            <div class="step-content">
-                <span class="step-number">4.4</span>
-                <div style="flex: 1;">
-                    <strong>Simulação de digitação</strong><br>
-                    - Antes de cada envio, o disparador solicita ao Evolution que mostre o status "digitando..." ao destinatário.<br>
-                    - Essa camada extra de naturalidade diminui a percepção automática do disparo.<br>
-                    - <strong>Recomendação:</strong> Mantenha esta opção sempre ativada.
-                </div>
-            </div>
-        </div>
-        
-        <div class="step">
-            <div class="step-content">
-                <span class="step-number">4.5</span>
-                <div style="flex: 1;">
-                    <strong>Responsabilidade do operador</strong><br>
-                    - Ajustes abaixo das recomendações (intervalos curtos, limites altos ou sem pausa) aumentam o risco de bloqueio definitivo da linha.<br>
-                    - A Multimodal não se responsabiliza pelo bloqueio do número se os parâmetros forem alterados para valores agressivos.
-                </div>
-            </div>
-        </div>
-        
-        <div class="step">
-            <div class="step-content">
-                <span class="step-number">4.6</span>
-                <div style="flex: 1;">
-                    <strong>Recomendações Gerais</strong><br>
-                    - Mantenha mudanças conservadoras e monitore resultados pelo BI.<br>
-                    - Sempre faça disparos de teste antes de grandes lotes.<br>
-                    - Ao receber aviso de cooldown, aguarde a janela completa antes de retomar os envios.
-                </div>
-            </div>
-        </div>
-        
-        <div class="warning-box">
-            <strong>⚠️ Aviso Importante:</strong> Alterar os parâmetros de segurança para valores muito agressivos (intervalos muito curtos, limites muito altos) pode resultar no bloqueio permanente do número WhatsApp pela plataforma. Use com responsabilidade!
-        </div>
-    </div>
+        <div class="tip-box">Sempre que reiniciar o disparo, revise se os mesmos motoristas ainda estão selecionados para evitar mensagens repetidas.</div>
+    </section>
 
-    <div class="section">
-        <div class="title"><i class="fas fa-clipboard-check"></i> 5) Teste e Disparo</div>
-        
-        <div class="step">
-            <div class="step-content">
-                <span class="step-number">5.1</span>
-                <div style="flex: 1;">
-                    <strong>Teste de Mensagem</strong><br>
-                    - Use o botão <strong>"Testar Mensagem"</strong> para ver como a mensagem ficará formatada.<br>
-                    - Isso mostra um preview com as variáveis substituídas (usando dados de exemplo).<br>
-                    - Verifique se a formatação está correta antes de prosseguir.
-                </div>
-            </div>
+    <section class="training-block" id="logs">
+        <h2><i class="fas fa-database"></i>6. Logs e BI</h2>
+        <p>Todos os envios são registrados na tabela <strong>disparos_log</strong> com usuário, horário, telefone e status. Isso permite auditoria completa em caso de dúvidas.</p>
+        <div class="step-card">
+            <strong>Como consultar os registros</strong>
+            <ul class="mb-0">
+                <li>Acesse o painel de BI ou solicite o export no menu “Logs”.</li>
+                <li>Filtre por data, usuário e departamento para encontrar disparos específicos.</li>
+                <li>Analise os campos “status” (sucesso/falha) e “mensagem” para entender eventuais retornos do WhatsApp.</li>
+            </ul>
         </div>
-        
-        <div class="step">
-            <div class="step-content">
-                <span class="step-number">5.2</span>
-                <div style="flex: 1;">
-                    <strong>Teste de Envio Real</strong><br>
-                    - Digite um número de telefone no campo "Telefone para teste" (formato: 5511999999999).<br>
-                    - Clique em <strong>"Enviar Teste"</strong> para enviar uma mensagem real para esse número.<br>
-                    - Use isso para validar a mensagem e a configuração antes do envio em massa.
-                </div>
-            </div>
-        </div>
-        
-        <div class="image-container">
-            <div class="image-placeholder">
-                <strong>IMAGEM 10: Área de Testes</strong>
-                <small>Capture a seção de testes mostrando:<br>
-                • Campo "Telefone para teste"<br>
-                • Botão "Enviar Teste"<br>
-                • Botão "Testar Mensagem"<br>
-                • Contexto da área de mensagem</small>
-            </div>
-            <!-- Substitua por: <img src="treinamento-imagens/area-testes.png" alt="Área de testes" class="training-image"> -->
-        </div>
-        
-        <div class="step">
-            <div class="step-content">
-                <span class="step-number">5.3</span>
-                <div style="flex: 1;">
-                    <strong>Conferência Final</strong><br>
-                    - Valide a amostra de 3-5 contatos antes do envio em massa.<br>
-                    - Confirme o total de motoristas selecionados (verifique o contador).<br>
-                    - Verifique se a mensagem está correta e sem erros de digitação.<br>
-                    - Confirme que a imagem (se houver) está correta.
-                </div>
-            </div>
-        </div>
-        
-        <div class="step">
-            <div class="step-content">
-                <span class="step-number">5.4</span>
-                <div style="flex: 1;">
-                    <strong>Iniciando o Disparo</strong><br>
-                    - Clique no botão <strong>"Iniciar Disparo"</strong> para começar o envio.<br>
-                    - O progresso será exibido em tempo real (enviados, falhas, total).<br>
-                    - Você pode pausar o disparo a qualquer momento usando o botão "Parar Disparo" que aparecerá.
-                </div>
-            </div>
-        </div>
-        
-        <div class="image-container">
-            <div class="image-placeholder">
-                <strong>IMAGEM 11: Botões de Disparo e Progresso</strong>
-                <small>Capture a área de disparo mostrando:<br>
-                • Botão "Iniciar Disparo"<br>
-                • Botão "Parar Disparo" (quando disparo está ativo)<br>
-                • Área de progresso em tempo real (enviados, falhas, total)<br>
-                • Indicadores visuais de status</small>
-            </div>
-            <!-- Substitua por: <img src="treinamento-imagens/disparo-progresso.png" alt="Disparo e progresso" class="training-image"> -->
-        </div>
-        
-        <div class="warning-box">
-            <strong>⚠️ Atenção:</strong> Em caso de erro 401 (sessão expirada), faça login novamente e repita o envio pendente. Não feche a página durante o disparo, pois isso pode interromper o processo.
-        </div>
-    </div>
+        <figure class="media-figure">
+            <img src="treinamento-imagens/bi-disparos.png?v=20251124T03" alt="Painel BI Disparos">
+            <figcaption>IMAGEM 12 – KPIs e filtros do BI.</figcaption>
+        </figure>
+        <div class="info-box mb-0">Use o BI semanalmente para acompanhar tendência de falhas, horários de maior volume e necessidade de ajustar os parâmetros de segurança.</div>
+    </section>
 
-    <div class="section">
-        <div class="title"><i class="fas fa-database"></i> 6) Logs e Auditoria</div>
-        
-        <div class="step">
-            <div class="step-content">
-                <span class="step-number">6.1</span>
-                <div style="flex: 1;">
-                    <strong>Logs de Disparo</strong><br>
-                    - Todos os disparos são registrados na tabela <strong>disparos_log</strong> do banco de dados.<br>
-                    - Informações registradas: status (sucesso/falha), tamanho da mensagem, número do destinatário, horário, usuário responsável.<br>
-                    - Use os logs para auditoria e rastreabilidade de todas as mensagens enviadas.
-                </div>
-            </div>
-        </div>
-        
-        <div class="step">
-            <div class="step-content">
-                <span class="step-number">6.2</span>
-                <div style="flex: 1;">
-                    <strong>BI Disparos</strong><br>
-                    - Acesse o <strong>BI Disparos</strong> para visualizar KPIs e métricas detalhadas.<br>
-                    - Visualize séries temporais por usuário, departamento e período.<br>
-                    - Analise volumes de envio, taxas de sucesso e tendências.<br>
-                    - Use essas informações para otimizar seus disparos e monitorar o uso.
-                </div>
-            </div>
-        </div>
-        
-        <div class="image-container">
-            <div class="image-placeholder">
-                <strong>IMAGEM 12: BI Disparos</strong>
-                <small>Capture a tela do BI Disparos mostrando:<br>
-                • Gráficos e métricas de disparos<br>
-                • Filtros por período, usuário, departamento<br>
-                • Tabelas com dados detalhados</small>
-            </div>
-            <!-- Substitua por: <img src="treinamento-imagens/bi-disparos.png" alt="BI Disparos" class="training-image"> -->
-        </div>
-        
-        <div class="highlight-box">
-            <strong>💡 Dica:</strong> Consulte regularmente o BI Disparos para monitorar o volume de mensagens enviadas e garantir que está dentro dos limites recomendados. Isso ajuda a evitar bloqueios e manter a saúde da linha WhatsApp.
-        </div>
-    </div>
-
-    <div class="section">
-        <div class="title"><i class="fas fa-signature"></i> Declaração de Conclusão</div>
-        <p class="muted">Declaro ter recebido o treinamento e estar apto(a) a operar o Disparador.</p>
-        <div class="sig">
-            <label>Nome Completo</label>
-            <input id="sigNome" placeholder="Digite seu nome completo"/>
-            <label class="mt-2">CPF</label>
-            <input id="sigCPF" placeholder="Digite seu CPF"/>
-            <label class="mt-2">Data</label>
-            <input id="sigData" type="date"/>
-            <label class="mt-2">Assinatura Digital *</label>
-            <canvas id="signatureCanvas" class="signature-canvas" width="600" height="200"></canvas>
-            <div style="margin-top: 0.5rem; text-align: center;">
-                <button type="button" class="btn btn-secondary btn-sm" onclick="limparAssinatura()">
-                    <i class="fas fa-eraser me-2"></i>Limpar Assinatura
+    <section class="training-block" id="assinatura">
+        <h2><i class="fas fa-signature"></i>7. Declaração de conclusão</h2>
+        <p>Finalize o treinamento registrando seu aceite. Esse registro comprova que você compreendeu as responsabilidades e boas práticas do disparador.</p>
+        <div class="signature-card">
+            <label for="sigNome">Nome completo</label>
+            <input id="sigNome" class="form-control" placeholder="Digite seu nome">
+            <label for="sigCPF" class="mt-3">CPF</label>
+            <input id="sigCPF" class="form-control" placeholder="000.000.000-00">
+            <label for="sigData" class="mt-3">Data</label>
+            <input id="sigData" type="date" class="form-control">
+            <label class="mt-3">Assinatura digital *</label>
+            <canvas id="signatureCanvas" class="signature-canvas"></canvas>
+            <div class="d-flex gap-2 mt-3 flex-wrap">
+                <button class="btn btn-secondary btn-sm" type="button" onclick="limparAssinatura()">
+                    <i class="fas fa-eraser me-2"></i>Limpar assinatura
+                </button>
+                <button id="btnAssinar" class="btn btn-primary btn-sm" type="button">
+                    <i class="fas fa-file-signature me-2"></i>Salvar declaração
                 </button>
             </div>
-            <button id="btnAssinar" class="btn btn-primary mt-3" type="button">
-                <i class="fas fa-file-signature me-2"></i>Salvar Declaração
-            </button>
+            <p class="mt-3 mb-0 text-secondary" style="font-size:.9rem">Os registros ficam disponíveis para auditoria. Sempre que houver atualização do treinamento, um novo aceite será solicitado.</p>
         </div>
-    </div>
-</div>
+    </section>
+</main>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
-(function(){
-  // Inicializar canvas de assinatura
+(function preloadImages(){
+    const VERSION = '20251124T03';
+    document.querySelectorAll('.media-figure img').forEach(img => {
+        const baseSrc = img.getAttribute('src').split('?')[0];
+        img.src = `${baseSrc}?v=${VERSION}`;
+    });
+})();
+</script>
+<script>
+(function signaturePad(){
   const canvas = document.getElementById('signatureCanvas');
   const ctx = canvas.getContext('2d');
-  let isDrawing = false;
-  let lastX = 0;
-  let lastY = 0;
-  
-  // Ajustar tamanho do canvas para dispositivos móveis
+  let drawing = false;
+  let lastX = 0, lastY = 0;
+
   function resizeCanvas() {
     const rect = canvas.getBoundingClientRect();
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
     canvas.width = rect.width;
-    canvas.height = rect.height;
-    ctx.strokeStyle = '#333';
+    canvas.height = 200;
+    ctx.putImageData(imageData, 0, 0);
     ctx.lineWidth = 2;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
+    ctx.strokeStyle = '#111827';
   }
-  
-  resizeCanvas();
-  window.addEventListener('resize', resizeCanvas);
-  
-  // Eventos de desenho
-  canvas.addEventListener('mousedown', startDrawing);
-  canvas.addEventListener('mousemove', draw);
-  canvas.addEventListener('mouseup', stopDrawing);
-  canvas.addEventListener('mouseout', stopDrawing);
-  
-  // Touch events para dispositivos móveis
-  canvas.addEventListener('touchstart', handleTouch);
-  canvas.addEventListener('touchmove', handleTouch);
-  canvas.addEventListener('touchend', stopDrawing);
-  
-  function startDrawing(e) {
-    isDrawing = true;
+
+  function startDraw(e){
+    drawing = true;
     const rect = canvas.getBoundingClientRect();
-    lastX = e.clientX - rect.left;
-    lastY = e.clientY - rect.top;
+    lastX = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
+    lastY = (e.touches ? e.touches[0].clientY : e.clientY) - rect.top;
   }
-  
-  function draw(e) {
-    if (!isDrawing) return;
-    const rect = canvas.getBoundingClientRect();
-    const currentX = e.clientX - rect.left;
-    const currentY = e.clientY - rect.top;
-    ctx.beginPath();
-    ctx.moveTo(lastX, lastY);
-    ctx.lineTo(currentX, currentY);
-    ctx.stroke();
-    lastX = currentX;
-    lastY = currentY;
-  }
-  
-  function stopDrawing() {
-    isDrawing = false;
-  }
-  
-  function handleTouch(e) {
+
+  function draw(e){
+    if(!drawing) return;
     e.preventDefault();
-    const touch = e.touches[0];
-    const mouseEvent = new MouseEvent(e.type === 'touchstart' ? 'mousedown' : 
-                                     e.type === 'touchmove' ? 'mousemove' : 'mouseup', {
-      clientX: touch.clientX,
-      clientY: touch.clientY
-    });
-    canvas.dispatchEvent(mouseEvent);
+    const rect = canvas.getBoundingClientRect();
+    const x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
+    const y = (e.touches ? e.touches[0].clientY : e.clientY) - rect.top;
+    ctx.beginPath();
+    ctx.moveTo(lastX,lastY);
+    ctx.lineTo(x,y);
+    ctx.stroke();
+    lastX = x; lastY = y;
   }
-  
-  function limparAssinatura() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-  }
-  
-  // Configurar data atual
-  const dataInput = document.getElementById('sigData');
-  if(dataInput && !dataInput.value){ dataInput.value = new Date().toISOString().slice(0,10); }
-  
-  // Máscara para CPF
-  document.getElementById('sigCPF')?.addEventListener('input', function(e) {
-    let value = e.target.value.replace(/\D/g, '');
-    if (value.length <= 11) {
+
+  function stopDraw(){ drawing = false; }
+
+  canvas.addEventListener('mousedown', startDraw);
+  canvas.addEventListener('mousemove', draw);
+  canvas.addEventListener('mouseup', stopDraw);
+  canvas.addEventListener('mouseout', stopDraw);
+  canvas.addEventListener('touchstart', startDraw, {passive:false});
+  canvas.addEventListener('touchmove', draw, {passive:false});
+  canvas.addEventListener('touchend', stopDraw);
+
+  window.addEventListener('resize', resizeCanvas);
+  resizeCanvas();
+
+  document.getElementById('sigData').value = new Date().toISOString().slice(0,10);
+
+  document.getElementById('sigCPF').addEventListener('input', e => {
+    let value = e.target.value.replace(/\D/g,'');
+    if(value.length <= 11){
       value = value.replace(/(\d{3})(\d)/, '$1.$2');
       value = value.replace(/(\d{3})(\d)/, '$1.$2');
       value = value.replace(/(\d{3})(\d{1,2})$/, '$1-$2');
@@ -743,76 +380,73 @@
     }
   });
 
-  document.getElementById('btnAssinar')?.addEventListener('click', async ()=>{
-    const nome = document.getElementById('sigNome')?.value.trim();
-    const cpf = document.getElementById('sigCPF')?.value.trim();
-    const assinatura = canvas.toDataURL();
-    
-    if(!nome || !assinatura){ 
-      alert('Preencha o Nome e faça sua Assinatura Digital.'); 
-      return; 
-    }
-    
-    // Verificar se há algo desenhado no canvas
-    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    const hasContent = imageData.data.some(channel => channel !== 0);
-    
-    if (!hasContent) {
-      alert('Por favor, faça sua assinatura digital no campo apropriado.');
-      return;
-    }
-
-    // Obter token Supabase (se logado)
-    let token = null;
-    let userId = null;
-    try {
-      const cfg = await (await fetch('/api/supabase-config')).json();
-      const sb = window.supabase?.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey);
-      const { data } = await sb.auth.getSession();
-      token = data?.session?.access_token || null;
-      if (data?.session?.user) {
-        userId = data.session.user.id;
-      }
-    } catch(e){ console.warn('Sessão não encontrada:', e); }
-
-    const headers = { 'Content-Type':'application/json' };
-    if(token) headers['Authorization'] = `Bearer ${token}`;
-
-    const btn = document.getElementById('btnAssinar');
-    btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Salvando...';
-    try {
-      const resp = await fetch('/api/treinamentos/assinaturas',{
-        method:'POST', headers, credentials:'include',
-        body: JSON.stringify({ 
-          treinamento_slug:'disparador_mensagens', 
-          user_id: userId,
-          nome, 
-          cpf, 
-          assinatura_texto: assinatura,
-          data_assinatura: new Date().toISOString(),
-          ip_address: null,
-          user_agent: navigator.userAgent
-        })
-      });
-      if(!resp.ok){ throw new Error(await resp.text()); }
-      const js = await resp.json();
-      alert('✅ Declaração registrada em '+ (js.data_assinatura ? new Date(js.data_assinatura).toLocaleString('pt-BR') : new Date().toLocaleString('pt-BR')));
-      
-      // Limpar campos
-      document.getElementById('sigNome').value = '';
-      document.getElementById('sigCPF').value = '';
-      document.getElementById('sigData').value = new Date().toISOString().slice(0,10);
-      limparAssinatura();
-    } catch(err){
-      console.error(err); alert('❌ Erro ao salvar: '+ (err.message||'Erro'));
-    } finally {
-      btn.disabled = false; btn.innerHTML = '<i class="fas fa-file-signature me-2"></i>Salvar Declaração';
-    }
-  });
+  window.limparAssinatura = () => ctx.clearRect(0,0,canvas.width,canvas.height);
 })();
-    </script>
-<!-- Chat IA -->
+</script>
+<script>
+document.getElementById('btnAssinar').addEventListener('click', async () => {
+  const nome = document.getElementById('sigNome').value.trim();
+  const cpf = document.getElementById('sigCPF').value.trim();
+  const data = document.getElementById('sigData').value;
+  const canvas = document.getElementById('signatureCanvas');
+  const assinatura = canvas.toDataURL();
+
+  if(!nome || !cpf || !data){
+    alert('Preencha nome, CPF e data.');
+    return;
+  }
+
+  const pixels = canvas.getContext('2d').getImageData(0,0,canvas.width,canvas.height).data;
+  const hasTrace = pixels.some(channel => channel !== 0);
+  if(!hasTrace){
+    alert('Faça a assinatura digital antes de salvar.');
+    return;
+  }
+
+  try{
+    const cfg = await (await fetch('/api/supabase-config')).json();
+    const supabase = window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey);
+    const { data: session } = await supabase.auth.getSession();
+
+    const resp = await fetch('/api/treinamentos/assinaturas', {
+      method:'POST',
+      headers:{'Content-Type':'application/json', ...(session?.session?.access_token ? {Authorization:`Bearer ${session.session.access_token}`} : {})},
+      body:JSON.stringify({
+        treinamento_slug:'disparador_mensagens',
+        nome,
+        cpf,
+        assinatura_texto: assinatura,
+        data_assinatura: new Date().toISOString(),
+        user_agent: navigator.userAgent
+      })
+    });
+
+    if(!resp.ok) throw new Error(await resp.text());
+    alert('Declaração registrada com sucesso!');
+  }catch(err){
+    console.error(err);
+    alert('Erro ao salvar assinatura: ' + err.message);
+  }
+});
+</script>
+<section class="training-block" id="faq">
+    <h2><i class="fas fa-question-circle"></i>FAQ rápido</h2>
+    <div class="step-card">
+        <strong>O que fazer se uma mensagem falhar?</strong>
+        <p>Verifique o status no painel de progresso e nos logs. Se for erro 401, faça login novamente; se for bloqueio do WhatsApp, revise os parâmetros de segurança antes de tentar de novo.</p>
+    </div>
+    <div class="step-card">
+        <strong>Posso disparar para a mesma lista no mesmo dia?</strong>
+        <p>Sim, mas alterne o texto e respeite o cooldown. Disparos repetidos com a mesma mensagem elevam a chance de bloqueio.</p>
+    </div>
+    <div class="step-card mb-0">
+        <strong>Quem aprovou este treinamento?</strong>
+        <p>Operações (GR), Comercial e Monitoramento. Dúvidas podem ser abertas no canal interno #disparador.</p>
+    </div>
+</section>
+
 <link rel="stylesheet" href="css/chat-ia.css">
 <script src="js/chat-ia.js"></script>
 </body>
 </html>
+
