@@ -3666,30 +3666,119 @@
 
       // Verificar se o status do motorista está ativo
       const motoristaStatus = (state.motorista?.status || '').toLowerCase();
-      if (motoristaStatus !== 'ativo') {
-        console.log('❌ Tentativa de assumir coleta com cadastro pendente:', {
-          status: state.motorista?.status,
-          motorista: state.motorista
-        });
-        showToast('Seu cadastro está pendente. Complete seu cadastro e aguarde a aprovação antes de assumir coletas.', 'error');
-        return;
-      }
-
-      // Verificar se o cadastro está completo
+      
+      console.log('🔍 Iniciando verificação para assumir coleta:', {
+        coletaId: coletaId,
+        temMotorista: !!state.motorista,
+        status: motoristaStatus,
+        motorista: state.motorista
+      });
+      
+      // Verificar se o cadastro está completo primeiro
       const cadastroCompleto = isCadastroCompleto();
-      console.log('🔍 Verificando cadastro:', {
+      console.log('🔍 Resultado da verificação de cadastro:', {
         temMotorista: !!state.motorista,
         status: motoristaStatus,
         cadastroCompleto,
         motorista: state.motorista
       });
 
+      // Se o cadastro não está completo, abrir chat para completar
       if (!cadastroCompleto) {
-        console.log('📝 Cadastro incompleto, abrindo chat...');
+        console.log('📝 Cadastro incompleto, abrindo chat para completar...', {
+          coletaId: coletaId,
+          motorista: state.motorista,
+          cadastroCompleto: false
+        });
+        
+        // Configurar estado do chat
         coletaPendenteAposCadastro = coletaId;
         chatCadastroState.coletaId = coletaId;
-        iniciarChatCadastro();
+        
+        // Garantir que os elementos estejam inicializados antes de abrir
+        if (!chatCadastroElements || !chatCadastroElements.overlay) {
+          console.log('⚠️ Elementos do chat não inicializados, inicializando...');
+          inicializarElementosChatCadastro();
+        }
+        
+        // Verificar se o overlay existe no DOM
+        const overlayNoDOM = document.getElementById('chatCadastroOverlay');
+        if (!overlayNoDOM) {
+          console.error('❌ ERRO CRÍTICO: chatCadastroOverlay não encontrado no DOM!');
+          showToast('Erro: Chat de cadastro não encontrado. Recarregue a página.', 'error');
+          return;
+        }
+        
+        // Tentar abrir o chat imediatamente
+        try {
+          console.log('🚀 Chamando iniciarChatCadastro()...');
+          iniciarChatCadastro();
+          console.log('✅ Função iniciarChatCadastro() chamada com sucesso');
+          
+          // Verificar se o overlay foi realmente exibido após um pequeno delay
+          setTimeout(() => {
+            const overlay = document.getElementById('chatCadastroOverlay');
+            const computedStyle = overlay ? window.getComputedStyle(overlay) : null;
+            
+            if (!overlay) {
+              console.error('❌ Overlay não encontrado após iniciarChatCadastro!');
+              showToast('Erro: Chat não encontrado. Recarregue a página.', 'error');
+            } else if (computedStyle && (computedStyle.display === 'none' || computedStyle.visibility === 'hidden')) {
+              console.warn('⚠️ Overlay não foi exibido corretamente, forçando exibição...');
+              overlay.style.display = 'flex';
+              overlay.style.visibility = 'visible';
+              overlay.style.opacity = '1';
+              overlay.style.zIndex = '9999';
+              document.body.style.overflow = 'hidden';
+              console.log('✅ Overlay forçado a exibir');
+            } else {
+              console.log('✅ Overlay exibido corretamente:', {
+                display: computedStyle?.display,
+                visibility: computedStyle?.visibility,
+                zIndex: computedStyle?.zIndex
+              });
+            }
+          }, 300);
+        } catch (error) {
+          console.error('❌ Erro ao iniciar chat de cadastro:', error);
+          console.error('❌ Stack trace:', error.stack);
+          
+          // Última tentativa: forçar exibição do overlay diretamente
+          const overlay = document.getElementById('chatCadastroOverlay');
+          if (overlay) {
+            console.log('🔄 Tentando forçar exibição do overlay como último recurso...');
+            overlay.style.display = 'flex';
+            overlay.style.visibility = 'visible';
+            overlay.style.opacity = '1';
+            overlay.style.zIndex = '9999';
+            document.body.style.overflow = 'hidden';
+            showToast('Chat de cadastro aberto. Complete seu cadastro para continuar.', 'info');
+          } else {
+            showToast('Erro ao abrir chat de cadastro. Tente recarregar a página.', 'error');
+          }
+        }
         return;
+      }
+
+      // Se o cadastro está completo mas o status não é ativo, verificar se é cadastro_pendente
+      if (motoristaStatus !== 'ativo') {
+        if (motoristaStatus === 'cadastro_pendente') {
+          // Cadastro completo mas ainda pendente de aprovação
+          console.log('⚠️ Cadastro completo mas ainda pendente de aprovação:', {
+            status: state.motorista?.status,
+            motorista: state.motorista
+          });
+          showToast('Seu cadastro está completo, mas ainda está pendente de aprovação. Aguarde a aprovação antes de assumir coletas.', 'warning');
+          return;
+        } else {
+          // Outro status (inativo, etc)
+          console.log('❌ Tentativa de assumir coleta com status inválido:', {
+            status: state.motorista?.status,
+            motorista: state.motorista
+          });
+          showToast('Seu cadastro não está ativo. Entre em contato com o suporte.', 'error');
+          return;
+        }
       }
       
       // Se cadastro completo, verificar documentos
@@ -4411,9 +4500,42 @@
         return;
       }
 
+      // Verificar se está em HTTPS (necessário para geolocalização)
+      if (location.protocol !== 'https:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
+        console.warn('⚠️ Geolocalização requer HTTPS em produção');
+        showToast('Atenção: Geolocalização requer conexão segura (HTTPS).', 'warning');
+      }
+
+      // Verificar permissões usando Permissions API se disponível
+      if (navigator.permissions && navigator.permissions.query) {
+        try {
+          const permissionStatus = await navigator.permissions.query({ name: 'geolocation' });
+          console.log('📍 Status da permissão de geolocalização:', permissionStatus.state);
+          
+          if (permissionStatus.state === 'denied') {
+            console.error('❌ Permissão de geolocalização negada pelo usuário');
+            showToast('Permissão de localização negada. Por favor, permita o acesso à localização nas configurações do navegador.', 'error');
+            rastreamentoAtivo = false;
+            return;
+          }
+
+          // Monitorar mudanças na permissão
+          permissionStatus.onchange = () => {
+            console.log('📍 Status da permissão mudou para:', permissionStatus.state);
+            if (permissionStatus.state === 'denied') {
+              showToast('Permissão de localização foi negada. O rastreamento foi interrompido.', 'error');
+              pararRastreamento();
+            }
+          };
+        } catch (error) {
+          console.warn('⚠️ Não foi possível verificar permissões:', error);
+          // Continuar mesmo se não conseguir verificar
+        }
+      }
+
       const options = {
         enableHighAccuracy: true,
-        timeout: 10000,
+        timeout: 15000, // Aumentado para 15 segundos
         maximumAge: 0
       };
 
@@ -4430,7 +4552,21 @@
         },
         (error) => {
           console.error('❌ Erro ao obter localização inicial:', error);
-          showToast('Erro ao acessar sua localização. Verifique as permissões do navegador.', 'error');
+          let mensagemErro = 'Erro ao acessar sua localização.';
+          
+          switch(error.code) {
+            case error.PERMISSION_DENIED:
+              mensagemErro = 'Permissão de localização negada. Por favor, permita o acesso à localização nas configurações do navegador.';
+              break;
+            case error.POSITION_UNAVAILABLE:
+              mensagemErro = 'Localização indisponível. Verifique se o GPS está ativado.';
+              break;
+            case error.TIMEOUT:
+              mensagemErro = 'Tempo esgotado ao obter localização. Tente novamente.';
+              break;
+          }
+          
+          showToast(mensagemErro, 'error');
           rastreamentoAtivo = false;
         },
         options
@@ -4442,13 +4578,35 @@
         (position) => {
           console.log('📍 Nova posição detectada:', {
             lat: position.coords.latitude,
-            lng: position.coords.longitude
+            lng: position.coords.longitude,
+            accuracy: position.coords.accuracy,
+            timestamp: new Date(position.timestamp).toISOString()
           });
           enviarPosicao(position, coletaId);
         },
         (error) => {
           console.error('❌ Erro no watchPosition:', error);
-          // Não desativar rastreamento por erro no watchPosition, continuar tentando
+          
+          let mensagemErro = '';
+          switch(error.code) {
+            case error.PERMISSION_DENIED:
+              mensagemErro = 'Permissão de localização negada. O rastreamento foi interrompido.';
+              rastreamentoAtivo = false;
+              pararRastreamento();
+              break;
+            case error.POSITION_UNAVAILABLE:
+              console.warn('⚠️ Localização indisponível no watchPosition, continuando...');
+              // Não desativar, apenas logar
+              break;
+            case error.TIMEOUT:
+              console.warn('⚠️ Timeout no watchPosition, continuando...');
+              // Não desativar, apenas logar
+              break;
+          }
+          
+          if (mensagemErro) {
+            showToast(mensagemErro, 'error');
+          }
         },
         options
       );
@@ -4456,15 +4614,30 @@
       // Enviar posição periodicamente (a cada 30 segundos)
       console.log('📍 Configurando envio periódico a cada 30 segundos...');
       intervaloRastreamento = setInterval(() => {
+        if (!rastreamentoAtivo) {
+          console.warn('⚠️ Rastreamento não está mais ativo, parando intervalo periódico');
+          clearInterval(intervaloRastreamento);
+          intervaloRastreamento = null;
+          return;
+        }
+        
         navigator.geolocation.getCurrentPosition(
           (position) => {
-            console.log('📍 Enviando posição periódica...');
+            console.log('📍 Enviando posição periódica...', {
+              lat: position.coords.latitude,
+              lng: position.coords.longitude
+            });
             enviarPosicao(position, coletaId);
           },
           (error) => {
             console.error('❌ Erro ao obter posição periódica:', error);
+            // Não desativar rastreamento por erro periódico, apenas logar
+            // O watchPosition continuará tentando
           },
-          options
+          {
+            ...options,
+            timeout: 10000 // Timeout menor para envio periódico
+          }
         );
       }, 30000); // 30 segundos
 
@@ -4488,8 +4661,16 @@
     }
 
     async function enviarPosicao(position, coletaId) {
+      console.log('📤 enviarPosicao chamado:', { 
+        hasSession: !!state.session?.access_token,
+        coletaId: coletaId || coletaRastreamentoAtiva,
+        hasPosition: !!position
+      });
+
       if (!state.session?.access_token) {
         console.error('❌ Sessão não encontrada para enviar posição');
+        console.error('❌ State session:', state.session);
+        showToast('Erro: Sessão expirada. Faça login novamente.', 'error');
         return;
       }
 
@@ -4500,6 +4681,11 @@
 
       if (!coletaId) {
         console.error('❌ Não é possível enviar posição: coletaId não disponível');
+        return;
+      }
+
+      if (!position || !position.coords) {
+        console.error('❌ Posição inválida recebida');
         return;
       }
 
@@ -4524,19 +4710,44 @@
         console.warn('Erro ao obter endereço:', error);
       }
 
+      // Validar coordenadas antes de enviar
+      if (isNaN(latitude) || isNaN(longitude)) {
+        console.error('❌ Coordenadas inválidas (NaN):', { latitude, longitude });
+        return;
+      }
+
+      if (latitude === 0 && longitude === 0) {
+        console.warn('⚠️ Coordenadas são zero, pode ser um erro do GPS');
+        // Continuar mesmo assim, pode ser válido em alguns casos
+      }
+
+      // Validar se as coordenadas estão em range válido
+      if (latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) {
+        console.error('❌ Coordenadas fora do range válido:', { latitude, longitude });
+        return;
+      }
+
       const dadosPosicao = {
         coletaId: coletaId,
-        latitude: latitude,
-        longitude: longitude,
-        precisao: accuracy,
-        altitude: altitude || null,
-        velocidade: speed ? (speed * 3.6) : null, // Converter m/s para km/h
-        direcao: heading || null,
-        endereco: endereco,
+        latitude: parseFloat(latitude.toFixed(6)), // Limitar a 6 casas decimais
+        longitude: parseFloat(longitude.toFixed(6)),
+        precisao: accuracy ? parseFloat(accuracy.toFixed(2)) : null,
+        altitude: altitude ? parseFloat(altitude.toFixed(2)) : null,
+        velocidade: speed ? parseFloat((speed * 3.6).toFixed(2)) : null, // Converter m/s para km/h
+        direcao: heading ? parseFloat(heading.toFixed(2)) : null,
+        endereco: endereco || null,
         bateriaNivel: null, // Não disponível via web API
         conectadoWifi: navigator.onLine,
         conectadoRedeCelular: navigator.onLine
       };
+
+      console.log('📤 Dados da posição preparados:', {
+        coletaId: dadosPosicao.coletaId,
+        latitude: dadosPosicao.latitude,
+        longitude: dadosPosicao.longitude,
+        precisao: dadosPosicao.precisao,
+        timestamp: new Date().toISOString()
+      });
 
       try {
         const response = await fetch('/api/rastreamento/enviar-posicao', {
@@ -4552,29 +4763,72 @@
           const errorData = await response.json().catch(() => ({ error: 'Erro desconhecido' }));
           console.error('❌ Erro ao enviar posição:', {
             status: response.status,
-            error: errorData.error || 'Erro desconhecido'
+            statusText: response.statusText,
+            error: errorData.error || 'Erro desconhecido',
+            coletaId: coletaId
           });
+          
+          // Se for erro 401, sessão expirada
+          if (response.status === 401) {
+            console.error('❌ Sessão expirada, redirecionando para login...');
+            showToast('Sessão expirada. Faça login novamente.', 'error');
+            setTimeout(() => {
+              window.location.href = 'login-motorista.html';
+            }, 2000);
+            return;
+          }
+          
           throw new Error(errorData.error || 'Erro ao enviar posição');
         }
 
         const result = await response.json();
+        
+        // Incrementar contador de posições enviadas
+        if (!window.contadorPosicoesEnviadas) {
+          window.contadorPosicoesEnviadas = 0;
+        }
+        window.contadorPosicoesEnviadas++;
+        
         console.log('✅ Posição GPS enviada com sucesso:', {
           coletaId: coletaId,
           posicaoId: result.posicao?.id,
           timestamp: new Date().toISOString(),
           lat: latitude,
-          lng: longitude
+          lng: longitude,
+          accuracy: accuracy,
+          totalEnviadas: window.contadorPosicoesEnviadas
         });
         
         // Atualizar indicador visual de que posição foi enviada
         const statusRastreamento = document.getElementById('statusRastreamento');
         if (statusRastreamento) {
-          statusRastreamento.textContent = `📍 Última posição: ${new Date().toLocaleTimeString('pt-BR')}`;
+          const agora = new Date();
+          statusRastreamento.textContent = `📍 Última posição: ${agora.toLocaleTimeString('pt-BR')} (${window.contadorPosicoesEnviadas} enviadas)`;
           statusRastreamento.style.color = '#4caf50';
+          statusRastreamento.title = `Lat: ${latitude.toFixed(6)}, Lng: ${longitude.toFixed(6)}, Precisão: ${accuracy ? accuracy.toFixed(0) + 'm' : 'N/A'}\nTotal enviadas: ${window.contadorPosicoesEnviadas}`;
+        }
+        
+        // Notificar service worker sobre sucesso (se estiver instalado)
+        if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+          navigator.serviceWorker.controller.postMessage({
+            type: 'POSITION_SENT_SUCCESS',
+            coletaId: coletaId,
+            timestamp: new Date().toISOString()
+          });
         }
       } catch (error) {
         console.error('❌ Erro ao enviar posição GPS:', error);
+        console.error('❌ Stack trace:', error.stack);
+        
+        // Atualizar indicador visual de erro
+        const statusRastreamento = document.getElementById('statusRastreamento');
+        if (statusRastreamento) {
+          statusRastreamento.textContent = `⚠️ Erro ao enviar posição`;
+          statusRastreamento.style.color = '#f44336';
+        }
+        
         // Não mostrar toast para não incomodar o usuário, apenas logar
+        // O rastreamento continuará tentando
       }
     }
 
@@ -4598,6 +4852,58 @@
       coletaRastreamentoAtiva = null;
       showToast('Rastreamento GPS desativado.', 'info');
     }
+
+    // Função de teste para verificar envio de posição (pode ser chamada do console)
+    window.testarEnvioPosicao = async function() {
+      console.log('🧪 Testando envio de posição...');
+      
+      if (!state.session?.access_token) {
+        console.error('❌ Sessão não encontrada');
+        return { success: false, error: 'Sessão não encontrada' };
+      }
+
+      if (!coletaRastreamentoAtiva) {
+        console.warn('⚠️ Nenhuma coleta ativa para rastreamento');
+        console.log('💡 Dica: Assuma uma viagem primeiro ou forneça um coletaId');
+        return { success: false, error: 'Nenhuma coleta ativa' };
+      }
+
+      if (!navigator.geolocation) {
+        console.error('❌ Geolocalização não suportada');
+        return { success: false, error: 'Geolocalização não suportada' };
+      }
+
+      try {
+        const position = await new Promise((resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(resolve, reject, {
+            enableHighAccuracy: true,
+            timeout: 10000,
+            maximumAge: 0
+          });
+        });
+
+        console.log('✅ Posição obtida:', {
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+          accuracy: position.coords.accuracy
+        });
+
+        await enviarPosicao(position, coletaRastreamentoAtiva);
+        
+        return { 
+          success: true, 
+          message: 'Posição enviada com sucesso',
+          position: {
+            lat: position.coords.latitude,
+            lng: position.coords.longitude,
+            accuracy: position.coords.accuracy
+          }
+        };
+      } catch (error) {
+        console.error('❌ Erro no teste:', error);
+        return { success: false, error: error.message };
+      }
+    };
 
     // Parar rastreamento quando a página for fechada ou quando a coleta for finalizada
     window.addEventListener('beforeunload', () => {
@@ -4970,21 +5276,47 @@
       console.log('🚀 Iniciando chat de cadastro...');
       
       // Garantir que os elementos estejam inicializados
-      if (!chatCadastroElements.overlay) {
+      if (!chatCadastroElements || !chatCadastroElements.overlay) {
         console.log('⚠️ Elementos não inicializados, inicializando...');
         inicializarElementosChatCadastro();
       }
       
-      if (!chatCadastroElements.overlay) {
-        console.error('❌ Erro: chatCadastroElements.overlay não encontrado!');
-        showToast('Erro ao abrir chat de cadastro. Recarregue a página.', 'error');
-        return;
+      // Verificar novamente após inicialização
+      if (!chatCadastroElements || !chatCadastroElements.overlay) {
+        // Tentar buscar diretamente do DOM
+        const overlay = document.getElementById('chatCadastroOverlay');
+        if (overlay) {
+          console.log('✅ Overlay encontrado diretamente no DOM, recriando elementos...');
+          chatCadastroElements = {
+            overlay: overlay,
+            messages: document.getElementById('chatCadastroMessages'),
+            options: document.getElementById('chatCadastroOptions'),
+            form: document.getElementById('chatCadastroForm'),
+            input: document.getElementById('chatCadastroInput'),
+            sendBtn: document.getElementById('chatCadastroSendBtn'),
+            closeBtn: document.getElementById('btnFecharChatCadastro'),
+            fileUpload: document.getElementById('chatCadastroFileUpload'),
+            fileInput: document.getElementById('chatCadastroFileInput'),
+            fileList: document.getElementById('chatCadastroFileList'),
+            fileBtn: document.getElementById('chatCadastroFileBtn')
+          };
+        } else {
+          console.error('❌ Erro: chatCadastroOverlay não encontrado no DOM!');
+          console.error('❌ Elementos disponíveis:', {
+            overlay: !!document.getElementById('chatCadastroOverlay'),
+            messages: !!document.getElementById('chatCadastroMessages'),
+            form: !!document.getElementById('chatCadastroForm')
+          });
+          showToast('Erro ao abrir chat de cadastro. O elemento não foi encontrado. Recarregue a página.', 'error');
+          return;
+        }
       }
       
       console.log('✅ Elementos do chat encontrados:', {
         overlay: !!chatCadastroElements.overlay,
         messages: !!chatCadastroElements.messages,
-        form: !!chatCadastroElements.form
+        form: !!chatCadastroElements.form,
+        overlayId: chatCadastroElements.overlay?.id
       });
       
       // Verificar quais dados já existem
@@ -5093,8 +5425,20 @@
       chatCadastroState.isWaiting = false;
       
       if (chatCadastroElements.overlay) {
+        console.log('✅ Exibindo overlay do chat de cadastro...');
         chatCadastroElements.overlay.style.display = 'flex';
+        chatCadastroElements.overlay.style.visibility = 'visible';
+        chatCadastroElements.overlay.style.opacity = '1';
         document.body.style.overflow = 'hidden'; // Prevenir scroll do body
+        
+        // Forçar exibição com z-index alto
+        chatCadastroElements.overlay.style.zIndex = '9999';
+        
+        console.log('✅ Overlay exibido:', {
+          display: chatCadastroElements.overlay.style.display,
+          visibility: chatCadastroElements.overlay.style.visibility,
+          zIndex: chatCadastroElements.overlay.style.zIndex
+        });
         
         if (chatCadastroElements.messages) {
           chatCadastroElements.messages.innerHTML = '';
@@ -5122,6 +5466,38 @@
         }
       } else {
         console.error('❌ chatCadastroElements.overlay é null!');
+        // Tentar buscar diretamente do DOM como último recurso
+        const overlayDireto = document.getElementById('chatCadastroOverlay');
+        if (overlayDireto) {
+          console.log('✅ Overlay encontrado diretamente, exibindo...');
+          overlayDireto.style.display = 'flex';
+          overlayDireto.style.visibility = 'visible';
+          overlayDireto.style.opacity = '1';
+          overlayDireto.style.zIndex = '9999';
+          document.body.style.overflow = 'hidden';
+          chatCadastroElements.overlay = overlayDireto;
+        } else {
+          console.error('❌ Overlay não encontrado no DOM!');
+          showToast('Erro: Chat de cadastro não encontrado. Recarregue a página.', 'error');
+          return;
+        }
+      }
+
+      // Verificação final: garantir que o overlay está visível
+      if (chatCadastroElements.overlay) {
+        const computedStyle = window.getComputedStyle(chatCadastroElements.overlay);
+        if (computedStyle.display === 'none' || computedStyle.visibility === 'hidden') {
+          console.warn('⚠️ Overlay está oculto, forçando exibição...');
+          chatCadastroElements.overlay.style.display = 'flex';
+          chatCadastroElements.overlay.style.visibility = 'visible';
+          chatCadastroElements.overlay.style.opacity = '1';
+          chatCadastroElements.overlay.style.zIndex = '9999';
+        }
+        console.log('✅ Overlay verificado e exibido:', {
+          display: computedStyle.display,
+          visibility: computedStyle.visibility,
+          zIndex: computedStyle.zIndex
+        });
       }
 
       adicionarMensagemChat(mensagemInicial, 'bot');

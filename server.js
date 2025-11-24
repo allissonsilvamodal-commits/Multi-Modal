@@ -4266,28 +4266,64 @@ app.post('/api/rastreamento/enviar-posicao', express.json(), async (req, res) =>
       conectadoRedeCelular
     } = req.body;
 
+    console.log('📍 Dados recebidos do cliente:', {
+      motorista_id: motorista?.id,
+      coletaId: coletaId,
+      latitude: latitude,
+      longitude: longitude,
+      hasPrecisao: !!precisao,
+      timestamp: new Date().toISOString()
+    });
+
     if (!motorista) {
+      console.error('❌ Motorista não encontrado para enviar posição');
       return res.status(409).json({ success: false, error: 'Motorista não encontrado.' });
     }
 
-    if (!latitude || !longitude) {
-      return res.status(400).json({ success: false, error: 'Coordenadas inválidas.' });
+    // Validar coordenadas
+    if (latitude === null || latitude === undefined || longitude === null || longitude === undefined) {
+      console.error('❌ Coordenadas ausentes:', { latitude, longitude });
+      return res.status(400).json({ success: false, error: 'Coordenadas inválidas (ausentes).' });
     }
 
-    // Verificar se termo está aceito
+    const lat = parseFloat(latitude);
+    const lng = parseFloat(longitude);
+
+    if (isNaN(lat) || isNaN(lng)) {
+      console.error('❌ Coordenadas não são números:', { latitude, longitude });
+      return res.status(400).json({ success: false, error: 'Coordenadas inválidas (não são números).' });
+    }
+
+    if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+      console.error('❌ Coordenadas fora do range válido:', { lat, lng });
+      return res.status(400).json({ success: false, error: 'Coordenadas fora do range válido.' });
+    }
+
+    // Verificar se termo está aceito (apenas se coletaId for fornecido)
     if (coletaId) {
-      const { data: termo } = await supabaseAdmin
+      const { data: termo, error: termoError } = await supabaseAdmin
         .from('rastreamento_termos')
-        .select('id')
+        .select('id, aceito_em, ativo')
         .eq('motorista_id', motorista.id)
         .eq('coleta_id', coletaId)
         .eq('ativo', true)
         .limit(1)
-        .single();
+        .maybeSingle();
 
-      if (!termo) {
-        return res.status(403).json({ success: false, error: 'Termo de rastreamento não aceito para esta coleta.' });
+      if (termoError) {
+        console.error('❌ Erro ao verificar termo:', termoError);
+        // Continuar mesmo com erro na verificação do termo
+      } else if (!termo) {
+        console.warn('⚠️ Termo não aceito para coleta:', { motorista_id: motorista.id, coleta_id: coletaId });
+        return res.status(403).json({ 
+          success: false, 
+          error: 'Termo de rastreamento não aceito para esta coleta. O motorista precisa aceitar o termo no portal.' 
+        });
+      } else {
+        console.log('✅ Termo verificado:', { termo_id: termo.id, aceito_em: termo.aceito_em });
       }
+    } else {
+      console.warn('⚠️ Posição enviada sem coletaId - será salva sem vínculo com coleta');
     }
 
     // Inserir posição
@@ -4295,25 +4331,27 @@ app.post('/api/rastreamento/enviar-posicao', express.json(), async (req, res) =>
     const dadosInsercao = {
         motorista_id: motorista.id,
         coleta_id: coletaId || null,
-        latitude: parseFloat(latitude),
-        longitude: parseFloat(longitude),
-      timestamp_gps: timestampAtual, // Garantir que o timestamp seja preenchido
-        precisao: precisao ? parseFloat(precisao) : null,
-        altitude: altitude ? parseFloat(altitude) : null,
-        velocidade: velocidade ? parseFloat(velocidade) : null,
-        direcao: direcao ? parseFloat(direcao) : null,
-        endereco: endereco || null,
-        bateria_nivel: bateriaNivel || null,
-        conectado_wifi: conectadoWifi || false,
-        conectado_rede_celular: conectadoRedeCelular || false
+        latitude: lat,
+        longitude: lng,
+        timestamp_gps: timestampAtual, // Garantir que o timestamp seja preenchido
+        precisao: precisao ? (isNaN(parseFloat(precisao)) ? null : parseFloat(precisao)) : null,
+        altitude: altitude ? (isNaN(parseFloat(altitude)) ? null : parseFloat(altitude)) : null,
+        velocidade: velocidade ? (isNaN(parseFloat(velocidade)) ? null : parseFloat(velocidade)) : null,
+        direcao: direcao ? (isNaN(parseFloat(direcao)) ? null : parseFloat(direcao)) : null,
+        endereco: endereco && endereco.trim() ? endereco.trim() : null,
+        bateria_nivel: bateriaNivel ? (isNaN(parseFloat(bateriaNivel)) ? null : parseFloat(bateriaNivel)) : null,
+        conectado_wifi: conectadoWifi === true || conectadoWifi === 'true',
+        conectado_rede_celular: conectadoRedeCelular === true || conectadoRedeCelular === 'true'
     };
 
-    console.log('📍 Recebendo posição GPS:', {
-      motorista_id: motorista.id,
+    console.log('📍 Dados preparados para inserção:', {
+      motorista_id: dadosInsercao.motorista_id,
       motorista_nome: motorista.nome,
-      coleta_id: coletaId,
+      coleta_id: dadosInsercao.coleta_id,
       latitude: dadosInsercao.latitude,
-      longitude: dadosInsercao.longitude
+      longitude: dadosInsercao.longitude,
+      precisao: dadosInsercao.precisao,
+      timestamp_gps: dadosInsercao.timestamp_gps
     });
 
     const { data: posicao, error: insertError } = await supabaseAdmin
@@ -4324,10 +4362,24 @@ app.post('/api/rastreamento/enviar-posicao', express.json(), async (req, res) =>
 
     if (insertError) {
       console.error('❌ Erro ao inserir posição GPS:', insertError);
-      console.error('❌ Dados que causaram erro:', dadosInsercao);
+      console.error('❌ Código do erro:', insertError.code);
+      console.error('❌ Mensagem do erro:', insertError.message);
+      console.error('❌ Detalhes do erro:', insertError.details);
+      console.error('❌ Dados que causaram erro:', JSON.stringify(dadosInsercao, null, 2));
+      
+      // Verificar se é erro de constraint ou validação
+      let errorMessage = 'Erro ao salvar posição.';
+      if (insertError.code === '23505') {
+        errorMessage = 'Posição duplicada (já existe uma posição com os mesmos dados).';
+      } else if (insertError.code === '23503') {
+        errorMessage = 'Erro de referência (motorista ou coleta não encontrado).';
+      } else if (insertError.message) {
+        errorMessage = `Erro ao salvar posição: ${insertError.message}`;
+      }
+      
       return res.status(500).json({ 
         success: false, 
-        error: 'Erro ao salvar posição.',
+        error: errorMessage,
         details: process.env.NODE_ENV === 'development' ? insertError.message : undefined
       });
     }
@@ -4335,7 +4387,11 @@ app.post('/api/rastreamento/enviar-posicao', express.json(), async (req, res) =>
     console.log('✅ Posição GPS salva com sucesso:', {
       posicao_id: posicao.id,
       motorista_id: motorista.id,
-      coleta_id: coletaId
+      motorista_nome: motorista.nome,
+      coleta_id: coletaId,
+      latitude: posicao.latitude,
+      longitude: posicao.longitude,
+      timestamp_gps: posicao.timestamp_gps
     });
 
     res.json({ success: true, posicao });

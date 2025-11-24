@@ -31,12 +31,30 @@ self.addEventListener('activate', (event) => {
 
 // Interceptar requisições de rede
 self.addEventListener('fetch', (event) => {
+  const requestUrl = new URL(event.request.url);
+  
   // Não fazer cache de requisições de API
   if (event.request.url.includes('/api/')) {
     return;
   }
 
-  // Cache de recursos estáticos
+  // Não fazer cache de requisições que não sejam GET
+  // Métodos como HEAD, POST, PUT, DELETE não podem ser armazenados no cache
+  if (event.request.method !== 'GET') {
+    return;
+  }
+
+  // Verificar se a requisição é same-origin (mesmo domínio)
+  // Service Worker só deve interceptar requisições do mesmo domínio
+  // Requisições externas (como Google Fonts) devem ser deixadas para o navegador
+  const isSameOrigin = requestUrl.origin === self.location.origin;
+  
+  // Se não for same-origin, não interceptar - deixar o navegador lidar normalmente
+  if (!isSameOrigin) {
+    return;
+  }
+
+  // Cache de recursos estáticos (apenas same-origin)
   event.respondWith(
     caches.match(event.request).then((response) => {
       return response || fetch(event.request).then((fetchResponse) => {
@@ -44,14 +62,31 @@ self.addEventListener('fetch', (event) => {
         if (event.request.destination === 'document') {
           return fetchResponse;
         }
-        // Fazer cache de recursos estáticos
-        if (fetchResponse && fetchResponse.status === 200) {
-          const responseToCache = fetchResponse.clone();
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, responseToCache);
-          });
+        
+        // Fazer cache apenas de recursos estáticos com status 200
+        // E apenas se a resposta for clonável
+        if (fetchResponse && 
+            fetchResponse.status === 200 && 
+            fetchResponse.type === 'basic' &&
+            event.request.method === 'GET') {
+          try {
+            const responseToCache = fetchResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put(event.request, responseToCache).catch((error) => {
+                console.warn('⚠️ Erro ao fazer cache:', error);
+                // Não bloquear a requisição se o cache falhar
+              });
+            });
+          } catch (error) {
+            console.warn('⚠️ Erro ao clonar resposta para cache:', error);
+            // Continuar mesmo se não conseguir fazer cache
+          }
         }
         return fetchResponse;
+      }).catch((error) => {
+        // Se o fetch falhar, retornar erro
+        console.warn('⚠️ Erro ao fazer fetch:', error);
+        throw error;
       });
     })
   );

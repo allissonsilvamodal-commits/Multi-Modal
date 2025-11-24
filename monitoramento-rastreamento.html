@@ -1163,7 +1163,7 @@
             const termo = filtroColetaTerm.toLowerCase();
             const coletasFiltradas = coletasDisponiveis.filter(coleta => {
                 if (!termo) return true;
-                const texto = `${coleta.cliente || ''} ${coleta.origem || ''} ${coleta.destino || ''}`.toLowerCase();
+                const texto = `${coleta.cliente || ''} ${coleta.origem || ''} ${coleta.destino || ''} ${coleta.filial || ''} ${coleta.numero_coleta || ''}`.toLowerCase();
                 return texto.includes(termo);
             });
 
@@ -1186,8 +1186,13 @@
                 }
                 input.addEventListener('change', () => atualizarSelecaoPorCheckbox());
 
+                // Criar identificador da coleta (filial + número ou cliente)
+                const identificador = coleta.filial && coleta.numero_coleta 
+                    ? `${coleta.filial} #${coleta.numero_coleta}`
+                    : (coleta.cliente || 'Sem identificação');
+                
                 const span = document.createElement('span');
-                span.innerHTML = `<strong>${coleta.cliente || 'Sem cliente'}</strong><br><small>${coleta.origem || 'Origem'} → ${coleta.destino || 'Destino'}</small>`;
+                span.innerHTML = `<strong>${identificador}</strong><br><small>${coleta.origem || 'Origem'} → ${coleta.destino || 'Destino'}</small>${coleta.etapa_atual ? `<br><small style="color: #666;">Etapa: ${coleta.etapa_atual}</small>` : ''}`;
 
                 label.appendChild(input);
                 label.appendChild(span);
@@ -1277,7 +1282,7 @@
         });
 
         // Função para mostrar notificação
-        function mostrarNotificacao(mensagem, tipo = 'info') {
+        function mostrarNotificacao(mensagem, tipo = 'info', duracao = 3000) {
             const notification = document.getElementById('notification');
             const notificationText = document.getElementById('notificationText');
             const icon = notification.querySelector('i');
@@ -1288,14 +1293,21 @@
             const icons = {
                 success: 'fa-check-circle',
                 error: 'fa-exclamation-circle',
-                info: 'fa-info-circle'
+                info: 'fa-info-circle',
+                warning: 'fa-exclamation-triangle'
             };
             
             icon.className = `fas ${icons[tipo] || icons.info}`;
             
-            setTimeout(() => {
+            // Limpar timeout anterior se existir
+            if (notification.timeoutId) {
+                clearTimeout(notification.timeoutId);
+            }
+            
+            notification.timeoutId = setTimeout(() => {
                 notification.classList.remove('show');
-            }, 3000);
+                notification.timeoutId = null;
+            }, duracao);
         }
 
         // Inicializar mapa
@@ -1336,10 +1348,11 @@
 
                 mostrarNotificacao('Carregando coletas...', 'info');
                 
+                // Buscar coletas que tenham motorista vinculado
+                // Incluir coletas na etapa de monitoramento ou que tenham motorista vinculado
                 const { data: coletas, error } = await supabase
                     .from('coletas')
-                    .select('id, cliente, origem, destino, status, motorista_id')
-                    .eq('status', 'em_andamento')
+                    .select('id, cliente, origem, destino, etapa_atual, motorista_id, filial, numero_coleta')
                     .not('motorista_id', 'is', null)
                     .order('created_at', { ascending: false });
 
@@ -1535,32 +1548,58 @@
                             lng: result.posicoes[0].longitude,
                             timestamp: result.posicoes[0].timestamp_gps
                         });
-                    } else if (selectedColetas.length === 1) {
-                        // Se não há posições, fazer diagnóstico
-                        console.warn('⚠️ Nenhuma posição encontrada, executando diagnóstico...');
-                        try {
-                        const diagResponse = await fetch(`/api/rastreamento/diagnostico/${selectedColetas[0]}`, {
-                                method: 'GET',
-                                credentials: 'include',
-                                headers: {
-                                    'Content-Type': 'application/json'
-                                }
-                            });
+                    } else if (selectedColetas.length === 1 && result.posicoes && result.posicoes.length === 0) {
+                        // Se não há posições, fazer diagnóstico (apenas na primeira vez ou após 30 segundos)
+                        const agora = Date.now();
+                        const ultimoDiagnostico = window.ultimoDiagnostico || 0;
+                        const tempoDesdeUltimoDiagnostico = agora - ultimoDiagnostico;
+                        
+                        // Fazer diagnóstico apenas a cada 30 segundos para não sobrecarregar
+                        if (tempoDesdeUltimoDiagnostico > 30000) {
+                            window.ultimoDiagnostico = agora;
                             
-                            if (diagResponse.ok) {
-                                const diagData = await diagResponse.json();
-                                console.log('🔍 Diagnóstico completo:', diagData);
+                            try {
+                                const diagResponse = await fetch(`/api/rastreamento/diagnostico/${selectedColetas[0]}`, {
+                                    method: 'GET',
+                                    credentials: 'include',
+                                    headers: {
+                                        'Content-Type': 'application/json'
+                                    }
+                                });
                                 
-                                if (!diagData.termoAceito) {
-                                    mostrarNotificacao('⚠️ Termo de rastreamento não foi aceito pelo motorista. O rastreamento não está ativo.', 'warning');
-                                } else if (diagData.totalPosicoes === 0) {
-                                    mostrarNotificacao('⚠️ Motorista não está enviando posições GPS. Verifique se o rastreamento está ativo no portal do motorista.', 'warning');
+                                if (diagResponse.ok) {
+                                    const diagData = await diagResponse.json();
+                                    console.log('🔍 Diagnóstico da coleta:', {
+                                        coletaId: selectedColetas[0],
+                                        termoAceito: diagData.termoAceito,
+                                        rastreamentoAtivo: diagData.rastreamentoAtivo,
+                                        totalPosicoes: diagData.totalPosicoes,
+                                        posicoesComColetaId: diagData.posicoesComColetaId,
+                                        posicoesSemColetaId: diagData.posicoesSemColetaId,
+                                        ultimaPosicao: diagData.ultimaPosicao ? new Date(diagData.ultimaPosicao.timestamp_gps).toLocaleString('pt-BR') : 'N/A'
+                                    });
+                                    
+                                    if (!diagData.termoAceito) {
+                                        mostrarNotificacao('⚠️ Termo de rastreamento não foi aceito pelo motorista. O rastreamento não está ativo.', 'warning', 10000);
+                                    } else if (!diagData.rastreamentoAtivo) {
+                                        mostrarNotificacao('⚠️ Rastreamento não está ativo. O motorista precisa iniciar o rastreamento no portal.', 'warning', 10000);
+                                    } else if (diagData.totalPosicoes === 0) {
+                                        mostrarNotificacao('⚠️ Motorista ainda não enviou posições GPS. Aguarde alguns segundos ou verifique se o rastreamento está ativo no portal do motorista.', 'warning', 10000);
+                                    } else if (diagData.posicoesComColetaId === 0 && diagData.posicoesSemColetaId > 0) {
+                                        mostrarNotificacao(`ℹ️ Motorista tem ${diagData.totalPosicoes} posições, mas nenhuma está vinculada a esta coleta. Verifique se o motorista está rastreando a coleta correta.`, 'info', 10000);
+                                    } else if (diagData.ultimaPosicao) {
+                                        const tempoDesdeUltima = diagData.tempoDesdeUltimaPosicao;
+                                        if (tempoDesdeUltima > 300) { // Mais de 5 minutos
+                                            mostrarNotificacao(`⚠️ Última posição recebida há ${Math.floor(tempoDesdeUltima / 60)} minutos. O motorista pode ter parado o rastreamento.`, 'warning', 10000);
+                                        }
+                                    }
                                 } else {
-                                    mostrarNotificacao(`ℹ️ Motorista tem ${diagData.totalPosicoes} posições, mas nenhuma corresponde a esta coleta.`, 'info');
+                                    console.log('ℹ️ Diagnóstico não disponível (status:', diagResponse.status + ')');
                                 }
+                            } catch (diagError) {
+                                console.log('ℹ️ Diagnóstico não disponível:', diagError.message);
+                                // Não mostrar erro ao usuário, apenas logar
                             }
-                        } catch (diagError) {
-                            console.error('❌ Erro ao executar diagnóstico:', diagError);
                         }
                     }
                 } else {
