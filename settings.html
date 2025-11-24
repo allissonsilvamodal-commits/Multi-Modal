@@ -1148,24 +1148,41 @@
                                         </p>
                                         
                                         <div class="row g-3">
-                                            <div class="col-md-6">
+                                            <div class="col-md-4">
                                                 <div class="card border-primary">
                                                     <div class="card-body">
                                                         <h6 class="card-title">
                                                             <i class="fas fa-download me-2 text-primary"></i>
-                                                            Fazer Backup
+                                                            Fazer Backup (JSON)
                                                         </h6>
                                                         <p class="card-text small text-muted">
                                                             Exporte todos os motoristas cadastrados para um arquivo JSON de backup.
                                                         </p>
                                                         <button class="btn btn-primary btn-sm w-100" onclick="fazerBackupMotoristas()" id="btnFazerBackup">
-                                                            <i class="fas fa-download me-2"></i>Fazer Backup
+                                                            <i class="fas fa-download me-2"></i>Fazer Backup JSON
                                                         </button>
                                                     </div>
                                                 </div>
                                             </div>
                                             
-                                            <div class="col-md-6">
+                                            <div class="col-md-4">
+                                                <div class="card border-success">
+                                                    <div class="card-body">
+                                                        <h6 class="card-title">
+                                                            <i class="fas fa-file-csv me-2 text-success"></i>
+                                                            Exportar CSV
+                                                        </h6>
+                                                        <p class="card-text small text-muted">
+                                                            Exporte todos os motoristas cadastrados para um arquivo CSV (Excel).
+                                                        </p>
+                                                        <button class="btn btn-success btn-sm w-100" onclick="exportarMotoristasCSV()" id="btnExportarCSV">
+                                                            <i class="fas fa-file-csv me-2"></i>Exportar CSV
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            
+                                            <div class="col-md-4">
                                                 <div class="card border-warning">
                                                     <div class="card-body">
                                                         <h6 class="card-title">
@@ -1409,19 +1426,30 @@
         document.addEventListener('DOMContentLoaded', async function() {
             console.log('🚀 Iniciando Configurações...');
             
-            // 🔐 Verificar se é admin ANTES de qualquer coisa
+            // Verificar se há usuário logado
             const loggedInUserData = localStorage.getItem('loggedInUser');
             if (!loggedInUserData) {
                 window.location.href = 'login.html';
                 return;
             }
             
-            const userData = JSON.parse(loggedInUserData);
-            console.log('👤 Verificando acesso do Settings:', userData.email);
-            console.log('👑 isAdmin:', userData.isAdmin, 'role:', userData.role);
+            // Inicializar Supabase primeiro para poder buscar o role
+            await inicializarSupabase();
             
-            // Settings SOMENTE para admins
-            if (userData.isAdmin !== true && userData.role !== 'admin') {
+            // Verificar autenticação e buscar role do banco
+            const usuarioAutenticado = await verificarAutenticacao();
+            
+            if (!usuarioAutenticado) {
+                console.log('❌ Falha na autenticação');
+                window.location.href = 'login.html';
+                return;
+            }
+            
+            // Verificar se é admin APÓS buscar o role do banco
+            console.log('👤 Verificando acesso do Settings:', usuarioAutenticado.email);
+            console.log('👑 isAdmin:', usuarioAutenticado.isAdmin, 'role:', usuarioAutenticado.role);
+            
+            if (usuarioAutenticado.isAdmin !== true && usuarioAutenticado.role !== 'admin') {
                 console.log('❌ Acesso negado ao Settings: usuário não é admin');
                 alert('Acesso Negado\n\nO Settings só é acessível por administradores.');
                 window.location.href = 'portal.html';
@@ -1430,8 +1458,6 @@
             
             console.log('✅ Usuário é admin, permitindo acesso ao Settings');
             
-            await inicializarSupabase();
-            await verificarAutenticacao();
             await carregarUsuarios();
             await carregarUsuariosLogados(); // Carregar usuários logados ao iniciar
             await carregarCredenciaisAPI();
@@ -1490,6 +1516,8 @@
 
                 // ✅ Buscar role no Supabase
                 let isAdmin = userData.isAdmin || userData.role === 'admin';
+                let roleAtual = userData.role || 'user';
+                
                 try {
                     if (window.supabase) {
                         const { data: profile, error } = await window.supabase
@@ -1500,26 +1528,31 @@
 
                         console.log('📋 Profile retornado:', profile);
                         if (!error && profile) {
-                            isAdmin = profile.role === 'admin';
-                            console.log('✅ isAdmin definido como:', isAdmin, 'role:', profile.role);
+                            roleAtual = profile.role || roleAtual;
+                            isAdmin = roleAtual === 'admin';
+                            console.log('✅ isAdmin definido como:', isAdmin, 'role:', roleAtual);
                             if (profile.nome) {
                                 userData.username = profile.nome;
                             }
                         } else {
                             console.error('❌ Erro ao buscar profile:', error);
+                            // Se não conseguir buscar, usar dados do localStorage como fallback
+                            console.log('⚠️ Usando dados do localStorage como fallback');
                         }
                     }
                 } catch (error) {
                     console.error('❌ Erro ao buscar perfil:', error);
+                    // Se houver erro, usar dados do localStorage como fallback
+                    console.log('⚠️ Usando dados do localStorage como fallback');
                 }
 
                 currentUser = {
                     id: userData.id,
                     email: userData.email,
-                    username: userData.username,
-                    nome: userData.username,
+                    username: userData.username || userData.email,
+                    nome: userData.username || userData.email,
                     isAdmin: isAdmin,
-                    role: userData.role || 'user'
+                    role: roleAtual
                 };
 
                 const currentUserElement = document.getElementById('currentUser');
@@ -4028,15 +4061,37 @@
                     throw new Error('Supabase não inicializado');
                 }
 
-                // Buscar todos os motoristas
+                // Buscar todos os motoristas em lotes (para garantir que pegue todos, mesmo se houver mais de 1000)
+                let todosMotoristas = [];
+                let offset = 0;
+                const limit = 1000;
+                let hasMore = true;
+
+                while (hasMore) {
+                    resultadoDiv.innerHTML = `<div class="alert alert-info"><i class="fas fa-spinner fa-spin me-2"></i>Buscando motoristas... ${todosMotoristas.length.toLocaleString('pt-BR')} encontrados até agora...</div>`;
+                    
                 const { data: motoristas, error } = await window.supabase
                     .from('motoristas')
                     .select('*')
-                    .order('nome', { ascending: true });
+                        .order('nome', { ascending: true })
+                        .range(offset, offset + limit - 1);
 
                 if (error) throw error;
 
-                if (!motoristas || motoristas.length === 0) {
+                    if (motoristas && motoristas.length > 0) {
+                        todosMotoristas = todosMotoristas.concat(motoristas);
+                        offset += limit;
+                        
+                        // Se retornou menos que o limite, não há mais dados
+                        if (motoristas.length < limit) {
+                            hasMore = false;
+                        }
+                    } else {
+                        hasMore = false;
+                    }
+                }
+
+                if (todosMotoristas.length === 0) {
                     resultadoDiv.innerHTML = `
                         <div class="alert alert-warning">
                             <h6><i class="fas fa-exclamation-triangle me-2"></i>Nenhum motorista encontrado</h6>
@@ -4054,8 +4109,8 @@
                 const backup = {
                     versao: '1.0',
                     dataBackup: new Date().toISOString(),
-                    totalRegistros: motoristas.length,
-                    motoristas: motoristas
+                    totalRegistros: todosMotoristas.length,
+                    motoristas: todosMotoristas
                 };
 
                 // Converter para JSON
@@ -4077,13 +4132,13 @@
                     <div class="alert alert-success">
                         <h6><i class="fas fa-check-circle me-2"></i>Backup criado com sucesso!</h6>
                         <p class="mb-0">
-                            <strong>Total de registros:</strong> ${motoristas.length.toLocaleString('pt-BR')}<br>
+                            <strong>Total de registros:</strong> ${todosMotoristas.length.toLocaleString('pt-BR')}<br>
                             <strong>Data do backup:</strong> ${new Date().toLocaleString('pt-BR')}
                         </p>
                     </div>
                 `;
 
-                mostrarSucesso(`✅ Backup criado com sucesso! ${motoristas.length.toLocaleString('pt-BR')} motorista(s) exportado(s).`);
+                mostrarSucesso(`✅ Backup criado com sucesso! ${todosMotoristas.length.toLocaleString('pt-BR')} motorista(s) exportado(s).`);
             } catch (error) {
                 console.error('Erro ao fazer backup:', error);
                 const errorMessage = error.message || 'Erro desconhecido ao fazer backup';
@@ -4096,7 +4151,163 @@
                 mostrarErro('Erro ao fazer backup: ' + errorMessage);
             } finally {
                 btn.disabled = false;
-                btn.innerHTML = '<i class="fas fa-download me-2"></i>Fazer Backup';
+                btn.innerHTML = '<i class="fas fa-download me-2"></i>Fazer Backup JSON';
+            }
+        }
+
+        async function exportarMotoristasCSV() {
+            const btn = document.getElementById('btnExportarCSV');
+            const resultadoDiv = document.getElementById('resultadoBackup');
+            
+            try {
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Exportando CSV...';
+                resultadoDiv.style.display = 'block';
+                resultadoDiv.innerHTML = '<div class="alert alert-info"><i class="fas fa-spinner fa-spin me-2"></i>Buscando todos os motoristas...</div>';
+
+                if (!window.supabase) {
+                    throw new Error('Supabase não inicializado');
+                }
+
+                // Buscar todos os motoristas em lotes (para garantir que pegue todos, mesmo se houver mais de 1000)
+                let todosMotoristas = [];
+                let offset = 0;
+                const limit = 1000;
+                let hasMore = true;
+
+                while (hasMore) {
+                    resultadoDiv.innerHTML = `<div class="alert alert-info"><i class="fas fa-spinner fa-spin me-2"></i>Buscando motoristas... ${todosMotoristas.length.toLocaleString('pt-BR')} encontrados até agora...</div>`;
+                    
+                    const { data: motoristas, error } = await window.supabase
+                        .from('motoristas')
+                        .select('*')
+                        .order('nome', { ascending: true })
+                        .range(offset, offset + limit - 1);
+
+                    if (error) throw error;
+
+                    if (motoristas && motoristas.length > 0) {
+                        todosMotoristas = todosMotoristas.concat(motoristas);
+                        offset += limit;
+                        
+                        // Se retornou menos que o limite, não há mais dados
+                        if (motoristas.length < limit) {
+                            hasMore = false;
+                        }
+                    } else {
+                        hasMore = false;
+                    }
+                }
+
+                if (todosMotoristas.length === 0) {
+                    resultadoDiv.innerHTML = `
+                        <div class="alert alert-warning">
+                            <h6><i class="fas fa-exclamation-triangle me-2"></i>Nenhum motorista encontrado</h6>
+                            <p class="mb-0">Não há motoristas cadastrados para exportar.</p>
+                        </div>
+                    `;
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-file-csv me-2"></i>Exportar CSV';
+                    return;
+                }
+
+                resultadoDiv.innerHTML = '<div class="alert alert-info"><i class="fas fa-spinner fa-spin me-2"></i>Preparando arquivo CSV...</div>';
+
+                // Função para escapar valores CSV (tratar vírgulas, aspas e quebras de linha)
+                const escapeCSV = (value) => {
+                    if (value === null || value === undefined) return '';
+                    const stringValue = String(value);
+                    // Se contém vírgula, aspas ou quebra de linha, envolver em aspas e duplicar aspas internas
+                    if (stringValue.includes(',') || stringValue.includes('"') || stringValue.includes('\n')) {
+                        return `"${stringValue.replace(/"/g, '""')}"`;
+                    }
+                    return stringValue;
+                };
+
+                // Definir colunas do CSV (ordenadas de forma lógica)
+                const colunas = [
+                    'id',
+                    'nome',
+                    'telefone1',
+                    'telefone2',
+                    'email',
+                    'cpf',
+                    'cnh',
+                    'tipo_veiculo',
+                    'tipo_carroceria',
+                    'placa_cavalo',
+                    'placa_carreta',
+                    'status',
+                    'data_cadastro',
+                    'observacoes',
+                    'cidade',
+                    'estado',
+                    'cep',
+                    'endereco',
+                    'numero',
+                    'complemento',
+                    'bairro',
+                    'auth_user_id'
+                ];
+
+                // Criar cabeçalho CSV
+                let csvContent = colunas.map(col => escapeCSV(col)).join(',') + '\n';
+
+                // Adicionar dados
+                todosMotoristas.forEach(motorista => {
+                    const linha = colunas.map(col => {
+                        let valor = motorista[col];
+                        // Formatar datas
+                        if (col === 'data_cadastro' && valor) {
+                            try {
+                                valor = new Date(valor).toLocaleDateString('pt-BR');
+                            } catch (e) {
+                                valor = valor;
+                            }
+                        }
+                        return escapeCSV(valor);
+                    }).join(',');
+                    csvContent += linha + '\n';
+                });
+
+                // Criar blob e fazer download
+                const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' }); // BOM para Excel reconhecer UTF-8
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                
+                const dataAtual = new Date().toISOString().split('T')[0];
+                link.href = url;
+                link.download = `motoristas_${dataAtual}.csv`;
+                link.style.visibility = 'hidden';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+
+                resultadoDiv.innerHTML = `
+                    <div class="alert alert-success">
+                        <h6><i class="fas fa-check-circle me-2"></i>CSV exportado com sucesso!</h6>
+                        <p class="mb-0">
+                            <strong>Total de registros:</strong> ${todosMotoristas.length.toLocaleString('pt-BR')}<br>
+                            <strong>Data da exportação:</strong> ${new Date().toLocaleString('pt-BR')}
+                        </p>
+                    </div>
+                `;
+
+                mostrarSucesso(`✅ CSV exportado com sucesso! ${todosMotoristas.length.toLocaleString('pt-BR')} motorista(s) exportado(s).`);
+            } catch (error) {
+                console.error('Erro ao exportar CSV:', error);
+                const errorMessage = error.message || 'Erro desconhecido ao exportar CSV';
+                resultadoDiv.innerHTML = `
+                    <div class="alert alert-danger">
+                        <h6><i class="fas fa-exclamation-triangle me-2"></i>Erro ao exportar CSV</h6>
+                        <p class="mb-0">${errorMessage}</p>
+                    </div>
+                `;
+                mostrarErro('Erro ao exportar CSV: ' + errorMessage);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-file-csv me-2"></i>Exportar CSV';
             }
         }
 

@@ -732,6 +732,51 @@
       }
     }
 
+    /* Animação de piscar para botão Instalar App */
+    @keyframes pulse-glow {
+      0%, 100% {
+        box-shadow: 0 0 0 0 rgba(96, 165, 250, 0.7),
+                    0 0 0 0 rgba(96, 165, 250, 0.4);
+        transform: scale(1);
+      }
+      50% {
+        box-shadow: 0 0 0 10px rgba(96, 165, 250, 0),
+                    0 0 0 20px rgba(96, 165, 250, 0),
+                    0 0 20px rgba(96, 165, 250, 0.6);
+        transform: scale(1.02);
+      }
+    }
+
+    @keyframes blink-icon {
+      0%, 100% {
+        opacity: 1;
+        transform: scale(1);
+      }
+      50% {
+        opacity: 0.6;
+        transform: scale(1.1);
+      }
+    }
+
+    #btnInstalarApp {
+      position: relative;
+      animation: pulse-glow 2s ease-in-out infinite;
+    }
+
+    #btnInstalarApp i {
+      animation: blink-icon 1.5s ease-in-out infinite;
+    }
+
+    #btnInstalarApp:hover {
+      animation: none;
+    }
+
+    #btnInstalarApp:hover i {
+      animation: none;
+      opacity: 1;
+      transform: scale(1);
+    }
+
     .opportunity-header .cliente-subtitle {
       font-size: 0.88rem;
       color: var(--text-secondary);
@@ -4044,16 +4089,35 @@
     let serviceWorkerRegistration = null;
 
     async function inicializarPWA() {
+      console.log('🚀 Inicializando PWA...');
+      
       // Verificar se o app já está instalado
-      if (window.matchMedia('(display-mode: standalone)').matches || 
-          window.navigator.standalone === true ||
-          document.referrer.includes('android-app://')) {
+      const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
+                          window.navigator.standalone === true ||
+                          document.referrer.includes('android-app://');
+      
+      if (isStandalone) {
         isAppInstalled = true;
-        console.log('✅ App já está instalado');
+        console.log('✅ App já está instalado (modo standalone detectado)');
         if (elements.btnInstalarApp) {
           elements.btnInstalarApp.style.display = 'none';
         }
+        return; // Não precisa continuar se já está instalado
       }
+
+      // Verificar se o navegador suporta Service Worker (requisito básico para PWA)
+      const supportsServiceWorker = 'serviceWorker' in navigator;
+      if (!supportsServiceWorker) {
+        console.log('⚠️ Navegador não suporta Service Worker');
+        if (elements.btnInstalarApp) {
+          elements.btnInstalarApp.style.display = 'none';
+        }
+        return;
+      }
+      
+      // Detectar se é dispositivo móvel
+      const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+      console.log('📱 Dispositivo móvel detectado:', isMobile);
 
       // Registrar service worker
       if ('serviceWorker' in navigator) {
@@ -4116,20 +4180,80 @@
         }
       }
 
-      // Detectar evento de instalação
+      // Detectar evento de instalação (pode não ser disparado imediatamente)
+      let installPromptTimeout;
+      
       window.addEventListener('beforeinstallprompt', (e) => {
         e.preventDefault();
         deferredPrompt = e;
+        console.log('📱 Evento beforeinstallprompt capturado');
+        
         if (elements.btnInstalarApp) {
           elements.btnInstalarApp.style.display = 'inline-flex';
+          console.log('✅ Botão de instalação exibido');
         }
-        console.log('📱 Prompt de instalação disponível');
+        
+        // Limpar timeout se o evento foi disparado
+        if (installPromptTimeout) {
+          clearTimeout(installPromptTimeout);
+        }
       });
+
+      // Fallback: mostrar botão após alguns segundos se o evento não foi disparado
+      // Isso ajuda em navegadores que demoram para disparar o evento
+      // Em dispositivos móveis, mostrar mais rapidamente
+      const fallbackDelay = isMobile ? 2000 : 3000;
+      
+      installPromptTimeout = setTimeout(() => {
+        if (!deferredPrompt && !isAppInstalled && elements.btnInstalarApp) {
+          console.log('⏰ Timeout do fallback atingido, verificando se deve mostrar botão...');
+          
+          // Verificar se o manifest existe e se o app pode ser instalado
+          fetch('/manifest.json')
+            .then(response => {
+              if (response.ok) {
+                console.log('📱 Manifest encontrado, mostrando botão de instalação (fallback)');
+                elements.btnInstalarApp.style.display = 'inline-flex';
+                // Adicionar uma mensagem informativa
+                if (isMobile) {
+                  elements.btnInstalarApp.title = 'Toque para instalar o app. Se não aparecer o prompt, use o menu do navegador (⋮ ou ⋯) e selecione "Instalar app" ou "Adicionar à tela inicial"';
+                } else {
+                  elements.btnInstalarApp.title = 'Clique para instalar o app. Se não aparecer o prompt, use o menu do navegador (⋮ ou ⋯) e selecione "Instalar app"';
+                }
+              } else {
+                console.log('⚠️ Manifest não encontrado, mas mostrando botão mesmo assim para dispositivos móveis');
+                // Em dispositivos móveis, mostrar o botão mesmo sem confirmar o manifest
+                if (isMobile) {
+                  elements.btnInstalarApp.style.display = 'inline-flex';
+                  elements.btnInstalarApp.title = 'Toque para ver instruções de instalação';
+                }
+              }
+            })
+            .catch(error => {
+              console.warn('⚠️ Erro ao verificar manifest:', error);
+              // Em dispositivos móveis, mostrar o botão mesmo com erro
+              if (isMobile) {
+                console.log('📱 Erro ao verificar manifest, mas mostrando botão para mobile');
+                elements.btnInstalarApp.style.display = 'inline-flex';
+                elements.btnInstalarApp.title = 'Toque para ver instruções de instalação';
+              }
+            });
+        } else {
+          console.log('⚠️ Não mostrando botão (fallback):', {
+            deferredPrompt: !!deferredPrompt,
+            isAppInstalled,
+            btnExists: !!elements.btnInstalarApp
+          });
+        }
+      }, fallbackDelay);
 
       // Detectar quando o app é instalado
       window.addEventListener('appinstalled', () => {
         isAppInstalled = true;
         deferredPrompt = null;
+        if (installPromptTimeout) {
+          clearTimeout(installPromptTimeout);
+        }
         if (elements.btnInstalarApp) {
           elements.btnInstalarApp.style.display = 'none';
         }
@@ -4140,28 +4264,68 @@
       // Event listener para botão de instalar
       if (elements.btnInstalarApp) {
         elements.btnInstalarApp.addEventListener('click', async () => {
-          if (!deferredPrompt) {
-            showToast('O app já está instalado ou não pode ser instalado neste dispositivo.', 'info');
-            return;
-          }
-
-          // Mostrar prompt de instalação
-          deferredPrompt.prompt();
-          const { outcome } = await deferredPrompt.userChoice;
+          console.log('🔘 Botão de instalação clicado');
           
-          if (outcome === 'accepted') {
-            console.log('✅ Usuário aceitou instalar o app');
-            showToast('Instalando app...', 'success');
+          if (deferredPrompt) {
+            // Mostrar prompt de instalação
+            try {
+              console.log('📱 Mostrando prompt de instalação...');
+              deferredPrompt.prompt();
+              const { outcome } = await deferredPrompt.userChoice;
+              
+              if (outcome === 'accepted') {
+                console.log('✅ Usuário aceitou instalar o app');
+                showToast('Instalando app...', 'success');
+              } else {
+                console.log('❌ Usuário recusou instalar o app');
+                showToast('Instalação cancelada. Você pode instalar depois pelo menu do navegador.', 'info');
+              }
+              
+              deferredPrompt = null;
+            } catch (error) {
+              console.error('❌ Erro ao mostrar prompt de instalação:', error);
+              showToast('Não foi possível mostrar o prompt. Use o menu do navegador (⋮ ou ⋯) e selecione "Instalar app".', 'info');
+            }
           } else {
-            console.log('❌ Usuário recusou instalar o app');
-            showToast('Instalação cancelada. Você pode instalar depois pelo menu do navegador.', 'info');
-          }
-          
-          deferredPrompt = null;
-          if (elements.btnInstalarApp) {
-            elements.btnInstalarApp.style.display = 'none';
+            // Se não há deferredPrompt, mostrar instruções
+            const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+            const isAndroid = /Android/.test(navigator.userAgent);
+            const isChrome = /Chrome/.test(navigator.userAgent) && /Google Inc/.test(navigator.vendor);
+            const isEdge = /Edg/.test(navigator.userAgent);
+            
+            let message = '📱 Para instalar o app:\n\n';
+            if (isIOS) {
+              message += '1. Toque no botão de compartilhar (□↑) na barra inferior\n';
+              message += '2. Role para baixo e selecione "Adicionar à Tela de Início"\n';
+              message += '3. Toque em "Adicionar"\n';
+            } else if (isAndroid) {
+              if (isChrome || isEdge) {
+                message += '1. Toque no menu do navegador (⋮ ou ⋯) no canto superior direito\n';
+                message += '2. Procure por "Instalar app" ou "Adicionar à tela inicial"\n';
+                message += '3. Toque para instalar\n';
+                message += '\nOu procure pelo ícone de instalação na barra de endereços!';
+              } else {
+                message += '1. Toque no menu do navegador (⋮ ou ⋯)\n';
+                message += '2. Selecione "Adicionar à tela inicial"\n';
+              }
+            } else {
+              message += 'Use o menu do navegador para instalar o app.\n';
+              message += 'No Chrome/Edge: ícone de instalação na barra de endereços ou menu (⋮)\n';
+            }
+            
+            showToast(message, 'info');
           }
         });
+      }
+      
+      // Mostrar botão imediatamente em dispositivos móveis (após um pequeno delay para garantir que tudo está carregado)
+      if (isMobile && elements.btnInstalarApp) {
+        setTimeout(() => {
+          if (!isAppInstalled && elements.btnInstalarApp) {
+            console.log('📱 Dispositivo móvel detectado, mostrando botão de instalação');
+            elements.btnInstalarApp.style.display = 'inline-flex';
+          }
+        }, 1000);
       }
     }
 
