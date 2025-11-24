@@ -410,18 +410,43 @@ class ChatIA {
       
       // Verificar se Supabase está completamente inicializado
       if (window.supabase && window.supabase.auth && typeof window.supabase.auth.getSession === 'function') {
-        const { data: session, error: sessionError } = await window.supabase.auth.getSession();
-        if (!sessionError && session?.session?.access_token) {
-          authToken = session.session.access_token;
+        const { data: sessionData, error: sessionError } = await window.supabase.auth.getSession();
+        if (!sessionError && sessionData?.session?.access_token) {
+          authToken = sessionData.session.access_token;
+        } else if (sessionError) {
+          // Tentar refresh se houver erro
+          try {
+            const { data: refreshData, error: refreshError } = await window.supabase.auth.refreshSession();
+            if (!refreshError && refreshData?.session?.access_token) {
+              authToken = refreshData.session.access_token;
+            }
+          } catch (refreshErr) {
+            console.warn('⚠️ Erro ao fazer refresh da sessão:', refreshErr);
+          }
+        }
+      }
+
+      // Se não conseguiu token do Supabase, tentar localStorage como fallback
+      if (!authToken) {
+        try {
+          const loggedInUserData = localStorage.getItem('loggedInUser');
+          if (loggedInUserData) {
+            const userData = JSON.parse(loggedInUserData);
+            if (userData.token) {
+              authToken = userData.token;
+            }
+          }
+        } catch (e) {
+          console.warn('⚠️ Não foi possível obter token do localStorage:', e);
         }
       }
 
       const headers = {};
-      
+
       if (authToken) {
         headers['Authorization'] = `Bearer ${authToken}`;
       } else {
-        // Tentar usar dados do localStorage
+        // Tentar usar dados do localStorage como último recurso
         try {
           const loggedInUserData = localStorage.getItem('loggedInUser');
           if (loggedInUserData) {
@@ -435,6 +460,7 @@ class ChatIA {
         }
       }
 
+      // Só fazer requisição se tiver algum header de autenticação
       if (Object.keys(headers).length > 0) {
         const response = await fetch('/api/chat/ia/historico?limite=50', {
           headers: headers,
@@ -462,10 +488,20 @@ class ChatIA {
             this.clearHistory();
             return;
           }
+        } else if (response.status === 401) {
+          // Erro de autenticação - não mostrar erro, apenas não carregar histórico
+          console.warn('⚠️ Não autenticado para carregar histórico do chat IA');
+          this.historico = [];
+          return;
         }
+      } else {
+        // Sem headers de autenticação, não fazer requisição
+        console.warn('⚠️ Sem token de autenticação, não carregando histórico');
+        this.historico = [];
+        return;
       }
     } catch (e) {
-      console.warn('Erro ao carregar histórico do Supabase:', e);
+      console.warn('⚠️ Erro ao carregar histórico do Supabase:', e);
       // Não usar localStorage como fallback quando há usuário autenticado
       // para evitar compartilhamento de histórico entre usuários
       this.historico = [];

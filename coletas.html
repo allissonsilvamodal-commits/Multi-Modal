@@ -922,6 +922,11 @@
             color: var(--branco);
             box-shadow: 0 4px 15px rgba(0, 39, 118, 0.3);
         }
+        .action-btn.secondary {
+            background: linear-gradient(135deg, #00b4d8 0%, #0096c7 100%);
+            color: var(--branco);
+            box-shadow: 0 4px 15px rgba(0, 150, 199, 0.3);
+        }
         
         .action-btn.success {
             background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
@@ -2071,7 +2076,7 @@
                 </div>
                 <div class="filter-group">
                     <label for="searchFilter"><i class="fas fa-search"></i> Buscar</label>
-                    <input type="text" id="searchFilter" placeholder="Cliente, origem, destino..." onkeyup="filterColetas()">
+                    <input type="text" id="searchFilter" placeholder="Cliente, origem, destino, nº da coleta, filial..." onkeyup="filterColetas()">
                 </div>
                 </div>
             
@@ -2122,7 +2127,22 @@
                 <div class="form-grid">
                     <div class="form-group">
                         <label for="filial">Filial *</label>
-                        <input type="text" id="filial" name="filial" required>
+                        <select id="filial" name="filial" required>
+                            <option value="">Selecione a filial</option>
+                            <option value="JBO">Jaboatão (JBO)</option>
+                            <option value="CABO">Cabo (CABO)</option>
+                            <option value="SP">São Paulo (SP)</option>
+                            <option value="BA">Simões Filho (BA)</option>
+                            <option value="SE">Aracaju (SE)</option>
+                            <option value="AL">Maceió (AL)</option>
+                            <option value="PE">Recife (PE)</option>
+                            <option value="PB">João Pessoa (PB)</option>
+                            <option value="CE">Fortaleza (CE)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="numeroColeta">Nº da Coleta *</label>
+                        <input type="text" id="numeroColeta" name="numeroColeta" placeholder="Ex: 5565" required pattern="[1-9][0-9]*" title="Digite apenas números, sem zeros à esquerda (ex: 5565)" oninput="this.value = this.value.replace(/^0+/, '').replace(/[^0-9]/g, '')">
                                 </div>
                     <div class="form-group">
                         <label for="cliente">Cliente *</label>
@@ -2148,17 +2168,147 @@
                         <label for="km">KM</label>
                         <input type="number" id="km" name="km" step="0.1" min="0" placeholder="0">
                             </div>
-                    <div class="form-group">
-                        <label for="veiculo">Veículo</label>
-                        <select id="veiculo" name="veiculo">
-                            <option value="">Selecione o veículo</option>
-                            <option value="VUC">VUC</option>
-                            <option value="Bitruck">Bitruck</option>
-                            <option value="Truck">Truck</option>
-                            <option value="Carreta">Carreta</option>
-                            <option value="Bitrem">Bitrem</option>
-                            <option value="Rodotrem">Rodotrem</option>
-                        </select>
+                    <div class="form-group full-width">
+                        <label style="margin-bottom: 0.8rem; display: block; font-weight: 600;">
+                            <i class="fas fa-truck"></i> Tipos de Veículo
+                        </label>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0.8rem; padding: 1rem; background: #f8f9fa; border-radius: 8px; border: 1px solid #e9ecef;">
+                            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-weight: normal;">
+                                <input type="checkbox" name="tiposVeiculo" value="3/4" class="checkbox-veiculo">
+                                <span>3/4</span>
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-weight: normal;">
+                                <input type="checkbox" name="tiposVeiculo" value="Fiorino" class="checkbox-veiculo">
+                                <span>Fiorino</span>
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-weight: normal;">
+                                <input type="checkbox" name="tiposVeiculo" value="Toco" class="checkbox-veiculo">
+                                <span>Toco</span>
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-weight: normal;">
+                                <input type="checkbox" name="tiposVeiculo" value="VLC" class="checkbox-veiculo">
+                                <span>VLC</span>
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-weight: normal;">
+                                <input type="checkbox" name="tiposVeiculo" value="Bitruck" class="checkbox-veiculo">
+                                <span>Bitruck</span>
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-weight: normal;">
+                                <input type="checkbox" name="tiposVeiculo" value="Truck" class="checkbox-veiculo">
+                                <span>Truck</span>
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-weight: normal;">
+                                <input type="checkbox" name="tiposVeiculo" value="Bitrem" class="checkbox-veiculo">
+                                <span>Bitrem</span>
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-weight: normal;">
+                                <input type="checkbox" name="tiposVeiculo" value="Carreta" class="checkbox-veiculo">
+                                <span>Carreta</span>
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-weight: normal;">
+                                <input type="checkbox" name="tiposVeiculo" value="Carreta LS" class="checkbox-veiculo">
+                                <span>Carreta LS</span>
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-weight: normal;">
+                                <input type="checkbox" name="tiposVeiculo" value="Rodotrem" class="checkbox-veiculo">
+                                <span>Rodotrem</span>
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-weight: normal;">
+                                <input type="checkbox" name="tiposVeiculo" value="Vanderleia" class="checkbox-veiculo">
+                                <span>Vanderleia</span>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="form-group full-width">
+                        <label style="margin-bottom: 0.8rem; display: block; font-weight: 600;">
+                            <i class="fas fa-box"></i> Tipos de Carroceria
+                        </label>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.8rem; padding: 1rem; background: #f8f9fa; border-radius: 8px; border: 1px solid #e9ecef;">
+                            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-weight: normal;">
+                                <input type="checkbox" name="tiposCarroceria" value="bau" class="checkbox-carroceria">
+                                <span>Baú</span>
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-weight: normal;">
+                                <input type="checkbox" name="tiposCarroceria" value="bau_frigorifico" class="checkbox-carroceria">
+                                <span>Baú Frigorífico</span>
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-weight: normal;">
+                                <input type="checkbox" name="tiposCarroceria" value="bau_refrigerado" class="checkbox-carroceria">
+                                <span>Baú Refrigerado</span>
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-weight: normal;">
+                                <input type="checkbox" name="tiposCarroceria" value="sider" class="checkbox-carroceria">
+                                <span>Sider</span>
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-weight: normal;">
+                                <input type="checkbox" name="tiposCarroceria" value="cacamba" class="checkbox-carroceria">
+                                <span>Caçamba</span>
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-weight: normal;">
+                                <input type="checkbox" name="tiposCarroceria" value="graneleiro" class="checkbox-carroceria">
+                                <span>Graneleiro</span>
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-weight: normal;">
+                                <input type="checkbox" name="tiposCarroceria" value="plataforma" class="checkbox-carroceria">
+                                <span>Plataforma</span>
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-weight: normal;">
+                                <input type="checkbox" name="tiposCarroceria" value="prancha" class="checkbox-carroceria">
+                                <span>Prancha</span>
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-weight: normal;">
+                                <input type="checkbox" name="tiposCarroceria" value="basculante" class="checkbox-carroceria">
+                                <span>Basculante</span>
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-weight: normal;">
+                                <input type="checkbox" name="tiposCarroceria" value="grade_baixa" class="checkbox-carroceria">
+                                <span>Grade Baixa</span>
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-weight: normal;">
+                                <input type="checkbox" name="tiposCarroceria" value="bitrem" class="checkbox-carroceria">
+                                <span>Bitrem</span>
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-weight: normal;">
+                                <input type="checkbox" name="tiposCarroceria" value="carreta" class="checkbox-carroceria">
+                                <span>Carreta</span>
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-weight: normal;">
+                                <input type="checkbox" name="tiposCarroceria" value="carreta_ls" class="checkbox-carroceria">
+                                <span>Carreta LS</span>
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-weight: normal;">
+                                <input type="checkbox" name="tiposCarroceria" value="rodotrem" class="checkbox-carroceria">
+                                <span>Rodotrem</span>
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-weight: normal;">
+                                <input type="checkbox" name="tiposCarroceria" value="vanderleia" class="checkbox-carroceria">
+                                <span>Vanderleia</span>
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-weight: normal;">
+                                <input type="checkbox" name="tiposCarroceria" value="apenas_cavalo" class="checkbox-carroceria">
+                                <span>Apenas Cavalo</span>
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-weight: normal;">
+                                <input type="checkbox" name="tiposCarroceria" value="cegonheiro" class="checkbox-carroceria">
+                                <span>Cegonheiro</span>
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-weight: normal;">
+                                <input type="checkbox" name="tiposCarroceria" value="gaiola" class="checkbox-carroceria">
+                                <span>Gaiola</span>
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-weight: normal;">
+                                <input type="checkbox" name="tiposCarroceria" value="tanque" class="checkbox-carroceria">
+                                <span>Tanque</span>
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-weight: normal;">
+                                <input type="checkbox" name="tiposCarroceria" value="porta_container_20" class="checkbox-carroceria">
+                                <span>Porta Container 20</span>
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-weight: normal;">
+                                <input type="checkbox" name="tiposCarroceria" value="porta_container_40" class="checkbox-carroceria">
+                                <span>Porta Container 40</span>
+                            </label>
+                        </div>
                                 </div>
                     <div class="form-group">
                         <label for="status">Status</label>
@@ -2292,6 +2442,41 @@
                                 </div>
                             </div>
 
+    <!-- Modal de Mudança de Etapa -->
+    <div class="modal-overlay" id="moverEtapaModal">
+        <div class="modal-content" style="max-width: 480px;">
+            <div class="modal-header">
+                <h2 class="modal-title">
+                    <i class="fas fa-arrows-alt"></i>
+                    Mover Etapa da Coleta
+                </h2>
+                <button class="close-modal" onclick="fecharMoverEtapaModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body" style="padding: 0 1.5rem 1.5rem;">
+                <p style="font-weight:600; margin-bottom:0.5rem;">Etapa atual: <span id="moverEtapaAtual" style="color:#5a67d8;"></span></p>
+                <div class="form-group">
+                    <label for="novaEtapaSelect">Escolha a nova etapa</label>
+                    <select id="novaEtapaSelect">
+                        <option value="">Selecione a etapa</option>
+                    </select>
+                </div>
+                <p style="font-size:0.85rem; color:#6c757d; margin-top:0.5rem;">
+                    Apenas usuários com permissão na etapa atual podem mover a oportunidade. A mudança é registrada automaticamente no histórico.
+                </p>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="action-btn warning" onclick="fecharMoverEtapaModal()">
+                    <i class="fas fa-times"></i> Cancelar
+                </button>
+                <button type="button" class="action-btn secondary" onclick="confirmarMoverEtapa()">
+                    <i class="fas fa-check"></i> Confirmar
+                </button>
+                                    </div>
+                                </div>
+                            </div>
+
     <!-- Modal de Histórico Completo -->
     <div class="modal-overlay" id="modalHistoricoCompleto" style="display: none;">
         <div class="modal-content" style="max-width: 900px; max-height: 90vh; overflow-y: auto; background: white; border-radius: 20px; padding: 2rem;">
@@ -2399,6 +2584,7 @@
         let currentChatColetaId = null;
         let supabaseAccessToken = null;
         let supabaseTokenExpiry = 0;
+        let moverEtapaColetaId = null;
 
         // Etapas do processo
         const ETAPAS = [
@@ -2414,6 +2600,41 @@
             { id: 'monitoramento', nome: 'Monitoramento', ordem: 10 },
             { id: 'finalizar_operacao', nome: 'Finalizar Operação', ordem: 11 }
         ];
+
+        // Mapeamento de tipos de carroceria (mesmo formato do cadastro.html)
+        const tiposCarroceriaMap = {
+            bau: 'Baú',
+            bau_frigorifico: 'Baú Frigorífico',
+            bau_refrigerado: 'Baú Refrigerado',
+            sider: 'Sider',
+            cacamba: 'Caçamba',
+            caamba: 'Caçamba',
+            graneleiro: 'Graneleiro',
+            plataforma: 'Plataforma',
+            prancha: 'Prancha',
+            bitrem: 'Bitrem',
+            carreta: 'Carreta',
+            carreta_ls: 'Carreta LS',
+            rodotrem: 'Rodotrem',
+            vanderleia: 'Vanderleia',
+            apenas_cavalo: 'Apenas Cavalo',
+            cegonheiro: 'Cegonheiro',
+            gaiola: 'Gaiola',
+            tanque: 'Tanque',
+            grade_baixa: 'Grade Baixa',
+            basculante: 'Basculante',
+            porta_container_20: 'Porta Container 20',
+            porta_container_40: 'Porta Container 40'
+        };
+
+        // Função para obter nome amigável da carroceria
+        function obterNomeCarroceria(chave) {
+            return tiposCarroceriaMap[chave] || chave;
+        }
+
+        function obterNomeEtapa(etapaId) {
+            return ETAPAS.find(e => e.id === etapaId)?.nome || etapaId;
+        }
 
         // Variável global para permissões de etapas
         let permissoesEtapasColetas = [];
@@ -2450,6 +2671,21 @@
             try {
                 if (!supabase) {
                     console.warn('⚠️ Supabase não inicializado ao obter headers');
+                    // Tentar obter token do localStorage como fallback
+                    const userData = localStorage.getItem('loggedInUser');
+                    if (userData) {
+                        try {
+                            const user = JSON.parse(userData);
+                            // Se houver token no localStorage, usar
+                            if (user.token) {
+                                return {
+                                    Authorization: `Bearer ${user.token}`
+                                };
+                            }
+                        } catch (e) {
+                            console.warn('⚠️ Erro ao parsear userData:', e);
+                        }
+                    }
                     return {};
                 }
 
@@ -2484,11 +2720,38 @@
                                 };
                             } else {
                                 console.error('❌ Erro ao fazer refresh da sessão:', refreshError);
-                                // Se o refresh falhar, pode ser que a sessão esteja completamente expirada
-                                // O listener de autenticação deve lidar com isso
+                                // Tentar fallback com localStorage
+                                const userData = localStorage.getItem('loggedInUser');
+                                if (userData) {
+                                    try {
+                                        const user = JSON.parse(userData);
+                                        if (user.token) {
+                                            return {
+                                                Authorization: `Bearer ${user.token}`
+                                            };
+                                        }
+                                    } catch (e) {
+                                        console.warn('⚠️ Erro ao parsear userData no fallback:', e);
+                                    }
+                                }
                             }
                         } catch (refreshErr) {
                             console.error('❌ Erro ao tentar refresh da sessão:', refreshErr);
+                        }
+                    }
+                    
+                    // Último fallback: tentar localStorage
+                    const userData = localStorage.getItem('loggedInUser');
+                    if (userData) {
+                        try {
+                            const user = JSON.parse(userData);
+                            if (user.token) {
+                                return {
+                                    Authorization: `Bearer ${user.token}`
+                                };
+                            }
+                        } catch (e) {
+                            console.warn('⚠️ Erro ao parsear userData no último fallback:', e);
                         }
                     }
                     
@@ -2505,6 +2768,20 @@
                 }
 
                 console.warn('⚠️ Sessão não encontrada ao obter headers');
+                // Tentar fallback com localStorage
+                const userData = localStorage.getItem('loggedInUser');
+                if (userData) {
+                    try {
+                        const user = JSON.parse(userData);
+                        if (user.token) {
+                            return {
+                                Authorization: `Bearer ${user.token}`
+                            };
+                        }
+                    } catch (e) {
+                        console.warn('⚠️ Erro ao parsear userData:', e);
+                    }
+                }
                 return {};
             } catch (error) {
                 console.error('❌ Erro ao construir headers de autenticação:', error);
@@ -2578,6 +2855,9 @@
                 
                 // Carregar dados do Supabase
                 await carregarColetas();
+                
+                // Verificar notificações de pagamento para o criador
+                await verificarNotificacoesPagamento();
                 
                 // Configurar listener em tempo real para atualizações de coletas
                 configurarRealtimeColetas();
@@ -3997,8 +4277,8 @@
                         await carregarColetas();
                     } else {
                         // Se realmente não existe, recarregar todas as coletas
-                        console.log('⚠️ Card não encontrado, recarregando todas as coletas...');
-                        await carregarColetas();
+                    console.log('⚠️ Card não encontrado, recarregando todas as coletas...');
+                    await carregarColetas();
                     }
                 }
             } catch (error) {
@@ -4008,7 +4288,28 @@
             }
         }
         
+        // Proteção contra múltiplas chamadas simultâneas de carregarColetas
+        let carregandoColetas = false;
+        let timeoutCarregarColetas = null;
+        
         async function carregarColetas() {
+            // Limpar timeout anterior se existir
+            if (timeoutCarregarColetas) {
+                clearTimeout(timeoutCarregarColetas);
+                timeoutCarregarColetas = null;
+            }
+            
+            // Se já está carregando, agendar nova tentativa
+            if (carregandoColetas) {
+                console.log('⏳ Carregamento já em andamento, agendando nova tentativa...');
+                timeoutCarregarColetas = setTimeout(() => {
+                    carregarColetas();
+                }, 300);
+                return;
+            }
+            
+            carregandoColetas = true;
+            
             try {
                 // Verificar se o Supabase está inicializado
                 if (!supabase) {
@@ -4046,12 +4347,14 @@
                 console.log('📊 Coletas Ativas:', window.coletasAtivas.length);
                 console.log('📚 Coletas Arquivadas:', window.coletasArquivadas.length);
                 
-                renderColetas();
+                await renderColetas();
                 updateStats();
                 
             } catch (error) {
                 console.error('❌ Erro ao carregar coletas:', error);
                 showNotification('Erro ao carregar coletas: ' + error.message, 'error');
+            } finally {
+                carregandoColetas = false;
             }
         }
 
@@ -4071,9 +4374,9 @@
                 if (currentEditingId) {
                     // ✅ UPDATE - FILTRA apenas campos VÁLIDOS
                     const camposValidos = [
-                        'filial', 'cliente', 'data_recebimento', 'origem', 'destino',
-                        'valor', 'km', 'veiculo', 'status', 'etapa_atual', 'observacoes',
-                        'prioridade', 'motorista_id'
+                        'filial', 'numero_coleta', 'cliente', 'data_recebimento', 'origem', 'destino',
+                        'valor', 'km', 'tipos_veiculo', 'tipos_carroceria', 'status', 'etapa_atual', 'observacoes',
+                        'prioridade', 'motorista_id', 'etapas_concluidas'
                     ];
                     
                     const updateData = {};
@@ -4186,6 +4489,267 @@
             }
         }
 
+        async function marcarComoPago(coletaId, tipoPagamento) {
+            try {
+                if (!supabase) {
+                    console.error('❌ Supabase não inicializado');
+                    showNotification('Erro: Supabase não inicializado', 'error');
+                    return;
+                }
+
+                const coleta = coletasData.find(c => c.id === coletaId);
+                if (!coleta) {
+                    showNotification('Coleta não encontrada', 'error');
+                    return;
+                }
+
+                // 🔐 Verificar permissão para a etapa contas_pagar
+                if (!temPermissaoEtapa('contas_pagar')) {
+                    showNotification('⚠️ Você não tem permissão para marcar como pago nesta etapa', 'warning');
+                    console.log('❌ Usuário não tem permissão para etapa: contas_pagar');
+                    return;
+                }
+
+                if (!coleta.motorista_id) {
+                    showNotification('⚠️ É necessário ter um motorista vinculado para marcar como pago', 'warning');
+                    return;
+                }
+
+                // Validar tipo de pagamento
+                if (!tipoPagamento || !['adiantamento', 'saldo', 'pagamento_total'].includes(tipoPagamento)) {
+                    showNotification('⚠️ Tipo de pagamento inválido', 'warning');
+                    return;
+                }
+
+                // Definir textos conforme o tipo de pagamento
+                const tiposPagamento = {
+                    'adiantamento': {
+                        titulo: 'Adiantamento de Frete',
+                        emoji: '💵',
+                        mensagemConfirmacao: '💰 Confirmar que o ADIANTAMENTO DE FRETE foi realizado? O motorista e o criador da oportunidade serão notificados.',
+                        mensagemMotorista: (motorista, coleta) => `💵 *ADIANTAMENTO DE FRETE REALIZADO*\n\nOlá ${motorista.nome || 'Motorista'}!\n\nO adiantamento de frete da coleta *${coleta.cliente}* (${coleta.origem} → ${coleta.destino}) foi marcado como realizado.\n\nValor: R$ ${(coleta.valor || 0).toFixed(2)}\n\nO saldo restante será pago após a conclusão da operação.\n\nObrigado pelo seu trabalho! 🚚`,
+                        mensagemCriador: (usuario) => `💵 Adiantamento de frete marcado como realizado por ${usuario}`,
+                        notificacaoSucesso: '✅ Adiantamento de frete marcado como realizado! Motorista e criador da oportunidade foram notificados.'
+                    },
+                    'saldo': {
+                        titulo: 'Saldo',
+                        emoji: '💰',
+                        mensagemConfirmacao: '💰 Confirmar que o SALDO foi pago? O motorista e o criador da oportunidade serão notificados.',
+                        mensagemMotorista: (motorista, coleta) => `💰 *SALDO PAGO*\n\nOlá ${motorista.nome || 'Motorista'}!\n\nO saldo da coleta *${coleta.cliente}* (${coleta.origem} → ${coleta.destino}) foi marcado como pago.\n\nValor: R$ ${(coleta.valor || 0).toFixed(2)}\n\nPagamento completo realizado! 🎉\n\nObrigado pelo seu trabalho! 🚚`,
+                        mensagemCriador: (usuario) => `💰 Saldo marcado como pago por ${usuario}`,
+                        notificacaoSucesso: '✅ Saldo marcado como pago! Motorista e criador da oportunidade foram notificados.'
+                    },
+                    'pagamento_total': {
+                        titulo: 'Pagamento Total',
+                        emoji: '💳',
+                        mensagemConfirmacao: '💳 Confirmar que o PAGAMENTO TOTAL foi realizado? O motorista e o criador da oportunidade serão notificados.',
+                        mensagemMotorista: (motorista, coleta) => `💳 *PAGAMENTO TOTAL REALIZADO*\n\nOlá ${motorista.nome || 'Motorista'}!\n\nO pagamento total da coleta *${coleta.cliente}* (${coleta.origem} → ${coleta.destino}) foi marcado como realizado.\n\nValor Total: R$ ${(coleta.valor || 0).toFixed(2)}\n\nPagamento completo realizado de uma única vez! 🎉\n\nObrigado pelo seu trabalho! 🚚`,
+                        mensagemCriador: (usuario) => `💳 Pagamento total marcado como realizado por ${usuario}`,
+                        notificacaoSucesso: '✅ Pagamento total marcado como realizado! Motorista e criador da oportunidade foram notificados.'
+                    }
+                };
+
+                const tipoInfo = tiposPagamento[tipoPagamento];
+
+                const confirmacao = confirm(tipoInfo.mensagemConfirmacao);
+                if (!confirmacao) return;
+
+                // Buscar informações do motorista
+                const motorista = await buscarMotoristaPorId(coleta.motorista_id);
+                if (!motorista) {
+                    showNotification('Erro ao buscar informações do motorista', 'error');
+                    return;
+                }
+
+                // Buscar informações do criador da coleta
+                let criadorNome = 'Usuário';
+                let criadorEmail = null;
+                if (coleta.created_by) {
+                    try {
+                        const { data: userData, error: userError } = await supabase
+                            .from('user_profiles')
+                            .select('nome, email')
+                            .eq('id', coleta.created_by)
+                            .single();
+                        
+                        if (!userError && userData) {
+                            criadorNome = userData.nome || criadorNome;
+                            criadorEmail = userData.email;
+                        }
+                    } catch (error) {
+                        console.warn('⚠️ Erro ao buscar criador da coleta:', error);
+                    }
+                }
+
+                const usuarioNome = currentUser.nome || currentUser.username || currentUser.email;
+
+                // Atualizar coleta como paga
+                const { error: updateError } = await supabase
+                    .from('coletas')
+                    .update({
+                        contas_pagar_pago: true,
+                        contas_pagar_data: new Date().toISOString(),
+                        contas_pagar_pago_por: usuarioNome,
+                        contas_pagar_tipo: tipoPagamento,
+                        updated_at: new Date().toISOString()
+                    })
+                    .eq('id', coletaId);
+
+                if (updateError) throw updateError;
+
+                // Salvar no histórico
+                await salvarNoHistorico(coletaId, 'contas_pagar_pago', 
+                    `${tipoInfo.titulo} marcado como realizado por ${usuarioNome}`
+                );
+
+                // Enviar mensagem para o motorista
+                if (motorista.telefone1) {
+                    try {
+                        const mensagemMotorista = tipoInfo.mensagemMotorista(motorista, coleta);
+
+                        const userData = localStorage.getItem('loggedInUser');
+                        const user = userData ? JSON.parse(userData) : null;
+
+                        const response = await fetch('/webhook/send-supabase', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                number: motorista.telefone1,
+                                message: mensagemMotorista,
+                                usuario: user?.email || currentUser?.email || 'sistema',
+                                userId: user?.id || currentUser?.id || null
+                            })
+                        });
+
+                        if (response.ok) {
+                            console.log('✅ Mensagem enviada para o motorista');
+                        } else {
+                            console.warn('⚠️ Erro ao enviar mensagem para o motorista:', await response.text());
+                        }
+                    } catch (error) {
+                        console.error('❌ Erro ao enviar mensagem para o motorista:', error);
+                        // Não bloquear o processo se falhar o envio
+                    }
+                }
+
+                // Criar notificação para o criador da coleta (se for diferente do usuário atual)
+                if (coleta.created_by && coleta.created_by !== currentUser.id) {
+                    try {
+                        // Adicionar mensagem no chat da coleta para notificar o criador
+                        await supabase
+                            .from('chat_mensagens')
+                            .insert({
+                                coleta_id: coletaId,
+                                usuario: 'Sistema',
+                                mensagem: tipoInfo.mensagemCriador(usuarioNome),
+                                tipo: 'system',
+                                tipo_mensagem: 'sistema'
+                            });
+                        
+                        console.log('✅ Notificação criada para o criador da coleta');
+                    } catch (error) {
+                        console.warn('⚠️ Erro ao criar notificação para o criador:', error);
+                    }
+                }
+
+                // Mostrar notificação de sucesso para o usuário atual
+                showNotification(tipoInfo.notificacaoSucesso, 'success');
+
+                // Recarregar coletas para atualizar a interface
+                await carregarColetas();
+                
+            } catch (error) {
+                console.error('❌ Erro ao marcar como pago:', error);
+                showNotification('Erro ao marcar como pago: ' + error.message, 'error');
+            }
+        }
+
+        // Função para verificar e exibir notificações de pagamento para o criador
+        async function verificarNotificacoesPagamento() {
+            try {
+                if (!supabase || !currentUser) return;
+
+                // Buscar coletas criadas pelo usuário atual que foram marcadas como pagas recentemente
+                const { data: coletasPagas, error } = await supabase
+                    .from('coletas')
+                    .select('id, cliente, origem, destino, contas_pagar_pago, contas_pagar_data, contas_pagar_pago_por, contas_pagar_tipo, etapa_atual')
+                    .eq('created_by', currentUser.id)
+                    .eq('contas_pagar_pago', true)
+                    .eq('etapa_atual', 'contas_pagar')
+                    .order('contas_pagar_data', { ascending: false })
+                    .limit(5);
+
+                if (error) {
+                    console.warn('⚠️ Erro ao verificar notificações de pagamento:', error);
+                    return;
+                }
+
+                if (coletasPagas && coletasPagas.length > 0) {
+                    // Verificar se já foi exibido um alerta para essas coletas
+                    const ultimaNotificacao = localStorage.getItem('ultimaNotificacaoPagamento');
+                    const coletasNovas = coletasPagas.filter(coleta => {
+                        if (!ultimaNotificacao) return true;
+                        const ultimaData = new Date(ultimaNotificacao);
+                        const coletaData = new Date(coleta.contas_pagar_data);
+                        return coletaData > ultimaData;
+                    });
+
+                    if (coletasNovas.length > 0) {
+                        // Exibir alerta visual
+                        const tipoPagamentoTexto = coletasNovas[0].contas_pagar_tipo === 'adiantamento' 
+                            ? '💵 Adiantamento de Frete' 
+                            : coletasNovas[0].contas_pagar_tipo === 'saldo' 
+                            ? '💰 Saldo' 
+                            : coletasNovas[0].contas_pagar_tipo === 'pagamento_total'
+                            ? '💳 Pagamento Total'
+                            : '💰 Pagamento';
+                        
+                        const mensagem = coletasNovas.length === 1
+                            ? `${tipoPagamentoTexto} realizado! A coleta "${coletasNovas[0].cliente}" (${coletasNovas[0].origem} → ${coletasNovas[0].destino}) foi marcada como paga.`
+                            : `💰 ${coletasNovas.length} coletas foram marcadas como pagas recentemente!`;
+
+                        // Criar alerta visual destacado
+                        const alertDiv = document.createElement('div');
+                        alertDiv.className = 'alert alert-success alert-dismissible fade show';
+                        alertDiv.style.cssText = 'position: fixed; top: 80px; right: 20px; z-index: 9999; max-width: 400px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);';
+                        alertDiv.innerHTML = `
+                            <div style="display: flex; align-items: center; gap: 1rem;">
+                                <i class="fas fa-money-check-alt" style="font-size: 1.5rem; color: #28a745;"></i>
+                                <div style="flex: 1;">
+                                    <strong>${tipoPagamentoTexto} Realizado!</strong>
+                                    <p style="margin: 0.5rem 0 0 0; font-size: 0.9rem;">${mensagem}</p>
+                                    ${coletasNovas.length === 1 ? `
+                                        <small style="color: #6c757d;">Marcado por: ${coletasNovas[0].contas_pagar_pago_por || 'Sistema'}</small>
+                                    ` : ''}
+                                </div>
+                                <button type="button" class="btn-close" onclick="this.parentElement.parentElement.remove()" style="margin-left: 1rem;"></button>
+                            </div>
+                        `;
+                        document.body.appendChild(alertDiv);
+
+                        // Remover automaticamente após 10 segundos
+                        setTimeout(() => {
+                            if (alertDiv.parentElement) {
+                                alertDiv.remove();
+                            }
+                        }, 10000);
+
+                        // Salvar última notificação verificada
+                        if (coletasNovas.length > 0) {
+                            const maisRecente = coletasNovas.sort((a, b) => 
+                                new Date(b.contas_pagar_data) - new Date(a.contas_pagar_data)
+                            )[0];
+                            localStorage.setItem('ultimaNotificacaoPagamento', maisRecente.contas_pagar_data);
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error('❌ Erro ao verificar notificações de pagamento:', error);
+            }
+        }
+
         async function excluirColeta(coletaId) {
             try {
                 // Verificar se o Supabase está inicializado
@@ -4244,15 +4808,30 @@
                 anexosCarregando.add(coletaId);
                 
                 const headers = await getSupabaseAuthHeaders();
+                
+                // Se não houver autenticação, retornar array vazio silenciosamente
+                if (!headers.Authorization) {
+                    console.warn('⚠️ Sem autenticação para carregar anexos, retornando vazio');
+                    anexosCarregando.delete(coletaId);
+                    return [];
+                }
+                
                 const response = await fetch(`/api/anexos/coleta/${encodeURIComponent(coletaId)}`, {
                     credentials: 'include',
                     headers
                 });
-                const result = await response.json();
 
                 if (!response.ok) {
-                    throw new Error(result.error || 'Erro ao carregar anexos.');
+                    if (response.status === 401) {
+                        console.warn('⚠️ Erro de autenticação ao carregar anexos');
+                        anexosCarregando.delete(coletaId);
+                        return [];
+                    }
+                    const result = await response.json().catch(() => ({}));
+                    throw new Error(result.error || `Erro ${response.status} ao carregar anexos.`);
                 }
+                
+                const result = await response.json();
 
                 const anexos = result?.anexos || [];
                 
@@ -4308,7 +4887,7 @@
 
                 // Invalidar cache de anexos para esta coleta
                 invalidarCacheAnexos(coletaId);
-                
+
                 return { success: true, anexo: result.anexo };
             } catch (error) {
                 console.error('❌ Erro no upload:', error);
@@ -4346,16 +4925,46 @@
                 const anexo = await buscarAnexoPorId(anexoId);
                 if (!anexo) return;
 
-                // Abre o arquivo em uma nova aba
-                if (anexo.url) {
+                // Se o anexo tem URL direta (ex: Supabase Storage), usar diretamente
+                if (anexo.url && !anexo.url.startsWith('/api/')) {
                     window.open(anexo.url, '_blank');
-                } else {
-                    window.open(`/api/anexos/${encodeURIComponent(anexoId)}/download`, '_blank');
+                    return;
                 }
+
+                // Para URLs da API, usar fetch com autenticação
+                const headers = await getSupabaseAuthHeaders();
+                if (!headers.Authorization) {
+                    showNotification('⚠️ Erro de autenticação. Por favor, faça login novamente.', 'warning');
+                    return;
+                }
+
+                const url = anexo.url || `/api/anexos/${encodeURIComponent(anexoId)}/download`;
+                const response = await fetch(url, {
+                    credentials: 'include',
+                    headers
+                });
+
+                if (!response.ok) {
+                    if (response.status === 401) {
+                        showNotification('⚠️ Erro de autenticação. Por favor, faça login novamente.', 'warning');
+                } else {
+                        throw new Error(`Erro ${response.status}: ${response.statusText}`);
+                    }
+                    return;
+                }
+
+                const blob = await response.blob();
+                const blobUrl = window.URL.createObjectURL(blob);
+                window.open(blobUrl, '_blank');
+                
+                // Limpar URL após um tempo
+                setTimeout(() => {
+                    window.URL.revokeObjectURL(blobUrl);
+                }, 60000);
                 
             } catch (error) {
                 console.error('❌ Erro ao visualizar anexo:', error);
-                showNotification('Erro ao visualizar arquivo', 'error');
+                showNotification('Erro ao visualizar arquivo: ' + error.message, 'error');
             }
         }
 
@@ -4372,8 +4981,34 @@
 
                 console.log('📄 Forçando download de:', anexo.nome_arquivo);
                 
-                // Método que FUNCIONA para imagens, PDFs, etc
-                const response = await fetch(anexo.url);
+                // Obter headers de autenticação
+                const headers = await getSupabaseAuthHeaders();
+                if (!headers.Authorization) {
+                    showNotification('⚠️ Erro de autenticação. Por favor, faça login novamente.', 'warning');
+                    return;
+                }
+
+                // Determinar URL para download
+                let downloadUrl = anexo.url;
+                if (!downloadUrl || downloadUrl.startsWith('/api/')) {
+                    downloadUrl = `/api/anexos/${encodeURIComponent(anexoId)}/download`;
+                }
+
+                // Fazer fetch com autenticação
+                const response = await fetch(downloadUrl, {
+                    credentials: 'include',
+                    headers
+                });
+
+                if (!response.ok) {
+                    if (response.status === 401) {
+                        showNotification('⚠️ Erro de autenticação. Por favor, faça login novamente.', 'warning');
+                    } else {
+                        throw new Error(`Erro ${response.status}: ${response.statusText}`);
+                    }
+                    return;
+                }
+
                 const blob = await response.blob();
                 const blobUrl = window.URL.createObjectURL(blob);
                 
@@ -4396,11 +5031,7 @@
                 
             } catch (error) {
                 console.error('❌ Erro no download forçado:', error);
-                
-                // Fallback: abre em nova aba com instrução
-                const fallbackUrl = anexo?.url || `/api/anexos/${encodeURIComponent(anexoId)}/download`;
-                const novaAba = window.open(fallbackUrl, '_blank');
-                showNotification('📂 Arquivo aberto. Use "Salvar como" para baixar.', 'info');
+                showNotification('Erro ao baixar arquivo: ' + error.message, 'error');
             }
         }
 
@@ -4667,33 +5298,48 @@
         // ========== RENDERIZAÇÃO DE COLETAS ==========
         let renderizandoColetas = false;
         let ultimaRenderizacao = 0;
+        let timeoutRenderizacao = null;
         
         async function renderColetas(filteredData = null) {
+            // Limpar timeout anterior se existir
+            if (timeoutRenderizacao) {
+                clearTimeout(timeoutRenderizacao);
+                timeoutRenderizacao = null;
+            }
+            
             // Proteção contra renderizações simultâneas
             if (renderizandoColetas) {
-                console.warn('⚠️ Renderização já em andamento, ignorando chamada duplicada');
+                console.warn('⚠️ Renderização já em andamento, agendando nova renderização...');
+                // Agendar renderização após a atual terminar
+                timeoutRenderizacao = setTimeout(() => {
+                    renderColetas(filteredData);
+                }, 200);
                 return;
             }
             
-            // Debounce: se foi chamada há menos de 100ms, aguardar
+            // Debounce: se foi chamada há menos de 150ms, aguardar
             const agora = Date.now();
-            if (agora - ultimaRenderizacao < 100) {
-                console.warn('⚠️ Renderização muito rápida, aguardando...');
-                await new Promise(resolve => setTimeout(resolve, 100));
+            const tempoDesdeUltima = agora - ultimaRenderizacao;
+            if (tempoDesdeUltima < 150 && ultimaRenderizacao > 0) {
+                console.log(`⏳ Renderização muito rápida (${tempoDesdeUltima}ms), aguardando...`);
+                timeoutRenderizacao = setTimeout(() => {
+                    renderColetas(filteredData);
+                }, 150 - tempoDesdeUltima);
+                return;
             }
-            ultimaRenderizacao = agora;
             
+            ultimaRenderizacao = agora;
             renderizandoColetas = true;
             
             try {
-                const grid = document.getElementById('coletasGrid');
+            const grid = document.getElementById('coletasGrid');
                 if (!grid) {
                     console.error('❌ Grid de coletas não encontrado');
                     return;
                 }
                 
-                // Por padrão, mostrar apenas coletas ativas (não arquivadas)
-                let dataToRender = filteredData || window.coletasAtivas || coletasData.filter(c => !c.arquivado);
+            // Por padrão, mostrar apenas coletas ativas (não arquivadas)
+            let dataToRender = filteredData || window.coletasAtivas || coletasData.filter(c => !c.arquivado);
 
                 // Remover duplicatas baseado no ID da coleta
                 const coletasUnicas = [];
@@ -4715,21 +5361,21 @@
                 });
 
                 // Limpar o grid completamente antes de renderizar
-                grid.innerHTML = '';
+            grid.innerHTML = '';
 
-                if (dataToRender.length === 0) {
-                    grid.innerHTML = `
-                        <div style="grid-column: 1 / -1; text-align: center; padding: 3rem; color: #6c757d;">
-                            <i class="fas fa-inbox" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.5;"></i>
-                            <h3>Nenhuma coleta encontrada</h3>
-                            <p>Tente ajustar os filtros para ver mais resultados</p>
-                        </div>
-                    `;
+            if (dataToRender.length === 0) {
+                grid.innerHTML = `
+                    <div style="grid-column: 1 / -1; text-align: center; padding: 3rem; color: #6c757d;">
+                        <i class="fas fa-inbox" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.5;"></i>
+                        <h3>Nenhuma coleta encontrada</h3>
+                        <p>Tente ajustar os filtros para ver mais resultados</p>
+                    </div>
+                `;
                     return;
                 }
 
                 // Carregar anexos para cada coleta e adicionar apenas se não existir
-                for (const coleta of dataToRender) {
+            for (const coleta of dataToRender) {
                     // Verificar novamente se não foi adicionado durante o loop
                     const cardJaExiste = grid.querySelector(`[data-coleta-id="${coleta.id}"]`);
                     if (cardJaExiste) {
@@ -4737,18 +5383,18 @@
                         continue;
                     }
                     
-                    coleta.anexos = await carregarAnexos(coleta.id);
-                    const card = createColetaCard(coleta);
+                coleta.anexos = await carregarAnexos(coleta.id);
+                const card = createColetaCard(coleta);
                     card.setAttribute('data-coleta-id', coleta.id);
                     
                     // Verificar uma última vez antes de adicionar
                     const cardDuplicado = grid.querySelector(`[data-coleta-id="${coleta.id}"]`);
                     if (!cardDuplicado) {
-                        grid.appendChild(card);
-                        
-                        // Carregar informações do motorista se houver vinculação
-                        if (coleta.motorista_id) {
-                            await carregarInfoMotorista(coleta.id, coleta.motorista_id, coleta.anexos);
+                grid.appendChild(card);
+                
+                // Carregar informações do motorista se houver vinculação
+                if (coleta.motorista_id) {
+                    await carregarInfoMotorista(coleta.id, coleta.motorista_id, coleta.anexos);
                         }
                     } else {
                         console.warn('⚠️ Card duplicado detectado no último momento, removendo:', coleta.id);
@@ -4776,7 +5422,7 @@
                     }
                 });
 
-                updateStats(dataToRender);
+            updateStats(dataToRender);
             } finally {
                 renderizandoColetas = false;
             }
@@ -4798,7 +5444,15 @@
                 <div class="card-header">
                     <div class="card-title-section">
                         <h3 class="card-title">${coleta.cliente}</h3>
-                        <div class="card-id">${coleta.id}</div>
+                        ${coleta.filial && coleta.numero_coleta ? `
+                            <div class="card-filial-numero" style="display: flex; align-items: center; gap: 0.5rem; margin-top: 0.3rem; font-size: 0.85rem; color: #667eea; font-weight: 600;">
+                                <i class="fas fa-building"></i>
+                                <span>${coleta.filial}</span>
+                                <span style="color: #999;">|</span>
+                                <i class="fas fa-hashtag"></i>
+                                <span>Coleta: ${coleta.numero_coleta}</span>
+                            </div>
+                        ` : ''}
                         </div>
                     <div class="status-section">
                         <div class="status-badge status-${coleta.status}">
@@ -4858,10 +5512,25 @@
                             </div>
                         </div>
                         <div class="info-item">
-                            <div class="info-label">Veículo</div>
+                            <div class="info-label">Tipos de Veículo</div>
                             <div class="info-value">
                                 <i class="fas fa-truck"></i>
-                                ${coleta.veiculo || '-'}
+                                ${coleta.tipos_veiculo && coleta.tipos_veiculo.length > 0 
+                                    ? coleta.tipos_veiculo.map(v => `<span style="display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 0.2rem 0.6rem; border-radius: 12px; font-size: 0.75rem; margin: 0.2rem 0.2rem 0.2rem 0;">${v}</span>`).join('')
+                                    : '-'}
+                            </div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">Tipos de Carroceria</div>
+                            <div class="info-value">
+                                <i class="fas fa-box"></i>
+                                ${(() => {
+                                    if (!coleta.tipos_carroceria || coleta.tipos_carroceria.length === 0) return '-';
+                                    return coleta.tipos_carroceria.map(c => {
+                                        const nomeAmigavel = tiposCarroceriaMap[c] || c;
+                                        return `<span style="display: inline-block; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; padding: 0.2rem 0.6rem; border-radius: 12px; font-size: 0.75rem; margin: 0.2rem 0.2rem 0.2rem 0;">${nomeAmigavel}</span>`;
+                                    }).join('');
+                                })()}
                             </div>
                         </div>
                         <div class="info-item">
@@ -5054,10 +5723,47 @@
                     </div>
                 ` : ''}
 
+                <!-- Validação para etapa Contas a Pagar -->
+                ${coleta.etapa_atual === 'contas_pagar' && !coleta.contas_pagar_pago ? `
+                    <div class="etapa-validation" id="validation-contas_pagar-${coleta.id}">
+                        <div class="validation-title">
+                            <i class="fas fa-money-check-alt"></i>
+                            Marcar como Pago
+                        </div>
+                        <div class="validation-message">
+                            Selecione o tipo de pagamento realizado. O motorista e o criador da oportunidade serão notificados.
+                        </div>
+                        <div class="validation-actions" style="display: flex; gap: 10px; flex-wrap: wrap;">
+                            <button class="btn-validation success" onclick="event.stopPropagation(); marcarComoPago('${coleta.id}', 'adiantamento')" ${!coleta.motorista_id ? 'disabled title="É necessário ter motorista vinculado"' : !temPermissaoEtapa('contas_pagar') ? 'disabled title="Sem permissão para esta etapa"' : ''} style="flex: 1; min-width: 180px;">
+                                <i class="fas fa-money-bill-wave"></i> Adiantamento de Frete
+                            </button>
+                            <button class="btn-validation success" onclick="event.stopPropagation(); marcarComoPago('${coleta.id}', 'saldo')" ${!coleta.motorista_id ? 'disabled title="É necessário ter motorista vinculado"' : !temPermissaoEtapa('contas_pagar') ? 'disabled title="Sem permissão para esta etapa"' : ''} style="flex: 1; min-width: 180px;">
+                                <i class="fas fa-wallet"></i> Saldo
+                            </button>
+                            <button class="btn-validation success" onclick="event.stopPropagation(); marcarComoPago('${coleta.id}', 'pagamento_total')" ${!coleta.motorista_id ? 'disabled title="É necessário ter motorista vinculado"' : !temPermissaoEtapa('contas_pagar') ? 'disabled title="Sem permissão para esta etapa"' : ''} style="flex: 1; min-width: 180px;">
+                                <i class="fas fa-credit-card"></i> Pagamento Total
+                            </button>
+                        </div>
+                    </div>
+                ` : coleta.etapa_atual === 'contas_pagar' && coleta.contas_pagar_pago ? `
+                    <div class="etapa-validation" style="background: linear-gradient(135deg, rgba(40, 167, 69, 0.1) 0%, rgba(32, 201, 151, 0.1) 100%); border: 1px solid #28a745;">
+                        <div class="validation-title" style="color: #28a745;">
+                            <i class="fas fa-check-circle"></i>
+                            Pagamento Realizado
+                        </div>
+                        <div class="validation-message" style="color: #155724;">
+                            ${coleta.contas_pagar_tipo === 'adiantamento' ? '💵 Adiantamento de Frete' : coleta.contas_pagar_tipo === 'saldo' ? '💰 Saldo' : coleta.contas_pagar_tipo === 'pagamento_total' ? '💳 Pagamento Total' : 'Pagamento'} marcado como realizado em ${coleta.contas_pagar_data ? new Date(coleta.contas_pagar_data).toLocaleString('pt-BR') : 'data não informada'} por ${coleta.contas_pagar_pago_por || 'Usuário Desconhecido'}.
+                        </div>
+                    </div>
+                ` : ''}
+
                 <div class="card-footer">
                     <div class="card-actions">
                         <button class="action-btn chat" onclick="event.stopPropagation(); openChatModal('${coleta.id}')">
                             <i class="fas fa-comment"></i> Chat
+                        </button>
+                        <button class="action-btn secondary" onclick="event.stopPropagation(); openMoverEtapaModal('${coleta.id}')" ${!temPermissaoEtapa(coleta.etapa_atual) ? 'disabled title="Sem permissão para esta etapa"' : ''}>
+                            <i class="fas fa-arrows-alt-h"></i> Mover Etapa
                         </button>
                         <button class="action-btn primary" onclick="event.stopPropagation(); avancarEtapa('${coleta.id}')" ${coleta.etapa_atual === 'finalizar_operacao' ? 'disabled title="Use os botões Ganhou/Perdeu para finalizar"' : coleta.etapa_atual === 'contratacao' && !coleta.motorista_id ? 'disabled' : coleta.etapa_atual === 'gr' && !coleta.gr_aprovado ? 'disabled' : !temPermissaoEtapa(coleta.etapa_atual) ? 'disabled title="Sem permissão para esta etapa"' : ''}>
                             <i class="fas fa-arrow-right"></i> Avançar
@@ -5112,7 +5818,12 @@
             document.getElementById('dataRecebimento').valueAsDate = new Date();
             document.getElementById('status').value = 'pendente';
             document.getElementById('etapaAtual').value = 'comercial';
-            document.getElementById('filial').value = 'JBO';
+            document.getElementById('filial').value = ''; // Não preencher automaticamente, obrigar seleção
+            document.getElementById('numeroColeta').value = ''; // Limpar número da coleta
+            
+            // Limpar checkboxes de tipos de veículo e carroceria
+            document.querySelectorAll('input[name="tiposVeiculo"]').forEach(checkbox => checkbox.checked = false);
+            document.querySelectorAll('input[name="tiposCarroceria"]').forEach(checkbox => checkbox.checked = false);
             
             document.getElementById('coletaModal').classList.add('active');
         }
@@ -5131,10 +5842,19 @@
             }
 
             currentEditingId = coletaId;
-            document.getElementById('modalTitle').textContent = `Editar Coleta - ${coleta.id}`;
+            
+            // Definir título do modal de forma amigável
+            let tituloModal = 'Editar Coleta';
+            if (coleta.filial && coleta.numero_coleta) {
+                tituloModal = `Editar Coleta - ${coleta.filial} #${coleta.numero_coleta}`;
+            } else if (coleta.cliente) {
+                tituloModal = `Editar Coleta - ${coleta.cliente}`;
+            }
+            document.getElementById('modalTitle').textContent = tituloModal;
             
             // Preencher formulário
             document.getElementById('filial').value = coleta.filial || '';
+            document.getElementById('numeroColeta').value = coleta.numero_coleta || '';
             document.getElementById('cliente').value = coleta.cliente || '';
             
             // Converter data_recebimento (timestamp) para formato de input date (YYYY-MM-DD)
@@ -5152,7 +5872,19 @@
             document.getElementById('destino').value = coleta.destino || '';
             document.getElementById('valor').value = coleta.valor || '';
             document.getElementById('km').value = coleta.km || '';
-            document.getElementById('veiculo').value = coleta.veiculo || '';
+            
+            // Preencher checkboxes de tipos de veículo
+            const checkboxesVeiculo = document.querySelectorAll('input[name="tiposVeiculo"]');
+            checkboxesVeiculo.forEach(checkbox => {
+                checkbox.checked = coleta.tipos_veiculo && coleta.tipos_veiculo.includes(checkbox.value);
+            });
+            
+            // Preencher checkboxes de tipos de carroceria
+            const checkboxesCarroceria = document.querySelectorAll('input[name="tiposCarroceria"]');
+            checkboxesCarroceria.forEach(checkbox => {
+                checkbox.checked = coleta.tipos_carroceria && coleta.tipos_carroceria.includes(checkbox.value);
+            });
+            
             document.getElementById('status').value = coleta.status || 'pendente';
             document.getElementById('etapaAtual').value = coleta.etapa_atual || 'comercial';
             document.getElementById('observacoes').value = coleta.observacoes || '';
@@ -5184,6 +5916,64 @@
                 rawData.etapaAtual = coleta.etapa_atual;
             }
             
+            // Validar e processar número da coleta (remover zeros à esquerda)
+            let numeroColeta = rawData.numeroColeta ? rawData.numeroColeta.trim() : '';
+            if (numeroColeta) {
+                // Remover zeros à esquerda convertendo para número e depois para string
+                numeroColeta = String(parseInt(numeroColeta, 10));
+                if (numeroColeta === 'NaN' || numeroColeta === '0') {
+                    showNotification('⚠️ Número da coleta inválido. Digite apenas números (ex: 5565)', 'warning');
+                    return;
+                }
+            }
+            
+            // Validar campos obrigatórios para nova coleta
+            if (!currentEditingId) {
+                if (!rawData.filial) {
+                    showNotification('⚠️ Por favor, selecione a filial', 'warning');
+                    return;
+                }
+                if (!numeroColeta) {
+                    showNotification('⚠️ Por favor, informe o número da coleta', 'warning');
+                    return;
+                }
+                
+                // Validar duplicidade (filial + número da coleta) antes de criar
+                try {
+                    if (!supabase) {
+                        console.error('❌ Supabase não inicializado');
+                        showNotification('Erro: Supabase não inicializado', 'error');
+                        return;
+                    }
+                    
+                    const { data: coletasExistentes, error: buscaError } = await supabase
+                        .from('coletas')
+                        .select('id, filial, numero_coleta, etapa_atual, cliente, origem, destino')
+                        .eq('filial', rawData.filial)
+                        .eq('numero_coleta', numeroColeta);
+                    
+                    if (buscaError) {
+                        console.error('❌ Erro ao verificar duplicidade:', buscaError);
+                        // Continuar mesmo com erro na busca (não bloquear criação)
+                    } else if (coletasExistentes && coletasExistentes.length > 0) {
+                        const coletaExistente = coletasExistentes[0];
+                        const etapaNome = ETAPAS.find(e => e.id === coletaExistente.etapa_atual)?.nome || coletaExistente.etapa_atual;
+                        showNotification(
+                            `⚠️ Já existe uma coleta com a filial ${rawData.filial} e número ${numeroColeta}!\n\n` +
+                            `📍 Localização: ${coletaExistente.cliente || 'N/A'} (${coletaExistente.origem || 'N/A'} → ${coletaExistente.destino || 'N/A'})\n` +
+                            `📊 Etapa atual: ${etapaNome}\n` +
+                            `🆔 ID: ${coletaExistente.id}`,
+                            'warning',
+                            10000 // Mostrar por 10 segundos
+                        );
+                        return;
+                    }
+                } catch (error) {
+                    console.error('❌ Erro ao verificar duplicidade:', error);
+                    // Continuar mesmo com erro (não bloquear criação)
+                }
+            }
+            
             // ✅ INCLUI a etapaAtual do formulário
             // Converter data de recebimento para formato ISO (YYYY-MM-DD -> YYYY-MM-DDTHH:MM:SS)
             let dataRecebimento = rawData.dataRecebimento;
@@ -5194,15 +5984,25 @@
                 }
             }
             
+            // Coletar tipos de veículo selecionados
+            const tiposVeiculoSelecionados = Array.from(document.querySelectorAll('input[name="tiposVeiculo"]:checked'))
+                .map(checkbox => checkbox.value);
+            
+            // Coletar tipos de carroceria selecionados
+            const tiposCarroceriaSelecionados = Array.from(document.querySelectorAll('input[name="tiposCarroceria"]:checked'))
+                .map(checkbox => checkbox.value);
+            
             const coletaData = {
                 filial: rawData.filial,
+                numero_coleta: numeroColeta || null,
                 cliente: rawData.cliente,
                 data_recebimento: dataRecebimento,
                 origem: rawData.origem,
                 destino: rawData.destino,
                 valor: parseFloat(rawData.valor) || 0,
                 km: parseFloat(rawData.km) || 0,
-                veiculo: rawData.veiculo,
+                tipos_veiculo: tiposVeiculoSelecionados,
+                tipos_carroceria: tiposCarroceriaSelecionados,
                 status: rawData.status,
                 etapa_atual: rawData.etapaAtual, 
                 observacoes: rawData.observacoes
@@ -5226,7 +6026,15 @@
             if (!coleta) return;
             
             currentAnexosColetaId = coletaId;
-            document.getElementById('modalAnexosTitle').textContent = `Anexos - ${coleta.id}`;
+            
+            // Definir título do modal de anexos de forma amigável
+            let tituloAnexos = 'Anexos da Coleta';
+            if (coleta.filial && coleta.numero_coleta) {
+                tituloAnexos = `Anexos - ${coleta.filial} #${coleta.numero_coleta}`;
+            } else if (coleta.cliente) {
+                tituloAnexos = `Anexos - ${coleta.cliente}`;
+            }
+            document.getElementById('modalAnexosTitle').textContent = tituloAnexos;
             
             // Resetar o modal
             document.getElementById('selectedFiles').style.display = 'none';
@@ -5334,7 +6142,14 @@
             
             if (!coleta) return;
             
-            document.getElementById('chatColetaId').textContent = coleta.id;
+            // Definir identificação da coleta de forma amigável
+            let identificacaoColeta = 'Coleta';
+            if (coleta.filial && coleta.numero_coleta) {
+                identificacaoColeta = `${coleta.filial} #${coleta.numero_coleta}`;
+            } else if (coleta.cliente) {
+                identificacaoColeta = coleta.cliente;
+            }
+            document.getElementById('chatColetaId').textContent = identificacaoColeta;
             document.getElementById('chatCliente').textContent = coleta.cliente;
             
             // Carregar mensagens
@@ -5550,9 +6365,16 @@
             const etapaAtualIndex = ETAPAS.findIndex(e => e.id === coleta.etapa_atual);
             if (etapaAtualIndex < ETAPAS.length - 1) {
                 
+                // Atualizar etapas_concluidas: adicionar a etapa atual se ainda não estiver
+                const etapasConcluidas = Array.isArray(coleta.etapas_concluidas) ? [...coleta.etapas_concluidas] : [];
+                if (!etapasConcluidas.includes(coleta.etapa_atual)) {
+                    etapasConcluidas.push(coleta.etapa_atual);
+                }
+                
                 const updateData = {
                     etapa_atual: ETAPAS[etapaAtualIndex + 1].id,
                     status: etapaAtualIndex + 1 === ETAPAS.length - 1 ? 'concluida' : 'em_andamento',
+                    etapas_concluidas: etapasConcluidas,
                     updated_at: new Date().toISOString()
                 };
 
@@ -5576,6 +6398,112 @@
                 }
             } else {
                 showNotification('🚫 Última etapa já alcançada', 'info');
+            }
+        }
+
+        function openMoverEtapaModal(coletaId) {
+            const coleta = coletasData.find(c => c.id === coletaId);
+            if (!coleta) return;
+
+            if (!temPermissaoEtapa(coleta.etapa_atual)) {
+                showNotification('⚠️ Você não tem permissão para alterar esta etapa', 'warning');
+                return;
+            }
+
+            moverEtapaColetaId = coletaId;
+            document.getElementById('moverEtapaAtual').textContent = obterNomeEtapa(coleta.etapa_atual);
+
+            const select = document.getElementById('novaEtapaSelect');
+            select.innerHTML = `<option value="">Selecione a etapa</option>` + ETAPAS.map(etapa => `
+                <option value="${etapa.id}" ${etapa.id === coleta.etapa_atual ? 'disabled' : ''}>
+                    ${etapa.nome}
+                </option>
+            `).join('');
+            select.value = '';
+
+            document.getElementById('moverEtapaModal').classList.add('active');
+        }
+
+        function fecharMoverEtapaModal() {
+            moverEtapaColetaId = null;
+            document.getElementById('novaEtapaSelect').value = '';
+            document.getElementById('moverEtapaModal').classList.remove('active');
+        }
+
+        async function confirmarMoverEtapa() {
+            if (!moverEtapaColetaId) {
+                showNotification('Nenhuma coleta selecionada para mover.', 'warning');
+                return;
+            }
+            const novaEtapaId = document.getElementById('novaEtapaSelect').value;
+            if (!novaEtapaId) {
+                showNotification('Selecione a nova etapa desejada.', 'warning');
+                return;
+            }
+            await moverEtapa(moverEtapaColetaId, novaEtapaId);
+        }
+
+        async function moverEtapa(coletaId, novaEtapaId) {
+            const coleta = coletasData.find(c => c.id === coletaId);
+            if (!coleta) return;
+
+            if (!temPermissaoEtapa(coleta.etapa_atual)) {
+                showNotification('⚠️ Você não tem permissão para alterar esta etapa', 'warning');
+                return;
+            }
+
+            if (novaEtapaId === coleta.etapa_atual) {
+                showNotification('Selecione uma etapa diferente da atual.', 'info');
+                return;
+            }
+
+            const etapaAtualIndex = ETAPAS.findIndex(e => e.id === coleta.etapa_atual);
+            const novaEtapaIndex = ETAPAS.findIndex(e => e.id === novaEtapaId);
+            if (novaEtapaIndex === -1) {
+                showNotification('Etapa selecionada inválida.', 'error');
+                return;
+            }
+
+            if (coleta.etapa_atual === 'contratacao' && novaEtapaIndex > etapaAtualIndex && !coleta.motorista_id) {
+                showNotification('⚠️ Vincule um motorista antes de seguir para etapas posteriores.', 'warning');
+                await vincularMotorista(coletaId);
+                return;
+            }
+
+            if (coleta.etapa_atual === 'gr' && novaEtapaIndex > etapaAtualIndex) {
+                if (coleta.gr_aprovado === null || coleta.gr_aprovado === undefined) {
+                    showNotification('⚠️ Aprove ou reprove a coleta na etapa GR antes de seguir.', 'warning');
+                    return;
+                }
+                if (coleta.gr_aprovado === false) {
+                    showNotification('⚠️ Coleta reprovada no GR. Ajuste antes de avançar.', 'warning');
+                    return;
+                }
+            }
+
+            // Atualizar etapas_concluidas: adicionar a etapa atual se ainda não estiver
+            const etapasConcluidas = Array.isArray(coleta.etapas_concluidas) ? [...coleta.etapas_concluidas] : [];
+            if (!etapasConcluidas.includes(coleta.etapa_atual)) {
+                etapasConcluidas.push(coleta.etapa_atual);
+            }
+
+            const updateData = {
+                etapa_atual: novaEtapaId,
+                status: novaEtapaId === 'finalizar_operacao' ? 'concluida' : 'em_andamento',
+                etapas_concluidas: etapasConcluidas
+            };
+
+            try {
+                currentEditingId = coletaId;
+                await salvarColeta(updateData);
+                await salvarNoHistorico(coletaId, 'etapa_alterada', `Etapa alterada de ${obterNomeEtapa(coleta.etapa_atual)} para ${obterNomeEtapa(novaEtapaId)}`);
+                showNotification(`Etapa movida para ${obterNomeEtapa(novaEtapaId)}`, 'success');
+                fecharMoverEtapaModal();
+            } catch (error) {
+                console.error('❌ Erro ao mover etapa:', error);
+                showNotification('Erro ao mover etapa: ' + error.message, 'error');
+            } finally {
+                currentEditingId = null;
             }
         }
 
@@ -5617,7 +6545,7 @@
 
                 // Filtro de busca
                 if (searchFilter) {
-                    const searchableText = `${coleta.cliente || ''} ${coleta.origem || ''} ${coleta.destino || ''} ${coleta.id || ''}`.toLowerCase();
+                    const searchableText = `${coleta.cliente || ''} ${coleta.origem || ''} ${coleta.destino || ''} ${coleta.numero_coleta || ''} ${coleta.filial || ''}`.toLowerCase();
                     if (!searchableText.includes(searchFilter)) {
                         console.log(`❌ Filtrado por busca: "${searchableText}" não contém "${searchFilter}"`);
                         return false;
@@ -5976,7 +6904,15 @@
         });
 
         document.getElementById('modalHistoricoCompleto').addEventListener('click', function(e) {
-            if (e.target === this) fecharModalHistoricoCompleto();
+            if (e.target === this) {
+                fecharModalHistoricoCompleto();
+            }
+        });
+        
+        document.getElementById('moverEtapaModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                fecharMoverEtapaModal();
+            }
         });
 
         // Função para mostrar erro
@@ -6493,7 +7429,9 @@
                 }
             }
             
-            renderColetas();
+            // Não precisa chamar renderColetas() novamente, pois originalCarregarColetas já chama
+            // Apenas atualizar stats se necessário
+            updateStats();
         };
     </script>
 <!-- Chat IA -->

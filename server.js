@@ -764,6 +764,18 @@ app.use(express.static('.'));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
+// Rotas para PWA (manifest e service worker)
+app.get('/manifest.json', (req, res) => {
+  res.setHeader('Content-Type', 'application/manifest+json');
+  res.sendFile(path.join(__dirname, 'manifest.json'));
+});
+
+app.get('/service-worker.js', (req, res) => {
+  res.setHeader('Content-Type', 'application/javascript');
+  res.setHeader('Service-Worker-Allowed', '/');
+  res.sendFile(path.join(__dirname, 'service-worker.js'));
+});
+
 // ✅✅✅ SESSÃO PRIMEIRO, DEPOIS DEBUG ✅✅✅
 const SQLiteStore = require('connect-sqlite3')(session);
 
@@ -1494,7 +1506,10 @@ function mapColetaOpportunity(coleta) {
     km: coleta.km !== undefined ? coleta.km : null,
     veiculo: coleta.veiculo || null,
     observacoes: coleta.observacoes || null,
-    filial: coleta.filial || null
+    filial: coleta.filial || null,
+    numeroColeta: coleta.numero_coleta || null,
+    tiposVeiculo: coleta.tipos_veiculo || [],
+    tiposCarroceria: coleta.tipos_carroceria || []
   };
 }
 
@@ -3854,7 +3869,7 @@ app.get('/api/motoristas/oportunidades', async (req, res) => {
 
     const { data, error: coletasError } = await supabaseAdmin
       .from('coletas')
-      .select('id, cliente, origem, destino, valor, km, veiculo, status, etapa_atual, prioridade, data_recebimento, observacoes, filial, motorista_id')
+      .select('id, cliente, origem, destino, valor, km, veiculo, status, etapa_atual, prioridade, data_recebimento, observacoes, filial, numero_coleta, tipos_veiculo, tipos_carroceria, motorista_id')
       .is('motorista_id', null)
       .order('data_recebimento', { ascending: true });
 
@@ -3906,7 +3921,7 @@ app.get('/api/motoristas/viagens', async (req, res) => {
 
     const { data: viagensData, error: viagensError } = await supabaseAdmin
       .from('coletas')
-      .select('id, cliente, origem, destino, valor, km, veiculo, status, etapa_atual, prioridade, data_recebimento, observacoes, filial')
+      .select('id, cliente, origem, destino, valor, km, veiculo, status, etapa_atual, prioridade, data_recebimento, observacoes, filial, numero_coleta, tipos_veiculo, tipos_carroceria')
       .eq('motorista_id', motorista.id)
       .order('data_recebimento', { ascending: true });
 
@@ -3950,6 +3965,20 @@ app.post('/api/motoristas/oportunidades/:coletaId/assumir', async (req, res) => 
 
     if (!motorista) {
       return res.status(409).json({ success: false, error: 'Complete seu cadastro para assumir uma coleta.' });
+    }
+
+    // Verificar se o cadastro do motorista está completo (status deve ser 'ativo')
+    const motoristaStatus = (motorista.status || '').toLowerCase();
+    if (motoristaStatus !== 'ativo') {
+      console.log('❌ Tentativa de assumir coleta com cadastro pendente:', {
+        motoristaId: motorista.id,
+        status: motorista.status,
+        nome: motorista.nome
+      });
+      return res.status(409).json({ 
+        success: false, 
+        error: 'Seu cadastro está pendente. Complete seu cadastro e aguarde a aprovação antes de assumir coletas.' 
+      });
     }
 
     // Verificar se o motorista já tem uma viagem ativa
@@ -4017,9 +4046,19 @@ app.post('/api/motoristas/oportunidades/:coletaId/assumir', async (req, res) => 
       .single();
 
     if (updateError) {
+      console.error('❌ Erro ao atualizar coleta:', updateError);
       throw updateError;
     }
 
+    if (!coletaAtualizada) {
+      console.error('❌ Coleta não foi atualizada após update');
+      return res.status(500).json({ 
+        success: false, 
+        error: 'Erro ao atualizar a coleta. A coleta pode não existir mais.' 
+      });
+    }
+
+    // Tentar inserir histórico (não crítico se falhar)
     try {
       await supabaseAdmin.from('historico_coletas').insert({
         coleta_id: coletaId,
@@ -4031,8 +4070,10 @@ app.post('/api/motoristas/oportunidades/:coletaId/assumir', async (req, res) => 
       });
     } catch (historicoError) {
       console.warn('⚠️ Não foi possível registrar histórico da coleta:', historicoError.message || historicoError);
+      // Não bloquear o fluxo se o histórico falhar
     }
 
+    // Tentar inserir mensagem no chat (não crítico se falhar)
     try {
       await supabaseAdmin.from('chat_mensagens').insert({
         coleta_id: coletaId,
@@ -4042,6 +4083,7 @@ app.post('/api/motoristas/oportunidades/:coletaId/assumir', async (req, res) => 
       });
     } catch (chatError) {
       console.warn('⚠️ Não foi possível registrar mensagem automática no chat:', chatError.message || chatError);
+      // Não bloquear o fluxo se o chat falhar
     }
 
     res.json({
@@ -4050,8 +4092,34 @@ app.post('/api/motoristas/oportunidades/:coletaId/assumir', async (req, res) => 
       motorista: mapMotoristaResponse(motorista)
     });
   } catch (error) {
-    console.error('❌ Erro ao assumir oportunidade de coleta:', error);
-    res.status(500).json({ success: false, error: 'Não foi possível assumir esta coleta agora. Tente novamente mais tarde.' });
+    console.error('❌ Erro ao assumir oportunidade de coleta:', {
+      error: error.message,
+      code: error.code,
+      details: error.details,
+      hint: error.hint,
+      coletaId: req.params.coletaId,
+      motoristaId: motorista?.id
+    });
+    
+    // Retornar mensagens de erro mais específicas
+    let errorMessage = 'Não foi possível assumir esta coleta agora. Tente novamente mais tarde.';
+    let statusCode = 500;
+    
+    if (error.code === '23505') {
+      errorMessage = 'Esta coleta já foi assumida por outro motorista.';
+      statusCode = 409;
+    } else if (error.code === '23503') {
+      errorMessage = 'Erro de referência. A coleta ou motorista não existe mais.';
+      statusCode = 404;
+    } else if (error.message) {
+      errorMessage = error.message;
+    }
+    
+    res.status(statusCode).json({ 
+      success: false, 
+      error: errorMessage,
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
   }
 });
 
@@ -4112,6 +4180,20 @@ app.post('/api/rastreamento/aceitar-termo', express.json(), async (req, res) => 
 
     if (!motorista) {
       return res.status(409).json({ success: false, error: 'Complete seu cadastro primeiro.' });
+    }
+
+    // Verificar se o cadastro do motorista está completo (status deve ser 'ativo')
+    const motoristaStatus = (motorista.status || '').toLowerCase();
+    if (motoristaStatus !== 'ativo') {
+      console.log('❌ Tentativa de aceitar termo com cadastro pendente:', {
+        motoristaId: motorista.id,
+        status: motorista.status,
+        nome: motorista.nome
+      });
+      return res.status(409).json({ 
+        success: false, 
+        error: 'Seu cadastro está pendente. Complete seu cadastro e aguarde a aprovação antes de aceitar termos de rastreamento.' 
+      });
     }
 
     // Verificar se já existe termo ativo
