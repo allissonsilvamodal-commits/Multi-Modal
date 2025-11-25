@@ -951,6 +951,27 @@ app.use(cors({
 app.set('trust proxy', 1);
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
+// Configurar headers de cache para arquivos estáticos
+// HTML files: no-cache para garantir atualizações
+// Outros assets: cache control apropriado
+app.use((req, res, next) => {
+  // Para arquivos HTML, forçar no-cache
+  if (req.path.endsWith('.html')) {
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+  }
+  // Para arquivos JS e CSS, cache com revalidação
+  else if (req.path.match(/\.(js|css)$/)) {
+    res.setHeader('Cache-Control', 'public, max-age=3600, must-revalidate');
+  }
+  // Para imagens e outros assets, cache mais longo
+  else if (req.path.match(/\.(jpg|jpeg|png|gif|ico|svg|woff|woff2|ttf|eot)$/)) {
+    res.setHeader('Cache-Control', 'public, max-age=86400');
+  }
+  next();
+});
+
 app.use(express.static('.'));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
@@ -6881,6 +6902,19 @@ app.get('/api/debug-session', (req, res) => {
   });
 });
 
+// ========== MIDDLEWARE PARA HEADERS DE CACHE EM HTML ==========
+// Aplicar headers no-cache para todos os arquivos HTML
+app.use((req, res, next) => {
+  if (req.path.endsWith('.html')) {
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate, max-age=0');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+    res.setHeader('Last-Modified', new Date().toUTCString());
+    res.setHeader('ETag', `"${Date.now()}"`);
+  }
+  next();
+});
+
 // ========== ROTAS PRINCIPAIS ==========
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
@@ -6896,10 +6930,18 @@ app.get('/comercial.html', (req, res) => {
 
 // ========== ROTAS PROTEGIDAS ==========
 app.get('/painel.html', (req, res) => {
+  // Headers para evitar cache em HTML
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
   res.sendFile(path.join(__dirname, 'painel.html'));
 });
 
 app.get('/portal.html', (req, res) => {
+  // Headers para evitar cache em HTML
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
   res.sendFile(path.join(__dirname, 'portal.html'));
 });
 
@@ -6913,6 +6955,11 @@ app.get('/settings.html', (req, res) => {
 
 app.get('/relatorios.html', (req, res) => {
   res.sendFile(path.join(__dirname, 'relatorios.html'));
+});
+
+// Rota para treinamento-disparador.html
+app.get('/treinamento-disparador.html', (req, res) => {
+  res.sendFile(path.join(__dirname, 'treinamento-disparador.html'));
 });
 
 app.get('/cadastro.html', (req, res) => {
