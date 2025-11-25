@@ -951,28 +951,38 @@ app.use(cors({
 app.set('trust proxy', 1);
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
-// Configurar headers de cache para arquivos estáticos
-// HTML files: no-cache para garantir atualizações
-// Outros assets: cache control apropriado
+
+// ========== MIDDLEWARE PARA HEADERS DE CACHE ==========
+// IMPORTANTE: Este middleware DEVE estar ANTES de express.static
+// Para garantir que os headers sejam aplicados corretamente
 app.use((req, res, next) => {
-  // Para arquivos HTML, forçar no-cache
+  // Para arquivos HTML, forçar no-cache (sempre buscar versão mais recente)
   if (req.path.endsWith('.html')) {
-    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate, max-age=0');
     res.setHeader('Pragma', 'no-cache');
     res.setHeader('Expires', '0');
+    res.setHeader('Last-Modified', new Date().toUTCString());
+    // ETag único baseado em timestamp para forçar revalidação
+    res.setHeader('ETag', `"${Date.now()}-${Math.random()}"`);
+    // Header customizado para identificar versão (útil para debug)
+    res.setHeader('X-Content-Version', Date.now().toString());
   }
-  // Para arquivos JS e CSS, cache com revalidação
+  // Para arquivos JS e CSS, cache com revalidação (1 hora)
   else if (req.path.match(/\.(js|css)$/)) {
     res.setHeader('Cache-Control', 'public, max-age=3600, must-revalidate');
   }
-  // Para imagens e outros assets, cache mais longo
+  // Para imagens e outros assets, cache mais longo (24 horas)
   else if (req.path.match(/\.(jpg|jpeg|png|gif|ico|svg|woff|woff2|ttf|eot)$/)) {
     res.setHeader('Cache-Control', 'public, max-age=86400');
   }
   next();
 });
 
-app.use(express.static('.'));
+// Configurar express.static com opções que desabilitam cache automático
+app.use(express.static('.', {
+  etag: false, // Desabilitar ETag padrão do Express (usamos nosso próprio)
+  lastModified: false // Desabilitar Last-Modified padrão (usamos nosso próprio)
+}));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
@@ -6900,19 +6910,6 @@ app.get('/api/debug-session', (req, res) => {
     autenticado: !!req.session.usuario,
     cookies: req.headers.cookie
   });
-});
-
-// ========== MIDDLEWARE PARA HEADERS DE CACHE EM HTML ==========
-// Aplicar headers no-cache para todos os arquivos HTML
-app.use((req, res, next) => {
-  if (req.path.endsWith('.html')) {
-    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate, max-age=0');
-    res.setHeader('Pragma', 'no-cache');
-    res.setHeader('Expires', '0');
-    res.setHeader('Last-Modified', new Date().toUTCString());
-    res.setHeader('ETag', `"${Date.now()}"`);
-  }
-  next();
 });
 
 // ========== ROTAS PRINCIPAIS ==========
