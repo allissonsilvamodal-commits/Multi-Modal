@@ -8,6 +8,8 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- QR Code Library -->
     <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+    <!-- HTML to PDF Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <style>
         :root {
             --primary:#6759ff;
@@ -93,11 +95,80 @@
             border-radius:12px;
             background:#fff;
         }
+        
+        /* Estilos para impressão/PDF */
+        @media print {
+            body { background: white !important; color: #1f2937 !important; }
+            .btn-back, button, .signature-card, canvas { display: none !important; }
+        }
+        
+        /* Estilos específicos para PDF - reduzir espaçamentos */
+        .pdf-optimized .training-block {
+            margin-top: 1rem !important;
+            margin-bottom: 1rem !important;
+            padding: 1.25rem !important;
+            page-break-inside: avoid !important;
+        }
+        
+        .pdf-optimized .step-card {
+            margin-top: 0.5rem !important;
+            margin-bottom: 0.5rem !important;
+            page-break-inside: avoid !important;
+        }
+        
+        .pdf-optimized .media-figure {
+            margin-top: 0.75rem !important;
+            margin-bottom: 0.75rem !important;
+            page-break-inside: avoid !important;
+        }
+        
+        .pdf-optimized .hero {
+            margin-bottom: 1.5rem !important;
+            padding: 1.5rem !important;
+        }
+        
+        .pdf-optimized h1,
+        .pdf-optimized h2,
+        .pdf-optimized h3 {
+            page-break-after: avoid !important;
+            page-break-inside: avoid !important;
+            margin-top: 0.75rem !important;
+            margin-bottom: 0.5rem !important;
+        }
+        
+        .pdf-optimized p {
+            margin-top: 0.5rem !important;
+            margin-bottom: 0.5rem !important;
+        }
+        
+        .pdf-optimized ul,
+        .pdf-optimized ol {
+            margin-top: 0.5rem !important;
+            margin-bottom: 0.5rem !important;
+        }
+        
+        /* Estilos para o botão de download PDF */
+        #btnBaixarPDF {
+            transition: all 0.3s ease;
+        }
+        #btnBaixarPDF:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(16, 185, 129, 0.4) !important;
+        }
+        #btnBaixarPDF:active {
+            transform: translateY(0);
+        }
     </style>
 </head>
 <body>
 <main class="container-training">
-    <a class="btn-back" href="treinamentos.html"><i class="fas fa-chevron-left"></i>Voltar para Treinamentos</a>
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <a class="btn-back" href="treinamentos.html"><i class="fas fa-chevron-left"></i>Voltar para Treinamentos</a>
+        <button type="button" class="btn btn-success" onclick="baixarTreinamentoPDF()" id="btnBaixarPDF" style="display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.55rem 1rem; border-radius: 999px; background: #10b981; color: #fff; border: none; font-weight: 600; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3); transition: all 0.3s ease;">
+            <i class="fas fa-file-pdf"></i>
+            Baixar PDF
+        </button>
+    </div>
     <header class="hero">
         <span class="tag"><i class="fas fa-user-graduate"></i> Treinamento obrigatório</span>
         <h1><i class="fas fa-paper-plane me-2"></i>Disparador de Mensagens WhatsApp</h1>
@@ -741,6 +812,269 @@ async function deslogarInstanciaEvolution() {
 // Disponibilizar funções globalmente para uso no treinamento
 window.gerarQRCodeEvolution = gerarQRCodeEvolution;
 window.deslogarInstanciaEvolution = deslogarInstanciaEvolution;
+
+// ========== FUNÇÃO PARA BAIXAR TREINAMENTO EM PDF ==========
+async function baixarTreinamentoPDF() {
+    const btn = document.getElementById('btnBaixarPDF');
+    const originalHtml = btn ? btn.innerHTML : '';
+    
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Gerando PDF...';
+    }
+
+    try {
+        // Elemento principal do treinamento
+        const elemento = document.querySelector('main.container-training');
+        
+        if (!elemento) {
+            throw new Error('Conteúdo do treinamento não encontrado');
+        }
+
+        console.log('📄 Iniciando geração de PDF...');
+        console.log('📦 Elemento encontrado:', elemento);
+
+        // Criar uma cópia profunda do elemento
+        const elementoClone = elemento.cloneNode(true);
+        
+        // Remover elementos interativos e não necessários
+        const elementosParaRemover = elementoClone.querySelectorAll('button, .btn-back, .signature-card, canvas, #btnBaixarPDF, .modal, .d-flex.justify-content-between');
+        elementosParaRemover.forEach(el => {
+            if (el && el.parentNode) {
+                el.remove();
+            }
+        });
+        
+        console.log('🧹 Elementos removidos:', elementosParaRemover.length);
+        
+        // Garantir que o clone tenha conteúdo visível
+        elementoClone.style.cssText = 'background: white !important; color: #1f2937 !important; padding: 2rem !important; max-width: 100% !important;';
+        
+        // Ajustar estilos de elementos filhos para garantir visibilidade
+        elementoClone.querySelectorAll('.hero').forEach(el => {
+            el.style.cssText = 'background: linear-gradient(135deg, #6759ff, #8b5cf6) !important; color: white !important; border-radius: 20px !important; padding: 2rem !important; margin-bottom: 2rem !important; display: block !important;';
+        });
+        
+        elementoClone.querySelectorAll('.training-block').forEach(el => {
+            el.style.cssText = 'background: white !important; border: 1px solid #e5e7eb !important; border-radius: 18px !important; padding: 1.75rem !important; margin-top: 1.5rem !important; display: block !important;';
+        });
+        
+        elementoClone.querySelectorAll('.step-card').forEach(el => {
+            el.style.cssText = 'border-left: 4px solid #6759ff !important; background: #f8fafc !important; padding: 1rem 1.25rem !important; border-radius: 12px !important; margin: 0.8rem 0 !important; display: block !important;';
+        });
+        
+        // Garantir que todas as imagens sejam visíveis e carregadas
+        const imagens = elementoClone.querySelectorAll('img');
+        console.log(`📸 Encontradas ${imagens.length} imagens para processar`);
+        
+        // Processar imagens
+        const promessasImagens = Array.from(imagens).map((img, index) => {
+            return new Promise((resolve) => {
+                // Garantir que a imagem seja visível
+                img.style.cssText = 'max-width: 100% !important; height: auto !important; display: block !important;';
+                
+                if (img.complete && img.naturalWidth > 0) {
+                    console.log(`✅ Imagem ${index + 1}/${imagens.length} já carregada`);
+                    resolve();
+                    return;
+                }
+                
+                const timeout = setTimeout(() => {
+                    console.warn(`⏱️ Timeout imagem ${index + 1}`);
+                    resolve();
+                }, 3000);
+                
+                img.onload = () => {
+                    clearTimeout(timeout);
+                    console.log(`✅ Imagem ${index + 1} carregada`);
+                    resolve();
+                };
+                
+                img.onerror = () => {
+                    clearTimeout(timeout);
+                    console.warn(`❌ Erro ao carregar imagem ${index + 1}`);
+                    resolve();
+                };
+            });
+        });
+        
+        await Promise.all(promessasImagens);
+        console.log('✅ Todas as imagens processadas');
+        
+        // Verificar se há conteúdo antes de continuar
+        const texto = elementoClone.innerText || elementoClone.textContent || '';
+        if (texto.trim().length === 0) {
+            throw new Error('O conteúdo está vazio após clonagem. Verifique o elemento original.');
+        }
+        
+        console.log('📝 Conteúdo encontrado:', texto.substring(0, 200) + '...');
+        
+        // Criar container temporário VISÍVEL na tela (será removido depois)
+        const containerTemp = document.createElement('div');
+        containerTemp.id = 'pdf-temp-container';
+        containerTemp.style.cssText = `
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            width: 100vw !important;
+            min-height: 100vh !important;
+            background: white !important;
+            padding: 2rem !important;
+            z-index: 999999 !important;
+            overflow: auto !important;
+        `;
+        
+        // Adicionar o clone ao container
+        containerTemp.appendChild(elementoClone);
+        document.body.appendChild(containerTemp);
+        
+        console.log('📦 Container temporário criado e adicionado ao DOM');
+        
+        // Forçar reflow e aguardar renderização completa
+        void containerTemp.offsetHeight; // Força reflow
+        await new Promise(resolve => setTimeout(resolve, 1500));
+        
+        // Verificar dimensões após inserção no DOM
+        const rect = elementoClone.getBoundingClientRect();
+        console.log('📏 Dimensões após inserção:', {
+            offsetWidth: elementoClone.offsetWidth,
+            offsetHeight: elementoClone.offsetHeight,
+            scrollWidth: elementoClone.scrollWidth,
+            scrollHeight: elementoClone.scrollHeight,
+            boundingRect: rect
+        });
+        
+        // Verificar se o elemento está visível
+        if (rect.width === 0 || rect.height === 0) {
+            throw new Error('Elemento não está visível. Dimensões: ' + rect.width + 'x' + rect.height);
+        }
+        
+        // Adicionar classe para otimização de PDF
+        elementoClone.classList.add('pdf-optimized');
+        
+        // Ajustar espaçamentos para reduzir espaços em branco
+        elementoClone.querySelectorAll('.training-block').forEach(el => {
+            el.style.marginTop = '1rem !important';
+            el.style.marginBottom = '1rem !important';
+            el.style.padding = '1.25rem !important';
+            el.style.pageBreakInside = 'avoid !important';
+        });
+        
+        elementoClone.querySelectorAll('.step-card').forEach(el => {
+            el.style.marginTop = '0.5rem !important';
+            el.style.marginBottom = '0.5rem !important';
+            el.style.pageBreakInside = 'avoid !important';
+        });
+        
+        elementoClone.querySelectorAll('.media-figure').forEach(el => {
+            el.style.marginTop = '0.75rem !important';
+            el.style.marginBottom = '0.75rem !important';
+            el.style.pageBreakInside = 'avoid !important';
+        });
+        
+        elementoClone.querySelectorAll('.hero').forEach(el => {
+            el.style.marginBottom = '1.5rem !important';
+            el.style.padding = '1.5rem !important';
+        });
+        
+        elementoClone.querySelectorAll('h1, h2, h3').forEach(el => {
+            el.style.pageBreakAfter = 'avoid !important';
+            el.style.pageBreakInside = 'avoid !important';
+            el.style.marginTop = '0.75rem !important';
+            el.style.marginBottom = '0.5rem !important';
+        });
+        
+        elementoClone.querySelectorAll('p').forEach(el => {
+            el.style.marginTop = '0.5rem !important';
+            el.style.marginBottom = '0.5rem !important';
+        });
+        
+        elementoClone.querySelectorAll('ul, ol').forEach(el => {
+            el.style.marginTop = '0.5rem !important';
+            el.style.marginBottom = '0.5rem !important';
+        });
+        
+        // Configurações do PDF com margens reduzidas
+        const opcoes = {
+            margin: [8, 8, 8, 8], // Margens reduzidas (antes: 15mm)
+            filename: `Treinamento_Disparador_Mensagens_${new Date().toISOString().split('T')[0]}.pdf`,
+            image: { type: 'jpeg', quality: 0.98 },
+            html2canvas: { 
+                scale: 2,
+                useCORS: true,
+                logging: false, // Desativar logs para melhor performance
+                letterRendering: true,
+                allowTaint: true,
+                backgroundColor: '#ffffff',
+                width: elementoClone.scrollWidth || rect.width,
+                height: elementoClone.scrollHeight || rect.height,
+                windowWidth: elementoClone.scrollWidth || rect.width,
+                windowHeight: elementoClone.scrollHeight || rect.height,
+                x: 0,
+                y: 0,
+                scrollX: 0,
+                scrollY: 0
+            },
+            jsPDF: { 
+                unit: 'mm', 
+                format: 'a4', 
+                orientation: 'portrait',
+                compress: true
+            },
+            pagebreak: { 
+                mode: ['avoid-all', 'css', 'legacy'],
+                before: '.training-block',
+                after: ['.training-block', '.media-figure'],
+                avoid: ['.step-card', 'h1', 'h2', 'h3', '.info-box', '.warning-box', '.tip-box']
+            }
+        };
+
+        console.log('🖨️ Iniciando geração do PDF com opções:', opcoes);
+        
+        // Gerar PDF diretamente do elemento clone
+        await html2pdf().set(opcoes).from(elementoClone).save();
+        
+        console.log('✅ PDF gerado com sucesso!');
+        
+        // Remover container temporário imediatamente após gerar
+        setTimeout(() => {
+            const temp = document.getElementById('pdf-temp-container');
+            if (temp && temp.parentNode) {
+                console.log('🗑️ Removendo container temporário');
+                temp.remove();
+            }
+        }, 500);
+        
+        // Feedback de sucesso
+        if (btn) {
+            btn.innerHTML = '<i class="fas fa-check me-2"></i>PDF Gerado!';
+            btn.style.background = '#10b981';
+            setTimeout(() => {
+                btn.disabled = false;
+                btn.innerHTML = originalHtml;
+                btn.style.background = '#10b981';
+            }, 2000);
+        }
+    } catch (error) {
+        console.error('❌ Erro ao gerar PDF:', error);
+        console.error('Stack:', error.stack);
+        alert('Erro ao gerar PDF: ' + error.message + '\n\nVerifique o console para mais detalhes.\n\nTente novamente ou use a função de impressão do navegador (Ctrl+P).');
+        
+        // Remover container temporário em caso de erro
+        const temp = document.getElementById('pdf-temp-container');
+        if (temp && temp.parentNode) {
+            temp.remove();
+        }
+        
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = originalHtml;
+        }
+    }
+}
+
+// Disponibilizar função globalmente
+window.baixarTreinamentoPDF = baixarTreinamentoPDF;
 </script>
 </body>
 </html>
