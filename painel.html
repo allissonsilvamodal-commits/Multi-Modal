@@ -7,6 +7,8 @@
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <!-- QR Code Library - usando versão sem integrity para evitar problemas de cache -->
+  <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
   <script src="js/permissions.js"></script>
   <style>
     :root {
@@ -1271,15 +1273,25 @@
 
             <!-- Evolution API Status -->
         <div class="modern-card">
-          <div class="card-header d-flex justify-content-between align-items-center">
-                    <div>
-                        <i class="fas fa-shield-alt me-2"></i>
-                        Status Evolution API
+          <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="fas fa-shield-alt"></i>
+                        <span>Status Evolution API</span>
             </div>
-                    <button class="btn btn-modern btn-modern-primary btn-sm" id="btnVerificarEvolution">
-                        <i class="fas fa-sync me-2"></i>
-                        Verificar Status
-                  </button>
+                    <div class="btn-group" role="group">
+                        <button class="btn btn-modern btn-modern-primary btn-sm" id="btnVerificarEvolution">
+                            <i class="fas fa-sync me-2"></i>
+                            Verificar Status
+                        </button>
+                        <button class="btn btn-modern btn-modern-warning btn-sm" id="btnGerarQRCode">
+                            <i class="fas fa-qrcode me-2"></i>
+                            Gerar QR Code
+                        </button>
+                        <button class="btn btn-modern btn-modern-danger btn-sm" id="btnDeslogarInstancia">
+                            <i class="fas fa-sign-out-alt me-2"></i>
+                            Deslogar
+                        </button>
+                    </div>
               </div>
               <div class="card-body">
                     <div id="evolutionLog" style="max-height: 200px; overflow-y: auto; background: #f8fafc; border-radius: 12px; padding: 1rem;">
@@ -1304,6 +1316,76 @@
                             Nenhum disparo realizado ainda
                   </div>
                 </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- Modal QR Code Evolution -->
+        <div class="modal fade" id="modalQRCodeEvolution" tabindex="-1" aria-labelledby="modalQRCodeEvolutionLabel" aria-hidden="true">
+          <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content" style="border-radius: 16px; overflow: hidden; box-shadow: 0 10px 40px rgba(0,0,0,0.2);">
+              <div class="modal-header" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 1.5rem;">
+                <h5 class="modal-title" id="modalQRCodeEvolutionLabel" style="font-weight: 600;">
+                  <i class="fas fa-qrcode me-2"></i>Conectar Instância Evolution
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fechar"></button>
+              </div>
+              <div class="modal-body" style="padding: 2rem; background: #f8f9fa;">
+                <!-- Instruções -->
+                <div class="alert alert-info border-0 shadow-sm mb-4" style="border-radius: 12px; background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);">
+                  <div class="d-flex align-items-start">
+                    <i class="fas fa-info-circle fa-2x me-3 mt-1" style="color: #1976d2;"></i>
+                    <div>
+                      <h6 class="alert-heading mb-2" style="color: #1565c0; font-weight: 600;">
+                        <i class="fas fa-mobile-alt me-2"></i>Como conectar:
+                      </h6>
+                      <ol class="mb-0 ps-3" style="color: #424242; line-height: 1.8;">
+                        <li>Abra o <strong>WhatsApp</strong> no seu celular</li>
+                        <li>Toque em <strong>Menu (⋮)</strong> ou <strong>Configurações</strong></li>
+                        <li>Vá em <strong>Aparelhos conectados</strong></li>
+                        <li>Toque em <strong>Conectar um aparelho</strong></li>
+                        <li>Escaneie o QR Code abaixo</li>
+                      </ol>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Container do QR Code -->
+                <div class="text-center mb-4">
+                  <div id="qrcodeEvolutionContainer" class="d-flex justify-content-center align-items-center" 
+                       style="min-height: 320px; background: white; border-radius: 16px; padding: 2rem; box-shadow: 0 4px 20px rgba(0,0,0,0.1); position: relative;">
+                    <div class="text-muted w-100">
+                      <div class="loading-spinner mb-3" style="width: 50px; height: 50px; margin: 0 auto;"></div>
+                      <p class="mb-0" style="font-size: 1.1rem; font-weight: 500;">Gerando QR Code...</p>
+                    </div>
+                  </div>
+                  
+                  <!-- Informações adicionais -->
+                  <div class="mt-3">
+                    <p class="mb-2" id="qrcodeEvolutionInfo" style="color: #666; font-size: 0.95rem;">
+                      <i class="fas fa-sync-alt me-2"></i>Use o aplicativo WhatsApp para escanear o código.
+                    </p>
+                    <small class="text-muted d-block" id="qrcodeEvolutionStatus" style="font-size: 0.85rem;"></small>
+                  </div>
+                </div>
+
+                <!-- Dica -->
+                <div class="alert alert-warning border-0 shadow-sm mb-0" style="border-radius: 12px; background: #fff3cd;">
+                  <div class="d-flex align-items-center">
+                    <i class="fas fa-lightbulb me-2" style="color: #856404;"></i>
+                    <small class="mb-0" style="color: #856404;">
+                      <strong>Dica:</strong> Certifique-se de que a tela do celular está com brilho máximo para facilitar a leitura do QR Code.
+                    </small>
+                  </div>
+                </div>
+              </div>
+              <div class="modal-footer" style="background: #f8f9fa; border-top: 1px solid #e0e0e0; padding: 1rem 1.5rem;">
+                <button type="button" class="btn btn-modern btn-modern-outline" data-bs-dismiss="modal">
+                  <i class="fas fa-times me-2"></i>Fechar
+                </button>
+                <button type="button" class="btn btn-modern" id="btnAtualizarQRCode" style="display: none;">
+                  <i class="fas fa-sync-alt me-2"></i>Atualizar QR Code
+                </button>
               </div>
             </div>
           </div>
@@ -2174,6 +2256,14 @@ const estados = [
             document.getElementById('btnPararDisparo').addEventListener('click', pararDisparo);
             document.getElementById('btnBuscar').addEventListener('click', aplicarFiltros);
             document.getElementById('btnVerificarEvolution').addEventListener('click', verificarEvolutionAPI);
+            const btnGerarQRCode = document.getElementById('btnGerarQRCode');
+            if (btnGerarQRCode) {
+                btnGerarQRCode.addEventListener('click', gerarQRCodeEvolution);
+            }
+            const btnDeslogarInstancia = document.getElementById('btnDeslogarInstancia');
+            if (btnDeslogarInstancia) {
+                btnDeslogarInstancia.addEventListener('click', deslogarInstanciaEvolution);
+            }
             const btnAplicarConfig = document.getElementById('btnAplicarConfig');
             if (btnAplicarConfig) {
                 btnAplicarConfig.addEventListener('click', aplicarConfigDisparo);
@@ -3545,6 +3635,217 @@ const estados = [
             
             log.appendChild(logItem);
             log.scrollTop = log.scrollHeight;
+        }
+
+        function getEvolutionModalInstance() {
+            const modalEl = document.getElementById('modalQRCodeEvolution');
+            if (!modalEl) return null;
+            return bootstrap.Modal.getOrCreateInstance(modalEl);
+        }
+
+        function renderQRCodeEvolution(value) {
+            const container = document.getElementById('qrcodeEvolutionContainer');
+            if (!container) return;
+            container.innerHTML = '';
+
+            if (!value) {
+                container.innerHTML = '<div class="text-muted w-100">QR Code não disponível. Tente novamente.</div>';
+                return;
+            }
+
+            const sanitizedValue = value.trim();
+            const isBase64 = sanitizedValue.startsWith('data:image') ||
+                /^[A-Za-z0-9+/=]+$/.test(sanitizedValue.replace(/[\r\n]+/g, '')) && sanitizedValue.length > 200;
+
+            // Limpar container
+            container.innerHTML = '';
+            
+            // Criar wrapper com animação
+            const wrapper = document.createElement('div');
+            wrapper.style.cssText = 'position: relative; display: inline-block; padding: 20px; background: white; border-radius: 16px; box-shadow: 0 8px 32px rgba(0,0,0,0.1); animation: fadeInScale 0.5s ease-out;';
+            
+            if (sanitizedValue.startsWith('data:image') || isBase64) {
+                const img = document.createElement('img');
+                img.alt = 'QR Code Evolution';
+                img.className = 'img-fluid';
+                img.style.cssText = 'max-width: 300px; max-height: 300px; width: 100%; height: auto; border-radius: 12px;';
+                img.src = sanitizedValue.startsWith('data:image') ? sanitizedValue : `data:image/png;base64,${sanitizedValue}`;
+                wrapper.appendChild(img);
+            } else {
+                const qrElement = document.createElement('div');
+                qrElement.style.cssText = 'padding: 10px; background: white; border-radius: 12px;';
+                wrapper.appendChild(qrElement);
+                new QRCode(qrElement, {
+                    text: sanitizedValue,
+                    width: 300,
+                    height: 300,
+                    colorDark: '#000000',
+                    colorLight: '#ffffff',
+                    correctLevel: QRCode.CorrectLevel.H,
+                    margin: 2
+                });
+            }
+            
+            container.appendChild(wrapper);
+            
+            // Adicionar animação CSS se não existir
+            if (!document.getElementById('qrcodeAnimationStyle')) {
+                const style = document.createElement('style');
+                style.id = 'qrcodeAnimationStyle';
+                style.textContent = `
+                    @keyframes fadeInScale {
+                        from {
+                            opacity: 0;
+                            transform: scale(0.9);
+                        }
+                        to {
+                            opacity: 1;
+                            transform: scale(1);
+                        }
+                    }
+                `;
+                document.head.appendChild(style);
+            }
+        }
+
+        async function gerarQRCodeEvolution() {
+            const btn = document.getElementById('btnGerarQRCode');
+            const originalHtml = btn ? btn.innerHTML : '';
+            if (btn) {
+                btn.disabled = true;
+                btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Gerando...';
+            }
+
+            const modal = getEvolutionModalInstance();
+            const container = document.getElementById('qrcodeEvolutionContainer');
+            const info = document.getElementById('qrcodeEvolutionInfo');
+            const status = document.getElementById('qrcodeEvolutionStatus');
+
+            if (container) {
+                container.innerHTML = '<div class="text-muted w-100"><div class="loading-spinner mb-3"></div>Gerando QR Code...</div>';
+            }
+            if (info) {
+                info.textContent = 'Gerando QR Code...';
+            }
+            if (status) {
+                status.textContent = '';
+            }
+
+            if (modal) {
+                modal.show();
+            }
+
+            try {
+                const headers = await getAuthHeaders();
+                const response = await fetch('/api/evolution/instance/qrcode', {
+                    headers: { ...headers, 'Content-Type': 'application/json' },
+                    credentials: 'include'
+                });
+                const data = await response.json();
+
+                if (!data.success) {
+                    const errorMsg = data.error || 'Não foi possível gerar o QR Code.';
+                    if (errorMsg.includes('não configurada')) {
+                        throw new Error('Você precisa configurar sua instância Evolution primeiro. Vá em Settings > Evolution API e cadastre sua instância.');
+                    }
+                    throw new Error(errorMsg);
+                }
+
+                renderQRCodeEvolution(data.qrcode);
+                if (info) {
+                    if (data.instanceName) {
+                        info.innerHTML = `
+                            <div class="d-flex align-items-center justify-content-center">
+                                <i class="fas fa-server me-2" style="color: #667eea;"></i>
+                                <strong style="color: #333;">Instância:</strong>
+                                <span class="ms-2 badge bg-primary">${data.instanceName}</span>
+                            </div>
+                        `;
+                    } else {
+                        info.innerHTML = '<i class="fas fa-mobile-alt me-2"></i>Use o aplicativo WhatsApp para escanear o QR Code exibido.';
+                    }
+                }
+                if (status && data.expiresIn) {
+                    const minutes = Math.floor(data.expiresIn / 60);
+                    const seconds = data.expiresIn % 60;
+                    status.innerHTML = `
+                        <i class="fas fa-clock me-2" style="color: #f8961e;"></i>
+                        <strong>Este QR Code expira em:</strong> 
+                        ${minutes > 0 ? `${minutes} minuto${minutes > 1 ? 's' : ''} e ` : ''}${seconds} segundo${seconds !== 1 ? 's' : ''}
+                    `;
+                    
+                    // Mostrar botão de atualizar se o QR Code expirar em menos de 30 segundos
+                    const btnAtualizar = document.getElementById('btnAtualizarQRCode');
+                    if (btnAtualizar && data.expiresIn < 30) {
+                        btnAtualizar.style.display = 'inline-block';
+                        btnAtualizar.onclick = () => {
+                            btnAtualizar.style.display = 'none';
+                            gerarQRCodeEvolution();
+                        };
+                    }
+                }
+            } catch (error) {
+                console.error('Erro ao gerar QR Code:', error);
+                if (container) {
+                    container.innerHTML = `
+                        <div class="text-danger w-100">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            ${error.message || 'Erro ao gerar QR Code'}
+                        </div>
+                    `;
+                }
+                if (info) {
+                    info.textContent = 'Tente novamente em instantes. Verifique se a instância está ativa.';
+                }
+                mostrarErro(error.message || 'Erro ao gerar QR Code da Evolution.');
+            } finally {
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = originalHtml || '<i class="fas fa-qrcode me-2"></i>Gerar QR Code';
+                }
+            }
+        }
+
+        async function deslogarInstanciaEvolution() {
+            if (!confirm('Deseja desconectar sua instância da Evolution? Será necessário ler o QR Code novamente.')) {
+                return;
+            }
+
+            const btn = document.getElementById('btnDeslogarInstancia');
+            const originalHtml = btn ? btn.innerHTML : '';
+            if (btn) {
+                btn.disabled = true;
+                btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Deslogando...';
+            }
+
+            try {
+                const headers = await getAuthHeaders();
+                const response = await fetch('/api/evolution/instance/logout', {
+                    method: 'POST',
+                    headers: { ...headers, 'Content-Type': 'application/json' },
+                    credentials: 'include'
+                });
+                const data = await response.json();
+
+                if (!data.success) {
+                    const errorMsg = data.error || 'Não foi possível desconectar a instância.';
+                    if (errorMsg.includes('não configurada')) {
+                        throw new Error('Você precisa configurar sua instância Evolution primeiro. Vá em Settings > Evolution API e cadastre sua instância.');
+                    }
+                    throw new Error(errorMsg);
+                }
+
+                mostrarSucesso('Instância desconectada com sucesso. Gere um novo QR Code para reconectar.');
+                verificarEvolutionAPI();
+            } catch (error) {
+                console.error('Erro ao desconectar instância:', error);
+                mostrarErro(error.message || 'Erro ao desconectar a instância Evolution.');
+            } finally {
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = originalHtml || '<i class="fas fa-sign-out-alt me-2"></i>Deslogar';
+                }
+            }
         }
 
         // ========== FUNÇÃO PARA AGUARDAR COM CONTADOR ==========

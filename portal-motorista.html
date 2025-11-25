@@ -2812,13 +2812,38 @@
       elements.driverAvatar.textContent = nome.split(' ').slice(0, 2).map(part => part[0] || '').join('').toUpperCase() || 'MM';
 
       if (motorista) {
-        elements.badgeCadastro.textContent = motorista.status === 'ativo' ? 'Cadastro aprovado' : `Status: ${motorista.status}`;
+        // Verificar se o cadastro está completo
+        const cadastroCompleto = isCadastroCompleto();
+        const motoristaStatus = (motorista.status || '').toLowerCase();
+        
+        // Se o cadastro não está completo OU status é cadastro_pendente, mostrar como pendente
+        if (!cadastroCompleto || motoristaStatus === 'cadastro_pendente') {
+          elements.badgeCadastro.textContent = 'Cadastro pendente';
+          elements.badgeCadastro.classList.remove('success');
+          elements.badgeCadastro.classList.add('warning');
+          elements.badgeCadastro.innerHTML = '<i class="fas fa-hourglass-half"></i> Cadastro pendente';
+          elements.chipStatusMotorista.style.display = 'none';
+          elements.chipCadastroPendente.style.display = 'inline-flex';
+          elements.alertCadastro.classList.add('active');
+        } else if (motoristaStatus === 'ativo') {
+          // Cadastro completo e status ativo
+          elements.badgeCadastro.textContent = 'Cadastro aprovado';
         elements.badgeCadastro.classList.remove('warning');
         elements.badgeCadastro.classList.add('success');
         elements.badgeCadastro.innerHTML = `<i class="fas fa-shield-check"></i> ${escapeHtml(elements.badgeCadastro.textContent)}`;
         elements.chipStatusMotorista.style.display = 'inline-flex';
         elements.chipCadastroPendente.style.display = 'none';
         elements.alertCadastro.classList.remove('active');
+        } else {
+          // Cadastro completo mas status não é ativo
+          elements.badgeCadastro.textContent = `Status: ${motorista.status || 'pendente'}`;
+          elements.badgeCadastro.classList.remove('success');
+          elements.badgeCadastro.classList.add('warning');
+          elements.badgeCadastro.innerHTML = `<i class="fas fa-hourglass-half"></i> ${escapeHtml(elements.badgeCadastro.textContent)}`;
+          elements.chipStatusMotorista.style.display = 'none';
+          elements.chipCadastroPendente.style.display = 'inline-flex';
+          elements.alertCadastro.classList.add('active');
+        }
       } else {
         elements.badgeCadastro.textContent = 'Cadastro pendente';
         elements.badgeCadastro.classList.remove('success');
@@ -2839,9 +2864,23 @@
         elements.infoVeiculo.textContent = 'Informe classe, tipo e placas do veículo para facilitar o matching com cargas.';
       }
 
-      elements.infoSituacao.textContent = motorista
-        ? 'Cadastro validado. Você pode assumir novas viagens.'
-        : 'Complete o cadastro para liberar o aceite de viagens.';
+      // Atualizar mensagem de situação baseada no estado real do cadastro
+      if (motorista) {
+        const cadastroCompleto = isCadastroCompleto();
+        const motoristaStatus = (motorista.status || '').toLowerCase();
+        
+        if (!cadastroCompleto) {
+          elements.infoSituacao.textContent = 'Complete seu cadastro para poder assumir viagens.';
+        } else if (motoristaStatus === 'cadastro_pendente') {
+          elements.infoSituacao.textContent = 'Cadastro completo. Aguardando aprovação da central.';
+        } else if (motoristaStatus === 'ativo') {
+          elements.infoSituacao.textContent = 'Cadastro validado. Você pode assumir novas viagens.';
+        } else {
+          elements.infoSituacao.textContent = 'Cadastro completo. Aguardando validação.';
+        }
+      } else {
+        elements.infoSituacao.textContent = 'Complete o cadastro para liberar o aceite de viagens.';
+      }
 
       elements.btnCompletarCadastro.style.display = motorista ? 'none' : 'inline-flex';
 
@@ -3615,9 +3654,24 @@
         : null;
       
       const temEstado = !!estadoNormalizado && estadoNormalizado.length === 2 && estadoNormalizado !== 'NULL' && estadoNormalizado !== 'UNDEFINED';
-      const temClasseVeiculo = !!(motorista.classeVeiculo || motorista.classe_veiculo);
-      const temTipoVeiculo = !!(motorista.tipoVeiculo || motorista.tipo_veiculo);
-      const temTipoCarroceria = !!(motorista.tipoCarroceria || motorista.tipo_carroceria);
+      const isValorInformado = (valor) => {
+        if (!valor) return false;
+        const texto = String(valor).trim().toLowerCase();
+        const textoAscii = texto
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, ''); // remove acentos
+        return texto !== '' &&
+               textoAscii !== '' &&
+               textoAscii !== 'nao informado' &&
+               textoAscii !== 'nao_informado' &&
+               textoAscii !== 'sem informacao' &&
+               textoAscii !== 'null' &&
+               textoAscii !== 'undefined';
+      };
+
+      const temClasseVeiculo = isValorInformado(motorista.classeVeiculo || motorista.classe_veiculo);
+      const temTipoVeiculo = isValorInformado(motorista.tipoVeiculo || motorista.tipo_veiculo);
+      const temTipoCarroceria = isValorInformado(motorista.tipoCarroceria || motorista.tipo_carroceria);
       
       const resultado = isNomeValido && telefoneValido && temEstado && temClasseVeiculo && temTipoVeiculo && temTipoCarroceria;
       
@@ -3674,7 +3728,7 @@
         motorista: state.motorista
       });
       
-      // Verificar se o cadastro está completo primeiro
+      // PRIMEIRO: Verificar se o cadastro está completo (independente do status)
       const cadastroCompleto = isCadastroCompleto();
       console.log('🔍 Resultado da verificação de cadastro:', {
         temMotorista: !!state.motorista,
@@ -3683,12 +3737,21 @@
         motorista: state.motorista
       });
 
-      // Se o cadastro não está completo, abrir chat para completar
+      // Se o cadastro NÃO está completo, SEMPRE abrir o chat para completar
+      // Isso é independente do status - se faltam dados, precisa completar
       if (!cadastroCompleto) {
-        console.log('📝 Cadastro incompleto, abrindo chat para completar...', {
+        console.log('📝 Cadastro incompleto detectado, abrindo chat para completar cadastro...', {
           coletaId: coletaId,
-          motorista: state.motorista,
-          cadastroCompleto: false
+          status: motoristaStatus,
+          cadastroCompleto: false,
+          motorista: {
+            nome: state.motorista?.nome,
+            telefone: state.motorista?.telefone1,
+            estado: state.motorista?.estado,
+            classeVeiculo: state.motorista?.classeVeiculo,
+            tipoVeiculo: state.motorista?.tipoVeiculo,
+            tipoCarroceria: state.motorista?.tipoCarroceria
+          }
         });
         
         // Configurar estado do chat
@@ -3712,10 +3775,24 @@
         // Tentar abrir o chat imediatamente
         try {
           console.log('🚀 Chamando iniciarChatCadastro()...');
-          iniciarChatCadastro();
+        iniciarChatCadastro();
           console.log('✅ Função iniciarChatCadastro() chamada com sucesso');
           
-          // Verificar se o overlay foi realmente exibido após um pequeno delay
+          // Verificação imediata (síncrona) se possível
+          const overlayImediato = document.getElementById('chatCadastroOverlay');
+          if (overlayImediato) {
+            const computedImediato = window.getComputedStyle(overlayImediato);
+            if (computedImediato.display === 'none' || computedImediato.visibility === 'hidden') {
+              console.warn('⚠️ Overlay oculto imediatamente após iniciarChatCadastro, forçando exibição...');
+              overlayImediato.style.display = 'flex';
+              overlayImediato.style.visibility = 'visible';
+              overlayImediato.style.opacity = '1';
+              overlayImediato.style.zIndex = '9999';
+              document.body.style.overflow = 'hidden';
+            }
+          }
+          
+          // Verificar novamente após um pequeno delay para garantir
           setTimeout(() => {
             const overlay = document.getElementById('chatCadastroOverlay');
             const computedStyle = overlay ? window.getComputedStyle(overlay) : null;
@@ -3724,13 +3801,13 @@
               console.error('❌ Overlay não encontrado após iniciarChatCadastro!');
               showToast('Erro: Chat não encontrado. Recarregue a página.', 'error');
             } else if (computedStyle && (computedStyle.display === 'none' || computedStyle.visibility === 'hidden')) {
-              console.warn('⚠️ Overlay não foi exibido corretamente, forçando exibição...');
+              console.warn('⚠️ Overlay ainda oculto após delay, forçando exibição novamente...');
               overlay.style.display = 'flex';
               overlay.style.visibility = 'visible';
               overlay.style.opacity = '1';
               overlay.style.zIndex = '9999';
               document.body.style.overflow = 'hidden';
-              console.log('✅ Overlay forçado a exibir');
+              console.log('✅ Overlay forçado a exibir após delay');
             } else {
               console.log('✅ Overlay exibido corretamente:', {
                 display: computedStyle?.display,
@@ -3760,7 +3837,8 @@
         return;
       }
 
-      // Se o cadastro está completo mas o status não é ativo, verificar se é cadastro_pendente
+      // Se o cadastro está completo, verificar o status
+      // Se o status não é ativo, bloquear (exceto se for cadastro_pendente que já foi tratado acima)
       if (motoristaStatus !== 'ativo') {
         if (motoristaStatus === 'cadastro_pendente') {
           // Cadastro completo mas ainda pendente de aprovação
@@ -3780,6 +3858,9 @@
           return;
         }
       }
+      
+      // Se chegou aqui: cadastro completo E status ativo
+      console.log('✅ Cadastro completo e status ativo, continuando com verificação de documentos...');
       
       // Se cadastro completo, verificar documentos
       const oportunidade = state.oportunidades.find(op => op.id === coletaId) || null;
@@ -5308,7 +5389,7 @@
             form: !!document.getElementById('chatCadastroForm')
           });
           showToast('Erro ao abrir chat de cadastro. O elemento não foi encontrado. Recarregue a página.', 'error');
-          return;
+        return;
         }
       }
       
@@ -5500,12 +5581,27 @@
         });
       }
 
+      // Garantir que o overlay está visível antes de adicionar mensagem
+      if (chatCadastroElements.overlay) {
+        const overlayComputed = window.getComputedStyle(chatCadastroElements.overlay);
+        if (overlayComputed.display === 'none' || overlayComputed.visibility === 'hidden') {
+          console.warn('⚠️ Overlay ainda oculto antes de adicionar mensagem, forçando exibição...');
+          chatCadastroElements.overlay.style.display = 'flex';
+          chatCadastroElements.overlay.style.visibility = 'visible';
+          chatCadastroElements.overlay.style.opacity = '1';
+          chatCadastroElements.overlay.style.zIndex = '9999';
+          document.body.style.overflow = 'hidden';
+        }
+      }
+
       adicionarMensagemChat(mensagemInicial, 'bot');
       
       // Iniciar com o primeiro passo necessário
       setTimeout(() => {
         iniciarProximoPassoChat(proximoPasso);
       }, 800);
+      
+      console.log('✅ Chat de cadastro iniciado com sucesso');
     }
     
     function iniciarProximoPassoChat(passo) {

@@ -342,7 +342,160 @@ async function getEvolutionConfigByUser(usuario) {
   try {
     logger.info(`🔍 Buscando configuração Evolution para: ${usuario}`);
     
-    // ✅ PRIMEIRO: Buscar configuração específica do usuário no Supabase
+    // ✅ PRIMEIRO: Buscar na tabela user_evolution_apis (usada pelo settings.html)
+    // O identificador pode ser email, ID do Supabase Auth (UUID) ou ID do user_profiles
+    let userId = usuario;
+    
+    // Verificar se é um UUID (ID do Supabase Auth) - formato: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+    const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(usuario);
+    
+    if (isUUID) {
+      logger.info(`🔑 Identificador é um UUID, tentando buscar diretamente: ${userId}`);
+      // Se for UUID, pode ser ID do Supabase Auth ou ID do user_profiles
+      // Primeiro, tentar buscar diretamente na tabela
+      // Se não encontrar, tentar buscar o user_profiles pelo ID do Supabase Auth
+      const { data: profileByAuthId, error: profileByAuthIdError } = await supabaseAdmin
+        .from('user_profiles')
+        .select('id')
+        .eq('id', usuario)
+        .maybeSingle();
+      
+      if (profileByAuthId && profileByAuthId.id) {
+        logger.info(`✅ UUID corresponde ao ID do user_profiles: ${profileByAuthId.id}`);
+        userId = profileByAuthId.id;
+      } else {
+        logger.info(`ℹ️ UUID não encontrado em user_profiles, usando diretamente como user_id`);
+        // Usar o UUID diretamente - pode ser que o user_id na tabela seja o ID do Supabase Auth
+      }
+    } else if (usuario && typeof usuario === 'string' && usuario.includes('@')) {
+      // Se o identificador for um email, buscar o ID do user_profiles
+      logger.info(`📧 Identificador é um email, buscando user_profiles...`);
+      const { data: profileData, error: profileError } = await supabaseAdmin
+        .from('user_profiles')
+        .select('id')
+        .eq('email', usuario)
+        .maybeSingle();
+      
+      if (profileError && profileError.code !== 'PGRST116') {
+        logger.error(`❌ Erro ao buscar profile por email:`, profileError);
+      }
+      
+      if (profileData && profileData.id) {
+        userId = profileData.id;
+        logger.info(`✅ ID do user_profiles encontrado: ${userId}`);
+      } else {
+        logger.warn(`⚠️ Profile não encontrado para email: ${usuario}`);
+        // Se não encontrou o profile, retornar null - não tentar usar email como UUID
+        return { error: 'Nenhuma configuração Evolution encontrada para ' + usuario };
+      }
+    }
+    
+    // Buscar na tabela user_evolution_apis usando o user_id
+    logger.info(`🔍 Buscando em user_evolution_apis com user_id: ${userId}`);
+    let { data: userEvolutionData, error: userEvolutionError } = await supabaseAdmin
+      .from('user_evolution_apis')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('active', true)
+      .maybeSingle();
+
+    if (userEvolutionError && userEvolutionError.code !== 'PGRST116') {
+      logger.error(`❌ Erro ao buscar user_evolution_apis:`, userEvolutionError);
+    }
+    
+    // Se não encontrou, tentar buscar pelo ID do Supabase Auth diretamente (caso o user_id seja o ID do Auth)
+    if (!userEvolutionData && isUUID && usuario === userId) {
+      logger.info(`🔄 Tentando buscar com ID do Supabase Auth diretamente: ${usuario}`);
+      const { data: configByAuthId, error: configByAuthIdError } = await supabaseAdmin
+        .from('user_evolution_apis')
+        .select('*')
+        .eq('user_id', usuario)
+        .eq('active', true)
+        .maybeSingle();
+      
+      if (!configByAuthIdError && configByAuthId) {
+        userEvolutionData = configByAuthId;
+        logger.info(`✅ Config encontrada usando ID do Supabase Auth diretamente: ${userEvolutionData.instance_name}`);
+      }
+    }
+
+    // Se não encontrou e o identificador original era um email, tentar buscar diretamente pelo email
+    if (!userEvolutionData && usuario && typeof usuario === 'string' && usuario.includes('@')) {
+      logger.info(`🔄 Tentando buscar diretamente pelo email na tabela user_evolution_apis...`);
+      
+      // Primeiro, tentar buscar o profile novamente com mais campos
+      const { data: profileDataFull, error: profileErrorFull } = await supabaseAdmin
+        .from('user_profiles')
+        .select('id, email')
+        .eq('email', usuario)
+        .maybeSingle();
+      
+      if (profileDataFull && profileDataFull.id) {
+        logger.info(`🔄 Tentando buscar com ID do profile: ${profileDataFull.id}`);
+        const { data: configByProfileId, error: configByProfileIdError } = await supabaseAdmin
+          .from('user_evolution_apis')
+          .select('*')
+          .eq('user_id', profileDataFull.id)
+          .eq('active', true)
+          .maybeSingle();
+        
+        if (!configByProfileIdError && configByProfileId) {
+          userEvolutionData = configByProfileId;
+          logger.info(`✅ Config encontrada via busca por profile ID: ${userEvolutionData.instance_name}`);
+        }
+      }
+      
+      // Se ainda não encontrou, buscar todos os registros ativos e verificar manualmente
+      if (!userEvolutionData) {
+        logger.info(`🔄 Buscando todas as configurações ativas para verificar manualmente...`);
+        const { data: allConfigs, error: allConfigsError } = await supabaseAdmin
+          .from('user_evolution_apis')
+          .select('*')
+          .eq('active', true);
+        
+        if (!allConfigsError && allConfigs && allConfigs.length > 0) {
+          logger.info(`📋 Encontradas ${allConfigs.length} configurações ativas. Verificando correspondências...`);
+          
+          // Para cada configuração, verificar se o user_id corresponde a um profile com o email
+          for (const config of allConfigs) {
+            const { data: profileCheck, error: profileCheckError } = await supabaseAdmin
+              .from('user_profiles')
+              .select('id, email')
+              .eq('id', config.user_id)
+              .eq('email', usuario)
+              .maybeSingle();
+            
+            if (!profileCheckError && profileCheck) {
+              userEvolutionData = config;
+              logger.info(`✅ Config encontrada via verificação manual: ${userEvolutionData.instance_name}`);
+              break;
+            }
+          }
+        }
+      }
+    }
+
+    if (userEvolutionData) {
+      logger.info(`✅ Config encontrada em user_evolution_apis para ${usuario}: ${userEvolutionData.instance_name}`);
+      logger.info(`📋 Detalhes da config:`, {
+        instance_name: userEvolutionData.instance_name,
+        api_url: userEvolutionData.api_url,
+        has_api_key: !!userEvolutionData.api_key,
+        user_id: userEvolutionData.user_id
+      });
+      return {
+        apiKey: userEvolutionData.api_key,
+        instanceName: userEvolutionData.instance_name,
+        webhookUrl: userEvolutionData.webhook_url || '',
+        id: userEvolutionData.id,
+        apiUrl: userEvolutionData.api_url,
+        usuario: userEvolutionData.user_id
+      };
+    } else {
+      logger.warn(`⚠️ Nenhuma configuração encontrada em user_evolution_apis para ${usuario} (user_id: ${userId})`);
+    }
+    
+    // ✅ SEGUNDO: Buscar na tabela evolution_config (legado)
     const { data: configData, error: configError } = await supabase
       .from('evolution_config')
       .select('*')
@@ -480,6 +633,44 @@ async function getEvolutionConfigByUser(usuario) {
       error: `Erro interno ao carregar configuração: ${error.message}`
     };
   }
+}
+
+function normalizeEvolutionConfig(config) {
+  if (!config) {
+    console.log('⚠️ normalizeEvolutionConfig: config é null ou undefined');
+    return null;
+  }
+
+  const apiUrl = config.apiUrl || config.api_url || EVOLUTION_CONFIG.baseUrl || process.env.EVOLUTION_BASE_URL;
+  const apiKey = config.apiKey || config.api_key;
+  const instanceName = config.instanceName || config.instance_name;
+
+  console.log('🔍 normalizeEvolutionConfig - Valores extraídos:', {
+    apiUrl: apiUrl ? `${apiUrl.substring(0, 30)}...` : 'N/A',
+    hasApiKey: !!apiKey,
+    instanceName: instanceName || 'N/A',
+    rawConfig: config
+  });
+
+  if (!apiUrl || !apiKey || !instanceName) {
+    console.error('❌ normalizeEvolutionConfig: Configuração incompleta', {
+      hasApiUrl: !!apiUrl,
+      hasApiKey: !!apiKey,
+      hasInstanceName: !!instanceName
+    });
+    return null;
+  }
+
+  // Garantir que a URL não termina com barra
+  const normalizedApiUrl = apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl;
+
+  return {
+    apiUrl: normalizedApiUrl,
+    apiKey,
+    instanceName,
+    webhookUrl: config.webhookUrl || config.webhook_url || '',
+    source: config.source || 'user'
+  };
 }
 
 // 🔧 SALVAR/ATUALIZAR CONFIGURAÇÃO NO SUPABASE
@@ -6087,7 +6278,60 @@ app.get('/api/check-auth', async (req, res) => {
 // 🔧 OBTER CONFIGURAÇÃO DO USUÁRIO LOGADO
 app.get('/api/evolution-config', requireAuth, async (req, res) => {
   try {
-    const userConfig = await getEvolutionConfigByUser(req.session.usuario);
+    // Obter identificador do usuário (sessão ou Supabase)
+    let usuarioId = req.session?.usuario;
+    if (!usuarioId && req.supabaseUser) {
+      // IMPORTANTE: O user_id na tabela user_evolution_apis é o ID do user_profiles,
+      // não o ID do Supabase Auth. Precisamos buscar o profile primeiro.
+      if (req.supabaseUser.id) {
+        console.log('🔑 ID do Supabase Auth disponível:', req.supabaseUser.id);
+        // Tentar buscar o user_profiles pelo ID do Supabase Auth
+        const { data: profileData, error: profileError } = await supabaseAdmin
+          .from('user_profiles')
+          .select('id')
+          .eq('id', req.supabaseUser.id)
+          .maybeSingle();
+        
+        if (!profileError && profileData && profileData.id) {
+          usuarioId = profileData.id;
+          console.log('✅ ID do user_profiles encontrado:', usuarioId);
+        } else {
+          // Se não encontrou pelo ID, tentar pelo email
+          if (req.supabaseUser.email) {
+            console.log('📧 Buscando profile pelo email:', req.supabaseUser.email);
+            const { data: profileByEmail, error: profileByEmailError } = await supabaseAdmin
+              .from('user_profiles')
+              .select('id')
+              .eq('email', req.supabaseUser.email)
+              .maybeSingle();
+            
+            if (!profileByEmailError && profileByEmail && profileByEmail.id) {
+              usuarioId = profileByEmail.id;
+              console.log('✅ ID do user_profiles encontrado pelo email:', usuarioId);
+            } else {
+              // Fallback: usar o ID do Supabase Auth diretamente (pode funcionar se for o mesmo)
+              usuarioId = req.supabaseUser.id;
+              console.log('⚠️ Usando ID do Supabase Auth como fallback:', usuarioId);
+            }
+          } else {
+            usuarioId = req.supabaseUser.id;
+            console.log('⚠️ Usando ID do Supabase Auth (sem email):', usuarioId);
+          }
+        }
+      } else if (req.supabaseUser.email) {
+        usuarioId = req.supabaseUser.email;
+        console.log('📧 Usando email do Supabase como identificador:', usuarioId);
+      }
+    }
+    
+    if (!usuarioId) {
+      return res.status(401).json({
+        success: false,
+        error: 'Usuário não identificado'
+      });
+    }
+    
+    const userConfig = await getEvolutionConfigByUser(usuarioId);
     
     if (userConfig.error) {
       return res.status(404).json({
@@ -6113,6 +6357,59 @@ app.get('/api/evolution-config', requireAuth, async (req, res) => {
 // 🔧 SALVAR CONFIGURAÇÃO DO USUÁRIO LOGADO
 app.post('/api/evolution-config', requireAuth, async (req, res) => {
   try {
+    // Obter identificador do usuário (sessão ou Supabase)
+    let usuarioId = req.session?.usuario;
+    if (!usuarioId && req.supabaseUser) {
+      // IMPORTANTE: O user_id na tabela user_evolution_apis é o ID do user_profiles,
+      // não o ID do Supabase Auth. Precisamos buscar o profile primeiro.
+      if (req.supabaseUser.id) {
+        console.log('🔑 ID do Supabase Auth disponível:', req.supabaseUser.id);
+        // Tentar buscar o user_profiles pelo ID do Supabase Auth
+        const { data: profileData, error: profileError } = await supabaseAdmin
+          .from('user_profiles')
+          .select('id')
+          .eq('id', req.supabaseUser.id)
+          .maybeSingle();
+        
+        if (!profileError && profileData && profileData.id) {
+          usuarioId = profileData.id;
+          console.log('✅ ID do user_profiles encontrado:', usuarioId);
+        } else {
+          // Se não encontrou pelo ID, tentar pelo email
+          if (req.supabaseUser.email) {
+            console.log('📧 Buscando profile pelo email:', req.supabaseUser.email);
+            const { data: profileByEmail, error: profileByEmailError } = await supabaseAdmin
+              .from('user_profiles')
+              .select('id')
+              .eq('email', req.supabaseUser.email)
+              .maybeSingle();
+            
+            if (!profileByEmailError && profileByEmail && profileByEmail.id) {
+              usuarioId = profileByEmail.id;
+              console.log('✅ ID do user_profiles encontrado pelo email:', usuarioId);
+            } else {
+              // Fallback: usar o ID do Supabase Auth diretamente (pode funcionar se for o mesmo)
+              usuarioId = req.supabaseUser.id;
+              console.log('⚠️ Usando ID do Supabase Auth como fallback:', usuarioId);
+            }
+          } else {
+            usuarioId = req.supabaseUser.id;
+            console.log('⚠️ Usando ID do Supabase Auth (sem email):', usuarioId);
+          }
+        }
+      } else if (req.supabaseUser.email) {
+        usuarioId = req.supabaseUser.email;
+        console.log('📧 Usando email do Supabase como identificador:', usuarioId);
+      }
+    }
+    
+    if (!usuarioId) {
+      return res.status(401).json({
+        success: false,
+        error: 'Usuário não identificado'
+      });
+    }
+    
     const { apiKey, instanceName, webhookUrl } = req.body;
     
     if (!apiKey || !instanceName) {
@@ -6128,7 +6425,7 @@ app.post('/api/evolution-config', requireAuth, async (req, res) => {
       webhookUrl: webhookUrl || ''
     };
     
-    const result = await salvarEvolutionConfig(req.session.usuario, config);
+    const result = await salvarEvolutionConfig(usuarioId, config);
     
     if (!result.success) {
       return res.status(500).json({
@@ -6183,6 +6480,283 @@ app.get('/api/evolution-config/fallback', requireAuth, async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Erro interno'
+    });
+  }
+});
+
+app.post('/api/evolution/instance/logout', requireAuth, async (req, res) => {
+  try {
+    console.log('🔐 Logout Evolution - Verificando autenticação...', {
+      hasSession: !!req.session?.usuario,
+      hasSupabaseUser: !!req.supabaseUser,
+      sessionUsuario: req.session?.usuario,
+      supabaseUserEmail: req.supabaseUser?.email,
+      supabaseUserId: req.supabaseUser?.id
+    });
+    
+    // Obter identificador do usuário (sessão ou Supabase)
+    let usuarioId = req.session?.usuario;
+    if (!usuarioId && req.supabaseUser) {
+      // IMPORTANTE: O user_id na tabela user_evolution_apis é o ID do user_profiles,
+      // não o ID do Supabase Auth. Precisamos buscar o profile primeiro.
+      if (req.supabaseUser.id) {
+        console.log('🔑 ID do Supabase Auth disponível:', req.supabaseUser.id);
+        // Tentar buscar o user_profiles pelo ID do Supabase Auth
+        const { data: profileData, error: profileError } = await supabaseAdmin
+          .from('user_profiles')
+          .select('id')
+          .eq('id', req.supabaseUser.id)
+          .maybeSingle();
+        
+        if (!profileError && profileData && profileData.id) {
+          usuarioId = profileData.id;
+          console.log('✅ ID do user_profiles encontrado:', usuarioId);
+        } else {
+          // Se não encontrou pelo ID, tentar pelo email
+          if (req.supabaseUser.email) {
+            console.log('📧 Buscando profile pelo email:', req.supabaseUser.email);
+            const { data: profileByEmail, error: profileByEmailError } = await supabaseAdmin
+              .from('user_profiles')
+              .select('id')
+              .eq('email', req.supabaseUser.email)
+              .maybeSingle();
+            
+            if (!profileByEmailError && profileByEmail && profileByEmail.id) {
+              usuarioId = profileByEmail.id;
+              console.log('✅ ID do user_profiles encontrado pelo email:', usuarioId);
+            } else {
+              // Fallback: usar o ID do Supabase Auth diretamente (pode funcionar se for o mesmo)
+              usuarioId = req.supabaseUser.id;
+              console.log('⚠️ Usando ID do Supabase Auth como fallback:', usuarioId);
+            }
+          } else {
+            usuarioId = req.supabaseUser.id;
+            console.log('⚠️ Usando ID do Supabase Auth (sem email):', usuarioId);
+          }
+        }
+      } else if (req.supabaseUser.email) {
+        usuarioId = req.supabaseUser.email;
+        console.log('📧 Usando email do Supabase como identificador:', usuarioId);
+      }
+    }
+    
+    if (!usuarioId) {
+      console.error('❌ Usuário não identificado para logout');
+      return res.status(401).json({
+        success: false,
+        error: 'Usuário não identificado'
+      });
+    }
+    
+    console.log('🔍 Buscando configuração Evolution para:', usuarioId);
+    console.log('📧 Tipo do identificador:', typeof usuarioId, (typeof usuarioId === 'string' && usuarioId.includes('@')) ? '(email)' : '(ID)');
+    
+    const userConfig = await getEvolutionConfigByUser(usuarioId);
+    console.log('📋 Configuração retornada:', {
+      hasConfig: !!userConfig,
+      hasError: !!userConfig?.error,
+      instanceName: userConfig?.instanceName,
+      hasApiKey: !!userConfig?.apiKey,
+      apiUrl: userConfig?.apiUrl,
+      rawConfig: userConfig
+    });
+    
+    const evolutionConfig = normalizeEvolutionConfig(userConfig);
+    console.log('📋 Configuração normalizada:', {
+      hasConfig: !!evolutionConfig,
+      instanceName: evolutionConfig?.instanceName,
+      hasApiKey: !!evolutionConfig?.apiKey,
+      apiUrl: evolutionConfig?.apiUrl
+    });
+
+    if (!evolutionConfig) {
+      console.error('❌ Configuração Evolution não encontrada ou inválida para:', usuarioId);
+      console.error('❌ Detalhes da busca:', {
+        usuarioId,
+        userConfig,
+        evolutionConfig
+      });
+      return res.status(404).json({
+        success: false,
+        error: 'Instância não configurada para este usuário. Configure sua instância em Settings > Evolution API.'
+      });
+    }
+
+    const logoutUrl = `${evolutionConfig.apiUrl}/instance/logout/${encodeURIComponent(evolutionConfig.instanceName)}`;
+    const response = await fetchWithTimeout(logoutUrl, {
+      method: 'DELETE',
+      headers: {
+        apikey: evolutionConfig.apiKey,
+        'Content-Type': 'application/json'
+      }
+    }, 15000);
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      return res.status(response.status).json({
+        success: false,
+        error: 'Erro ao desconectar a instância',
+        details: errorText || null
+      });
+    }
+
+    console.log('✅ Instância Evolution desconectada:', {
+      usuario: usuarioId,
+      instance: evolutionConfig.instanceName
+    });
+
+    res.json({
+      success: true,
+      message: 'Instância desconectada com sucesso',
+      instanceName: evolutionConfig.instanceName
+    });
+  } catch (error) {
+    console.error('❌ Erro ao desconectar instância Evolution:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Erro interno ao desconectar instância'
+    });
+  }
+});
+
+app.get('/api/evolution/instance/qrcode', requireAuth, async (req, res) => {
+  try {
+    console.log('🔐 QR Code Evolution - Verificando autenticação...', {
+      hasSession: !!req.session?.usuario,
+      hasSupabaseUser: !!req.supabaseUser,
+      sessionUsuario: req.session?.usuario,
+      supabaseUserEmail: req.supabaseUser?.email,
+      supabaseUserId: req.supabaseUser?.id
+    });
+    
+    // Obter identificador do usuário (sessão ou Supabase)
+    let usuarioId = req.session?.usuario;
+    if (!usuarioId && req.supabaseUser) {
+      // IMPORTANTE: O user_id na tabela user_evolution_apis é o ID do user_profiles,
+      // não o ID do Supabase Auth. Precisamos buscar o profile primeiro.
+      if (req.supabaseUser.id) {
+        console.log('🔑 ID do Supabase Auth disponível:', req.supabaseUser.id);
+        // Tentar buscar o user_profiles pelo ID do Supabase Auth
+        const { data: profileData, error: profileError } = await supabaseAdmin
+          .from('user_profiles')
+          .select('id')
+          .eq('id', req.supabaseUser.id)
+          .maybeSingle();
+        
+        if (!profileError && profileData && profileData.id) {
+          usuarioId = profileData.id;
+          console.log('✅ ID do user_profiles encontrado:', usuarioId);
+        } else {
+          // Se não encontrou pelo ID, tentar pelo email
+          if (req.supabaseUser.email) {
+            console.log('📧 Buscando profile pelo email:', req.supabaseUser.email);
+            const { data: profileByEmail, error: profileByEmailError } = await supabaseAdmin
+              .from('user_profiles')
+              .select('id')
+              .eq('email', req.supabaseUser.email)
+              .maybeSingle();
+            
+            if (!profileByEmailError && profileByEmail && profileByEmail.id) {
+              usuarioId = profileByEmail.id;
+              console.log('✅ ID do user_profiles encontrado pelo email:', usuarioId);
+            } else {
+              // Fallback: usar o ID do Supabase Auth diretamente (pode funcionar se for o mesmo)
+              usuarioId = req.supabaseUser.id;
+              console.log('⚠️ Usando ID do Supabase Auth como fallback:', usuarioId);
+            }
+          } else {
+            usuarioId = req.supabaseUser.id;
+            console.log('⚠️ Usando ID do Supabase Auth (sem email):', usuarioId);
+          }
+        }
+      } else if (req.supabaseUser.email) {
+        usuarioId = req.supabaseUser.email;
+        console.log('📧 Usando email do Supabase como identificador:', usuarioId);
+      }
+    }
+    
+    if (!usuarioId) {
+      console.error('❌ Usuário não identificado para QR code');
+      return res.status(401).json({
+        success: false,
+        error: 'Usuário não identificado'
+      });
+    }
+    
+    console.log('🔍 Buscando configuração Evolution para:', usuarioId);
+    console.log('📧 Tipo do identificador:', typeof usuarioId, (typeof usuarioId === 'string' && usuarioId.includes('@')) ? '(email)' : '(ID)');
+    
+    const userConfig = await getEvolutionConfigByUser(usuarioId);
+    console.log('📋 Configuração retornada:', {
+      hasConfig: !!userConfig,
+      hasError: !!userConfig?.error,
+      instanceName: userConfig?.instanceName,
+      hasApiKey: !!userConfig?.apiKey,
+      apiUrl: userConfig?.apiUrl,
+      rawConfig: userConfig
+    });
+    
+    const evolutionConfig = normalizeEvolutionConfig(userConfig);
+    console.log('📋 Configuração normalizada:', {
+      hasConfig: !!evolutionConfig,
+      instanceName: evolutionConfig?.instanceName,
+      hasApiKey: !!evolutionConfig?.apiKey,
+      apiUrl: evolutionConfig?.apiUrl
+    });
+
+    if (!evolutionConfig) {
+      console.error('❌ Configuração Evolution não encontrada ou inválida para:', usuarioId);
+      console.error('❌ Detalhes da busca:', {
+        usuarioId,
+        userConfig,
+        evolutionConfig
+      });
+      return res.status(404).json({
+        success: false,
+        error: 'Instância não configurada para este usuário. Configure sua instância em Settings > Evolution API.'
+      });
+    }
+
+    const qrUrl = `${evolutionConfig.apiUrl}/instance/connect/${encodeURIComponent(evolutionConfig.instanceName)}`;
+    const response = await fetchWithTimeout(qrUrl, {
+      method: 'GET',
+      headers: {
+        apikey: evolutionConfig.apiKey,
+        'Content-Type': 'application/json'
+      }
+    }, 20000);
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      return res.status(response.status).json({
+        success: false,
+        error: 'Erro ao gerar QR code',
+        details: errorText || null
+      });
+    }
+
+    const data = await response.json();
+    const qrValue = data?.qrcode || data?.qrCode || data?.base64 || data?.qr || data?.code || data?.data?.qrcode || data?.result?.qrcode || null;
+
+    if (!qrValue && !data?.url) {
+      return res.status(502).json({
+        success: false,
+        error: 'Evolution API não retornou o QR code esperado'
+      });
+    }
+
+    res.json({
+      success: true,
+      qrcode: qrValue || data.url,
+      instanceName: evolutionConfig.instanceName,
+      expiresIn: data?.expiresIn || data?.expires_in || null,
+      connected: data?.connected || false
+    });
+  } catch (error) {
+    console.error('❌ Erro ao gerar QR code Evolution:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Erro interno ao gerar QR code'
     });
   }
 });
