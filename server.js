@@ -10345,16 +10345,53 @@ app.get('/api/relatorios/disparos/filtros', async (req, res) => {
 app.get('/api/relatorios/disparos/kpis', async (req, res) => {
   try {
     const { inicio, fim, usuarioId, departamento } = req.query;
-    let query = supabaseAdmin.from('disparos_log').select('user_id, departamento, created_at');
+    
+    // Usar count() para obter o total real sem limitação de 1000 registros
+    let countQuery = supabaseAdmin.from('disparos_log').select('*', { count: 'exact', head: true });
+    if (inicio) countQuery = countQuery.gte('created_at', inicio);
+    if (fim) countQuery = countQuery.lte('created_at', fim);
+    if (usuarioId) countQuery = countQuery.eq('user_id', usuarioId);
+    if (departamento) countQuery = countQuery.eq('departamento', departamento);
+    
+    const { count: total, error: countError } = await countQuery;
+    if (countError) throw countError;
+    
+    // Para usuários e departamentos, precisamos buscar os dados com paginação
+    // para garantir que pegamos todos os valores únicos
+    let query = supabaseAdmin.from('disparos_log').select('user_id, departamento');
     if (inicio) query = query.gte('created_at', inicio);
     if (fim) query = query.lte('created_at', fim);
     if (usuarioId) query = query.eq('user_id', usuarioId);
     if (departamento) query = query.eq('departamento', departamento);
-    const { data: logs, error } = await query;
-    if (error) throw error;
-    const total = (logs || []).length;
-    const usuariosSet = new Set((logs || []).map(l => l.user_id).filter(Boolean));
-    const departamentosSet = new Set((logs || []).map(l => l.departamento).filter(Boolean));
+    
+    // Buscar todos os registros com paginação para garantir valores únicos corretos
+    const usuariosSet = new Set();
+    const departamentosSet = new Set();
+    let page = 0;
+    const pageSize = 1000;
+    let hasMore = true;
+    
+    while (hasMore) {
+      const { data: logs, error } = await query.range(page * pageSize, (page + 1) * pageSize - 1);
+      if (error) throw error;
+      
+      if (!logs || logs.length === 0) {
+        hasMore = false;
+      } else {
+        logs.forEach(l => {
+          if (l.user_id) usuariosSet.add(l.user_id);
+          if (l.departamento) departamentosSet.add(l.departamento);
+        });
+        
+        // Se retornou menos que pageSize, não há mais páginas
+        if (logs.length < pageSize) {
+          hasMore = false;
+        } else {
+          page++;
+        }
+      }
+    }
+    
     // Caso não haja departamento salvo, tentar buscar via perfil
     if (!departamento && departamentosSet.size === 0 && usuariosSet.size) {
       const { data: perfis } = await supabaseAdmin
@@ -10363,7 +10400,8 @@ app.get('/api/relatorios/disparos/kpis', async (req, res) => {
         .in('id', Array.from(usuariosSet));
       (perfis || []).forEach(p => { if (p.departamento) departamentosSet.add(p.departamento); });
     }
-    res.json({ total, usuarios: usuariosSet.size, departamentos: departamentosSet.size });
+    
+    res.json({ total: total || 0, usuarios: usuariosSet.size, departamentos: departamentosSet.size });
   } catch (e) {
     console.error('❌ Erro KPIs disparos:', e);
     res.status(500).json({ error: 'Erro ao carregar KPIs de disparos' });
@@ -10372,16 +10410,40 @@ app.get('/api/relatorios/disparos/kpis', async (req, res) => {
 app.get('/api/relatorios/disparos/series', async (req, res) => {
   try {
     const { inicio, fim, usuarioId, departamento } = req.query;
-    let query = supabaseAdmin.from('disparos_log').select('user_id, departamento, created_at');
-    if (inicio) query = query.gte('created_at', inicio);
-    if (fim) query = query.lte('created_at', fim);
-    if (usuarioId) query = query.eq('user_id', usuarioId);
-    if (departamento) query = query.eq('departamento', departamento);
-    const { data: logs, error } = await query;
-    if (error) throw error;
+    let baseQuery = supabaseAdmin.from('disparos_log').select('user_id, departamento, created_at');
+    if (inicio) baseQuery = baseQuery.gte('created_at', inicio);
+    if (fim) baseQuery = baseQuery.lte('created_at', fim);
+    if (usuarioId) baseQuery = baseQuery.eq('user_id', usuarioId);
+    if (departamento) baseQuery = baseQuery.eq('departamento', departamento);
+    
+    // Buscar todos os registros com paginação para garantir que pegamos todos os dados
+    const allLogs = [];
+    let page = 0;
+    const pageSize = 1000;
+    let hasMore = true;
+    
+    while (hasMore) {
+      let query = baseQuery.range(page * pageSize, (page + 1) * pageSize - 1);
+      const { data: logs, error } = await query;
+      if (error) throw error;
+      
+      if (!logs || logs.length === 0) {
+        hasMore = false;
+      } else {
+        allLogs.push(...logs);
+        
+        // Se retornou menos que pageSize, não há mais páginas
+        if (logs.length < pageSize) {
+          hasMore = false;
+        } else {
+          page++;
+        }
+      }
+    }
+    
     const porUsuario = new Map();
     const userIds = new Set();
-    (logs || []).forEach(l => { if (l.user_id) { userIds.add(l.user_id); porUsuario.set(l.user_id, (porUsuario.get(l.user_id) || 0) + 1); } });
+    allLogs.forEach(l => { if (l.user_id) { userIds.add(l.user_id); porUsuario.set(l.user_id, (porUsuario.get(l.user_id) || 0) + 1); } });
     let idToPerfil = new Map();
     if (userIds.size) {
       const { data: perf } = await supabaseAdmin
@@ -10394,14 +10456,14 @@ app.get('/api/relatorios/disparos/series', async (req, res) => {
       usuarioId: uid, nome: idToPerfil.get(uid)?.nome || uid, count
     }));
     const porDept = new Map();
-    (logs || []).forEach(l => {
+    allLogs.forEach(l => {
       const dep = l.departamento || idToPerfil.get(l.user_id)?.departamento || 'Sem Dep.';
       if (departamento && dep !== departamento) return;
       porDept.set(dep, (porDept.get(dep) || 0) + 1);
     });
     const byDepartment = Array.from(porDept.entries()).map(([dep, count]) => ({ departamento: dep, count }));
     const porDia = new Map();
-    (logs || []).forEach(l => {
+    allLogs.forEach(l => {
       const d = l.created_at ? new Date(l.created_at) : null;
       if (!d) return;
       const key = d.toISOString().slice(0, 10);
@@ -10418,22 +10480,28 @@ app.get('/api/relatorios/disparos/series', async (req, res) => {
 // ========== QUALIDADE / TREINAMENTOS ==========
 app.post('/api/treinamentos/assinaturas', express.json(), async (req, res) => {
   try {
-    const { treinamento_slug, nome, cpf, assinatura_texto } = req.body || {};
+    const { treinamento_slug, nome, cpf, assinatura_texto, user_id: userIdFromBody } = req.body || {};
     if (!treinamento_slug || !nome || !assinatura_texto) {
       return res.status(400).json({ success: false, error: 'Campos obrigatórios: treinamento_slug, nome, assinatura_texto' });
     }
 
-    let userId = null;
-    try {
-      const { user, error: authError } = await getSupabaseUserFromRequest(req);
-      if (user && !authError) {
-        userId = user.id;
-        console.log('✅ User ID capturado para assinatura:', userId);
-      } else {
-        console.warn('⚠️ Não foi possível capturar user_id da requisição:', authError?.message || 'Token não fornecido');
+    let userId = userIdFromBody || null;
+    
+    // Tentar obter user_id da requisição se não veio no body
+    if (!userId) {
+      try {
+        const { user, error: authError } = await getSupabaseUserFromRequest(req);
+        if (user && !authError) {
+          userId = user.id;
+          console.log('✅ User ID capturado da requisição para assinatura:', userId);
+        } else {
+          console.warn('⚠️ Não foi possível capturar user_id da requisição:', authError?.message || 'Token não fornecido');
+        }
+      } catch (err) {
+        console.warn('⚠️ Erro ao obter usuário da requisição:', err.message);
       }
-    } catch (err) {
-      console.warn('⚠️ Erro ao obter usuário da requisição:', err.message);
+    } else {
+      console.log('✅ User ID recebido no body da requisição:', userId);
     }
 
     const ip = (req.headers['x-forwarded-for'] || req.socket?.remoteAddress || '').toString();

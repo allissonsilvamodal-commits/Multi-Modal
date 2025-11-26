@@ -622,12 +622,38 @@ document.getElementById('btnAssinar').addEventListener('click', async () => {
       const cfg = await (await fetch('/api/supabase-config')).json();
     const supabase = window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey);
     const { data: session } = await supabase.auth.getSession();
+    
+    // Capturar user_id da sessão
+    let userId = null;
+    if (session?.session?.user) {
+      userId = session.session.user.id;
+      console.log('✅ User ID capturado:', userId);
+    } else {
+      // Tentar obter via getUser se getSession não retornar
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          userId = user.id;
+          console.log('✅ User ID obtido via getUser:', userId);
+        }
+      } catch (e) {
+        console.warn('⚠️ Não foi possível obter user_id:', e);
+      }
+    }
 
+    const headers = {
+      'Content-Type': 'application/json',
+      ...(session?.session?.access_token ? { Authorization: `Bearer ${session.session.access_token}` } : {})
+    };
+    
+    // Incluir credentials para enviar cookies de sessão
     const resp = await fetch('/api/treinamentos/assinaturas', {
       method:'POST',
-      headers:{'Content-Type':'application/json', ...(session?.session?.access_token ? {Authorization:`Bearer ${session.session.access_token}`} : {})},
+      headers: headers,
+      credentials: 'include',
       body:JSON.stringify({
           treinamento_slug:'disparador_mensagens', 
+          user_id: userId, // Enviar user_id explicitamente
           nome, 
           cpf, 
           assinatura_texto: assinatura,
@@ -636,10 +662,23 @@ document.getElementById('btnAssinar').addEventListener('click', async () => {
         })
       });
 
-    if(!resp.ok) throw new Error(await resp.text());
-    alert('Declaração registrada com sucesso!');
+    if(!resp.ok) {
+      const errorText = await resp.text();
+      console.error('❌ Erro na resposta:', errorText);
+      throw new Error(errorText || 'Erro ao salvar assinatura');
+    }
+    
+    const result = await resp.json();
+    console.log('✅ Assinatura salva:', result);
+    
+    if (result.user_id) {
+      alert('✅ Declaração registrada com sucesso!');
+    } else {
+      console.warn('⚠️ Assinatura salva mas user_id não foi preenchido');
+      alert('⚠️ Declaração registrada, mas houve um problema ao associar ao seu usuário. Entre em contato com o administrador.');
+    }
   }catch(err){
-    console.error(err);
+    console.error('❌ Erro ao salvar assinatura:', err);
     alert('Erro ao salvar assinatura: ' + err.message);
   }
 });

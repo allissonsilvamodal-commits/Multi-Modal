@@ -157,6 +157,19 @@
         body.light-mode .navbar-brand { -webkit-text-fill-color: initial; background: linear-gradient(135deg, #4f46e5, #a855f7); -webkit-background-clip: text; background-clip: text; }
         body.light-mode .card-futuristic, body.light-mode .metric-card, body.light-mode .filter-card { background: rgba(255,255,255,0.75); border: 1px solid rgba(0,0,0,0.08); box-shadow: 0 8px 26px rgba(0,0,0,0.10); }
         body.light-mode .metric-label, body.light-mode .form-label { color: #334155; }
+        /* Corrigir metric-value no tema claro - remover transparência e usar cor sólida */
+        body.light-mode .metric-value { 
+            -webkit-text-fill-color: #4f46e5 !important; 
+            background: linear-gradient(135deg, #4f46e5, #a855f7) !important;
+            -webkit-background-clip: text !important;
+            background-clip: text !important;
+            color: #4f46e5 !important;
+        }
+        /* Corrigir card-header no tema claro */
+        body.light-mode .card-header-futuristic h5 { color: #fff !important; }
+        body.light-mode .card-header-futuristic { background: linear-gradient(135deg, #4f46e5, #764ba2) !important; }
+        /* Corrigir textos gerais no tema claro */
+        body.light-mode, body.light-mode * { color: #0f172a; }
         body.light-mode .table-tech thead th { background: #eef2ff; color: #0f172a; }
         body.light-mode .table-tech td, body.light-mode .table-tech th { color: #0f172a; }
         body.light-mode .form-select, body.light-mode .form-control { background: rgba(255,255,255,0.95); color: #0f172a; border: 1px solid rgba(0,0,0,0.12); }
@@ -169,6 +182,25 @@
         body.light-mode .nav-tabs .nav-link { color: #334155; background: rgba(0,0,0,0.04); }
         body.light-mode .nav-tabs .nav-link.active { color: #4f46e5; border-bottom-color: #a855f7; background: linear-gradient(90deg, #e0e7ff, #f3e8ff, #fdf4ff); }
         body.light-mode .theme-toggle { color: #0f172a; background: rgba(255,255,255,0.8); border: 1px solid rgba(0,0,0,0.08); }
+        /* Corrigir textos dentro de cards e containers */
+        body.light-mode .card-body, body.light-mode .card-body * { color: #0f172a !important; }
+        body.light-mode .p-3, body.light-mode .p-4, body.light-mode .p-5 { color: #0f172a !important; }
+        body.light-mode .text-muted { color: #64748b !important; }
+        body.light-mode .alert { color: #0f172a !important; }
+        body.light-mode .alert-info { background: rgba(59, 130, 246, 0.1) !important; border-left-color: #3b82f6 !important; color: #0f172a !important; }
+        body.light-mode .badge { color: #0f172a !important; }
+        body.light-mode h5, body.light-mode h6 { color: #0f172a !important; }
+        body.light-mode ul, body.light-mode li { color: #0f172a !important; }
+        body.light-mode span { color: inherit; }
+        /* Corrigir loading overlay no tema claro */
+        body.light-mode .loading-overlay { background: rgba(255,255,255,0.85) !important; }
+        body.light-mode .loading-text { color: #0f172a !important; }
+        /* Corrigir ícones e elementos com cor branca */
+        body.light-mode .fas, body.light-mode .far, body.light-mode .fab { color: inherit; }
+        body.light-mode .text-success { color: #059669 !important; }
+        body.light-mode .text-danger { color: #dc2626 !important; }
+        body.light-mode .text-warning { color: #d97706 !important; }
+        body.light-mode .text-info { color: #0284c7 !important; }
     </style>
 </head>
 <body>
@@ -561,12 +593,48 @@
                 return;
             }
 
-            // Buscar todas as falhas
-            const { data: falhas, error } = await sb
+            // Obter os mesmos filtros aplicados nos disparos
+            const periodo = document.getElementById('filtroPeriodoDisp')?.value || 'mes';
+            const usuarioId = document.getElementById('filtroUsuarioDisp')?.value || '';
+            const departamento = document.getElementById('filtroDepartamentoDisp')?.value || '';
+            
+            let range;
+            if(periodo === 'personalizado'){
+                const dataInicio = document.getElementById('filtroDataInicioDisp')?.value;
+                const dataFim = document.getElementById('filtroDataFimDisp')?.value;
+                range = {
+                    inicio: dataInicio ? new Date(dataInicio + 'T00:00:00') : null,
+                    fim: dataFim ? new Date(dataFim + 'T23:59:59') : null
+                };
+            } else {
+                range = periodoToRange(periodo);
+            }
+
+            // Construir query com filtros
+            let query = sb
                 .from('disparos_log')
-                .select('numero, created_at')
-                .eq('status', 'error')
-                .order('created_at', { ascending: false });
+                .select('numero, created_at, user_id, departamento')
+                .eq('status', 'error');
+            
+            // Aplicar filtro de data
+            if (range.inicio) {
+                query = query.gte('created_at', range.inicio.toISOString());
+            }
+            if (range.fim) {
+                query = query.lte('created_at', range.fim.toISOString());
+            }
+            
+            // Aplicar filtro de usuário
+            if (usuarioId) {
+                query = query.eq('user_id', usuarioId);
+            }
+            
+            // Aplicar filtro de departamento
+            if (departamento) {
+                query = query.eq('departamento', departamento);
+            }
+            
+            const { data: falhas, error } = await query.order('created_at', { ascending: false });
 
             if (error) throw error;
 
@@ -574,17 +642,37 @@
             const numerosUnicos = new Set(falhas ? falhas.map(f => f.numero).filter(Boolean) : []);
             const motoristasUnicos = numerosUnicos.size;
 
-            // Falhas dos últimos 7 dias
+            // Falhas dos últimos 7 dias (dentro do período filtrado)
             const seteDiasAtras = new Date();
             seteDiasAtras.setDate(seteDiasAtras.getDate() - 7);
+            // Se o período filtrado começar antes de 7 dias atrás, usar o início do período
+            const dataLimite = range.inicio && range.inicio > seteDiasAtras ? range.inicio : seteDiasAtras;
             const falhasUltimos7Dias = falhas ? falhas.filter(f => {
                 const dataFalha = new Date(f.created_at);
-                return dataFalha >= seteDiasAtras;
+                return dataFalha >= dataLimite;
             }).length : 0;
 
-            // Calcular taxa de erro (simplificado - seria necessário comparar com sucessos)
-            // Por enquanto, vamos calcular uma taxa baseada no total
-            const taxaErro = totalFalhas > 0 ? ((falhasUltimos7Dias / (totalFalhas + 100)) * 100).toFixed(1) : 0;
+            // Calcular taxa de erro baseada no período filtrado
+            // Buscar total de disparos no período para calcular taxa real
+            let totalDisparosPeriodo = totalFalhas; // Por padrão, usar apenas falhas se não conseguir buscar total
+            try {
+                // Tentar buscar total de disparos no período via API
+                const params = new URLSearchParams({
+                    inicio: range.inicio ? range.inicio.toISOString() : '',
+                    fim: range.fim ? range.fim.toISOString() : '',
+                    usuarioId: usuarioId || '',
+                    departamento: departamento || ''
+                });
+                const totalResp = await fetch(`/api/relatorios/disparos/kpis?${params}`, { credentials:'include' });
+                if (totalResp.ok) {
+                    const totalData = await totalResp.json();
+                    totalDisparosPeriodo = totalData.total || totalFalhas;
+                }
+            } catch (e) {
+                console.warn('Não foi possível buscar total de disparos para calcular taxa:', e);
+            }
+            
+            const taxaErro = totalDisparosPeriodo > 0 ? ((totalFalhas / totalDisparosPeriodo) * 100).toFixed(1) : 0;
 
             // Agrupar por motivo (simplificado)
             const motivosMap = new Map();
@@ -655,10 +743,18 @@
             body.classList.remove('light-mode');
             if(themeIcon) themeIcon.className = 'fas fa-moon';
             localStorage.setItem('theme','dark');
-                } else {
+        } else {
             body.classList.add('light-mode');
             if(themeIcon) themeIcon.className = 'fas fa-sun';
             localStorage.setItem('theme','light');
+        }
+        // Recarregar gráficos para atualizar cores
+        const abaAtiva = document.getElementById('abaBI')?.style.display !== 'none' ? 'bi' : 
+                         document.getElementById('abaCadastros')?.style.display !== 'none' ? 'cadastros' : 'coletas';
+        if(abaAtiva === 'bi' && typeof carregarDisparos === 'function') {
+            carregarDisparos();
+        } else if(abaAtiva === 'cadastros' && typeof carregarMotoristas === 'function') {
+            carregarMotoristas();
         }
     }
     document.addEventListener('DOMContentLoaded', ()=>{
@@ -751,6 +847,17 @@
 		}
 	}
 
+	// Função para obter cores dos gráficos baseado no tema
+	function getChartColors(){
+		const isLight = document.body.classList.contains('light-mode');
+		return {
+			textColor: isLight ? 'rgba(15,23,42,0.8)' : 'rgba(255,255,255,0.7)',
+			gridColor: isLight ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.1)',
+			dataLabelColor: isLight ? '#0f172a' : '#fff',
+			legendColor: isLight ? 'rgba(15,23,42,0.9)' : 'rgba(255,255,255,0.9)'
+		};
+	}
+
 	function ensureChart(ctxId, type, data, options){
 		const ctx = document.getElementById(ctxId);
 		if(!ctx) return null;
@@ -802,6 +909,7 @@
 				
 				if(ctxUserMot){
 					if(ctxUserMot._chart) ctxUserMot._chart.destroy();
+					const colors = getChartColors();
 					ctxUserMot._chart = new Chart(ctxUserMot, {
 						type:'bar',
 						data:{ 
@@ -815,12 +923,12 @@
 							scales: {
 								y: {
 									beginAtZero: true,
-									ticks: { color: 'rgba(255,255,255,0.7)' },
-									grid: { color: 'rgba(255,255,255,0.1)' }
+									ticks: { color: colors.textColor },
+									grid: { color: colors.gridColor }
 								},
 								x: {
-									ticks: { color: 'rgba(255,255,255,0.7)' },
-									grid: { color: 'rgba(255,255,255,0.1)' }
+									ticks: { color: colors.textColor },
+									grid: { color: colors.gridColor }
 								}
 							}
 						},
@@ -832,14 +940,15 @@
 									const meta = chart.getDatasetMeta(i);
 									meta.data.forEach((element, index) => {
 										const value = dataset.data[index];
-										if (value !== null && value !== undefined) {
+										if (value !== null && value !== undefined && value !== 0) {
 											ctx.save();
-											ctx.fillStyle = '#fff';
+											ctx.fillStyle = colors.dataLabelColor;
 											ctx.font = 'bold 12px Arial';
 											ctx.textAlign = 'center';
 											ctx.textBaseline = 'bottom';
 											const position = element.tooltipPosition();
-											ctx.fillText(value, position.x, position.y - 5);
+											const valueStr = String(value);
+											ctx.fillText(valueStr, position.x, position.y - 5);
 											ctx.restore();
 										}
 									});
@@ -851,6 +960,7 @@
 				
 				if(ctxDeptMot){
 					if(ctxDeptMot._chart) ctxDeptMot._chart.destroy();
+					const colors = getChartColors();
 					ctxDeptMot._chart = new Chart(ctxDeptMot, {
 						type:'bar',
 						data:{ 
@@ -864,12 +974,12 @@
 							scales: {
 								y: {
 									beginAtZero: true,
-									ticks: { color: 'rgba(255,255,255,0.7)' },
-									grid: { color: 'rgba(255,255,255,0.1)' }
+									ticks: { color: colors.textColor },
+									grid: { color: colors.gridColor }
 								},
 								x: {
-									ticks: { color: 'rgba(255,255,255,0.7)' },
-									grid: { color: 'rgba(255,255,255,0.1)' }
+									ticks: { color: colors.textColor },
+									grid: { color: colors.gridColor }
 								}
 							}
 						},
@@ -881,14 +991,15 @@
 									const meta = chart.getDatasetMeta(i);
 									meta.data.forEach((element, index) => {
 										const value = dataset.data[index];
-										if (value !== null && value !== undefined) {
+										if (value !== null && value !== undefined && value !== 0) {
 											ctx.save();
-											ctx.fillStyle = '#fff';
+											ctx.fillStyle = colors.dataLabelColor;
 											ctx.font = 'bold 12px Arial';
 											ctx.textAlign = 'center';
 											ctx.textBaseline = 'bottom';
 											const position = element.tooltipPosition();
-											ctx.fillText(value, position.x, position.y - 5);
+											const valueStr = String(value);
+											ctx.fillText(valueStr, position.x, position.y - 5);
 											ctx.restore();
 										}
 									});
@@ -900,6 +1011,7 @@
 				
 				if(ctxDayMot){
 					if(ctxDayMot._chart) ctxDayMot._chart.destroy();
+					const colors = getChartColors();
 					ctxDayMot._chart = new Chart(ctxDayMot, {
 						type:'line',
 						data:{ 
@@ -910,17 +1022,17 @@
 							responsive:true,
 							maintainAspectRatio:false,
 							plugins: {
-								legend: { display: true, labels: { color: 'rgba(255,255,255,0.9)' } }
+								legend: { display: true, labels: { color: colors.legendColor } }
 							},
 							scales: {
 								y: {
 									beginAtZero: true,
-									ticks: { color: 'rgba(255,255,255,0.7)' },
-									grid: { color: 'rgba(255,255,255,0.1)' }
+									ticks: { color: colors.textColor },
+									grid: { color: colors.gridColor }
 								},
 								x: {
-									ticks: { color: 'rgba(255,255,255,0.7)' },
-									grid: { color: 'rgba(255,255,255,0.1)' }
+									ticks: { color: colors.textColor },
+									grid: { color: colors.gridColor }
 								}
 							}
 						},
@@ -932,14 +1044,15 @@
 									const meta = chart.getDatasetMeta(i);
 									meta.data.forEach((element, index) => {
 										const value = dataset.data[index];
-										if (value !== null && value !== undefined && value > 0) {
+										if (value !== null && value !== undefined && value !== 0) {
 											ctx.save();
-											ctx.fillStyle = '#fff';
+											ctx.fillStyle = colors.dataLabelColor;
 											ctx.font = 'bold 11px Arial';
 											ctx.textAlign = 'center';
 											ctx.textBaseline = 'bottom';
 											const position = element.tooltipPosition();
-											ctx.fillText(value, position.x, position.y - 8);
+											const valueStr = String(value);
+											ctx.fillText(valueStr, position.x, position.y - 8);
 											ctx.restore();
 										}
 									});
@@ -1032,6 +1145,7 @@
                 const ctxDay = document.getElementById('chartTemporalDisp');
                 if(ctxUser){
                     if(ctxUser._chart) ctxUser._chart.destroy();
+                    const colors = getChartColors();
                     ctxUser._chart = new Chart(ctxUser, {
                         type:'bar',
                         data:{ labels:(s.byUser||[]).map(u=>u.nome), datasets:[{ label:'Disparos', data:(s.byUser||[]).map(u=>u.count), backgroundColor:'#4f46e5' }] },
@@ -1039,24 +1153,17 @@
                             responsive:true, 
                             maintainAspectRatio:false,
                             plugins:{ 
-                                legend:{ display:false },
-                                datalabels: {
-                                    anchor: 'end',
-                                    align: 'top',
-                                    color: '#fff',
-                                    font: { weight: 'bold', size: 12 },
-                                    formatter: (value) => value || ''
-                                }
+                                legend:{ display:false }
                             },
                             scales: {
                                 y: {
                                     beginAtZero: true,
-                                    ticks: { color: 'rgba(255,255,255,0.7)' },
-                                    grid: { color: 'rgba(255,255,255,0.1)' }
+                                    ticks: { color: colors.textColor },
+                                    grid: { color: colors.gridColor }
                                 },
                                 x: {
-                                    ticks: { color: 'rgba(255,255,255,0.7)' },
-                                    grid: { color: 'rgba(255,255,255,0.1)' }
+                                    ticks: { color: colors.textColor },
+                                    grid: { color: colors.gridColor }
                                 }
                             }
                         },
@@ -1064,47 +1171,19 @@
                             id: 'datalabels',
                             afterDatasetsDraw: (chart) => {
                                 const ctx = chart.ctx;
-                                const chartArea = chart.chartArea;
                                 chart.data.datasets.forEach((dataset, i) => {
                                     const meta = chart.getDatasetMeta(i);
                                     meta.data.forEach((element, index) => {
                                         const value = dataset.data[index];
-                                        if (value !== null && value !== undefined) {
+                                        if (value !== null && value !== undefined && value !== 0) {
                                             ctx.save();
-                                            ctx.fillStyle = '#fff';
+                                            ctx.fillStyle = colors.dataLabelColor;
                                             ctx.font = 'bold 12px Arial';
                                             ctx.textAlign = 'center';
-                                            ctx.textBaseline = 'middle';
-                                            
-                                            // Para gráficos de barras, centralizar no topo da barra
-                                            const barTop = element.y;
-                                            const barCenter = element.x;
-                                            const barBottom = chartArea.bottom;
-                                            
-                                            // Calcular altura da barra
-                                            const barHeight = barBottom - barTop;
-                                            
-                                            // Verificar se o texto cabe dentro da área do gráfico
-                                            const textHeight = 12;
-                                            const textWidth = ctx.measureText(value).width;
-                                            const padding = 5;
-                                            
-                                            // Posicionar o texto no topo da barra, mas garantir que não saia dos limites
-                                            let textY = barTop - padding;
-                                            
-                                            // Se a barra é muito baixa ou o texto sairia pela parte superior, colocar dentro da barra
-                                            if (textY < chartArea.top + textHeight || barHeight < textHeight + padding * 2) {
-                                                textY = barTop + (barHeight / 2); // Centralizar verticalmente na barra
-                                            }
-                                            
-                                            // Garantir que o texto não saia dos limites horizontais
-                                            const textX = Math.max(chartArea.left + textWidth / 2, 
-                                                Math.min(barCenter, chartArea.right - textWidth / 2));
-                                            
-                                            // Garantir que o texto não saia dos limites verticais
-                                            if (textY >= chartArea.top + textHeight && textY <= chartArea.bottom - textHeight) {
-                                                ctx.fillText(value, textX, textY);
-                                            }
+                                            ctx.textBaseline = 'bottom';
+                                            const position = element.tooltipPosition();
+                                            const valueStr = String(value);
+                                            ctx.fillText(valueStr, position.x, position.y - 5);
                                             ctx.restore();
                                         }
                                     });
@@ -1115,6 +1194,7 @@
                 }
                 if(ctxDept){
                     if(ctxDept._chart) ctxDept._chart.destroy();
+                    const colors = getChartColors();
                     ctxDept._chart = new Chart(ctxDept, {
                         type:'bar',
                         data:{ labels:(s.byDepartment||[]).map(d=>d.departamento), datasets:[{ label:'Disparos', data:(s.byDepartment||[]).map(d=>d.count), backgroundColor:'#10b981' }] },
@@ -1122,24 +1202,17 @@
                             responsive:true, 
                             maintainAspectRatio:false,
                             plugins:{ 
-                                legend:{ display:false },
-                                datalabels: {
-                                    anchor: 'end',
-                                    align: 'top',
-                                    color: '#fff',
-                                    font: { weight: 'bold', size: 12 },
-                                    formatter: (value) => value || ''
-                                }
+                                legend:{ display:false }
                             },
                             scales: {
                                 y: {
                                     beginAtZero: true,
-                                    ticks: { color: 'rgba(255,255,255,0.7)' },
-                                    grid: { color: 'rgba(255,255,255,0.1)' }
+                                    ticks: { color: colors.textColor },
+                                    grid: { color: colors.gridColor }
                                 },
                                 x: {
-                                    ticks: { color: 'rgba(255,255,255,0.7)' },
-                                    grid: { color: 'rgba(255,255,255,0.1)' }
+                                    ticks: { color: colors.textColor },
+                                    grid: { color: colors.gridColor }
                                 }
                             }
                         },
@@ -1147,47 +1220,19 @@
                             id: 'datalabels',
                             afterDatasetsDraw: (chart) => {
                                 const ctx = chart.ctx;
-                                const chartArea = chart.chartArea;
                                 chart.data.datasets.forEach((dataset, i) => {
                                     const meta = chart.getDatasetMeta(i);
                                     meta.data.forEach((element, index) => {
                                         const value = dataset.data[index];
-                                        if (value !== null && value !== undefined) {
+                                        if (value !== null && value !== undefined && value !== 0) {
                                             ctx.save();
-                                            ctx.fillStyle = '#fff';
+                                            ctx.fillStyle = colors.dataLabelColor;
                                             ctx.font = 'bold 12px Arial';
                                             ctx.textAlign = 'center';
-                                            ctx.textBaseline = 'middle';
-                                            
-                                            // Para gráficos de barras, centralizar no topo da barra
-                                            const barTop = element.y;
-                                            const barCenter = element.x;
-                                            const barBottom = chartArea.bottom;
-                                            
-                                            // Calcular altura da barra
-                                            const barHeight = barBottom - barTop;
-                                            
-                                            // Verificar se o texto cabe dentro da área do gráfico
-                                            const textHeight = 12;
-                                            const textWidth = ctx.measureText(value).width;
-                                            const padding = 5;
-                                            
-                                            // Posicionar o texto no topo da barra, mas garantir que não saia dos limites
-                                            let textY = barTop - padding;
-                                            
-                                            // Se a barra é muito baixa ou o texto sairia pela parte superior, colocar dentro da barra
-                                            if (textY < chartArea.top + textHeight || barHeight < textHeight + padding * 2) {
-                                                textY = barTop + (barHeight / 2); // Centralizar verticalmente na barra
-                                            }
-                                            
-                                            // Garantir que o texto não saia dos limites horizontais
-                                            const textX = Math.max(chartArea.left + textWidth / 2, 
-                                                Math.min(barCenter, chartArea.right - textWidth / 2));
-                                            
-                                            // Garantir que o texto não saia dos limites verticais
-                                            if (textY >= chartArea.top + textHeight && textY <= chartArea.bottom - textHeight) {
-                                                ctx.fillText(value, textX, textY);
-                                            }
+                                            ctx.textBaseline = 'bottom';
+                                            const position = element.tooltipPosition();
+                                            const valueStr = String(value);
+                                            ctx.fillText(valueStr, position.x, position.y - 5);
                                             ctx.restore();
                                         }
                                     });
@@ -1198,6 +1243,7 @@
                 }
                 if(ctxDay){
                     if(ctxDay._chart) ctxDay._chart.destroy();
+                    const colors = getChartColors();
                     ctxDay._chart = new Chart(ctxDay, {
                         type:'line',
                         data:{ labels:(s.byDay||[]).map(d=>d.date), datasets:[{ label:'Disparos', data:(s.byDay||[]).map(d=>d.count), borderColor:'#f59e0b', backgroundColor:'rgba(245,158,11,0.25)', fill:true, tension:0.3, pointRadius: 5, pointHoverRadius: 7 }] },
@@ -1205,17 +1251,17 @@
                             responsive:true,
                             maintainAspectRatio:false,
                             plugins: {
-                                legend: { display: true, labels: { color: 'rgba(255,255,255,0.9)' } }
+                                legend: { display: true, labels: { color: colors.legendColor } }
                             },
                             scales: {
                                 y: {
                                     beginAtZero: true,
-                                    ticks: { color: 'rgba(255,255,255,0.7)' },
-                                    grid: { color: 'rgba(255,255,255,0.1)' }
+                                    ticks: { color: colors.textColor },
+                                    grid: { color: colors.gridColor }
                                 },
                                 x: {
-                                    ticks: { color: 'rgba(255,255,255,0.7)' },
-                                    grid: { color: 'rgba(255,255,255,0.1)' }
+                                    ticks: { color: colors.textColor },
+                                    grid: { color: colors.gridColor }
                                 }
                             }
                         },
@@ -1223,29 +1269,19 @@
                             id: 'datalabels',
                             afterDatasetsDraw: (chart) => {
                                 const ctx = chart.ctx;
-                                const chartArea = chart.chartArea;
                                 chart.data.datasets.forEach((dataset, i) => {
                                     const meta = chart.getDatasetMeta(i);
                                     meta.data.forEach((element, index) => {
                                         const value = dataset.data[index];
-                                        if (value !== null && value !== undefined && value > 0) {
+                                        if (value !== null && value !== undefined && value !== 0) {
                                             ctx.save();
-                                            ctx.fillStyle = '#fff';
+                                            ctx.fillStyle = colors.dataLabelColor;
                                             ctx.font = 'bold 11px Arial';
                                             ctx.textAlign = 'center';
-                                            ctx.textBaseline = 'middle';
-                                            
-                                            // Para gráficos de linha, centralizar acima do ponto
-                                            const pointX = element.x;
-                                            const pointY = element.y;
-                                            const textHeight = 11;
-                                            const textY = Math.max(pointY - textHeight - 8, chartArea.top + textHeight);
-                                            
-                                            // Garantir que o texto não saia dos limites
-                                            if (textY >= chartArea.top && textY <= chartArea.bottom && 
-                                                pointX >= chartArea.left && pointX <= chartArea.right) {
-                                                ctx.fillText(value, pointX, textY);
-                                            }
+                                            ctx.textBaseline = 'bottom';
+                                            const position = element.tooltipPosition();
+                                            const valueStr = String(value);
+                                            ctx.fillText(valueStr, position.x, position.y - 8);
                                             ctx.restore();
                                         }
                                     });
@@ -1257,6 +1293,8 @@
             } else {
                 console.error('Erro séries disparos:', await seriesResp.text());
             }
+            // Carregar estatísticas de falhas com os mesmos filtros
+            await carregarEstatisticasFalhas().catch(err => console.error('Erro ao carregar estatísticas de falhas:', err));
         } finally {
             if(overlay) overlay.style.display = 'none';
         }
