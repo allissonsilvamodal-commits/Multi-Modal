@@ -7288,9 +7288,9 @@ app.get('/webhook/status-evolution', async (req, res) => {
     if (!config) {
       console.log('🔄 Usando configuração padrão do .env');
       config = {
-      api_url: process.env.EVOLUTION_BASE_URL || 'https://b1336382a159.ngrok-free.app',
-      api_key: process.env.EVOLUTION_API_KEY || '2CA53A24D6A7-4544-A440-36BBE4FB80C5',
-        instance_name: process.env.EVOLUTION_INSTANCE_NAME || 'TESTE',
+      api_url: process.env.EVOLUTION_BASE_URL || '',
+      api_key: process.env.EVOLUTION_API_KEY || '',
+        instance_name: process.env.EVOLUTION_INSTANCE_NAME || '',
         source: 'env_default'
     };
     }
@@ -7371,9 +7371,9 @@ app.post('/webhook/send', async (req, res) => {
     
     // Configuração padrão do .env
     const config = {
-      api_url: process.env.EVOLUTION_BASE_URL || 'https://b1336382a159.ngrok-free.app',
-      api_key: process.env.EVOLUTION_API_KEY || '2CA53A24D6A7-4544-A440-36BBE4FB80C5',
-      instance_name: process.env.EVOLUTION_INSTANCE_NAME || 'TESTE'
+      api_url: process.env.EVOLUTION_BASE_URL || '',
+      api_key: process.env.EVOLUTION_API_KEY || '',
+      instance_name: process.env.EVOLUTION_INSTANCE_NAME || ''
     };
     
     // Validar dados
