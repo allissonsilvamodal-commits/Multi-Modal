@@ -441,7 +441,7 @@
             </div>
             
             <div class="row g-3 mt-2">
-              <div class="col-md-12">
+              <div class="col-md-6">
                 <label class="form-label-modern">Responsável *</label>
                 <select id="responsavel" class="form-select form-select-modern" required>
                   <option value="">Selecione o responsável...</option>
@@ -495,6 +495,12 @@
                   <option value="Emile passos">Emile passos</option>
                 </select>
               </div>
+              <div class="col-md-6">
+                <label class="form-label-modern">Evidências (Opcional)</label>
+                <input type="file" id="evidencia" class="form-control form-control-modern" accept="image/*,.pdf,.doc,.docx" multiple>
+                <small class="text-muted">Formatos aceitos: Imagens (JPG, PNG, GIF, WEBP, BMP) ou PDF, DOC, DOCX (máx. 10MB cada, múltiplos arquivos permitidos)</small>
+                <div id="previewEvidencias" class="mt-2"></div>
+              </div>
             </div>
             
             <div class="row mt-4">
@@ -516,11 +522,11 @@
       <!-- Filtros e Busca -->
       <div class="filters-section">
         <div class="row g-3 align-items-end">
-          <div class="col-md-3">
+          <div class="col-md-2">
             <label class="form-label-modern">Filtrar por Data</label>
             <input type="date" id="filtroData" class="form-control form-control-modern">
           </div>
-          <div class="col-md-3">
+          <div class="col-md-2">
             <label class="form-label-modern">Filtrar por OC</label>
             <input type="text" id="filtroOC" class="form-control form-control-modern" placeholder="Digite a OC...">
           </div>
@@ -542,6 +548,60 @@
             </select>
           </div>
           <div class="col-md-3">
+            <label class="form-label-modern">Filtrar por Responsável</label>
+            <select id="filtroResponsavel" class="form-select form-select-modern">
+              <option value="">Todos</option>
+              <option value="Allisson silva">Allisson silva</option>
+              <option value="Aline oliveira">Aline oliveira</option>
+              <option value="Aguida Oliveira">Aguida Oliveira</option>
+              <option value="Josiane Santos">Josiane Santos</option>
+              <option value="Kauan silva">Kauan silva</option>
+              <option value="Elaine Cristina">Elaine Cristina</option>
+              <option value="Sandra oliveira">Sandra oliveira</option>
+              <option value="Lucili Moraes">Lucili Moraes</option>
+              <option value="Andre oliveira">Andre oliveira</option>
+              <option value="Catarina franca">Catarina franca</option>
+              <option value="Edcleide silva">Edcleide silva</option>
+              <option value="Anderson silva">Anderson silva</option>
+              <option value="Paulo alencar">Paulo alencar</option>
+              <option value="Tarciana borba">Tarciana borba</option>
+              <option value="Mario victor">Mario victor</option>
+              <option value="Alessandro silva">Alessandro silva</option>
+              <option value="Douglas silva">Douglas silva</option>
+              <option value="Arisvaldo Junior">Arisvaldo Junior</option>
+              <option value="Sebastião">Sebastião</option>
+              <option value="Sidney">Sidney</option>
+              <option value="Artur ribeiro">Artur ribeiro</option>
+              <option value="Wendel lima">Wendel lima</option>
+              <option value="Cleberson santos">Cleberson santos</option>
+              <option value="Analice gabriela">Analice gabriela</option>
+              <option value="Emyllien barreto">Emyllien barreto</option>
+              <option value="Marcos">Marcos</option>
+              <option value="Glaucivan.santos">Glaucivan.santos</option>
+              <option value="Lethicia.silva">Lethicia.silva</option>
+              <option value="Iran brito">Iran brito</option>
+              <option value="Adao campos">Adao campos</option>
+              <option value="Matheus nascimento">Matheus nascimento</option>
+              <option value="Daniel Alisonn">Daniel Alisonn</option>
+              <option value="Felipe Barbosa">Felipe Barbosa</option>
+              <option value="Thomaz menezes">Thomaz menezes</option>
+              <option value="Roberto rocha">Roberto rocha</option>
+              <option value="Manoel Henrique">Manoel Henrique</option>
+              <option value="Luciano claudino">Luciano claudino</option>
+              <option value="Pedro santos">Pedro santos</option>
+              <option value="Luan silva">Luan silva</option>
+              <option value="Natan nascimento">Natan nascimento</option>
+              <option value="Alex Vilanova">Alex Vilanova</option>
+              <option value="Leonardo Souza">Leonardo Souza</option>
+              <option value="Amanda maria">Amanda maria</option>
+              <option value="Erica melo">Erica melo</option>
+              <option value="Suenildo junior">Suenildo junior</option>
+              <option value="Arthur neves">Arthur neves</option>
+              <option value="Ismael Coutinho">Ismael Coutinho</option>
+              <option value="Emile passos">Emile passos</option>
+            </select>
+          </div>
+          <div class="col-md-2">
             <button type="button" class="btn btn-primary-modern btn-modern w-100" onclick="aplicarFiltros()">
               <i class="fas fa-filter"></i>
               Aplicar Filtros
@@ -552,10 +612,15 @@
 
       <!-- Tabela de Dados -->
       <div class="modern-card">
-        <div class="card-header">
-          <i class="fas fa-table"></i>
-          <span>Registros Lançados</span>
-          <span class="badge bg-light text-dark ms-2" id="totalRegistros">0</span>
+        <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+          <div>
+            <i class="fas fa-table"></i>
+            <span>Registros Lançados</span>
+            <span class="badge bg-light text-dark ms-2" id="totalRegistros">0</span>
+          </div>
+          <button type="button" class="btn btn-danger btn-sm" id="btnExcluirTodos" onclick="excluirTodosRegistros()" style="display: none;">
+            <i class="fas fa-trash-alt"></i> Excluir Todos (Admin)
+          </button>
         </div>
         <div class="card-body">
           <div class="table-responsive">
@@ -570,12 +635,15 @@
                   <th>Hora Envio</th>
                   <th>Hora Retorno</th>
                   <th>Responsável</th>
+                  <th>Evidência</th>
+                  <th>Criado por</th>
+                  <th>Editado por</th>
                   <th>Ações</th>
                 </tr>
               </thead>
               <tbody id="tabelaDados">
                 <tr>
-                  <td colspan="9" class="text-center py-4">
+                  <td colspan="12" class="text-center py-4">
                     <div class="spinner-border text-primary" role="status">
                       <span class="visually-hidden">Carregando...</span>
                     </div>
@@ -676,7 +744,7 @@
             </div>
             
             <div class="row g-3 mt-2">
-              <div class="col-md-12">
+              <div class="col-md-6">
                 <label class="form-label-modern">Responsável *</label>
                 <select id="editarResponsavel" class="form-select form-select-modern" required>
                   <option value="">Selecione o responsável...</option>
@@ -730,6 +798,21 @@
                   <option value="Emile passos">Emile passos</option>
                 </select>
               </div>
+              <div class="col-md-6">
+                <label class="form-label-modern">Adicionar Evidências (Opcional)</label>
+                <input type="file" id="editarEvidencias" class="form-control form-control-modern" accept="image/*,.pdf,.doc,.docx" multiple>
+                <small class="text-muted">Selecione novos arquivos para adicionar</small>
+                <div id="previewEvidenciasEdicao" class="mt-2"></div>
+              </div>
+            </div>
+            
+            <div class="row g-3 mt-2">
+              <div class="col-md-12">
+                <label class="form-label-modern">Evidências Existentes</label>
+                <div id="evidenciasExistentes" class="border rounded p-3" style="min-height: 50px;">
+                  <p class="text-muted mb-0">Nenhuma evidência anexada</p>
+                </div>
+              </div>
             </div>
           </form>
         </div>
@@ -752,11 +835,19 @@
     let supabase;
     let currentUser = null;
     let dadosCarregados = [];
+    let isAdmin = false;
 
     // ========== INICIALIZAÇÃO ==========
     document.addEventListener('DOMContentLoaded', async () => {
+      // Verificar permissão antes de carregar a página
+      const temPermissao = await verificarEAplicarPermissao('gestao-dados');
+      if (!temPermissao) {
+        return; // A função já redireciona se não tiver permissão
+      }
+      
       await inicializarSupabase();
       await verificarAutenticacao();
+      await verificarSeAdmin();
       await carregarDados();
       configurarEventos();
       definirDataPadrao();
@@ -815,6 +906,45 @@
       }
     }
 
+    // ========== VERIFICAR SE É ADMIN ==========
+    async function verificarSeAdmin() {
+      try {
+        // Verificar no localStorage
+        const loggedInUserData = localStorage.getItem('loggedInUser');
+        if (loggedInUserData) {
+          const userData = JSON.parse(loggedInUserData);
+          if (userData.isAdmin === true || userData.role === 'admin') {
+            isAdmin = true;
+            document.getElementById('btnExcluirTodos').style.display = 'block';
+            console.log('✅ Usuário é admin');
+            return;
+          }
+        }
+
+        // Verificar no Supabase
+        if (currentUser && currentUser.id) {
+          const { data: profile, error } = await supabase
+            .from('user_profiles')
+            .select('role')
+            .eq('id', currentUser.id)
+            .maybeSingle();
+          
+          if (!error && profile && (profile.role === 'admin' || profile.role === 'projetos')) {
+            isAdmin = true;
+            document.getElementById('btnExcluirTodos').style.display = 'block';
+            console.log('✅ Usuário é admin (verificado via Supabase)');
+            return;
+          }
+        }
+
+        console.log('❌ Usuário não é admin');
+        isAdmin = false;
+      } catch (error) {
+        console.error('❌ Erro ao verificar se é admin:', error);
+        isAdmin = false;
+      }
+    }
+
     // ========== FORMULÁRIO ==========
     function configurarEventos() {
       const form = document.getElementById('formLancamento');
@@ -822,11 +952,118 @@
         e.preventDefault();
         await salvarLancamento();
       });
+
+      // Preview de múltiplas evidências (formulário de criação)
+      document.getElementById('evidencia').addEventListener('change', function(e) {
+        const files = Array.from(e.target.files);
+        const previewContainer = document.getElementById('previewEvidencias');
+        previewContainer.innerHTML = '';
+        
+        if (files.length > 0) {
+          files.forEach((file, index) => {
+            const previewItem = document.createElement('div');
+            previewItem.className = 'mb-2 p-2 border rounded';
+            previewItem.id = `preview-item-${index}`;
+            
+            if (file.type.startsWith('image/')) {
+              const reader = new FileReader();
+              reader.onload = function(e) {
+                previewItem.innerHTML = `
+                  <div class="d-flex align-items-center">
+                    <img src="${e.target.result}" alt="Preview" style="max-width: 100px; max-height: 100px; border-radius: 8px; border: 2px solid #e5e7eb; margin-right: 10px;">
+                    <div class="flex-grow-1">
+                      <small class="d-block text-muted">${file.name}</small>
+                      <small class="text-muted">${(file.size / 1024).toFixed(2)} KB</small>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-danger" onclick="removerEvidenciaPreview(${index})">
+                      <i class="fas fa-times"></i>
+                    </button>
+                  </div>
+                `;
+              };
+              reader.readAsDataURL(file);
+            } else {
+              previewItem.innerHTML = `
+                <div class="d-flex align-items-center">
+                  <i class="fas fa-file fa-2x text-primary me-2"></i>
+                  <div class="flex-grow-1">
+                    <small class="d-block">${file.name}</small>
+                    <small class="text-muted">${(file.size / 1024).toFixed(2)} KB</small>
+                  </div>
+                  <button type="button" class="btn btn-sm btn-danger" onclick="removerEvidenciaPreview(${index})">
+                    <i class="fas fa-times"></i>
+                  </button>
+                </div>
+              `;
+            }
+            
+            previewContainer.appendChild(previewItem);
+          });
+        }
+      });
+    }
+
+    // Remover evidência do preview
+    function removerEvidenciaPreview(index) {
+      const input = document.getElementById('evidencia');
+      const files = Array.from(input.files);
+      files.splice(index, 1);
+      
+      // Criar novo FileList (não é possível modificar diretamente)
+      const dt = new DataTransfer();
+      files.forEach(file => dt.items.add(file));
+      input.files = dt.files;
+      
+      // Disparar evento change para atualizar preview
+      input.dispatchEvent(new Event('change'));
+    }
+
+    // Remover todas as evidências
+    function removerEvidencias() {
+      document.getElementById('evidencia').value = '';
+      document.getElementById('previewEvidencias').innerHTML = '';
     }
 
     async function salvarLancamento() {
       const form = document.getElementById('formLancamento');
-      const formData = new FormData(form);
+      
+      // Upload de múltiplas evidências se houver
+      let evidenciasUrls = [];
+      const arquivosEvidencia = document.getElementById('evidencia').files;
+      
+      if (arquivosEvidencia && arquivosEvidencia.length > 0) {
+        try {
+          mostrarLoading(true);
+          
+          // Upload de cada arquivo
+          for (let i = 0; i < arquivosEvidencia.length; i++) {
+            const arquivo = arquivosEvidencia[i];
+            const uploadFormData = new FormData();
+            uploadFormData.append('evidencia', arquivo);
+            
+            const uploadResponse = await fetch('/api/gestao-dados/upload-evidencia', {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session.access_token}`
+              },
+              credentials: 'include',
+              body: uploadFormData
+            });
+            
+            const uploadResult = await uploadResponse.json();
+            if (uploadResult.success) {
+              evidenciasUrls.push(uploadResult.url);
+            } else {
+              throw new Error(uploadResult.error || `Erro ao fazer upload da evidência ${i + 1}`);
+            }
+          }
+        } catch (error) {
+          console.error('Erro ao fazer upload das evidências:', error);
+          mostrarAlerta('Erro ao fazer upload das evidências: ' + error.message, 'warning');
+          mostrarLoading(false);
+          return;
+        }
+      }
       
       const dados = {
         data: document.getElementById('data').value,
@@ -837,6 +1074,7 @@
         hora_envio: document.getElementById('hora_envio').value,
         hora_retorno: document.getElementById('hora_retorno').value,
         responsavel: document.getElementById('responsavel').value.trim(),
+        evidencia_url: evidenciasUrls.length > 0 ? evidenciasUrls : null,
         usuario_id: currentUser.id,
         usuario_nome: currentUser.email || 'Usuário'
       };
@@ -862,6 +1100,7 @@
 
         mostrarAlerta('Lançamento salvo com sucesso!', 'success');
         form.reset();
+        removerEvidencias();
         await carregarDados();
         
       } catch (error) {
@@ -892,6 +1131,7 @@
         }
 
         dadosCarregados = result.data || [];
+        preencherFiltroResponsavel();
         renderizarTabela(dadosCarregados);
         
       } catch (error) {
@@ -903,6 +1143,39 @@
       }
     }
 
+    // Preencher filtro de responsável com valores únicos dos dados carregados
+    function preencherFiltroResponsavel() {
+      const select = document.getElementById('filtroResponsavel');
+      if (!select) return;
+      
+      // Obter valores únicos de responsáveis dos dados carregados
+      const responsaveisUnicos = [...new Set(dadosCarregados
+        .map(d => d.responsavel)
+        .filter(r => r && r.trim() && r !== 'Não informado')
+        .sort()
+      )];
+      
+      // Manter a opção "Todos" e adicionar os responsáveis encontrados
+      const opcaoTodos = select.querySelector('option[value=""]');
+      select.innerHTML = '';
+      if (opcaoTodos) {
+        select.appendChild(opcaoTodos);
+      } else {
+        const optionTodos = document.createElement('option');
+        optionTodos.value = '';
+        optionTodos.textContent = 'Todos';
+        select.appendChild(optionTodos);
+      }
+      
+      // Adicionar responsáveis únicos encontrados nos dados
+      responsaveisUnicos.forEach(responsavel => {
+        const option = document.createElement('option');
+        option.value = responsavel;
+        option.textContent = responsavel;
+        select.appendChild(option);
+      });
+    }
+
     function renderizarTabela(dados) {
       const tbody = document.getElementById('tabelaDados');
       document.getElementById('totalRegistros').textContent = dados.length;
@@ -910,7 +1183,7 @@
       if (dados.length === 0) {
         tbody.innerHTML = `
           <tr>
-            <td colspan="9" class="text-center py-4 text-muted">
+            <td colspan="12" class="text-center py-4 text-muted">
               <i class="fas fa-inbox fa-2x mb-3 d-block"></i>
               Nenhum registro encontrado
             </td>
@@ -919,7 +1192,16 @@
         return;
       }
 
-      tbody.innerHTML = dados.map(dado => `
+      tbody.innerHTML = dados.map(dado => {
+        // Formatar informações de criação
+        const criadoPor = dado.criado_por_nome || dado.usuario_nome || 'Não informado';
+        const criadoEm = dado.criado_em ? formatarDataHora(dado.criado_em) : (dado.created_at ? formatarDataHora(dado.created_at) : '-');
+        
+        // Formatar informações de edição
+        const editadoPor = dado.editado_por_nome || null;
+        const editadoEm = dado.editado_em ? formatarDataHora(dado.editado_em) : null;
+        
+        return `
         <tr>
           <td>${formatarData(dado.data)}</td>
           <td><strong>${dado.oc}</strong></td>
@@ -930,6 +1212,40 @@
           <td>${dado.hora_retorno}</td>
           <td>${dado.responsavel}</td>
           <td>
+            ${dado.evidencia_url && dado.evidencia_url.length > 0 ? `
+              <div class="d-flex flex-wrap gap-1">
+                ${Array.isArray(dado.evidencia_url) 
+                  ? dado.evidencia_url.map((url, idx) => `
+                    <a href="${url}" target="_blank" class="btn btn-sm btn-info" title="Ver evidência ${idx + 1}">
+                      <i class="fas fa-eye"></i> ${idx + 1}
+                    </a>
+                  `).join('')
+                  : `<a href="${dado.evidencia_url}" target="_blank" class="btn btn-sm btn-info" title="Ver evidência">
+                      <i class="fas fa-eye"></i> Ver
+                    </a>`
+                }
+              </div>
+            ` : '<span class="text-muted">-</span>'}
+          </td>
+          <td>
+            <small class="d-block text-muted">
+              <i class="fas fa-user-plus text-success"></i> ${criadoPor}
+            </small>
+            <small class="text-muted">
+              <i class="fas fa-clock"></i> ${criadoEm}
+            </small>
+          </td>
+          <td>
+            ${editadoPor ? `
+              <small class="d-block text-muted">
+                <i class="fas fa-user-edit text-primary"></i> ${editadoPor}
+              </small>
+              <small class="text-muted">
+                <i class="fas fa-clock"></i> ${editadoEm}
+              </small>
+            ` : '<span class="text-muted"><i class="fas fa-minus"></i> Nunca editado</span>'}
+          </td>
+          <td>
             <button class="btn btn-sm btn-primary me-1" onclick="editarRegistro('${dado.id}')" title="Editar">
               <i class="fas fa-edit"></i>
             </button>
@@ -938,7 +1254,8 @@
             </button>
           </td>
         </tr>
-      `).join('');
+      `;
+      }).join('');
     }
 
     // ========== FILTROS ==========
@@ -946,6 +1263,7 @@
       const filtroData = document.getElementById('filtroData').value;
       const filtroOC = document.getElementById('filtroOC').value.toLowerCase();
       const filtroTipoErro = document.getElementById('filtroTipoErro').value;
+      const filtroResponsavel = document.getElementById('filtroResponsavel').value;
 
       let dadosFiltrados = [...dadosCarregados];
 
@@ -961,10 +1279,17 @@
         dadosFiltrados = dadosFiltrados.filter(d => d.tipo_erro === filtroTipoErro);
       }
 
+      if (filtroResponsavel) {
+        dadosFiltrados = dadosFiltrados.filter(d => d.responsavel === filtroResponsavel);
+      }
+
       renderizarTabela(dadosFiltrados);
     }
 
     // ========== EDITAR ==========
+    let evidenciasExistentes = []; // Array para armazenar evidências existentes
+    let evidenciasParaRemover = []; // Array para armazenar URLs das evidências a remover
+
     async function editarRegistro(id) {
       const registro = dadosCarregados.find(d => d.id === id);
       
@@ -984,9 +1309,69 @@
       document.getElementById('editarHoraRetorno').value = registro.hora_retorno;
       document.getElementById('editarResponsavel').value = registro.responsavel;
 
+      // Carregar evidências existentes
+      evidenciasExistentes = [];
+      evidenciasParaRemover = [];
+      
+      if (registro.evidencia_url) {
+        if (Array.isArray(registro.evidencia_url)) {
+          evidenciasExistentes = [...registro.evidencia_url];
+        } else if (typeof registro.evidencia_url === 'string' && registro.evidencia_url.trim()) {
+          evidenciasExistentes = [registro.evidencia_url.trim()];
+        }
+      }
+      
+      renderizarEvidenciasExistentes();
+      
+      // Limpar preview de novos arquivos
+      document.getElementById('editarEvidencias').value = '';
+      document.getElementById('previewEvidenciasEdicao').innerHTML = '';
+
       // Abrir modal
       const modal = new bootstrap.Modal(document.getElementById('modalEdicao'));
       modal.show();
+    }
+
+    function renderizarEvidenciasExistentes() {
+      const container = document.getElementById('evidenciasExistentes');
+      
+      if (evidenciasExistentes.length === 0) {
+        container.innerHTML = '<p class="text-muted mb-0">Nenhuma evidência anexada</p>';
+        return;
+      }
+      
+      container.innerHTML = evidenciasExistentes.map((url, index) => {
+        const fileName = url.split('/').pop() || `Evidência ${index + 1}`;
+        const isImage = /\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(fileName);
+        
+        return `
+          <div class="d-flex align-items-center mb-2 p-2 border rounded" id="evidencia-existente-${index}">
+            ${isImage ? `
+              <img src="${url}" alt="Preview" style="max-width: 80px; max-height: 80px; border-radius: 8px; border: 2px solid #e5e7eb; margin-right: 10px;" onerror="this.style.display='none'">
+            ` : `
+              <i class="fas fa-file fa-2x text-primary me-2"></i>
+            `}
+            <div class="flex-grow-1">
+              <a href="${url}" target="_blank" class="text-decoration-none">
+                <small class="d-block">${fileName}</small>
+              </a>
+              <small class="text-muted">Evidência ${index + 1}</small>
+            </div>
+            <button type="button" class="btn btn-sm btn-danger" onclick="removerEvidenciaExistente(${index})" title="Remover evidência">
+              <i class="fas fa-trash"></i>
+            </button>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function removerEvidenciaExistente(index) {
+      if (confirm('Deseja realmente remover esta evidência?')) {
+        const urlRemovida = evidenciasExistentes[index];
+        evidenciasParaRemover.push(urlRemovida);
+        evidenciasExistentes.splice(index, 1);
+        renderizarEvidenciasExistentes();
+      }
     }
 
     async function salvarEdicao() {
@@ -997,6 +1382,47 @@
         return;
       }
 
+      // Upload de novas evidências se houver
+      let novasEvidenciasUrls = [];
+      const arquivosNovos = document.getElementById('editarEvidencias').files;
+      
+      if (arquivosNovos && arquivosNovos.length > 0) {
+        try {
+          mostrarLoading(true);
+          
+          // Upload de cada arquivo novo
+          for (let i = 0; i < arquivosNovos.length; i++) {
+            const arquivo = arquivosNovos[i];
+            const uploadFormData = new FormData();
+            uploadFormData.append('evidencia', arquivo);
+            
+            const uploadResponse = await fetch('/api/gestao-dados/upload-evidencia', {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session.access_token}`
+              },
+              credentials: 'include',
+              body: uploadFormData
+            });
+            
+            const uploadResult = await uploadResponse.json();
+            if (uploadResult.success) {
+              novasEvidenciasUrls.push(uploadResult.url);
+            } else {
+              throw new Error(uploadResult.error || `Erro ao fazer upload da evidência ${i + 1}`);
+            }
+          }
+        } catch (error) {
+          console.error('Erro ao fazer upload das novas evidências:', error);
+          mostrarAlerta('Erro ao fazer upload das novas evidências: ' + error.message, 'warning');
+          mostrarLoading(false);
+          return;
+        }
+      }
+
+      // Combinar evidências existentes (não removidas) com novas
+      const evidenciasFinais = [...evidenciasExistentes, ...novasEvidenciasUrls];
+
       const dados = {
         data: document.getElementById('editarData').value,
         oc: document.getElementById('editarOC').value.trim(),
@@ -1005,7 +1431,8 @@
         motivo_devolucao: document.getElementById('editarMotivoDevolucao').value.trim(),
         hora_envio: document.getElementById('editarHoraEnvio').value,
         hora_retorno: document.getElementById('editarHoraRetorno').value,
-        responsavel: document.getElementById('editarResponsavel').value
+        responsavel: document.getElementById('editarResponsavel').value,
+        evidencia_url: evidenciasFinais.length > 0 ? evidenciasFinais : null
       };
 
       // Validação
@@ -1018,11 +1445,22 @@
       mostrarLoading(true);
 
       try {
+        // Obter token de forma segura
+        let authHeader = {};
+        try {
+          const session = await supabase.auth.getSession();
+          if (session?.data?.session?.access_token) {
+            authHeader['Authorization'] = `Bearer ${session.data.session.access_token}`;
+          }
+        } catch (authError) {
+          console.warn('⚠️ Não foi possível obter token, usando autenticação via cookie:', authError);
+        }
+
         const response = await fetch(`/api/gestao-dados/${id}`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session.access_token}`
+            ...authHeader
           },
           credentials: 'include',
           body: JSON.stringify(dados)
@@ -1031,21 +1469,36 @@
         const result = await response.json();
 
         if (!response.ok) {
-          throw new Error(result.error || 'Erro ao atualizar lançamento');
+          // Mostrar erro detalhado
+          const errorMsg = result.error || `Erro ${response.status}: ${response.statusText}`;
+          console.error('❌ Erro na resposta:', {
+            status: response.status,
+            statusText: response.statusText,
+            error: result.error,
+            result: result
+          });
+          throw new Error(errorMsg);
         }
 
         mostrarAlerta('Lançamento atualizado com sucesso!', 'success');
         
+        // Limpar arrays de evidências
+        evidenciasExistentes = [];
+        evidenciasParaRemover = [];
+        
         // Fechar modal
         const modal = bootstrap.Modal.getInstance(document.getElementById('modalEdicao'));
-        modal.hide();
+        if (modal) {
+          modal.hide();
+        }
         
         // Recarregar dados
         await carregarDados();
         
       } catch (error) {
         console.error('❌ Erro ao atualizar lançamento:', error);
-        mostrarAlerta(error.message || 'Erro ao atualizar lançamento', 'danger');
+        const errorMessage = error.message || 'Erro ao atualizar lançamento. Verifique o console para mais detalhes.';
+        mostrarAlerta(errorMessage, 'danger');
       } finally {
         mostrarLoading(false);
       }
@@ -1086,6 +1539,21 @@
     }
 
     // ========== UTILITÁRIOS ==========
+    function formatarDataHora(dataHora) {
+      if (!dataHora) return '-';
+      try {
+        const data = new Date(dataHora);
+        const dia = String(data.getDate()).padStart(2, '0');
+        const mes = String(data.getMonth() + 1).padStart(2, '0');
+        const ano = data.getFullYear();
+        const horas = String(data.getHours()).padStart(2, '0');
+        const minutos = String(data.getMinutes()).padStart(2, '0');
+        return `${dia}/${mes}/${ano} ${horas}:${minutos}`;
+      } catch (e) {
+        return dataHora;
+      }
+    }
+
     function formatarData(data) {
       if (!data) return '-';
       const date = new Date(data);
@@ -1111,6 +1579,58 @@
     function mostrarLoading(mostrar) {
       const overlay = document.getElementById('loadingOverlay');
       overlay.style.display = mostrar ? 'flex' : 'none';
+    }
+
+    // ========== EXCLUIR TODOS OS REGISTROS (ADMIN) ==========
+    async function excluirTodosRegistros() {
+      if (!isAdmin) {
+        mostrarAlerta('Apenas administradores podem excluir todos os registros', 'danger');
+        return;
+      }
+
+      const total = dadosCarregados.length;
+      if (total === 0) {
+        mostrarAlerta('Não há registros para excluir', 'info');
+        return;
+      }
+
+      const confirmacao = prompt(
+        `⚠️ ATENÇÃO: Esta ação é IRREVERSÍVEL!\n\n` +
+        `Você está prestes a excluir TODOS os ${total} registro(s).\n\n` +
+        `Digite "EXCLUIR TUDO" para confirmar:`
+      );
+
+      if (confirmacao !== 'EXCLUIR TUDO') {
+        mostrarAlerta('Exclusão cancelada', 'info');
+        return;
+      }
+
+      mostrarLoading(true);
+
+      try {
+        const response = await fetch('/api/gestao-dados/excluir-todos', {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session.access_token}`
+          },
+          credentials: 'include'
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+          throw new Error(result.error || 'Erro ao excluir registros');
+        }
+
+        mostrarAlerta(`✅ ${result.excluidos || total} registro(s) excluído(s) com sucesso!`, 'success');
+        await carregarDados();
+        
+      } catch (error) {
+        console.error('❌ Erro ao excluir todos os registros:', error);
+        mostrarAlerta(error.message || 'Erro ao excluir registros', 'danger');
+      } finally {
+        mostrarLoading(false);
+      }
     }
 
     // ========== IMPORTAÇÃO CSV ==========

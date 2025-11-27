@@ -10636,6 +10636,7 @@ app.post('/api/gestao-dados', express.json(), async (req, res) => {
       hora_envio,
       hora_retorno,
       responsavel,
+      evidencia_url,
       usuario_id,
       usuario_nome
     } = req.body;
@@ -10648,6 +10649,20 @@ app.post('/api/gestao-dados', express.json(), async (req, res) => {
       });
     }
 
+    // Converter evidencia_url para array se necessário
+    let evidenciasArray = null;
+    if (evidencia_url) {
+      if (Array.isArray(evidencia_url)) {
+        evidenciasArray = evidencia_url.filter(url => url && url.trim());
+      } else if (typeof evidencia_url === 'string' && evidencia_url.trim()) {
+        evidenciasArray = [evidencia_url.trim()];
+      }
+      // Se array estiver vazio, usar null
+      if (evidenciasArray && evidenciasArray.length === 0) {
+        evidenciasArray = null;
+      }
+    }
+
     const dadosInsercao = {
       data,
       oc: oc.trim(),
@@ -10657,8 +10672,13 @@ app.post('/api/gestao-dados', express.json(), async (req, res) => {
       hora_envio,
       hora_retorno,
       responsavel: responsavel.trim(),
+      evidencia_url: evidenciasArray,
       usuario_id: usuario_id || user.id,
-      usuario_nome: usuario_nome || user.email || 'Usuário'
+      usuario_nome: usuario_nome || user.email || 'Usuário',
+      // Campos de auditoria - criação
+      criado_por_id: user.id,
+      criado_por_nome: user.email || user.nome || 'Usuário',
+      criado_em: new Date().toISOString()
     };
 
     const { data: insertedData, error: insertError } = await supabaseAdmin
@@ -10687,10 +10707,12 @@ app.put('/api/gestao-dados/:id', express.json(), async (req, res) => {
   try {
     const { user, error } = await getUserFromRequest(req);
     if (error || !user) {
+      console.error('❌ Erro de autenticação:', error);
       return res.status(401).json({ success: false, error: 'Usuário não autenticado' });
     }
 
     const { id } = req.params;
+    console.log('📝 Tentativa de edição - ID:', id, 'Usuário:', user.id);
 
     if (!id) {
       return res.status(400).json({ success: false, error: 'ID é obrigatório' });
@@ -10704,14 +10726,32 @@ app.put('/api/gestao-dados/:id', express.json(), async (req, res) => {
       motivo_devolucao,
       hora_envio,
       hora_retorno,
-      responsavel
+      responsavel,
+      evidencia_url
     } = req.body;
 
-    // Validações
-    if (!data || !oc || !operacao || !tipo_erro || !motivo_devolucao || !hora_envio || !hora_retorno || !responsavel) {
+    // Validações com mensagens específicas
+    const camposObrigatorios = {
+      data,
+      oc,
+      operacao,
+      tipo_erro,
+      motivo_devolucao,
+      hora_envio,
+      hora_retorno,
+      responsavel
+    };
+
+    const camposFaltando = Object.entries(camposObrigatorios)
+      .filter(([key, value]) => !value || (typeof value === 'string' && !value.trim()))
+      .map(([key]) => key);
+
+    if (camposFaltando.length > 0) {
+      console.warn('⚠️ Campos obrigatórios faltando:', camposFaltando);
+      console.warn('⚠️ Valores recebidos:', camposObrigatorios);
       return res.status(400).json({
         success: false,
-        error: 'Todos os campos obrigatórios devem ser preenchidos'
+        error: `Campos obrigatórios faltando: ${camposFaltando.join(', ')}`
       });
     }
 
@@ -10736,6 +10776,20 @@ app.put('/api/gestao-dados/:id', express.json(), async (req, res) => {
       return res.status(403).json({ success: false, error: 'Você não tem permissão para editar este registro' });
     }
 
+    // Converter evidencia_url para array se necessário
+    let evidenciasArray = null;
+    if (evidencia_url) {
+      if (Array.isArray(evidencia_url)) {
+        evidenciasArray = evidencia_url.filter(url => url && url.trim());
+      } else if (typeof evidencia_url === 'string' && evidencia_url.trim()) {
+        evidenciasArray = [evidencia_url.trim()];
+      }
+      // Se array estiver vazio, usar null
+      if (evidenciasArray && evidenciasArray.length === 0) {
+        evidenciasArray = null;
+      }
+    }
+
     const dadosAtualizacao = {
       data,
       oc: oc.trim(),
@@ -10744,8 +10798,15 @@ app.put('/api/gestao-dados/:id', express.json(), async (req, res) => {
       motivo_devolucao: motivo_devolucao.trim(),
       hora_envio,
       hora_retorno,
-      responsavel: responsavel.trim()
+      responsavel: responsavel.trim(),
+      evidencia_url: evidenciasArray,
+      // Campos de auditoria - edição
+      editado_por_id: user.id,
+      editado_por_nome: user.email || user.nome || 'Usuário',
+      editado_em: new Date().toISOString()
     };
+
+    console.log('📤 Dados para atualização:', dadosAtualizacao);
 
     const { data: updatedData, error: updateError } = await supabaseAdmin
       .from('gestao_dados')
@@ -10754,7 +10815,13 @@ app.put('/api/gestao-dados/:id', express.json(), async (req, res) => {
       .select();
 
     if (updateError) {
+      console.error('❌ Erro do Supabase ao atualizar:', updateError);
       throw updateError;
+    }
+
+    if (!updatedData || updatedData.length === 0) {
+      console.warn('⚠️ Nenhum registro foi atualizado');
+      return res.status(404).json({ success: false, error: 'Registro não foi atualizado' });
     }
 
     console.log('✅ Lançamento atualizado com sucesso. ID:', id);
@@ -10765,7 +10832,62 @@ app.put('/api/gestao-dados/:id', express.json(), async (req, res) => {
     });
   } catch (err) {
     console.error('❌ Erro ao atualizar lançamento:', err);
-    return res.status(500).json({ success: false, error: 'Erro ao atualizar lançamento: ' + (err.message || 'Erro desconhecido') });
+    console.error('❌ Stack trace:', err.stack);
+    return res.status(500).json({ 
+      success: false, 
+      error: 'Erro ao atualizar lançamento: ' + (err.message || 'Erro desconhecido'),
+      details: process.env.NODE_ENV === 'development' ? err.stack : undefined
+    });
+  }
+});
+
+// POST - Upload de evidência
+app.post('/api/gestao-dados/upload-evidencia', uploadDocumentos.single('evidencia'), async (req, res) => {
+  try {
+    const { user, error } = await getUserFromRequest(req);
+    if (error || !user) {
+      return res.status(401).json({ success: false, error: 'Usuário não autenticado' });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({ success: false, error: 'Nenhum arquivo enviado' });
+    }
+
+    // Gerar nome único para o arquivo
+    const timestamp = Date.now();
+    const nomeArquivo = `evidencias/${user.id}/${timestamp}-${req.file.originalname}`;
+
+    // Upload para Supabase Storage
+    const { data: uploadData, error: uploadError } = await supabaseAdmin.storage
+      .from('gestao-dados')
+      .upload(nomeArquivo, req.file.buffer, {
+        contentType: req.file.mimetype,
+        upsert: false
+      });
+
+    if (uploadError) {
+      console.error('❌ Erro ao fazer upload:', uploadError);
+      throw uploadError;
+    }
+
+    // Obter URL pública
+    const { data: publicData } = supabaseAdmin.storage
+      .from('gestao-dados')
+      .getPublicUrl(nomeArquivo);
+
+    console.log('✅ Evidência enviada com sucesso:', publicData.publicUrl);
+
+    return res.json({
+      success: true,
+      url: publicData.publicUrl,
+      path: nomeArquivo
+    });
+  } catch (err) {
+    console.error('❌ Erro ao fazer upload de evidência:', err);
+    return res.status(500).json({ 
+      success: false, 
+      error: 'Erro ao fazer upload de evidência: ' + (err.message || 'Erro desconhecido') 
+    });
   }
 });
 
@@ -10782,35 +10904,83 @@ app.post('/api/gestao-dados/importar-csv', upload.single('csv'), async (req, res
     }
 
     const csvContent = req.file.buffer.toString('utf-8');
-    const lines = csvContent.split('\n').filter(line => line.trim().length > 0);
+    
+    // Parse CSV considerando quebras de linha dentro de campos entre aspas
+    function parseCSVContent(content) {
+      const lines = [];
+      let currentLine = '';
+      let inQuotes = false;
+      
+      for (let i = 0; i < content.length; i++) {
+        const char = content[i];
+        const nextChar = content[i + 1];
+        
+        if (char === '"') {
+          if (inQuotes && nextChar === '"') {
+            // Aspas duplas (escape)
+            currentLine += '"';
+            i++; // Pular próxima aspas
+          } else {
+            // Toggle aspas
+            inQuotes = !inQuotes;
+            currentLine += char;
+          }
+        } else if (char === '\n' && !inQuotes) {
+          // Quebra de linha fora de aspas = nova linha
+          if (currentLine.trim()) {
+            lines.push(currentLine.trim());
+          }
+          currentLine = '';
+        } else {
+          currentLine += char;
+        }
+      }
+      
+      // Adicionar última linha
+      if (currentLine.trim()) {
+        lines.push(currentLine.trim());
+      }
+      
+      return lines;
+    }
+    
+    const lines = parseCSVContent(csvContent);
     
     if (lines.length < 2) {
       return res.status(400).json({ success: false, error: 'CSV deve conter pelo menos um cabeçalho e uma linha de dados' });
     }
 
-    // Parse do CSV (simples, considerando vírgulas e aspas)
+    // Parse do CSV (melhorado, considerando vírgulas e aspas)
     function parseCSVLine(line) {
       const result = [];
       let current = '';
       let inQuotes = false;
+      
+      // Remover quebras de linha no final
+      line = line.trim();
       
       for (let i = 0; i < line.length; i++) {
         const char = line[i];
         
         if (char === '"') {
           if (inQuotes && line[i + 1] === '"') {
+            // Aspas duplas dentro de campo com aspas (escape)
             current += '"';
             i++;
           } else {
+            // Toggle aspas
             inQuotes = !inQuotes;
+            // Não adicionar as aspas ao conteúdo
           }
         } else if (char === ',' && !inQuotes) {
+          // Vírgula fora de aspas = separador de campo
           result.push(current.trim());
           current = '';
         } else {
           current += char;
         }
       }
+      // Adicionar último campo
       result.push(current.trim());
       return result;
     }
@@ -10893,83 +11063,213 @@ app.post('/api/gestao-dados/importar-csv', upload.single('csv'), async (req, res
     
     // Processar linhas de dados
     for (let i = 1; i < lines.length; i++) {
-      const values = parseCSVLine(lines[i]);
+      const line = lines[i].trim();
+      if (!line) continue; // Pular linhas vazias
       
-      if (values.length < 3) continue; // Pular linhas vazias ou incompletas
+      const values = parseCSVLine(line);
+      
+      // Verificar se tem pelo menos os campos obrigatórios (Data, OC, Operação)
+      if (values.length < 3) {
+        console.warn(`Linha ${i + 1}: Poucos campos encontrados (${values.length}), pulando...`);
+        continue;
+      }
+      
+      // Garantir que temos pelo menos 8 campos (preencher com vazios se necessário)
+      while (values.length < 8) {
+        values.push('');
+      }
       
       try {
-        let data = values[headerMap['data']]?.trim() || '';
-        const oc = values[headerMap['oc']]?.trim() || '';
-        const operacao = values[headerMap['operação']]?.trim() || '';
-        const tipoErro = values[headerMap['tipo de erro']]?.trim() || '';
-        const motivoDevolucao = values[headerMap['motivo da devolução']]?.trim() || '';
-        let horaEnvio = values[headerMap['hora envio']]?.trim() || '';
-        let horaRetorno = values[headerMap['hora retorno']]?.trim() || '';
-        const responsavel = values[headerMap['responsável']]?.trim() || '';
+        // Função auxiliar para obter valor do array com fallback
+        function getValue(index, defaultValue = '') {
+          if (index === undefined || index === null || index < 0 || index >= values.length) {
+            return defaultValue;
+          }
+          const value = values[index];
+          return value ? value.trim() : defaultValue;
+        }
+
+        let data = getValue(headerMap['data']);
+        let oc = getValue(headerMap['oc']);
+        const operacao = getValue(headerMap['operação']);
+        const tipoErro = getValue(headerMap['tipo de erro']);
+        const motivoDevolucao = getValue(headerMap['motivo da devolução']);
+        let horaEnvio = getValue(headerMap['hora envio']);
+        let horaRetorno = getValue(headerMap['hora retorno']);
+        let responsavel = getValue(headerMap['responsável']);
+
+        // Log para debug
+        console.log(`Linha ${i + 1}:`, {
+          data,
+          oc,
+          operacao,
+          tipoErro,
+          motivoDevolucao: motivoDevolucao.substring(0, 50),
+          horaEnvio,
+          horaRetorno,
+          responsavel,
+          totalValues: values.length,
+          headerMap
+        });
+
+        // Adicionar prefixo "OC-" se não tiver (caso o Excel tenha removido)
+        if (oc && !oc.toUpperCase().startsWith('OC')) {
+          oc = `OC-${oc}`;
+        }
 
         // Validações básicas
         if (!data || !oc || !operacao) {
-          erros.push(`Linha ${i + 1}: Campos obrigatórios faltando (Data, OC, Operação)`);
+          erros.push(`Linha ${i + 1}: Campos obrigatórios faltando (Data: "${data}", OC: "${oc}", Operação: "${operacao}")`);
           continue;
         }
 
         // Converter data do formato Excel (número serial) para YYYY-MM-DD
         function converterDataExcel(valor) {
+          if (!valor || !valor.toString().trim()) {
+            return null;
+          }
+          
+          const valorStr = valor.toString().trim();
+          
           // Se for um número (formato serial do Excel)
-          const numero = parseFloat(valor.replace(',', '.'));
-          if (!isNaN(numero) && numero > 0 && numero < 1000000) {
+          // IMPORTANTE: Números muito grandes (> 100000) provavelmente são horas, não datas
+          const numero = parseFloat(valorStr.replace(',', '.'));
+          if (!isNaN(numero) && numero > 0 && numero < 100000) {
             // Excel conta dias desde 01/01/1900 (mas tem um bug, então é 30/12/1899)
             const dataBase = new Date(1899, 11, 30); // 30 de dezembro de 1899
             const dataResultado = new Date(dataBase.getTime() + numero * 24 * 60 * 60 * 1000);
             const ano = dataResultado.getFullYear();
-            const mes = String(dataResultado.getMonth() + 1).padStart(2, '0');
-            const dia = String(dataResultado.getDate()).padStart(2, '0');
-            return `${ano}-${mes}-${dia}`;
+            
+            // Validar se a data faz sentido (não pode ser antes de 2000 ou depois de 2100)
+            if (ano < 2000 || ano > 2100) {
+              // Se a data não faz sentido, provavelmente não é uma data serial do Excel
+              // Tentar outros formatos
+            } else {
+              const mes = String(dataResultado.getMonth() + 1).padStart(2, '0');
+              const dia = String(dataResultado.getDate()).padStart(2, '0');
+              return `${ano}-${mes}-${dia}`;
+            }
           }
-          // Se já estiver no formato YYYY-MM-DD ou DD/MM/YYYY
-          if (valor.includes('/')) {
-            const partes = valor.split('/');
+          
+          // Formato "DD.mês" ou "DD.mês." (ex: "11/nov.", "24.11")
+          if (valorStr.includes('.') || valorStr.includes('/')) {
+            // Mapeamento de meses abreviados
+            const mesesMap = {
+              'jan': '01', 'fev': '02', 'mar': '03', 'abr': '04', 'mai': '05', 'jun': '06',
+              'jul': '07', 'ago': '08', 'set': '09', 'out': '10', 'nov': '11', 'dez': '12',
+              'jan.': '01', 'fev.': '02', 'mar.': '03', 'abr.': '04', 'mai.': '05', 'jun.': '06',
+              'jul.': '07', 'ago.': '08', 'set.': '09', 'out.': '10', 'nov.': '11', 'dez.': '12'
+            };
+            
+            // Tentar formato "DD/mês." ou "DD.mês"
+            const matchMes = valorStr.match(/^(\d{1,2})[./]([a-z]{3})\.?$/i);
+            if (matchMes) {
+              const dia = matchMes[1].padStart(2, '0');
+              const mesAbrev = matchMes[2].toLowerCase();
+              const mes = mesesMap[mesAbrev] || mesesMap[mesAbrev + '.'];
+              if (mes) {
+                const ano = new Date().getFullYear(); // Usar ano atual
+                return `${ano}-${mes}-${dia}`;
+              }
+            }
+            
+            // Tentar formato "DD.MM" ou "DD/MM" (ex: "24.11", "11/11")
+            const matchNum = valorStr.match(/^(\d{1,2})[./](\d{1,2})\.?$/);
+            if (matchNum) {
+              const dia = matchNum[1].padStart(2, '0');
+              const mes = matchNum[2].padStart(2, '0');
+              const ano = new Date().getFullYear(); // Usar ano atual
+              // Validar se é uma data válida
+              const dataTeste = new Date(`${ano}-${mes}-${dia}`);
+              if (dataTeste.getDate() == parseInt(dia) && dataTeste.getMonth() + 1 == parseInt(mes)) {
+                return `${ano}-${mes}-${dia}`;
+              }
+            }
+            
+            // Formato DD/MM/YYYY ou MM/DD/YYYY
+            const partes = valorStr.split(/[./]/);
             if (partes.length === 3) {
-              // Assumir formato DD/MM/YYYY ou MM/DD/YYYY
               const dia = partes[0].padStart(2, '0');
               const mes = partes[1].padStart(2, '0');
               const ano = partes[2].length === 4 ? partes[2] : `20${partes[2]}`;
               // Tentar DD/MM/YYYY primeiro
               const dataTeste = new Date(`${ano}-${mes}-${dia}`);
-              if (dataTeste.getDate() == partes[0] && dataTeste.getMonth() + 1 == partes[1]) {
+              if (dataTeste.getDate() == parseInt(partes[0]) && dataTeste.getMonth() + 1 == parseInt(partes[1])) {
                 return `${ano}-${mes}-${dia}`;
               }
               // Se não funcionar, tentar MM/DD/YYYY
               return `${ano}-${dia}-${mes}`;
             }
           }
+          
           // Se já estiver no formato YYYY-MM-DD
-          if (valor.match(/^\d{4}-\d{2}-\d{2}$/)) {
-            return valor;
+          if (valorStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+            return valorStr;
           }
+          
           return null;
         }
 
         // Converter hora do formato Excel (decimal) para HH:MM
         function converterHoraExcel(valor) {
-          // Se for um número decimal (formato do Excel)
-          const numero = parseFloat(valor.replace(',', '.'));
-          if (!isNaN(numero) && numero >= 0 && numero < 1) {
+          if (!valor || !valor.toString().trim()) {
+            return null;
+          }
+          
+          const valorStr = valor.toString().trim();
+          
+          // Se for formato "10;00" (ponto e vírgula), converter para "10:00"
+          if (valorStr.includes(';')) {
+            return valorStr.replace(';', ':');
+          }
+          
+          // Se já estiver no formato HH:MM
+          if (valorStr.match(/^([0-1][0-9]|2[0-3]):[0-5][0-9]$/)) {
+            return valorStr;
+          }
+          
+          // Converter para número (aceitar vírgula ou ponto como separador decimal)
+          // Remover caracteres não numéricos exceto vírgula e ponto
+          const numeroStr = valorStr.replace(/[^\d,.-]/g, '').replace(',', '.');
+          const numero = parseFloat(numeroStr);
+          
+          if (isNaN(numero)) {
+            return null;
+          }
+          
+          // Se for um número muito grande (pode ser data+hora do Excel combinado)
+          // Excel armazena data+hora como número serial onde a parte inteira é a data
+          // e a parte decimal é a hora
+          if (numero >= 1) {
+            // Extrair apenas a parte decimal (hora)
+            const parteDecimal = numero % 1;
+            if (parteDecimal > 0) {
+              const totalSegundos = Math.floor(parteDecimal * 24 * 60 * 60);
+              const horas = Math.floor(totalSegundos / 3600);
+              const minutos = Math.floor((totalSegundos % 3600) / 60);
+              return `${String(horas).padStart(2, '0')}:${String(minutos).padStart(2, '0')}`;
+            }
+            // Se não tem parte decimal mas o número é muito grande, pode ser um erro de formatação
+            // Tentar tratar como se fosse um número serial do Excel com hora zero
+            // Ou pode ser que o Excel tenha salvado apenas a parte inteira
+            // Nesse caso, retornar 00:00
+            return '00:00';
+          }
+          
+          // Se for um número decimal entre 0 e 1 (formato do Excel para hora pura)
+          if (numero >= 0 && numero < 1) {
             // Número decimal representa fração do dia
             const totalSegundos = Math.floor(numero * 24 * 60 * 60);
             const horas = Math.floor(totalSegundos / 3600);
             const minutos = Math.floor((totalSegundos % 3600) / 60);
             return `${String(horas).padStart(2, '0')}:${String(minutos).padStart(2, '0')}`;
           }
-          // Se já estiver no formato HH:MM
-          if (valor.match(/^([0-1][0-9]|2[0-3]):[0-5][0-9]$/)) {
-            return valor;
+          
+          // Se for apenas número inteiro pequeno (horas)
+          if (numero >= 0 && numero < 24 && numero === Math.floor(numero)) {
+            return `${String(Math.floor(numero)).padStart(2, '0')}:00`;
           }
-          // Se for apenas número inteiro (horas)
-          const horasInt = parseInt(valor);
-          if (!isNaN(horasInt) && horasInt >= 0 && horasInt < 24) {
-            return `${String(horasInt).padStart(2, '0')}:00`;
-          }
+          
           return null;
         }
 
@@ -10987,30 +11287,98 @@ app.post('/api/gestao-dados/importar-csv', upload.single('csv'), async (req, res
           erros.push(`Linha ${i + 1}: Data inválida após conversão (${data})`);
           continue;
         }
+        
+        // Validar se a data faz sentido (não pode ser antes de 2000 ou depois de 2100)
+        const ano = dataObj.getFullYear();
+        if (ano < 2000 || ano > 2100) {
+          erros.push(`Linha ${i + 1}: Data fora do intervalo válido (${data} - ano ${ano}). Verifique o formato da data.`);
+          continue;
+        }
 
-        // Converter horas
-        if (horaEnvio) {
-          const horaEnvioConvertida = converterHoraExcel(horaEnvio);
+        // Converter horas (opcionais)
+        const horaEnvioRaw = getValue(headerMap['hora envio']);
+        if (horaEnvioRaw && horaEnvioRaw.toString().trim() && horaEnvioRaw !== '0') {
+          const horaEnvioConvertida = converterHoraExcel(horaEnvioRaw);
           if (horaEnvioConvertida) {
             horaEnvio = horaEnvioConvertida;
+            if (i <= 2) console.log(`  ✅ Hora envio convertida: "${horaEnvioRaw}" -> "${horaEnvioConvertida}"`);
           } else {
-            erros.push(`Linha ${i + 1}: Hora de envio inválida (${horaEnvio})`);
-            continue;
+            // Se não conseguir converter, usar valor padrão
+            if (i <= 2) console.warn(`  ⚠️ Hora de envio inválida ("${horaEnvioRaw}"), usando 00:00`);
+            horaEnvio = '00:00';
           }
         } else {
           horaEnvio = '00:00';
         }
 
-        if (horaRetorno) {
-          const horaRetornoConvertida = converterHoraExcel(horaRetorno);
+        const horaRetornoRaw = getValue(headerMap['hora retorno']);
+        if (horaRetornoRaw && horaRetornoRaw.toString().trim() && horaRetornoRaw !== '0') {
+          const horaRetornoConvertida = converterHoraExcel(horaRetornoRaw);
           if (horaRetornoConvertida) {
             horaRetorno = horaRetornoConvertida;
+            if (i <= 2) console.log(`  ✅ Hora retorno convertida: "${horaRetornoRaw}" -> "${horaRetornoConvertida}"`);
           } else {
-            erros.push(`Linha ${i + 1}: Hora de retorno inválida (${horaRetorno})`);
-            continue;
+            // Se não conseguir converter, usar valor padrão
+            if (i <= 2) console.warn(`  ⚠️ Hora de retorno inválida ("${horaRetornoRaw}"), usando 00:00`);
+            horaRetorno = '00:00';
           }
         } else {
           horaRetorno = '00:00';
+        }
+
+        // Buscar responsável - pode estar em diferentes posições se o CSV tiver campos extras
+        // Tentar índice do mapeamento primeiro
+        let responsavelRaw = getValue(headerMap['responsável']);
+        
+        // Se estiver vazio ou for um número grande (erro de parse), tentar pegar da última coluna
+        const isNumeroGrande = responsavelRaw && /^\d{10,}$/.test(responsavelRaw.toString().trim());
+        if (!responsavelRaw || !responsavelRaw.trim() || isNumeroGrande) {
+          if (isNumeroGrande && i <= 2) {
+            console.warn(`  ⚠️ Responsável parece ser um número grande (${responsavelRaw}), buscando em outras colunas...`);
+          }
+          
+          // Tentar últimas 3 colunas não vazias que não sejam numéricas
+          for (let idx = values.length - 1; idx >= Math.max(0, values.length - 3); idx--) {
+            const val = values[idx]?.trim();
+            if (val && val.length > 2) {
+              // Verificar se não é um número (incluindo números grandes)
+              const isNumber = /^\d+[.,]?\d*$/.test(val);
+              const isNumeroMuitoGrande = /^\d{10,}$/.test(val); // Números com 10+ dígitos são provavelmente horas/datas
+              
+              if (!isNumber && !isNumeroMuitoGrande) {
+                // Verificar se parece um nome (tem letras, não é só números)
+                const temLetras = /[a-zA-ZÀ-ÿ]/.test(val);
+                if (temLetras) {
+                  responsavelRaw = val;
+                  if (i <= 2) console.log(`  🔍 Responsável encontrado na coluna ${idx} (última não numérica): "${responsavelRaw}"`);
+                  break;
+                }
+              }
+            }
+          }
+        }
+        
+        // Validar se o responsável encontrado não é um número
+        if (responsavelRaw && responsavelRaw.trim()) {
+          const responsavelStr = responsavelRaw.toString().trim();
+          const isNumero = /^\d+[.,]?\d*$/.test(responsavelStr);
+          const isNumeroGrande = /^\d{10,}$/.test(responsavelStr);
+          
+          if (isNumero || isNumeroGrande) {
+            if (i <= 2) console.warn(`  ⚠️ Responsável é um número (${responsavelStr}), usando "Não informado"`);
+            responsavel = 'Não informado';
+          } else {
+            responsavel = responsavelStr;
+            if (i <= 2) console.log(`  ✅ Responsável: "${responsavel}"`);
+          }
+        } else {
+          if (i <= 2) {
+            console.warn(`  ⚠️ Responsável não encontrado`);
+            console.warn(`     Índice esperado: ${headerMap['responsável']}`);
+            console.warn(`     Total de campos: ${values.length}`);
+            console.warn(`     Últimas 3 colunas: ${values.slice(-3).map((v, idx) => `[${values.length - 3 + idx}]="${v}"`).join(', ')}`);
+          }
+          responsavel = 'Não informado';
         }
 
         dadosParaInserir.push({
@@ -11019,11 +11387,15 @@ app.post('/api/gestao-dados/importar-csv', upload.single('csv'), async (req, res
           operacao: operacao.substring(0, 100),
           tipo_erro: tipoErro || 'Erro de Tabela',
           motivo_devolucao: motivoDevolucao || 'Não informado',
-          hora_envio: horaEnvio || '00:00',
-          hora_retorno: horaRetorno || '00:00',
+          hora_envio: horaEnvio,
+          hora_retorno: horaRetorno,
           responsavel: responsavel || 'Não informado',
           usuario_id: user.id,
-          usuario_nome: user.email || 'Usuário'
+          usuario_nome: user.email || 'Usuário',
+          // Campos de auditoria - criação
+          criado_por_id: user.id,
+          criado_por_nome: user.email || user.nome || 'Usuário',
+          criado_em: new Date().toISOString()
         });
       } catch (err) {
         erros.push(`Linha ${i + 1}: ${err.message}`);
@@ -11069,6 +11441,82 @@ app.post('/api/gestao-dados/importar-csv', upload.single('csv'), async (req, res
   } catch (err) {
     console.error('❌ Erro ao importar CSV:', err);
     return res.status(500).json({ success: false, error: 'Erro ao importar CSV: ' + (err.message || 'Erro desconhecido') });
+  }
+});
+
+// DELETE - Excluir todos os registros (apenas admin)
+app.delete('/api/gestao-dados/excluir-todos', async (req, res) => {
+  try {
+    const { user, error } = await getUserFromRequest(req);
+    if (error || !user) {
+      return res.status(401).json({ success: false, error: 'Usuário não autenticado' });
+    }
+
+    // Verificar se é admin
+    const isAdmin = req.session?.usuario?.isAdmin || false;
+    
+    // Verificar também no banco de dados
+    let isAdminFromDb = false;
+    try {
+      const { data: profile, error: profileError } = await supabaseAdmin
+        .from('user_profiles')
+        .select('role')
+        .eq('id', user.id)
+        .maybeSingle();
+      
+      if (!profileError && profile && (profile.role === 'admin' || profile.role === 'projetos')) {
+        isAdminFromDb = true;
+      }
+    } catch (e) {
+      console.warn('⚠️ Erro ao verificar role no banco:', e);
+    }
+
+    if (!isAdmin && !isAdminFromDb) {
+      return res.status(403).json({ 
+        success: false, 
+        error: 'Apenas administradores podem excluir todos os registros' 
+      });
+    }
+
+    // Contar registros antes de excluir
+    const { count, error: countError } = await supabaseAdmin
+      .from('gestao_dados')
+      .select('*', { count: 'exact', head: true });
+
+    if (countError) {
+      throw countError;
+    }
+
+    const totalRegistros = count || 0;
+
+    if (totalRegistros === 0) {
+      return res.json({
+        success: true,
+        excluidos: 0,
+        message: 'Não há registros para excluir'
+      });
+    }
+
+    // Excluir todos os registros
+    const { error: deleteError } = await supabaseAdmin
+      .from('gestao_dados')
+      .delete()
+      .neq('id', '00000000-0000-0000-0000-000000000000'); // Excluir todos (usando condição sempre verdadeira)
+
+    if (deleteError) {
+      throw deleteError;
+    }
+
+    console.log(`✅ ${totalRegistros} registro(s) excluído(s) por admin: ${user.email || user.id}`);
+
+    return res.json({
+      success: true,
+      excluidos: totalRegistros,
+      message: `${totalRegistros} registro(s) excluído(s) com sucesso`
+    });
+  } catch (err) {
+    console.error('❌ Erro ao excluir todos os registros:', err);
+    return res.status(500).json({ success: false, error: 'Erro ao excluir registros: ' + (err.message || 'Erro desconhecido') });
   }
 });
 

@@ -153,6 +153,7 @@ async function verificarPermissaoPagina(pageName) {
             // Gestão
             'cadastro': 'cadastro',
             'relatorios': 'relatorios',
+            'gestao-dados': 'gestao-dados',
             
             // Financeiro
             'contas-pagar': 'contas-pagar',
