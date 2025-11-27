@@ -10590,6 +10590,544 @@ app.get('/api/treinamentos/status', async (req, res) => {
   }
 });
 
+// ========== GESTÃO DE DADOS ==========
+// GET - Listar todos os lançamentos
+app.get('/api/gestao-dados', async (req, res) => {
+  try {
+    const { user, error } = await getUserFromRequest(req);
+    if (error || !user) {
+      return res.status(401).json({ success: false, error: 'Usuário não autenticado' });
+    }
+
+    const { data, error: queryError } = await supabaseAdmin
+      .from('gestao_dados')
+      .select('*')
+      .order('data', { ascending: false })
+      .order('created_at', { ascending: false });
+
+    if (queryError) {
+      throw queryError;
+    }
+
+    return res.json({
+      success: true,
+      data: data || []
+    });
+  } catch (err) {
+    console.error('❌ Erro ao listar dados de gestão:', err);
+    return res.status(500).json({ success: false, error: 'Erro ao listar dados: ' + (err.message || 'Erro desconhecido') });
+  }
+});
+
+// POST - Criar novo lançamento
+app.post('/api/gestao-dados', express.json(), async (req, res) => {
+  try {
+    const { user, error } = await getUserFromRequest(req);
+    if (error || !user) {
+      return res.status(401).json({ success: false, error: 'Usuário não autenticado' });
+    }
+
+    const {
+      data,
+      oc,
+      operacao,
+      tipo_erro,
+      motivo_devolucao,
+      hora_envio,
+      hora_retorno,
+      responsavel,
+      usuario_id,
+      usuario_nome
+    } = req.body;
+
+    // Validações
+    if (!data || !oc || !operacao || !tipo_erro || !motivo_devolucao || !hora_envio || !hora_retorno || !responsavel) {
+      return res.status(400).json({
+        success: false,
+        error: 'Todos os campos obrigatórios devem ser preenchidos'
+      });
+    }
+
+    const dadosInsercao = {
+      data,
+      oc: oc.trim(),
+      operacao: operacao.trim(),
+      tipo_erro: tipo_erro.trim(),
+      motivo_devolucao: motivo_devolucao.trim(),
+      hora_envio,
+      hora_retorno,
+      responsavel: responsavel.trim(),
+      usuario_id: usuario_id || user.id,
+      usuario_nome: usuario_nome || user.email || 'Usuário'
+    };
+
+    const { data: insertedData, error: insertError } = await supabaseAdmin
+      .from('gestao_dados')
+      .insert([dadosInsercao])
+      .select();
+
+    if (insertError) {
+      throw insertError;
+    }
+
+    console.log('✅ Lançamento salvo com sucesso. ID:', insertedData?.[0]?.id);
+
+    return res.json({
+      success: true,
+      data: insertedData[0]
+    });
+  } catch (err) {
+    console.error('❌ Erro ao salvar lançamento:', err);
+    return res.status(500).json({ success: false, error: 'Erro ao salvar lançamento: ' + (err.message || 'Erro desconhecido') });
+  }
+});
+
+// PUT - Atualizar lançamento
+app.put('/api/gestao-dados/:id', express.json(), async (req, res) => {
+  try {
+    const { user, error } = await getUserFromRequest(req);
+    if (error || !user) {
+      return res.status(401).json({ success: false, error: 'Usuário não autenticado' });
+    }
+
+    const { id } = req.params;
+
+    if (!id) {
+      return res.status(400).json({ success: false, error: 'ID é obrigatório' });
+    }
+
+    const {
+      data,
+      oc,
+      operacao,
+      tipo_erro,
+      motivo_devolucao,
+      hora_envio,
+      hora_retorno,
+      responsavel
+    } = req.body;
+
+    // Validações
+    if (!data || !oc || !operacao || !tipo_erro || !motivo_devolucao || !hora_envio || !hora_retorno || !responsavel) {
+      return res.status(400).json({
+        success: false,
+        error: 'Todos os campos obrigatórios devem ser preenchidos'
+      });
+    }
+
+    // Verificar se o registro existe e pertence ao usuário
+    const { data: registro, error: selectError } = await supabaseAdmin
+      .from('gestao_dados')
+      .select('id, usuario_id')
+      .eq('id', id)
+      .maybeSingle();
+
+    if (selectError) {
+      throw selectError;
+    }
+
+    if (!registro) {
+      return res.status(404).json({ success: false, error: 'Registro não encontrado' });
+    }
+
+    // Verificar se o usuário é o dono do registro (ou admin)
+    const isAdmin = req.session?.usuario?.isAdmin || false;
+    if (registro.usuario_id !== user.id && !isAdmin) {
+      return res.status(403).json({ success: false, error: 'Você não tem permissão para editar este registro' });
+    }
+
+    const dadosAtualizacao = {
+      data,
+      oc: oc.trim(),
+      operacao: operacao.trim(),
+      tipo_erro: tipo_erro.trim(),
+      motivo_devolucao: motivo_devolucao.trim(),
+      hora_envio,
+      hora_retorno,
+      responsavel: responsavel.trim()
+    };
+
+    const { data: updatedData, error: updateError } = await supabaseAdmin
+      .from('gestao_dados')
+      .update(dadosAtualizacao)
+      .eq('id', id)
+      .select();
+
+    if (updateError) {
+      throw updateError;
+    }
+
+    console.log('✅ Lançamento atualizado com sucesso. ID:', id);
+
+    return res.json({
+      success: true,
+      data: updatedData[0]
+    });
+  } catch (err) {
+    console.error('❌ Erro ao atualizar lançamento:', err);
+    return res.status(500).json({ success: false, error: 'Erro ao atualizar lançamento: ' + (err.message || 'Erro desconhecido') });
+  }
+});
+
+// POST - Importar CSV em massa
+app.post('/api/gestao-dados/importar-csv', upload.single('csv'), async (req, res) => {
+  try {
+    const { user, error } = await getUserFromRequest(req);
+    if (error || !user) {
+      return res.status(401).json({ success: false, error: 'Usuário não autenticado' });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({ success: false, error: 'Nenhum arquivo CSV enviado' });
+    }
+
+    const csvContent = req.file.buffer.toString('utf-8');
+    const lines = csvContent.split('\n').filter(line => line.trim().length > 0);
+    
+    if (lines.length < 2) {
+      return res.status(400).json({ success: false, error: 'CSV deve conter pelo menos um cabeçalho e uma linha de dados' });
+    }
+
+    // Parse do CSV (simples, considerando vírgulas e aspas)
+    function parseCSVLine(line) {
+      const result = [];
+      let current = '';
+      let inQuotes = false;
+      
+      for (let i = 0; i < line.length; i++) {
+        const char = line[i];
+        
+        if (char === '"') {
+          if (inQuotes && line[i + 1] === '"') {
+            current += '"';
+            i++;
+          } else {
+            inQuotes = !inQuotes;
+          }
+        } else if (char === ',' && !inQuotes) {
+          result.push(current.trim());
+          current = '';
+        } else {
+          current += char;
+        }
+      }
+      result.push(current.trim());
+      return result;
+    }
+
+    // Parse da primeira linha (cabeçalhos)
+    const rawHeaders = parseCSVLine(lines[0]);
+    const headers = rawHeaders.map(h => h.trim().replace(/^["']|["']$/g, '').toLowerCase());
+    
+    console.log('📋 Cabeçalhos brutos:', rawHeaders);
+    console.log('📋 Cabeçalhos normalizados:', headers);
+    
+    // Função para normalizar e comparar cabeçalhos
+    function normalizeHeader(header) {
+      return header
+        .toLowerCase()
+        .trim()
+        .replace(/^["']|["']$/g, '')
+        .replace(/[áàâãä]/g, 'a')
+        .replace(/[éèêë]/g, 'e')
+        .replace(/[íìîï]/g, 'i')
+        .replace(/[óòôõö]/g, 'o')
+        .replace(/[úùûü]/g, 'u')
+        .replace(/ç/g, 'c')
+        .replace(/\s+/g, ' ')
+        .replace(/[^\w\s]/g, '');
+    }
+    
+    // Mapear cabeçalhos esperados com variações
+    const headerMappings = {
+      'data': ['data', 'date', 'data do lancamento', 'data do lançamento', 'data_lancamento'],
+      'oc': ['oc', 'ordem de coleta', 'ordem_coleta', 'ordem coleta', 'oc-', 'oc_', 'oc numero'],
+      'operação': ['operação', 'operacao', 'operacao', 'op', 'tipo operacao', 'tipo_operacao', 'operacao tipo'],
+      'tipo de erro': ['tipo de erro', 'tipo erro', 'tipo_erro', 'erro', 'tipo', 'tipo erro', 'tipo_de_erro'],
+      'motivo da devolução': ['motivo da devolução', 'motivo devolucao', 'motivo', 'devolucao', 'motivo da devolucao', 'motivo_devolucao', 'motivo devolução'],
+      'hora envio': ['hora envio', 'hora_envio', 'hora que enviou', 'envio', 'hora envio demanda', 'hora_envio_demanda', 'hora que enviou a demanda'],
+      'hora retorno': ['hora retorno', 'hora_retorno', 'hora que retornou', 'retorno', 'hora retorno demanda', 'hora_retorno_demanda', 'hora que retornou a demanda'],
+      'responsável': ['responsável', 'responsavel', 'responsavel', 'resp', 'responsavel nome', 'responsavel_nome', 'responsavel_nome']
+    };
+    
+    const headerMap = {};
+    
+    // Procurar cada cabeçalho esperado
+    Object.keys(headerMappings).forEach(key => {
+      const variations = headerMappings[key];
+      for (const variation of variations) {
+        const normalized = normalizeHeader(variation);
+        const index = headers.findIndex(h => {
+          const normalizedH = normalizeHeader(h);
+          // Comparação mais flexível
+          return normalizedH === normalized || 
+                 normalizedH.includes(normalized) || 
+                 normalized.includes(normalizedH) ||
+                 normalizedH.replace(/\s/g, '') === normalized.replace(/\s/g, '');
+        });
+        if (index !== -1) {
+          headerMap[key] = index;
+          console.log(`✅ Cabeçalho "${key}" encontrado na coluna ${index} (${rawHeaders[index]})`);
+          break;
+        }
+      }
+    });
+
+    console.log('📊 Mapeamento final:', headerMap);
+
+    // Validar se encontrou os cabeçalhos principais
+    if (headerMap['data'] === undefined || headerMap['oc'] === undefined || headerMap['operação'] === undefined) {
+      const missing = [];
+      if (headerMap['data'] === undefined) missing.push('Data');
+      if (headerMap['oc'] === undefined) missing.push('OC');
+      if (headerMap['operação'] === undefined) missing.push('Operação');
+      
+      return res.status(400).json({ 
+        success: false, 
+        error: `CSV deve conter as colunas: ${missing.join(', ')}. Cabeçalhos encontrados: ${rawHeaders.join(', ')}` 
+      });
+    }
+
+    const dadosParaInserir = [];
+    const erros = [];
+    
+    // Processar linhas de dados
+    for (let i = 1; i < lines.length; i++) {
+      const values = parseCSVLine(lines[i]);
+      
+      if (values.length < 3) continue; // Pular linhas vazias ou incompletas
+      
+      try {
+        let data = values[headerMap['data']]?.trim() || '';
+        const oc = values[headerMap['oc']]?.trim() || '';
+        const operacao = values[headerMap['operação']]?.trim() || '';
+        const tipoErro = values[headerMap['tipo de erro']]?.trim() || '';
+        const motivoDevolucao = values[headerMap['motivo da devolução']]?.trim() || '';
+        let horaEnvio = values[headerMap['hora envio']]?.trim() || '';
+        let horaRetorno = values[headerMap['hora retorno']]?.trim() || '';
+        const responsavel = values[headerMap['responsável']]?.trim() || '';
+
+        // Validações básicas
+        if (!data || !oc || !operacao) {
+          erros.push(`Linha ${i + 1}: Campos obrigatórios faltando (Data, OC, Operação)`);
+          continue;
+        }
+
+        // Converter data do formato Excel (número serial) para YYYY-MM-DD
+        function converterDataExcel(valor) {
+          // Se for um número (formato serial do Excel)
+          const numero = parseFloat(valor.replace(',', '.'));
+          if (!isNaN(numero) && numero > 0 && numero < 1000000) {
+            // Excel conta dias desde 01/01/1900 (mas tem um bug, então é 30/12/1899)
+            const dataBase = new Date(1899, 11, 30); // 30 de dezembro de 1899
+            const dataResultado = new Date(dataBase.getTime() + numero * 24 * 60 * 60 * 1000);
+            const ano = dataResultado.getFullYear();
+            const mes = String(dataResultado.getMonth() + 1).padStart(2, '0');
+            const dia = String(dataResultado.getDate()).padStart(2, '0');
+            return `${ano}-${mes}-${dia}`;
+          }
+          // Se já estiver no formato YYYY-MM-DD ou DD/MM/YYYY
+          if (valor.includes('/')) {
+            const partes = valor.split('/');
+            if (partes.length === 3) {
+              // Assumir formato DD/MM/YYYY ou MM/DD/YYYY
+              const dia = partes[0].padStart(2, '0');
+              const mes = partes[1].padStart(2, '0');
+              const ano = partes[2].length === 4 ? partes[2] : `20${partes[2]}`;
+              // Tentar DD/MM/YYYY primeiro
+              const dataTeste = new Date(`${ano}-${mes}-${dia}`);
+              if (dataTeste.getDate() == partes[0] && dataTeste.getMonth() + 1 == partes[1]) {
+                return `${ano}-${mes}-${dia}`;
+              }
+              // Se não funcionar, tentar MM/DD/YYYY
+              return `${ano}-${dia}-${mes}`;
+            }
+          }
+          // Se já estiver no formato YYYY-MM-DD
+          if (valor.match(/^\d{4}-\d{2}-\d{2}$/)) {
+            return valor;
+          }
+          return null;
+        }
+
+        // Converter hora do formato Excel (decimal) para HH:MM
+        function converterHoraExcel(valor) {
+          // Se for um número decimal (formato do Excel)
+          const numero = parseFloat(valor.replace(',', '.'));
+          if (!isNaN(numero) && numero >= 0 && numero < 1) {
+            // Número decimal representa fração do dia
+            const totalSegundos = Math.floor(numero * 24 * 60 * 60);
+            const horas = Math.floor(totalSegundos / 3600);
+            const minutos = Math.floor((totalSegundos % 3600) / 60);
+            return `${String(horas).padStart(2, '0')}:${String(minutos).padStart(2, '0')}`;
+          }
+          // Se já estiver no formato HH:MM
+          if (valor.match(/^([0-1][0-9]|2[0-3]):[0-5][0-9]$/)) {
+            return valor;
+          }
+          // Se for apenas número inteiro (horas)
+          const horasInt = parseInt(valor);
+          if (!isNaN(horasInt) && horasInt >= 0 && horasInt < 24) {
+            return `${String(horasInt).padStart(2, '0')}:00`;
+          }
+          return null;
+        }
+
+        // Converter data
+        const dataConvertida = converterDataExcel(data);
+        if (!dataConvertida) {
+          erros.push(`Linha ${i + 1}: Data inválida (${data})`);
+          continue;
+        }
+        data = dataConvertida;
+
+        // Validar data convertida
+        const dataObj = new Date(data);
+        if (isNaN(dataObj.getTime())) {
+          erros.push(`Linha ${i + 1}: Data inválida após conversão (${data})`);
+          continue;
+        }
+
+        // Converter horas
+        if (horaEnvio) {
+          const horaEnvioConvertida = converterHoraExcel(horaEnvio);
+          if (horaEnvioConvertida) {
+            horaEnvio = horaEnvioConvertida;
+          } else {
+            erros.push(`Linha ${i + 1}: Hora de envio inválida (${horaEnvio})`);
+            continue;
+          }
+        } else {
+          horaEnvio = '00:00';
+        }
+
+        if (horaRetorno) {
+          const horaRetornoConvertida = converterHoraExcel(horaRetorno);
+          if (horaRetornoConvertida) {
+            horaRetorno = horaRetornoConvertida;
+          } else {
+            erros.push(`Linha ${i + 1}: Hora de retorno inválida (${horaRetorno})`);
+            continue;
+          }
+        } else {
+          horaRetorno = '00:00';
+        }
+
+        dadosParaInserir.push({
+          data: dataObj.toISOString().split('T')[0],
+          oc: oc.substring(0, 50),
+          operacao: operacao.substring(0, 100),
+          tipo_erro: tipoErro || 'Erro de Tabela',
+          motivo_devolucao: motivoDevolucao || 'Não informado',
+          hora_envio: horaEnvio || '00:00',
+          hora_retorno: horaRetorno || '00:00',
+          responsavel: responsavel || 'Não informado',
+          usuario_id: user.id,
+          usuario_nome: user.email || 'Usuário'
+        });
+      } catch (err) {
+        erros.push(`Linha ${i + 1}: ${err.message}`);
+      }
+    }
+
+    if (dadosParaInserir.length === 0) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Nenhum dado válido encontrado no CSV',
+        erros: erros
+      });
+    }
+
+    // Inserir em lotes de 100 para evitar timeout
+    const batchSize = 100;
+    let importados = 0;
+    const errosInsercao = [];
+
+    for (let i = 0; i < dadosParaInserir.length; i += batchSize) {
+      const batch = dadosParaInserir.slice(i, i + batchSize);
+      
+      const { data: insertedData, error: insertError } = await supabaseAdmin
+        .from('gestao_dados')
+        .insert(batch)
+        .select();
+
+      if (insertError) {
+        errosInsercao.push(`Erro ao inserir lote ${Math.floor(i / batchSize) + 1}: ${insertError.message}`);
+      } else {
+        importados += insertedData?.length || 0;
+      }
+    }
+
+    console.log(`✅ CSV importado: ${importados} registro(s) inserido(s)`);
+
+    return res.json({
+      success: true,
+      importados,
+      total: dadosParaInserir.length,
+      erros: [...erros, ...errosInsercao]
+    });
+  } catch (err) {
+    console.error('❌ Erro ao importar CSV:', err);
+    return res.status(500).json({ success: false, error: 'Erro ao importar CSV: ' + (err.message || 'Erro desconhecido') });
+  }
+});
+
+// DELETE - Excluir lançamento
+app.delete('/api/gestao-dados/:id', async (req, res) => {
+  try {
+    const { user, error } = await getUserFromRequest(req);
+    if (error || !user) {
+      return res.status(401).json({ success: false, error: 'Usuário não autenticado' });
+    }
+
+    const { id } = req.params;
+
+    if (!id) {
+      return res.status(400).json({ success: false, error: 'ID é obrigatório' });
+    }
+
+    // Verificar se o registro existe e pertence ao usuário
+    const { data: registro, error: selectError } = await supabaseAdmin
+      .from('gestao_dados')
+      .select('id, usuario_id')
+      .eq('id', id)
+      .maybeSingle();
+
+    if (selectError) {
+      throw selectError;
+    }
+
+    if (!registro) {
+      return res.status(404).json({ success: false, error: 'Registro não encontrado' });
+    }
+
+    // Verificar se o usuário é o dono do registro (ou admin)
+    const isAdmin = req.session?.usuario?.isAdmin || false;
+    if (registro.usuario_id !== user.id && !isAdmin) {
+      return res.status(403).json({ success: false, error: 'Você não tem permissão para excluir este registro' });
+    }
+
+    const { error: deleteError } = await supabaseAdmin
+      .from('gestao_dados')
+      .delete()
+      .eq('id', id);
+
+    if (deleteError) {
+      throw deleteError;
+    }
+
+    console.log('✅ Lançamento excluído com sucesso. ID:', id);
+
+    return res.json({
+      success: true,
+      message: 'Registro excluído com sucesso'
+    });
+  } catch (err) {
+    console.error('❌ Erro ao excluir lançamento:', err);
+    return res.status(500).json({ success: false, error: 'Erro ao excluir registro: ' + (err.message || 'Erro desconhecido') });
+  }
+});
+
 // Função auxiliar para obter usuário autenticado (sessão ou Supabase)
 async function getUserFromRequest(req) {
   // Tentar autenticação via sessão primeiro
