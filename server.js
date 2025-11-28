@@ -10477,6 +10477,251 @@ app.get('/api/relatorios/disparos/series', async (req, res) => {
   }
 });
 
+// ========== BI GESTÃO DE DADOS ==========
+// GET - KPIs de Gestão de Dados
+app.get('/api/relatorios/gestao-dados/kpis', async (req, res) => {
+  try {
+    const { inicio, fim, operacao } = req.query;
+    
+    console.log('📊 BI Gestão KPIs - Parâmetros recebidos:', { inicio, fim, operacao });
+    
+    let query = supabaseAdmin
+      .from('gestao_dados')
+      .select('*', { count: 'exact' });
+    
+    if (inicio && inicio.trim() !== '') query = query.gte('data', inicio);
+    if (fim && fim.trim() !== '') query = query.lte('data', fim);
+    if (operacao && operacao.trim() !== '') query = query.eq('operacao', operacao.trim());
+    
+    // Buscar todos os registros com paginação
+    const allRecords = [];
+    let page = 0;
+    const pageSize = 1000;
+    let hasMore = true;
+    
+    while (hasMore) {
+      const { data, error, count } = await query
+        .range(page * pageSize, (page + 1) * pageSize - 1);
+      
+      if (error) {
+        console.error('❌ Erro ao buscar registros gestao_dados:', error);
+        throw error;
+      }
+      
+      if (data && data.length > 0) {
+        allRecords.push(...data);
+        page++;
+        if (data.length < pageSize) hasMore = false;
+      } else {
+        hasMore = false;
+      }
+    }
+    
+    console.log(`📊 BI Gestão: Total de registros encontrados: ${allRecords.length} (filtros: inicio=${inicio || 'todos'}, fim=${fim || 'todos'})`);
+    
+    const total = allRecords.length;
+    
+    // Calcular métricas
+    const tiposErro = new Map();
+    const operacoes = new Map();
+    const responsaveis = new Map();
+    const usuariosCriacao = new Map();
+    let totalEditados = 0;
+    let totalTempoResposta = 0;
+    let registrosComTempo = 0;
+    
+    allRecords.forEach(record => {
+      // Tipos de erro
+      if (record.tipo_erro) {
+        tiposErro.set(record.tipo_erro, (tiposErro.get(record.tipo_erro) || 0) + 1);
+      }
+      
+      // Operações
+      if (record.operacao) {
+        operacoes.set(record.operacao, (operacoes.get(record.operacao) || 0) + 1);
+      }
+      
+      // Responsáveis
+      if (record.responsavel) {
+        responsaveis.set(record.responsavel, (responsaveis.get(record.responsavel) || 0) + 1);
+      }
+      
+      // Usuários que criaram
+      const criadoPor = record.criado_por_nome || record.usuario_nome || null;
+      if (criadoPor) {
+        usuariosCriacao.set(criadoPor, (usuariosCriacao.get(criadoPor) || 0) + 1);
+      }
+      
+      // Verificar se foi editado
+      if (record.editado_em) {
+        totalEditados++;
+      }
+      
+      // Calcular tempo entre envio e retorno
+      if (record.hora_envio && record.hora_retorno) {
+        try {
+          const [hEnvio, mEnvio] = record.hora_envio.split(':').map(Number);
+          const [hRetorno, mRetorno] = record.hora_retorno.split(':').map(Number);
+          const minutosEnvio = hEnvio * 60 + mEnvio;
+          const minutosRetorno = hRetorno * 60 + mRetorno;
+          let diferenca = minutosRetorno - minutosEnvio;
+          if (diferenca < 0) diferenca += 24 * 60; // Se passar da meia-noite
+          totalTempoResposta += diferenca;
+          registrosComTempo++;
+        } catch (e) {
+          // Ignorar erros de parsing
+        }
+      }
+    });
+    
+    const tempoMedioResposta = registrosComTempo > 0 
+      ? Math.round(totalTempoResposta / registrosComTempo) 
+      : 0;
+    
+    const taxaEdicao = total > 0 ? ((totalEditados / total) * 100).toFixed(1) : 0;
+    
+    // Top 5 de cada categoria
+    const topTiposErro = Array.from(tiposErro.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([tipo, count]) => ({ tipo, count }));
+    
+    const topOperacoes = Array.from(operacoes.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([operacao, count]) => ({ operacao, count }));
+    
+    const topResponsaveis = Array.from(responsaveis.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 10)
+      .map(([responsavel, count]) => ({ responsavel, count }));
+    
+    const topUsuariosCriacao = Array.from(usuariosCriacao.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 10)
+      .map(([usuario, count]) => ({ usuario, count }));
+    
+    const response = {
+      total,
+      totalEditados,
+      taxaEdicao: parseFloat(taxaEdicao),
+      tempoMedioResposta,
+      topTiposErro,
+      topOperacoes,
+      topResponsaveis,
+      topUsuariosCriacao
+    };
+    
+    console.log('📊 BI Gestão KPIs - Resposta:', JSON.stringify(response, null, 2));
+    
+    res.json(response);
+  } catch (e) {
+    console.error('❌ Erro KPIs gestão dados:', e);
+    res.status(500).json({ error: 'Erro ao carregar KPIs de gestão de dados', details: e.message });
+  }
+});
+
+// GET - Séries temporais de Gestão de Dados
+app.get('/api/relatorios/gestao-dados/series', async (req, res) => {
+  try {
+    const { inicio, fim, operacao } = req.query;
+    
+    console.log('📈 BI Gestão Séries - Parâmetros recebidos:', { inicio, fim, operacao });
+    
+    let query = supabaseAdmin
+      .from('gestao_dados')
+      .select('data, tipo_erro, operacao, responsavel, criado_em, editado_em');
+    
+    if (inicio && inicio.trim() !== '') query = query.gte('data', inicio);
+    if (fim && fim.trim() !== '') query = query.lte('data', fim);
+    if (operacao && operacao.trim() !== '') query = query.eq('operacao', operacao.trim());
+    
+    // Buscar todos os registros com paginação
+    const allRecords = [];
+    let page = 0;
+    const pageSize = 1000;
+    let hasMore = true;
+    
+    while (hasMore) {
+      const { data, error } = await query
+        .range(page * pageSize, (page + 1) * pageSize - 1);
+      
+      if (error) throw error;
+      
+      if (data && data.length > 0) {
+        allRecords.push(...data);
+        page++;
+        if (data.length < pageSize) hasMore = false;
+      } else {
+        hasMore = false;
+      }
+    }
+    
+    // Agrupar por dia
+    const porDia = new Map();
+    const porTipoErro = new Map();
+    const porOperacao = new Map();
+    
+    // Agrupar por data e tipo de erro (para árvore de perdas)
+    const porDataETipoErro = new Map();
+    
+    allRecords.forEach(record => {
+      // Por dia
+      if (record.data) {
+        const key = record.data;
+        porDia.set(key, (porDia.get(key) || 0) + 1);
+      }
+      
+      // Por tipo de erro
+      if (record.tipo_erro) {
+        porTipoErro.set(record.tipo_erro, (porTipoErro.get(record.tipo_erro) || 0) + 1);
+      }
+      
+      // Por operação
+      if (record.operacao) {
+        porOperacao.set(record.operacao, (porOperacao.get(record.operacao) || 0) + 1);
+      }
+      
+      // Por data e tipo de erro (para gráfico agrupado)
+      if (record.data && record.tipo_erro) {
+        const key = `${record.data}|${record.tipo_erro}`;
+        porDataETipoErro.set(key, (porDataETipoErro.get(key) || 0) + 1);
+      }
+    });
+    
+    const byDay = Array.from(porDia.entries())
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([date, count]) => ({ date, count }));
+    
+    const byTipoErro = Array.from(porTipoErro.entries())
+      .sort((a, b) => b[1] - a[1])
+      .map(([tipo, count]) => ({ tipo, count }));
+    
+    const byOperacao = Array.from(porOperacao.entries())
+      .sort((a, b) => b[1] - a[1])
+      .map(([operacao, count]) => ({ operacao, count }));
+    
+    // Dados agrupados por data e tipo de erro
+    const byDataETipoErro = Array.from(porDataETipoErro.entries())
+      .map(([key, count]) => {
+        const [data, tipoErro] = key.split('|');
+        return { data, tipoErro, count };
+      });
+    
+    const response = { byDay, byTipoErro, byOperacao, byDataETipoErro };
+    console.log('📈 BI Gestão Séries - Resposta:', JSON.stringify({
+      byDay: byDay.length,
+      byTipoErro: byTipoErro.length,
+      byOperacao: byOperacao.length
+    }, null, 2));
+    
+    res.json(response);
+  } catch (e) {
+    console.error('❌ Erro séries gestão dados:', e);
+    res.status(500).json({ error: 'Erro ao carregar séries de gestão de dados', details: e.message });
+  }
+});
+
 // ========== QUALIDADE / TREINAMENTOS ==========
 app.post('/api/treinamentos/assinaturas', express.json(), async (req, res) => {
   try {

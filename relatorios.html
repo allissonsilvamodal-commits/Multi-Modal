@@ -54,13 +54,20 @@
         .nav-tabs .nav-link { color: var(--text-secondary); background: var(--glass); margin-right:6px; border:none; border-radius: 12px 12px 0 0; padding:12px 20px; font-size:0.95rem; font-weight: 600; transition: var(--transition); }
         .nav-tabs .nav-link.active { background: linear-gradient(90deg,#667eea80,#764ba260,#f093fb15); color: var(--primary); border-bottom:2.5px solid var(--accent); }
         .main-container { padding: 1.5rem 0 1rem 0; min-height:calc(100vh - 70px);}        
-        .main-container .container { max-width: 1400px; margin: 0 auto; padding: 0 1.5rem; position: relative; }
+        .main-container .container { 
+            max-width: 1400px; 
+            margin: 0 auto; 
+            padding: 0 1.5rem; 
+            position: relative;
+            box-sizing: border-box;
+        }
         
         
         /* Garantir que abas ocultas não ocupem espaço */
         #abaColetas[style*="display: none"],
         #abaBI[style*="display: none"],
-        #abaCadastros[style*="display: none"] {
+        #abaCadastros[style*="display: none"],
+        #abaBIGestao[style*="display: none"] {
             display: none !important;
             height: 0 !important;
             overflow: hidden !important;
@@ -77,11 +84,14 @@
                 padding: 0 0.75rem;
             }
         }
-        #abaBI, #abaCadastros { 
+        #abaBI, #abaCadastros, #abaBIGestao { 
             width: 100%; 
+            max-width: 100%;
             padding: 0; 
             margin: 0; 
             position: relative;
+            box-sizing: border-box;
+            overflow-x: hidden;
         }
         .card-futuristic,.metric-card { background: var(--glass); border-radius: var(--border-radius); border:1.5px solid var(--glass-border); box-shadow: var(--box-shadow); backdrop-filter:blur(18px); position:relative; transition: var(--transition);overflow:hidden;}
         .card-futuristic {margin-bottom:1.5rem;}
@@ -98,8 +108,9 @@
         .charts-row {display:flex;gap:1.2rem;flex-wrap:wrap;margin-bottom:1.2rem}
         .charts-row>.card-futuristic{flex:1 1 280px;min-width:260px;}
 
-        /* Harmonizar layout de BI Disparos e Cadastros */
+        /* Harmonizar layout de BI Disparos, Cadastros e BI Gestão */
         #abaBI .dashboard-row,
+        #abaBIGestao .dashboard-row,
         #abaCadastros .dashboard-row {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -107,10 +118,12 @@
             margin-bottom: 1.2rem;
         }
         #abaBI .metric-card,
+        #abaBIGestao .metric-card,
         #abaCadastros .metric-card {
             height: 100%;
         }
         #abaBI .charts-row,
+        #abaBIGestao .charts-row,
         #abaCadastros .charts-row {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
@@ -118,23 +131,112 @@
             margin-bottom: 1.2rem;
         }
         #abaBI .charts-row .card-futuristic,
+        #abaBIGestao .charts-row .card-futuristic,
         #abaCadastros .charts-row .card-futuristic {
-            min-height: 260px;
+            height: 380px;
+            min-height: 380px;
+            max-height: 380px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            box-sizing: border-box;
+        }
+        #abaBI .charts-row .card-futuristic .chart-container,
+        #abaBIGestao .charts-row .card-futuristic .chart-container,
+        #abaCadastros .charts-row .card-futuristic .chart-container {
+            flex: 1 1 0;
+            height: calc(380px - 55px);
+            max-height: calc(380px - 55px);
+            min-height: 0;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-sizing: border-box;
+            padding: 0.75rem 1rem;
+        }
+        #abaBI .charts-row .card-futuristic .chart-container canvas,
+        #abaBIGestao .charts-row .card-futuristic .chart-container canvas,
+        #abaCadastros .charts-row .card-futuristic .chart-container canvas {
+            max-width: calc(100% - 2rem) !important;
+            max-height: calc(100% - 1.5rem) !important;
+            width: auto !important;
+            height: auto !important;
+            box-sizing: border-box;
         }
         #abaBI .filter-card .row,
+        #abaBIGestao .filter-card .row,
         #abaCadastros .filter-card .row {
             display: grid !important;
             grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
             gap: 0.85rem 1.2rem;
             margin: 0;
+            width: 100%;
+            max-width: 100%;
+            box-sizing: border-box;
         }
         #abaBI .filter-card .row > div,
+        #abaBIGestao .filter-card .row > div,
         #abaCadastros .filter-card .row > div {
             width: 100%;
+            max-width: 100%;
             padding: 0;
+            box-sizing: border-box;
         }
-        .chart-container { background:none;padding:.5rem 1rem;border-radius:10px;max-height:350px;position:relative;}
-        .chart-container canvas { max-height:350px !important;}
+        /* Garantir que a aba do BI Gestão respeite o padding do container */
+        #abaBIGestao {
+            width: 100%;
+            max-width: 100%;
+            box-sizing: border-box;
+            overflow-x: hidden;
+        }
+        #abaBIGestao .dashboard-row,
+        #abaBIGestao .filter-card,
+        #abaBIGestao .charts-row {
+            width: 100%;
+            max-width: 100%;
+            box-sizing: border-box;
+            margin-left: 0;
+            margin-right: 0;
+        }
+        #abaBIGestao .card-futuristic {
+            max-width: 100%;
+            box-sizing: border-box;
+        }
+        .chart-container { 
+            background:none;
+            padding:0.75rem 1rem;
+            border-radius:10px;
+            position:relative;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            overflow:hidden;
+            box-sizing:border-box;
+        }
+        .chart-container canvas { 
+            max-width:calc(100% - 2rem) !important;
+            max-height:calc(100% - 1.5rem) !important;
+            width:auto !important;
+            height:auto !important;
+            box-sizing:border-box;
+        }
+        .card-header-futuristic {
+            padding:0.75rem 1rem;
+            border-bottom:1px solid var(--glass-border);
+            margin-bottom:0;
+            height:auto;
+            min-height:45px;
+            max-height:55px;
+            flex-shrink:0;
+            box-sizing:border-box;
+        }
+        .card-header-futuristic h5 {
+            margin:0;
+            font-size:0.95rem;
+            font-weight:700;
+            line-height:1.3;
+        }
         .table-tech thead th {background:rgba(102,126,234,0.08);color:var(--text-primary);font-weight:700;}
         .table-tech th, .table-tech td{font-size:1rem; color:var(--text-primary); padding:1rem .7rem;}
         .loading-overlay { position: fixed; inset: 0; background: rgba(28,20,65,0.20); display: none; align-items: center; justify-content: center; z-index: 1050; }
@@ -147,8 +249,23 @@
         .theme-toggle { background: var(--glass); border: 1px solid var(--glass-border); border-radius: 50px; padding: 8px 14px; color: var(--text-primary); transition: var(--transition); backdrop-filter: blur(10px); }
         .theme-toggle:hover { background: rgba(102,126,234,0.20); box-shadow: 0 0 18px rgba(102, 126, 234, 0.28); transform: translateY(-1px); }
         /* Cabeçalho de cards */
-        .card-header-futuristic { background: linear-gradient(135deg, var(--primary), var(--secondary)); border-radius: var(--border-radius) var(--border-radius) 0 0; padding: 0.75rem 1rem; border: none; position: relative; overflow: hidden; }
-        .card-header-futuristic h5 { color: #fff; margin: 0; font-weight: 700; font-size: 0.95rem; }
+        .card-header-futuristic { 
+            background: linear-gradient(135deg, var(--primary), var(--secondary)); 
+            border-radius: var(--border-radius) var(--border-radius) 0 0; 
+            padding: 0.75rem 1rem; 
+            border: none; 
+            position: relative; 
+            overflow: hidden;
+            flex-shrink: 0;
+            min-height: 45px;
+        }
+        .card-header-futuristic h5 { 
+            color: #fff; 
+            margin: 0; 
+            font-weight: 700; 
+            font-size: 0.95rem; 
+            line-height: 1.4;
+        }
         .card-header-futuristic::before { content: ''; position: absolute; inset: 0; background: linear-gradient(45deg, transparent 30%, rgba(255,255,255,0.12) 50%, transparent 70%); animation: shimmer 3s infinite; }
         @keyframes shimmer { 0% { transform: translateX(-100%);} 100% { transform: translateX(100%);} }
         /* Light mode overrides */
@@ -225,6 +342,7 @@
                 <li class="nav-item"><button class="nav-link active" id="tabColetas" onclick="mostrarAba('coletas')">Coletas</button></li>
                 <li class="nav-item"><button class="nav-link" id="tabBI" onclick="mostrarAba('bi')">BI Disparos</button></li>
 				<li class="nav-item"><button class="nav-link" id="tabCadastros" onclick="mostrarAba('cadastros')">Cadastros</button></li>
+                <li class="nav-item"><button class="nav-link" id="tabBIGestao" onclick="mostrarAba('bi-gestao')">BI Gestão de Dados</button></li>
             </ul>
             <div id="abaColetas">
                 <div class="dashboard-row">
@@ -531,6 +649,107 @@
                     </div>
                 </div>
             </div>
+            
+            <!-- ABA BI GESTÃO DE DADOS -->
+            <div id="abaBIGestao" style="display:none">
+                <div class="dashboard-row" style="margin-top: 0;">
+                    <div class="metric-card card-futuristic">
+                        <div class="metric-value" id="totalLancamentosGestao">0</div>
+                        <div class="metric-label"><i class="fas fa-database"></i> Total de Lançamentos</div>
+                    </div>
+                    <div class="metric-card card-futuristic">
+                        <div class="metric-value" id="totalEditadosGestao">0</div>
+                        <div class="metric-label"><i class="fas fa-edit"></i> Lançamentos Editados</div>
+                    </div>
+                    <div class="metric-card card-futuristic">
+                        <div class="metric-value" id="taxaEdicaoGestao">0%</div>
+                        <div class="metric-label"><i class="fas fa-percentage"></i> Taxa de Edição</div>
+                    </div>
+                    <div class="metric-card card-futuristic">
+                        <div class="metric-value" id="tempoMedioRespostaGestao">0 min</div>
+                        <div class="metric-label"><i class="fas fa-clock"></i> Tempo Médio de Resposta</div>
+                    </div>
+                </div>
+                
+                <div class="filter-card">
+                    <div class="row">
+                        <div class="col-md-4 mb-2">
+                            <label class="form-label"><i class="fas fa-calendar"></i> Período</label>
+                            <select id="filtroPeriodoGestao" class="form-select" onchange="atualizarVisibilidadeDatasGestao(); carregarBIGestao();">
+                                <option value="todos" selected>Todos</option>
+                                <option value="hoje">Hoje</option>
+                                <option value="semana">Últimos 7 dias</option>
+                                <option value="mes">Últimos 30 dias</option>
+                                <option value="trimestre">Últimos 90 dias</option>
+                                <option value="ano">Último ano</option>
+                                <option value="personalizado">Personalizado</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4 mb-2" id="containerDataInicioGestao" style="display:none;">
+                            <label class="form-label"><i class="fas fa-calendar-check"></i> Data Início</label>
+                            <input type="date" id="filtroDataInicioGestao" class="form-control" onchange="if(document.getElementById('filtroPeriodoGestao').value==='personalizado') carregarBIGestao();">
+                        </div>
+                        <div class="col-md-4 mb-2" id="containerDataFimGestao" style="display:none;">
+                            <label class="form-label"><i class="fas fa-calendar-check"></i> Data Fim</label>
+                            <input type="date" id="filtroDataFimGestao" class="form-control" onchange="if(document.getElementById('filtroPeriodoGestao').value==='personalizado') carregarBIGestao();">
+                        </div>
+                        <div class="col-md-4 mb-2">
+                            <label class="form-label"><i class="fas fa-building"></i> Operação</label>
+                            <select id="filtroOperacaoGestao" class="form-select" onchange="carregarBIGestao();">
+                                <option value="">Todas</option>
+                                <option value="Jaboatão">Jaboatão</option>
+                                <option value="Usinas">Usinas</option>
+                                <option value="Paraíba">Paraíba</option>
+                                <option value="Alagoas">Alagoas</option>
+                                <option value="Bahia">Bahia</option>
+                                <option value="Ambev">Ambev</option>
+                                <option value="Cabo">Cabo</option>
+                                <option value="São paulo">São paulo</option>
+                                <option value="Célula de documentação">Célula de documentação</option>
+                                <option value="Contas a pagar">Contas a pagar</option>
+                                <option value="Controladoria">Controladoria</option>
+                                <option value="Price">Price</option>
+                                <option value="Ti">Ti</option>
+                                <option value="Célula contratação">Célula contratação</option>
+                                <option value="Projetos">Projetos</option>
+                                <option value="GR">GR</option>
+                                <option value="Comercial">Comercial</option>
+                                <option value="Customer Service">Customer Service</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="charts-row">
+                    <div class="card-futuristic">
+                        <div class="card-header-futuristic"><h5><i class="fas fa-exclamation-triangle"></i> Lançamentos por Tipo de Erro</h5></div>
+                        <div class="chart-container"><canvas id="chartTipoErroGestao"></canvas></div>
+                    </div>
+                    <div class="card-futuristic">
+                        <div class="card-header-futuristic"><h5><i class="fas fa-cogs"></i> Lançamentos por Operação</h5></div>
+                        <div class="chart-container"><canvas id="chartOperacaoGestao"></canvas></div>
+                    </div>
+                </div>
+                
+                <div class="charts-row">
+                    <div class="card-futuristic">
+                        <div class="card-header-futuristic"><h5><i class="fas fa-user-tie"></i> Top 10 Responsáveis</h5></div>
+                        <div class="chart-container"><canvas id="chartResponsavelGestao"></canvas></div>
+                    </div>
+                    <div class="card-futuristic">
+                        <div class="card-header-futuristic"><h5><i class="fas fa-calendar"></i> Evolução Temporal</h5></div>
+                        <div class="chart-container"><canvas id="chartTemporalGestao"></canvas></div>
+                    </div>
+                </div>
+                
+                <div class="charts-row">
+                    <div class="card-futuristic">
+                        <div class="card-header-futuristic"><h5><i class="fas fa-sitemap"></i> Árvore de Perdas - Tipos de Erros</h5></div>
+                        <div class="chart-container"><canvas id="chartUsuarioGestao"></canvas></div>
+                    </div>
+                </div>
+            </div>
+            
     <div id="loadingOverlay" class="loading-overlay" style="display: none;">
         <div class="text-center"><div class="spinner"></div><p class="loading-text">Carregando relatórios...</p></div>
         </div>
@@ -542,19 +761,31 @@
         document.getElementById('tabBI').classList.toggle('active', aba==='bi');
 		const tabCad = document.getElementById('tabCadastros');
 		if(tabCad) tabCad.classList.toggle('active', aba==='cadastros');
+        const tabBIGestao = document.getElementById('tabBIGestao');
+        if(tabBIGestao) tabBIGestao.classList.toggle('active', aba==='bi-gestao');
+        
         // Ocultar todas as abas primeiro para evitar espaçamento
         const abaColetas = document.getElementById('abaColetas');
         const abaBI = document.getElementById('abaBI');
 		const abaCad = document.getElementById('abaCadastros');
+        const abaBIGestao = document.getElementById('abaBIGestao');
         
         if(abaColetas) abaColetas.style.display = 'none';
         if(abaBI) abaBI.style.display = 'none';
         if(abaCad) abaCad.style.display = 'none';
+        if(abaBIGestao) abaBIGestao.style.display = 'none';
         
         // Mostrar apenas a aba selecionada
         if(aba==='coletas' && abaColetas) abaColetas.style.display = '';
         if(aba==='bi' && abaBI) abaBI.style.display = '';
         if(aba==='cadastros' && abaCad) abaCad.style.display = '';
+        if(aba==='bi-gestao' && abaBIGestao) {
+            abaBIGestao.style.display = '';
+            if(typeof carregarBIGestao === 'function') {
+                if(typeof atualizarVisibilidadeDatasGestao === 'function') atualizarVisibilidadeDatasGestao();
+                carregarBIGestao();
+            }
+        }
         const navTabs = document.getElementById('tabsRelatorios');
         if (navTabs) {
             navTabs.style.marginBottom = '';
@@ -743,18 +974,21 @@
             body.classList.remove('light-mode');
             if(themeIcon) themeIcon.className = 'fas fa-moon';
             localStorage.setItem('theme','dark');
-        } else {
+                } else {
             body.classList.add('light-mode');
             if(themeIcon) themeIcon.className = 'fas fa-sun';
             localStorage.setItem('theme','light');
         }
         // Recarregar gráficos para atualizar cores
         const abaAtiva = document.getElementById('abaBI')?.style.display !== 'none' ? 'bi' : 
-                         document.getElementById('abaCadastros')?.style.display !== 'none' ? 'cadastros' : 'coletas';
+                         document.getElementById('abaCadastros')?.style.display !== 'none' ? 'cadastros' :
+                         document.getElementById('abaBIGestao')?.style.display !== 'none' ? 'bi-gestao' : 'coletas';
         if(abaAtiva === 'bi' && typeof carregarDisparos === 'function') {
             carregarDisparos();
         } else if(abaAtiva === 'cadastros' && typeof carregarMotoristas === 'function') {
             carregarMotoristas();
+        } else if(abaAtiva === 'bi-gestao' && typeof carregarBIGestao === 'function') {
+            carregarBIGestao();
         }
     }
     document.addEventListener('DOMContentLoaded', ()=>{
@@ -770,7 +1004,7 @@
 						const ok = await verificarEAplicarPermissao('relatorios');
 						if(!ok) return; // será redirecionado pelo permissions.js
 					}
-						mostrarAba('cadastros');
+					mostrarAba('coletas');
 				}catch(e){
 					console.error('Erro ao verificar permissão para relatórios:', e);
 					// fallback: ainda mostra aba coletas (não exige chamadas protegidas imediatamente)
@@ -1103,7 +1337,7 @@
     async function carregarDisparos(){
         const overlay = document.getElementById('loadingOverlay');
         if(overlay) overlay.style.display = 'flex';
-        try{
+        try {
             const periodo = document.getElementById('filtroPeriodoDisp')?.value || 'mes';
             const usuarioId = document.getElementById('filtroUsuarioDisp')?.value || '';
             const departamento = document.getElementById('filtroDepartamentoDisp')?.value || '';
@@ -1295,6 +1529,1101 @@
             }
             // Carregar estatísticas de falhas com os mesmos filtros
             await carregarEstatisticasFalhas().catch(err => console.error('Erro ao carregar estatísticas de falhas:', err));
+        } catch (error) {
+            console.error('Erro ao carregar disparos:', error);
+        } finally {
+            if(overlay) overlay.style.display = 'none';
+        }
+    }
+    
+    // ========== BI GESTÃO DE DADOS ==========
+    let chartTipoErroGestao = null, chartOperacaoGestao = null, chartResponsavelGestao = null;
+    let chartTemporalGestao = null, chartUsuarioGestao = null;
+    
+    function atualizarVisibilidadeDatasGestao() {
+        const periodo = document.getElementById('filtroPeriodoGestao').value;
+        const containerInicio = document.getElementById('containerDataInicioGestao');
+        const containerFim = document.getElementById('containerDataFimGestao');
+        
+        if (containerInicio && containerFim) {
+            if (periodo === 'personalizado') {
+                containerInicio.style.display = 'block';
+                containerFim.style.display = 'block';
+            } else {
+                containerInicio.style.display = 'none';
+                containerFim.style.display = 'none';
+            }
+        }
+    }
+    
+    function calcularPeriodoGestao() {
+        const periodoSelect = document.getElementById('filtroPeriodoGestao');
+        const periodo = periodoSelect ? periodoSelect.value : 'todos';
+        const hoje = new Date();
+        hoje.setHours(23, 59, 59, 999);
+        let inicio = null;
+        let fim = new Date(hoje);
+        
+        switch(periodo) {
+            case 'hoje':
+                inicio = new Date(hoje);
+                inicio.setHours(0, 0, 0, 0);
+                break;
+            case 'semana':
+                inicio = new Date(hoje);
+                inicio.setDate(inicio.getDate() - 7);
+                break;
+            case 'mes':
+                inicio = new Date(hoje);
+                inicio.setDate(inicio.getDate() - 30);
+                break;
+            case 'trimestre':
+                inicio = new Date(hoje);
+                inicio.setDate(inicio.getDate() - 90);
+                break;
+            case 'ano':
+                inicio = new Date(hoje);
+                inicio.setFullYear(inicio.getFullYear() - 1);
+                break;
+            case 'personalizado':
+                const dataInicio = document.getElementById('filtroDataInicioGestao')?.value;
+                const dataFim = document.getElementById('filtroDataFimGestao')?.value;
+                if (dataInicio) inicio = new Date(dataInicio);
+                if (dataFim) {
+                    fim = new Date(dataFim);
+                    fim.setHours(23, 59, 59, 999);
+                }
+                break;
+            case 'todos':
+            default:
+                inicio = null;
+                fim = null;
+        }
+        
+        return {
+            inicio: inicio ? inicio.toISOString().split('T')[0] : '',
+            fim: fim ? fim.toISOString().split('T')[0] : ''
+        };
+    }
+    
+    async function carregarBIGestao() {
+        const overlay = document.getElementById('loadingOverlay');
+        if(overlay) overlay.style.display = 'flex';
+        
+        try {
+            const periodo = calcularPeriodoGestao();
+            const operacaoSelect = document.getElementById('filtroOperacaoGestao');
+            const operacao = operacaoSelect ? operacaoSelect.value : '';
+            
+            const params = new URLSearchParams({
+                inicio: periodo.inicio || '',
+                fim: periodo.fim || ''
+            });
+            
+            if (operacao && operacao.trim() !== '') {
+                params.append('operacao', operacao.trim());
+            }
+            
+            console.log('🔍 Carregando BI Gestão - Parâmetros:', { inicio: periodo.inicio, fim: periodo.fim });
+            
+            // Carregar KPIs
+            const kpisResp = await fetch(`/api/relatorios/gestao-dados/kpis?${params}`, { credentials: 'include' });
+            
+            if (!kpisResp.ok) {
+                console.error('❌ Erro ao buscar KPIs:', kpisResp.status, await kpisResp.text());
+                throw new Error(`Erro ao buscar KPIs: ${kpisResp.status}`);
+            }
+            
+            let kpisData = null;
+            kpisData = await kpisResp.json();
+            console.log('📊 KPIs recebidos:', kpisData);
+            
+            // Atualizar cards de métricas
+            document.getElementById('totalLancamentosGestao').textContent = (kpisData.total || 0).toLocaleString('pt-BR');
+            document.getElementById('totalEditadosGestao').textContent = (kpisData.totalEditados || 0).toLocaleString('pt-BR');
+            document.getElementById('taxaEdicaoGestao').textContent = (kpisData.taxaEdicao || 0) + '%';
+            
+            const tempoMedio = kpisData.tempoMedioResposta || 0;
+            const horas = Math.floor(tempoMedio / 60);
+            const minutos = tempoMedio % 60;
+            let tempoFormatado = '';
+            if (horas > 0) {
+                tempoFormatado = `${horas}h ${minutos}min`;
+            } else {
+                tempoFormatado = `${minutos}min`;
+            }
+            document.getElementById('tempoMedioRespostaGestao').textContent = tempoFormatado;
+            
+            // Carregar séries
+            const seriesResp = await fetch(`/api/relatorios/gestao-dados/series?${params}`, { credentials: 'include' });
+            
+            if (!seriesResp.ok) {
+                console.error('❌ Erro ao buscar séries:', seriesResp.status, await seriesResp.text());
+                throw new Error(`Erro ao buscar séries: ${seriesResp.status}`);
+            }
+            
+            const s = await seriesResp.json();
+            console.log('📈 Séries recebidas:', s);
+            const colors = getChartColors();
+            
+            // Gráfico de Tipo de Erro (Doughnut Melhorado)
+            const ctxTipoErro = document.getElementById('chartTipoErroGestao');
+            if (ctxTipoErro) {
+                if (ctxTipoErro._chart) ctxTipoErro._chart.destroy();
+                
+                const tiposErroData = (s.byTipoErro || []).filter(d => d && d.tipo && d.count > 0).slice(0, 10);
+                const totalTipos = tiposErroData.reduce((sum, d) => sum + (d.count || 0), 0);
+                
+                if (tiposErroData.length > 0) {
+                    ctxTipoErro._chart = new Chart(ctxTipoErro, {
+                        type: 'doughnut',
+                        data: {
+                            labels: tiposErroData.map(d => d.tipo.length > 20 ? d.tipo.substring(0, 20) + '...' : d.tipo),
+                            datasets: [{
+                                data: tiposErroData.map(d => d.count),
+                                backgroundColor: [
+                                    '#667eea', '#764ba2', '#f093fb', '#4facfe', '#00f2fe',
+                                    '#43e97b', '#fa709a', '#fee140', '#30cfd0', '#a8edea'
+                                ],
+                                borderWidth: 2,
+                                borderColor: colors.gridColor
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            cutout: '60%',
+                            layout: {
+                                padding: 10
+                            },
+                            plugins: {
+                                legend: { 
+                                    display: true, 
+                                    position: 'right',
+                                    labels: { 
+                                        color: colors.legendColor, 
+                                        font: { size: 11, weight: '500' },
+                                        padding: 12,
+                                        usePointStyle: true,
+                                        pointStyle: 'circle'
+                                    }
+                                },
+                                tooltip: {
+                                    backgroundColor: 'rgba(0, 0, 0, 0.85)',
+                                    padding: 12,
+                                    titleFont: { size: 13, weight: 'bold' },
+                                    bodyFont: { size: 12 },
+                                    callbacks: {
+                                        label: function(context) {
+                                            const value = context.parsed;
+                                            const percentage = totalTipos > 0 ? ((value / totalTipos) * 100).toFixed(1) : 0;
+                                            return `${value} lançamentos (${percentage}%)`;
+                                        }
+                                    },
+                                    cornerRadius: 8
+                                }
+                            }
+                        },
+                        plugins: [{
+                            id: 'datalabels',
+                            afterDatasetsDraw: (chart) => {
+                                const ctx = chart.ctx;
+                                chart.data.datasets.forEach((dataset, i) => {
+                                    const meta = chart.getDatasetMeta(i);
+                                    meta.data.forEach((element, index) => {
+                                        const value = dataset.data[index];
+                                        if (value !== null && value !== undefined && value !== 0) {
+                                            ctx.save();
+                                            ctx.fillStyle = colors.dataLabelColor;
+                                            ctx.font = 'bold 12px Arial';
+                                            ctx.textAlign = 'center';
+                                            ctx.textBaseline = 'middle';
+                                            const position = element.tooltipPosition();
+                                            ctx.fillText(String(value), position.x, position.y);
+                                            ctx.restore();
+                                        }
+                                    });
+                                });
+                            }
+                        }]
+                    });
+                }
+            }
+            
+            // Gráfico de Operação (Barra Vertical Melhorado)
+            const ctxOperacao = document.getElementById('chartOperacaoGestao');
+            if (ctxOperacao) {
+                if (ctxOperacao._chart) ctxOperacao._chart.destroy();
+                
+                const operacoesData = (s.byOperacao || []).filter(d => d && d.operacao && d.count > 0).slice(0, 12);
+                const totalOperacoes = operacoesData.reduce((sum, d) => sum + (d.count || 0), 0);
+                
+                if (operacoesData.length > 0) {
+                
+                // Criar gradiente de cores harmonioso
+                const gradientColors = [
+                    '#667eea', '#764ba2', '#f093fb', '#4facfe', '#00f2fe',
+                    '#43e97b', '#fa709a', '#fee140', '#30cfd0', '#a8edea',
+                    '#ff6b6b', '#48dbfb'
+                ];
+                
+                ctxOperacao._chart = new Chart(ctxOperacao, {
+                    type: 'bar',
+                    data: {
+                        labels: operacoesData.map(d => d.operacao.length > 15 ? d.operacao.substring(0, 15) + '...' : d.operacao),
+                        datasets: [{
+                            label: 'Lançamentos',
+                            data: operacoesData.map(d => d.count),
+                            backgroundColor: (context) => {
+                                const index = context.dataIndex;
+                                return gradientColors[index % gradientColors.length];
+                            },
+                            borderColor: (context) => {
+                                const index = context.dataIndex;
+                                return gradientColors[index % gradientColors.length];
+                            },
+                            borderWidth: 2,
+                            borderRadius: {
+                                topLeft: 6,
+                                topRight: 6,
+                                bottomLeft: 0,
+                                bottomRight: 0
+                            },
+                            barThickness: 'flex',
+                            maxBarThickness: 50,
+                            categoryPercentage: 0.7,
+                            barPercentage: 0.8
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        layout: {
+                            padding: {
+                                left: 5,
+                                right: 15,
+                                top: 15,
+                                bottom: 5
+                            }
+                        },
+                        plugins: {
+                            legend: { 
+                                display: false 
+                            },
+                            tooltip: {
+                                backgroundColor: 'rgba(0, 0, 0, 0.85)',
+                                padding: 12,
+                                titleFont: {
+                                    size: 13,
+                                    weight: 'bold'
+                                },
+                                bodyFont: {
+                                    size: 12
+                                },
+                                displayColors: true,
+                                callbacks: {
+                                    title: function(context) {
+                                        const index = context[0].dataIndex;
+                                        return operacoesData[index].operacao;
+                                    },
+                                    label: function(context) {
+                                        const value = context.parsed.y;
+                                        const percentage = totalOperacoes > 0 ? ((value / totalOperacoes) * 100).toFixed(1) : 0;
+                                        return `${value} lançamentos (${percentage}% do total)`;
+                                    }
+                                },
+                                cornerRadius: 8,
+                                borderColor: 'rgba(255, 255, 255, 0.1)',
+                                borderWidth: 1
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: { 
+                                    color: colors.textColor,
+                                    font: {
+                                        size: 11,
+                                        weight: '500'
+                                    },
+                                    stepSize: 1,
+                                    padding: 8,
+                                    callback: function(value) {
+                                        return Number.isInteger(value) ? value : '';
+                                    }
+                                },
+                                grid: { 
+                                    color: colors.gridColor,
+                                    drawBorder: false,
+                                    lineWidth: 1
+                                }
+                            },
+                            x: {
+                                ticks: { 
+                                    color: colors.textColor,
+                                    font: {
+                                        size: 10,
+                                        weight: '500'
+                                    },
+                                    maxRotation: 45,
+                                    minRotation: 45,
+                                    padding: 8
+                                },
+                                grid: { 
+                                    display: false,
+                                    drawBorder: false
+                                }
+                            }
+                        },
+                        animation: {
+                            duration: 1200,
+                            easing: 'easeOutQuart'
+                        },
+                        interaction: {
+                            intersect: false,
+                            mode: 'index'
+                        }
+                    },
+                    plugins: [{
+                        id: 'datalabels',
+                        afterDatasetsDraw: (chart) => {
+                            const ctx = chart.ctx;
+                            const chartArea = chart.chartArea;
+                            
+                            chart.data.datasets.forEach((dataset, i) => {
+                                const meta = chart.getDatasetMeta(i);
+                                meta.data.forEach((element, index) => {
+                                    const value = dataset.data[index];
+                                    if (value !== null && value !== undefined && value !== 0) {
+                                        ctx.save();
+                                        
+                                        // Calcular posição do topo da barra
+                                            const barTop = element.y;
+                                        const barBottom = barTop + element.height;
+                                        
+                                        // Posicionar label sempre no topo da barra
+                                        let labelY = barTop - 8; // 8px acima do topo da barra
+                                        
+                                        // Se o label estiver muito próximo do topo do chartArea, colocar dentro da barra
+                                        if (labelY < chartArea.top + 20) {
+                                            // Colocar dentro da barra, próximo ao topo
+                                            labelY = barTop + 18;
+                                        }
+                                        
+                                        // Garantir que o label esteja sempre visível
+                                        const minY = chartArea.top + 5;
+                                        const maxY = chartArea.bottom - 5;
+                                        labelY = Math.max(minY, Math.min(maxY, labelY));
+                                        
+                                        const text = String(value);
+                                        ctx.font = 'bold 13px Arial';
+                                        ctx.textAlign = 'center';
+                                        ctx.textBaseline = 'middle';
+                                        
+                                        const textMetrics = ctx.measureText(text);
+                                        const textWidth = textMetrics.width;
+                                        const textHeight = 16;
+                                        const padding = 6;
+                                        
+                                        // Calcular posição X centralizada na barra
+                                        const labelX = element.x;
+                                        
+                                        // Desenhar fundo do label
+                                        const bgX = labelX - textWidth / 2 - padding;
+                                        const bgY = labelY - textHeight / 2;
+                                        
+                                        // Fundo escuro semi-transparente
+                                        ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+                                        ctx.fillRect(bgX, bgY, textWidth + padding * 2, textHeight);
+                                        
+                                        // Borda branca sutil
+                                        ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+                                        ctx.lineWidth = 1;
+                                        ctx.strokeRect(bgX, bgY, textWidth + padding * 2, textHeight);
+                                        
+                                        // Desenhar texto branco
+                                        ctx.fillStyle = '#ffffff';
+                                        ctx.fillText(text, labelX, labelY);
+                                        
+                                        ctx.restore();
+                                    }
+                                });
+                            });
+                        }
+                    }]
+                });
+                }
+            }
+            
+            // Gráfico de Responsáveis (Barra Horizontal Melhorado)
+            const ctxResponsavel = document.getElementById('chartResponsavelGestao');
+            if (ctxResponsavel && kpisData) {
+                if (ctxResponsavel._chart) ctxResponsavel._chart.destroy();
+                
+                const responsaveisData = (kpisData.topResponsaveis || []).filter(d => d && d.responsavel && d.count > 0).slice(0, 10);
+                const totalResponsaveis = responsaveisData.reduce((sum, d) => sum + (d.count || 0), 0);
+                
+                if (responsaveisData.length > 0) {
+                    ctxResponsavel._chart = new Chart(ctxResponsavel, {
+                        type: 'bar',
+                        data: {
+                            labels: responsaveisData.map(d => d.responsavel),
+                            datasets: [{
+                                label: 'Lançamentos',
+                                data: responsaveisData.map(d => d.count),
+                                backgroundColor: '#f093fb',
+                                borderColor: '#764ba2',
+                                borderWidth: 2,
+                                borderRadius: {
+                                    topRight: 6,
+                                    bottomRight: 6,
+                                    topLeft: 0,
+                                    bottomLeft: 0
+                                }
+                            }]
+                        },
+                        options: {
+                            indexAxis: 'y',
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            layout: {
+                                padding: {
+                                    left: 5,
+                                    right: 15,
+                                    top: 10,
+                                    bottom: 10
+                                }
+                            },
+                            plugins: {
+                                legend: { display: false },
+                                tooltip: {
+                                    backgroundColor: 'rgba(0, 0, 0, 0.85)',
+                                    padding: 12,
+                                    titleFont: { size: 13, weight: 'bold' },
+                                    bodyFont: { size: 12 },
+                                    callbacks: {
+                                        label: function(context) {
+                                            const value = context.parsed.x;
+                                            const percentage = totalResponsaveis > 0 ? ((value / totalResponsaveis) * 100).toFixed(1) : 0;
+                                            return `${value} lançamentos (${percentage}%)`;
+                                        }
+                                    },
+                                    cornerRadius: 8
+                                }
+                            },
+                            scales: {
+                                x: {
+                                    beginAtZero: true,
+                                    ticks: { 
+                                        color: colors.textColor,
+                                        font: { size: 11, weight: '500' },
+                                        stepSize: 1,
+                                        padding: 8,
+                                        callback: function(value) {
+                                            return Number.isInteger(value) ? value : '';
+                                        }
+                                    },
+                                    grid: { 
+                                        color: colors.gridColor,
+                                        drawBorder: false,
+                                        lineWidth: 1
+                                    }
+                                },
+                                y: {
+                                    ticks: { 
+                                        color: colors.textColor,
+                                        font: { size: 11, weight: '500' },
+                                        padding: 8
+                                    },
+                                    grid: { 
+                                        display: false,
+                                        drawBorder: false
+                                    }
+                                }
+                            },
+                            animation: {
+                                duration: 1000,
+                                easing: 'easeOutQuart'
+                            }
+                        },
+                        plugins: [{
+                            id: 'datalabels',
+                            afterDatasetsDraw: (chart) => {
+                                const ctx = chart.ctx;
+                                const chartArea = chart.chartArea;
+                                
+                                chart.data.datasets.forEach((dataset, i) => {
+                                    const meta = chart.getDatasetMeta(i);
+                                    meta.data.forEach((element, index) => {
+                                        const value = dataset.data[index];
+                                        if (value !== null && value !== undefined && value !== 0) {
+                                            ctx.save();
+                                            
+                                            // Posição da barra horizontal
+                                            const barX = element.x;
+                                            const barY = element.y;
+                                            const barWidth = element.width;
+                                            
+                                            // Calcular posição do label (dentro ou fora da barra)
+                                            let labelX = barX + barWidth + 10; // Tentar fora da barra primeiro
+                                            
+                                            // Se a barra for muito larga e o label sair do canvas, colocar dentro
+                                            if (labelX > chartArea.right - 30) {
+                                                labelX = barX + barWidth - 8; // Colocar dentro da barra, próximo ao final
+                                            }
+                                            
+                                            // Garantir que o label esteja sempre visível
+                                            const minX = chartArea.left + 5;
+                                            const maxX = chartArea.right - 5;
+                                            labelX = Math.max(minX, Math.min(maxX, labelX));
+                                            
+                                            const text = String(value);
+                                            ctx.font = 'bold 12px Arial';
+                                            ctx.textAlign = labelX > barX + barWidth ? 'left' : 'right';
+                                            ctx.textBaseline = 'middle';
+                                            
+                                            const textMetrics = ctx.measureText(text);
+                                            const textWidth = textMetrics.width;
+                                            const textHeight = 14;
+                                            const padding = 5;
+                                            
+                                            // Calcular posição do fundo do label
+                                            let bgX, bgY;
+                                            if (labelX > barX + barWidth) {
+                                                // Label fora da barra (à direita)
+                                                bgX = labelX;
+                                                bgY = barY - textHeight / 2;
+                                            } else {
+                                                // Label dentro da barra
+                                                bgX = labelX - textWidth - padding;
+                                                bgY = barY - textHeight / 2;
+                                            }
+                                            
+                                            // Desenhar fundo do label
+                                            ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+                                            ctx.fillRect(bgX - padding, bgY, textWidth + padding * 2, textHeight);
+                                            
+                                            // Borda branca sutil
+                                            ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+                                            ctx.lineWidth = 1;
+                                            ctx.strokeRect(bgX - padding, bgY, textWidth + padding * 2, textHeight);
+                                            
+                                            // Desenhar texto branco
+                                            ctx.fillStyle = '#ffffff';
+                                            ctx.fillText(text, labelX, barY);
+                                            
+                                            ctx.restore();
+                                        }
+                                    });
+                                });
+                            }
+                        }]
+                    });
+                }
+            }
+            
+            // Gráfico Temporal (Linha Melhorado)
+            const ctxTemporal = document.getElementById('chartTemporalGestao');
+            if (ctxTemporal) {
+                if (ctxTemporal._chart) ctxTemporal._chart.destroy();
+                
+                const temporalData = (s.byDay || []).filter(d => d && d.date && d.count !== undefined).sort((a, b) => a.date.localeCompare(b.date));
+                
+                if (temporalData.length > 0) {
+                    ctxTemporal._chart = new Chart(ctxTemporal, {
+                        type: 'line',
+                        data: {
+                            labels: temporalData.map(d => {
+                                try {
+                                    const date = new Date(d.date);
+                                    if (isNaN(date.getTime())) return d.date;
+                                    return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+                                } catch (e) {
+                                    return d.date;
+                                }
+                            }),
+                            datasets: [{
+                                label: 'Lançamentos',
+                                data: temporalData.map(d => d.count || 0),
+                                borderColor: '#4facfe',
+                                backgroundColor: 'rgba(79, 172, 254, 0.2)',
+                                fill: true,
+                                tension: 0.4,
+                                pointRadius: 5,
+                                pointHoverRadius: 7,
+                                pointBackgroundColor: '#4facfe',
+                                pointBorderColor: '#ffffff',
+                                pointBorderWidth: 2,
+                                pointHoverBackgroundColor: '#00f2fe',
+                                pointHoverBorderColor: '#ffffff',
+                                pointHoverBorderWidth: 3
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            layout: {
+                                padding: {
+                                    left: 5,
+                                    right: 10,
+                                    top: 5,
+                                    bottom: 5
+                                }
+                            },
+                            plugins: {
+                                legend: { 
+                                    display: true, 
+                                    labels: { 
+                                        color: colors.legendColor,
+                                        font: { size: 12, weight: '500' },
+                                        usePointStyle: true
+                                    }
+                                },
+                                tooltip: {
+                                    backgroundColor: 'rgba(0, 0, 0, 0.85)',
+                                    padding: 12,
+                                    titleFont: { size: 13, weight: 'bold' },
+                                    bodyFont: { size: 12 },
+                                    callbacks: {
+                                        title: function(context) {
+                                            const index = context[0].dataIndex;
+                                            try {
+                                                const date = new Date(temporalData[index].date);
+                                                if (!isNaN(date.getTime())) {
+                                                    return date.toLocaleDateString('pt-BR', { 
+                                                        weekday: 'long',
+                                                        day: '2-digit', 
+                                                        month: 'long', 
+                                                        year: 'numeric' 
+                                                    });
+                                                }
+                                            } catch (e) {}
+                                            return temporalData[index].date;
+                                        },
+                                        label: function(context) {
+                                            return `${context.parsed.y} lançamentos`;
+                                        }
+                                    },
+                                    cornerRadius: 8,
+                                    displayColors: true
+                                }
+                            },
+                            scales: {
+                                y: {
+                                    beginAtZero: true,
+                                    ticks: { 
+                                        color: colors.textColor,
+                                        font: { size: 11, weight: '500' },
+                                        stepSize: 1,
+                                        padding: 8,
+                                        callback: function(value) {
+                                            return Number.isInteger(value) ? value : '';
+                                        }
+                                    },
+                                    grid: { 
+                                        color: colors.gridColor,
+                                        drawBorder: false,
+                                        lineWidth: 1
+                                    }
+                                },
+                                x: {
+                                    ticks: { 
+                                        color: colors.textColor,
+                                        font: { size: 10, weight: '500' },
+                                        padding: 8,
+                                        maxRotation: 45,
+                                        minRotation: 45
+                                    },
+                                    grid: { 
+                                        color: colors.gridColor,
+                                        drawBorder: false,
+                                        lineWidth: 1
+                                    }
+                                }
+                            },
+                            animation: {
+                                duration: 1200,
+                                easing: 'easeOutQuart'
+                            },
+                            interaction: {
+                                intersect: false,
+                                mode: 'index'
+                            }
+                        },
+                        plugins: [{
+                            id: 'datalabels',
+                            afterDatasetsDraw: (chart) => {
+                                const ctx = chart.ctx;
+                                const chartArea = chart.chartArea;
+                                
+                                chart.data.datasets.forEach((dataset, i) => {
+                                    const meta = chart.getDatasetMeta(i);
+                                    meta.data.forEach((element, index) => {
+                                        const value = dataset.data[index];
+                                        if (value !== null && value !== undefined && value !== 0) {
+                                            ctx.save();
+                                            
+                                            // Posição do ponto no gráfico
+                                            const pointX = element.x;
+                                            const pointY = element.y;
+                                            
+                                            // Calcular posição do label (acima ou abaixo conforme necessário)
+                                            let labelY = pointY - 18; // Tentar acima primeiro
+                                            
+                                            // Se estiver muito próximo do topo, colocar abaixo
+                                            if (labelY < chartArea.top + 25) {
+                                                labelY = pointY + 18; // Colocar abaixo do ponto
+                                            }
+                                            
+                                            // Garantir que o label esteja sempre visível
+                                            const minY = chartArea.top + 10;
+                                            const maxY = chartArea.bottom - 10;
+                                            labelY = Math.max(minY, Math.min(maxY, labelY));
+                                            
+                                            // Verificar se o label está dentro dos limites horizontais
+                                            const text = String(value);
+                                            ctx.font = 'bold 12px Arial';
+                                            ctx.textAlign = 'center';
+                                            ctx.textBaseline = 'middle';
+                                            
+                                            const textMetrics = ctx.measureText(text);
+                                            const textWidth = textMetrics.width;
+                                            const textHeight = 14;
+                                            const padding = 6;
+                                            
+                                            // Ajustar posição X se estiver muito próximo das bordas
+                                            let labelX = pointX;
+                                            const minX = chartArea.left + textWidth / 2 + padding;
+                                            const maxX = chartArea.right - textWidth / 2 - padding;
+                                            
+                                            if (labelX < minX) {
+                                                labelX = minX;
+                                            } else if (labelX > maxX) {
+                                                labelX = maxX;
+                                            }
+                                            
+                                            // Desenhar fundo do label
+                                            const bgX = labelX - textWidth / 2 - padding;
+                                            const bgY = labelY - textHeight / 2;
+                                            
+                                            // Fundo escuro semi-transparente
+                                            ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+                                            ctx.fillRect(bgX, bgY, textWidth + padding * 2, textHeight);
+                                            
+                                            // Borda branca sutil
+                                            ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+                                            ctx.lineWidth = 1;
+                                            ctx.strokeRect(bgX, bgY, textWidth + padding * 2, textHeight);
+                                            
+                                            // Desenhar texto branco
+                                            ctx.fillStyle = '#ffffff';
+                                            ctx.fillText(text, labelX, labelY);
+                                            
+                                            ctx.restore();
+                                        }
+                                    });
+                                });
+                            }
+                        }]
+                    });
+                }
+            }
+            
+            // Árvore de Perdas - Tipos de Erros Agrupados por Data
+            const ctxUsuario = document.getElementById('chartUsuarioGestao');
+            if (ctxUsuario && s) {
+                if (ctxUsuario._chart) ctxUsuario._chart.destroy();
+                
+                // Usar dados já disponíveis de byDataETipoErro
+                const dadosAgrupados = s.byDataETipoErro || [];
+                
+                if (dadosAgrupados.length > 0) {
+                    // Agrupar por data e tipo de erro
+                    const dadosPorData = new Map();
+                    
+                    dadosAgrupados.forEach(record => {
+                        if (!record.data || !record.tipoErro) return;
+                        
+                        const data = record.data;
+                        const tipoErro = record.tipoErro;
+                        const count = record.count || 0;
+                        
+                        if (!dadosPorData.has(data)) {
+                            dadosPorData.set(data, new Map());
+                        }
+                        
+                        const tiposPorData = dadosPorData.get(data);
+                        tiposPorData.set(tipoErro, (tiposPorData.get(tipoErro) || 0) + count);
+                    });
+                        
+                        // Obter todas as datas e tipos de erros únicos
+                        const datas = Array.from(dadosPorData.keys()).sort();
+                        const todosTiposErro = Array.from(new Set(
+                            Array.from(dadosPorData.values())
+                                .flatMap(map => Array.from(map.keys()))
+                        ));
+                        
+                        // Pegar os top 8 tipos de erros mais frequentes
+                        const tiposFrequencia = new Map();
+                        todosTiposErro.forEach(tipo => {
+                            let total = 0;
+                            dadosPorData.forEach((tiposMap) => {
+                                total += tiposMap.get(tipo) || 0;
+                            });
+                            tiposFrequencia.set(tipo, total);
+                        });
+                        
+                        const topTipos = Array.from(tiposFrequencia.entries())
+                            .sort((a, b) => b[1] - a[1])
+                            .slice(0, 8)
+                            .map(([tipo]) => tipo);
+                        
+                        // Limitar a 15 datas mais recentes
+                        const datasLimitadas = datas.slice(-15);
+                        
+                        // Cores distintas e contrastantes para cada tipo de erro
+                        const coresTipos = {
+                            'Erro operacional': '#e74c3c', // Vermelho vibrante
+                            'Falta de Documentação / Anexo Ausente': '#3498db', // Azul
+                            'Informações Incompletas ou Incorretas': '#f39c12', // Laranja
+                            'Erro de Nomeclatura de Arquivos': '#9b59b6', // Roxo
+                            'Erro de Tabela': '#e67e22', // Laranja escuro
+                            'Divergência Financeira': '#1abc9c', // Turquesa
+                            'Erro em Documentos Fiscais e Regulatórios': '#f1c40f', // Amarelo
+                            'Problema Operacional / Autorização / Procedimento': '#34495e', // Cinza escuro
+                            'Erro de Sistema / Integração / Processamento': '#e91e63', // Rosa/Magenta
+                            'Erro de Peso / Quantidade / Medidas': '#27ae60', // Verde
+                            'Erro de Classificação e produto': '#16a085' // Verde água
+                        };
+                        
+                        // Paleta de cores padrão com alto contraste
+                        const coresPadrao = [
+                            '#e74c3c', // Vermelho
+                            '#3498db', // Azul
+                            '#f39c12', // Laranja
+                            '#9b59b6', // Roxo
+                            '#1abc9c', // Turquesa
+                            '#e67e22', // Laranja escuro
+                            '#f1c40f', // Amarelo
+                            '#34495e'  // Cinza escuro
+                        ];
+                        
+                        // Criar datasets para cada tipo de erro com estilo limpo e elegante
+                        const datasets = topTipos.map((tipo, index) => {
+                            const cor = coresTipos[tipo] || coresPadrao[index % coresPadrao.length];
+                            
+                            return {
+                                label: tipo.length > 30 ? tipo.substring(0, 30) + '...' : tipo,
+                                data: datasLimitadas.map(data => {
+                                    const tiposMap = dadosPorData.get(data);
+                                    return tiposMap ? (tiposMap.get(tipo) || 0) : 0;
+                                }),
+                                backgroundColor: cor,
+                                borderColor: 'rgba(255, 255, 255, 0.3)',
+                                borderWidth: 1,
+                                borderRadius: {
+                                    topLeft: 5,
+                                    topRight: 5,
+                                    bottomLeft: 0,
+                                    bottomRight: 0
+                                },
+                                barThickness: 'flex',
+                                maxBarThickness: 55,
+                                categoryPercentage: 0.75,
+                                barPercentage: 0.85
+                            };
+                        });
+                        
+                        // Formatar labels de data
+                        const labels = datasLimitadas.map(data => {
+                            try {
+                                const date = new Date(data);
+                                if (!isNaN(date.getTime())) {
+                                    return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+                                }
+                            } catch (e) {}
+                            return data;
+                        });
+                        
+                    if (datasets.length > 0 && labels.length > 0) {
+                        ctxUsuario._chart = new Chart(ctxUsuario, {
+                                type: 'bar',
+                                data: {
+                                    labels: labels,
+                                    datasets: datasets
+                                },
+                                options: {
+                                    responsive: true,
+                                    maintainAspectRatio: false,
+                                    layout: {
+                                        padding: {
+                                            left: 10,
+                                            right: 20,
+                                            top: 20,
+                                            bottom: 10
+                                        }
+                                    },
+                                    plugins: {
+                                        legend: {
+                                            display: true,
+                                            position: 'right',
+                                            align: 'start',
+                                            labels: {
+                                                color: colors.legendColor,
+                                                font: { 
+                                                    size: 11, 
+                                                    weight: '500',
+                                                    family: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif"
+                                                },
+                                                padding: 10,
+                                                usePointStyle: true,
+                                                pointStyle: 'circle',
+                                                boxWidth: 12,
+                                                boxHeight: 12
+                                            }
+                                        },
+                                        tooltip: {
+                                            enabled: true,
+                                            backgroundColor: 'rgba(0, 0, 0, 0.88)',
+                                            padding: 14,
+                                            titleFont: { 
+                                                size: 14, 
+                                                weight: 'bold',
+                                                family: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif"
+                                            },
+                                            bodyFont: { 
+                                                size: 12,
+                                                family: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif"
+                                            },
+                                            footerFont: {
+                                                size: 12,
+                                                weight: 'bold',
+                                                family: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif"
+                                            },
+                                            mode: 'index',
+                                            intersect: false,
+                                            axis: 'x',
+                                            callbacks: {
+                                                title: function(context) {
+                                                    if (!context || context.length === 0) return '';
+                                                    const index = context[0].dataIndex;
+                                                    try {
+                                                        const date = new Date(datasLimitadas[index]);
+                                                        if (!isNaN(date.getTime())) {
+                                                            return date.toLocaleDateString('pt-BR', { 
+                                                                weekday: 'long',
+                                                                day: '2-digit', 
+                                                                month: 'long', 
+                                                                year: 'numeric' 
+                                                            });
+                                                        }
+                                                    } catch (e) {}
+                                                    return datasLimitadas[index] || '';
+                                                },
+                                                label: function(context) {
+                                                    if (!context) return '';
+                                                    const datasetLabel = context.dataset.label || '';
+                                                    const value = context.parsed.y || 0;
+                                                    const allContexts = context.chart.tooltip.dataPoints || [];
+                                                    const total = allContexts.reduce((sum, item) => sum + (item.parsed.y || 0), 0);
+                                                    const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                                                    return `${datasetLabel}: ${value} (${percentage}%)`;
+                                                },
+                                                footer: function(context) {
+                                                    if (!context || context.length === 0) return '';
+                                                    const total = context.reduce((sum, item) => sum + (item.parsed.y || 0), 0);
+                                                    return `Total: ${total} ocorrências`;
+                                                }
+                                            },
+                                            cornerRadius: 8,
+                                            displayColors: true,
+                                            boxPadding: 6,
+                                            borderColor: 'rgba(255, 255, 255, 0.1)',
+                                            borderWidth: 1,
+                                            titleSpacing: 8,
+                                            bodySpacing: 5,
+                                            footerSpacing: 8
+                                        }
+                                    },
+                                    scales: {
+                                        y: {
+                                            beginAtZero: true,
+                                            stacked: true,
+                                            ticks: { 
+                                                color: colors.textColor,
+                                                font: { 
+                                                    size: 11, 
+                                                    weight: '500',
+                                                    family: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif"
+                                                },
+                                                stepSize: 1,
+                                                padding: 10,
+                                                callback: function(value) {
+                                                    return Number.isInteger(value) ? value : '';
+                                                }
+                                            },
+                                            grid: { 
+                                                color: colors.gridColor,
+                                                drawBorder: false,
+                                                lineWidth: 1,
+                                                drawTicks: false
+                                            },
+                                            title: {
+                                                display: true,
+                                                text: 'Quantidade de Ocorrências',
+                                                color: colors.textColor,
+                                                font: {
+                                                    size: 12,
+                                                    weight: 'bold',
+                                                    family: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif"
+                                                },
+                                                padding: {
+                                                    top: 5,
+                                                    bottom: 15
+                                                }
+                                            }
+                                        },
+                                        x: {
+                                            stacked: true,
+                                            ticks: { 
+                                                color: colors.textColor,
+                                                font: { 
+                                                    size: 11, 
+                                                    weight: '500',
+                                                    family: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif"
+                                                },
+                                                padding: 10,
+                                                maxRotation: 45,
+                                                minRotation: 45
+                                            },
+                                            grid: { 
+                                                display: false,
+                                                drawBorder: false
+                                            }
+                                        }
+                                    },
+                                    animation: {
+                                        duration: 1500,
+                                        easing: 'easeOutCubic'
+                                    },
+                                    interaction: {
+                                        mode: 'index',
+                                        intersect: false
+                                    }
+                                }
+                            });
+            } else {
+                        console.warn('⚠️ Nenhum dado disponível para árvore de perdas agrupada por data');
+                    }
+                } else {
+                    console.warn('⚠️ Nenhum dado de byDataETipoErro disponível');
+                }
+            } else {
+                console.warn('⚠️ Elemento chartUsuarioGestao não encontrado ou dados de séries não disponíveis');
+            }
+        } catch (error) {
+            console.error('❌ Erro ao carregar BI Gestão de Dados:', error);
+            alert('Erro ao carregar dados do BI Gestão de Dados. Verifique o console para mais detalhes.');
         } finally {
             if(overlay) overlay.style.display = 'none';
         }
