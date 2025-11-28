@@ -548,6 +548,30 @@
             </select>
           </div>
           <div class="col-md-3">
+            <label class="form-label-modern">Filtrar por Operação/Filial</label>
+            <select id="filtroOperacao" class="form-select form-select-modern">
+              <option value="">Todas</option>
+              <option value="Jaboatão">Jaboatão</option>
+              <option value="Usinas">Usinas</option>
+              <option value="Paraíba">Paraíba</option>
+              <option value="Alagoas">Alagoas</option>
+              <option value="Bahia">Bahia</option>
+              <option value="Ambev">Ambev</option>
+              <option value="Cabo">Cabo</option>
+              <option value="São paulo">São paulo</option>
+              <option value="Célula de documentação">Célula de documentação</option>
+              <option value="Contas a pagar">Contas a pagar</option>
+              <option value="Controladoria">Controladoria</option>
+              <option value="Price">Price</option>
+              <option value="Ti">Ti</option>
+              <option value="Célula contratação">Célula contratação</option>
+              <option value="Projetos">Projetos</option>
+              <option value="GR">GR</option>
+              <option value="Comercial">Comercial</option>
+              <option value="Customer Service">Customer Service</option>
+            </select>
+          </div>
+          <div class="col-md-3">
             <label class="form-label-modern">Filtrar por Responsável</label>
             <select id="filtroResponsavel" class="form-select form-select-modern">
               <option value="">Todos</option>
@@ -1131,6 +1155,7 @@
         }
 
         dadosCarregados = result.data || [];
+        preencherFiltroOperacao();
         preencherFiltroResponsavel();
         renderizarTabela(dadosCarregados);
         
@@ -1143,6 +1168,36 @@
       }
     }
 
+    // Preencher filtro de operação com valores únicos dos dados carregados
+    function preencherFiltroOperacao() {
+      const select = document.getElementById('filtroOperacao');
+      if (!select) return;
+      
+      // Obter valores únicos de operações dos dados carregados
+      const operacoesUnicas = [...new Set(dadosCarregados
+        .map(d => d.operacao)
+        .filter(o => o && o.trim())
+        .sort()
+      )];
+      
+      // Manter a opção "Todas" e adicionar as operações encontradas
+      const opcaoTodas = select.querySelector('option[value=""]');
+      if (opcaoTodas) {
+        // Limpar opções existentes (exceto "Todas")
+        Array.from(select.options).forEach(opt => {
+          if (opt.value !== '') opt.remove();
+        });
+        
+        // Adicionar operações encontradas
+        operacoesUnicas.forEach(operacao => {
+          const option = document.createElement('option');
+          option.value = operacao;
+          option.textContent = operacao;
+          select.appendChild(option);
+        });
+      }
+    }
+    
     // Preencher filtro de responsável com valores únicos dos dados carregados
     function preencherFiltroResponsavel() {
       const select = document.getElementById('filtroResponsavel');
@@ -1263,6 +1318,7 @@
       const filtroData = document.getElementById('filtroData').value;
       const filtroOC = document.getElementById('filtroOC').value.toLowerCase();
       const filtroTipoErro = document.getElementById('filtroTipoErro').value;
+      const filtroOperacao = document.getElementById('filtroOperacao').value;
       const filtroResponsavel = document.getElementById('filtroResponsavel').value;
 
       let dadosFiltrados = [...dadosCarregados];
@@ -1277,6 +1333,10 @@
 
       if (filtroTipoErro) {
         dadosFiltrados = dadosFiltrados.filter(d => d.tipo_erro === filtroTipoErro);
+      }
+
+      if (filtroOperacao) {
+        dadosFiltrados = dadosFiltrados.filter(d => d.operacao === filtroOperacao);
       }
 
       if (filtroResponsavel) {

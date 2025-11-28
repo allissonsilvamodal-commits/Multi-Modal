@@ -1734,12 +1734,30 @@
                                         const value = dataset.data[index];
                                         if (value !== null && value !== undefined && value !== 0) {
                                             ctx.save();
-                                            ctx.fillStyle = colors.dataLabelColor;
-                                            ctx.font = 'bold 12px Arial';
+                                            
+                                            // Calcular percentual
+                                            const percentage = totalTipos > 0 ? ((value / totalTipos) * 100).toFixed(1) : 0;
+                                            
+                                            // Texto com quantidade e percentual
+                                            const text = `${value}\n${percentage}%`;
+                                            const lines = text.split('\n');
+                                            
                                             ctx.textAlign = 'center';
                                             ctx.textBaseline = 'middle';
                                             const position = element.tooltipPosition();
-                                            ctx.fillText(String(value), position.x, position.y);
+                                            
+                                            // Desenhar quantidade (linha superior)
+                                            ctx.fillStyle = colors.dataLabelColor;
+                                            ctx.font = 'bold 13px Arial';
+                                            ctx.textBaseline = 'bottom';
+                                            ctx.fillText(lines[0], position.x, position.y - 3);
+                                            
+                                            // Desenhar percentual (linha inferior)
+                                            ctx.fillStyle = colors.dataLabelColor;
+                                            ctx.font = '600 11px Arial';
+                                            ctx.textBaseline = 'top';
+                                            ctx.fillText(lines[1], position.x, position.y + 3);
+                                            
                                             ctx.restore();
                                         }
                                     });
