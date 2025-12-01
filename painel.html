@@ -1023,23 +1023,68 @@
             <!-- Filters -->
             <div class="filters-container">
                 <div class="row">
-                    <div class="col-md-2">
+                    <div class="col-md-3">
                         <label class="form-label">Tipo de Veículo</label>
-                        <select id="filtroTipoVeiculo" class="form-control form-control-modern">
+                        <!-- Select "real" (usado pela lógica de filtros) fica oculto -->
+                        <select id="filtroTipoVeiculo" class="form-control form-control-modern d-none" multiple>
                             <option value="">Todos os tipos</option>
                         </select>
+                        <!-- Dropdown visual com checkboxes -->
+                        <div class="dropdown w-100">
+                            <button class="btn btn-modern btn-outline-secondary w-100 text-start d-flex justify-content-between align-items-center"
+                                    type="button"
+                                    id="dropdownTipoVeiculoBtn"
+                                    data-bs-toggle="dropdown"
+                                    aria-expanded="false">
+                                <span id="dropdownTipoVeiculoLabel">Todos os tipos</span>
+                                <i class="fas fa-chevron-down ms-2"></i>
+                            </button>
+                            <div class="dropdown-menu w-100 p-2" aria-labelledby="dropdownTipoVeiculoBtn" id="dropdownTipoVeiculoMenu" style="max-height: 260px; overflow-y: auto;">
+                                <!-- Checkboxes serão preenchidos via JS em carregarFiltros() -->
+                            </div>
+                        </div>
                     </div>
-                    <div class="col-md-2">
+                    <div class="col-md-3">
                         <label class="form-label">Carroceria</label>
-                        <select id="filtroCarroceria" class="form-control form-control-modern">
+                        <!-- Select "real" oculto -->
+                        <select id="filtroCarroceria" class="form-control form-control-modern d-none" multiple>
                             <option value="">Todas as carrocerias</option>
                         </select>
+                        <!-- Dropdown visual com checkboxes -->
+                        <div class="dropdown w-100">
+                            <button class="btn btn-modern btn-outline-secondary w-100 text-start d-flex justify-content-between align-items-center"
+                                    type="button"
+                                    id="dropdownCarroceriaBtn"
+                                    data-bs-toggle="dropdown"
+                                    aria-expanded="false">
+                                <span id="dropdownCarroceriaLabel">Todas as carrocerias</span>
+                                <i class="fas fa-chevron-down ms-2"></i>
+                            </button>
+                            <div class="dropdown-menu w-100 p-2" aria-labelledby="dropdownCarroceriaBtn" id="dropdownCarroceriaMenu" style="max-height: 260px; overflow-y: auto;">
+                                <!-- Checkboxes serão preenchidos via JS em carregarFiltros() -->
+                            </div>
+                        </div>
                     </div>
                     <div class="col-md-2">
                         <label class="form-label">Estado</label>
-                        <select id="filtroEstado" class="form-control form-control-modern">
+                        <!-- Select "real" oculto para reaproveitar a lógica de filtros -->
+                        <select id="filtroEstado" class="form-control form-control-modern d-none" multiple>
                             <option value="">Todos os estados</option>
                         </select>
+                        <!-- Dropdown visual com checkboxes -->
+                        <div class="dropdown w-100">
+                            <button class="btn btn-modern btn-outline-secondary w-100 text-start d-flex justify-content-between align-items-center"
+                                    type="button"
+                                    id="dropdownEstadoBtn"
+                                    data-bs-toggle="dropdown"
+                                    aria-expanded="false">
+                                <span id="dropdownEstadoLabel">Todos os estados</span>
+                                <i class="fas fa-chevron-down ms-2"></i>
+                            </button>
+                            <div class="dropdown-menu w-100 p-2" aria-labelledby="dropdownEstadoBtn" id="dropdownEstadoMenu" style="max-height: 260px; overflow-y: auto;">
+                                <!-- Checkboxes serão preenchidos via JS em carregarFiltros() -->
+                            </div>
+                        </div>
                     </div>
                     <div class="col-md-2">
                         <label class="form-label">Status</label>
@@ -1412,6 +1457,7 @@
               <li><strong>Janela do bloco (min):</strong> intervalo usado para contar o limite acima. Após essa janela, a contagem é reiniciada.</li>
               <li><strong>Pausa automática:</strong> quando o limite do bloco é atingido, o sistema impõe um tempo de espera obrigatório antes de retomar os envios. Esse descanso é essencial para a reputação do número.</li>
               <li><strong>Simular digitação:</strong> envia um sinal de “digitando...” antes da mensagem. A simulação torna a interação mais natural, reduzindo a chance de bloqueios automáticos.</li>
+              <li><strong>Randomização de mensagens com IA:</strong> quando ativada, utiliza a OpenAI para gerar variações únicas de cada mensagem enviada, tornando os envios mais naturais e reduzindo a detecção de padrões repetitivos.</li>
             </ul>
             <p class="text-muted mb-3">
               Use valores conservadores. Ignorar essas limitações pode levar ao bloqueio definitivo do número no WhatsApp, pois a plataforma monitora padrões de envio agressivos. A Multimodal não se responsabiliza por números bloqueados quando os parâmetros forem reduzidos abaixo das recomendações.
@@ -1442,6 +1488,14 @@
                   <input class="form-check-input" type="checkbox" id="configSimulateTyping">
                   <label class="form-check-label" for="configSimulateTyping">
                     Simular digitação antes de cada envio
+                  </label>
+                </div>
+              </div>
+              <div class="col-12">
+                <div class="form-check form-switch mt-2">
+                  <input class="form-check-input" type="checkbox" id="configRandomMessageAI">
+                  <label class="form-check-label" for="configRandomMessageAI">
+                    Ativar randomização de mensagens com IA (OpenAI)
                   </label>
                 </div>
               </div>
@@ -1493,14 +1547,16 @@
             messageLimit: 50,
             cooldownMinutes: 15,
             windowMinutes: 5,
-            simulateTyping: true
+            simulateTyping: true,
+            randomMessageAI: true
         };
         let configDisparo = { ...DEFAULT_DISPARO_CONFIG };
         let treinamentoConcluido = false;
 
         function getConfigResumoTexto() {
             const typingText = configDisparo.simulateTyping ? 'Simular digitação: ativado' : 'Simular digitação: desativado';
-            return `Intervalo entre disparos: ${configDisparo.delayMin}-${configDisparo.delayMax} segundos · Limite: ${configDisparo.messageLimit} mensagens a cada ${configDisparo.windowMinutes} minuto(s) · Pausa automática: ${configDisparo.cooldownMinutes} minuto(s) · ${typingText}`;
+            const randomAIText = configDisparo.randomMessageAI ? 'Randomização IA: ativada' : 'Randomização IA: desativada';
+            return `Intervalo entre disparos: ${configDisparo.delayMin}-${configDisparo.delayMax} segundos · Limite: ${configDisparo.messageLimit} mensagens a cada ${configDisparo.windowMinutes} minuto(s) · Pausa automática: ${configDisparo.cooldownMinutes} minuto(s) · ${typingText} · ${randomAIText}`;
         }
 
         function lerNumeroSeguro(valor, padrao, minimo, maximo) {
@@ -1518,7 +1574,8 @@
                     <strong>Intervalo entre disparos:</strong> ${configDisparo.delayMin}-${configDisparo.delayMax} segundos<br>
                     <strong>Limite por bloco:</strong> ${configDisparo.messageLimit} mensagens a cada ${configDisparo.windowMinutes} minuto(s)<br>
                     <strong>Pausa automática:</strong> ${configDisparo.cooldownMinutes} minuto(s) até a retomada<br>
-                    <strong>Simular digitação:</strong> ${configDisparo.simulateTyping ? 'ativado' : 'desativado'}
+                    <strong>Simular digitação:</strong> ${configDisparo.simulateTyping ? 'ativado' : 'desativado'}<br>
+                    <strong>Randomização IA:</strong> ${configDisparo.randomMessageAI ? 'ativada' : 'desativada'}
                 `;
             }
         }
@@ -1538,6 +1595,7 @@
             const cooldownMinutesInput = document.getElementById('configCooldownMinutes');
             const windowMinutesInput = document.getElementById('configWindowMinutes');
             const simulateTypingInput = document.getElementById('configSimulateTyping');
+            const randomMessageAIInput = document.getElementById('configRandomMessageAI');
 
             const delayMin = lerNumeroSeguro(delayMinInput.value, configDisparo.delayMin, 1, 600);
             let delayMax = lerNumeroSeguro(delayMaxInput.value, configDisparo.delayMax, delayMin, 600);
@@ -1547,6 +1605,7 @@
             const cooldownMinutes = lerNumeroSeguro(cooldownMinutesInput.value, configDisparo.cooldownMinutes, 1, 240);
             const windowMinutes = lerNumeroSeguro(windowMinutesInput.value, configDisparo.windowMinutes, 1, 120);
             const simulateTyping = simulateTypingInput?.checked ?? configDisparo.simulateTyping;
+            const randomMessageAI = randomMessageAIInput?.checked ?? configDisparo.randomMessageAI;
 
             configDisparo = {
                 delayMin,
@@ -1554,7 +1613,8 @@
                 messageLimit,
                 cooldownMinutes,
                 windowMinutes,
-                simulateTyping
+                simulateTyping,
+                randomMessageAI
             };
 
             delayMinInput.value = configDisparo.delayMin;
@@ -1563,6 +1623,7 @@
             cooldownMinutesInput.value = configDisparo.cooldownMinutes;
             windowMinutesInput.value = configDisparo.windowMinutes;
             if (simulateTypingInput) simulateTypingInput.checked = !!configDisparo.simulateTyping;
+            if (randomMessageAIInput) randomMessageAIInput.checked = !!configDisparo.randomMessageAI;
 
             salvarConfigDisparo();
             atualizarResumoConfig();
@@ -1592,6 +1653,7 @@
             const cooldownMinutesInput = document.getElementById('configCooldownMinutes');
             const windowMinutesInput = document.getElementById('configWindowMinutes');
             const simulateTypingInput = document.getElementById('configSimulateTyping');
+            const randomMessageAIInput = document.getElementById('configRandomMessageAI');
 
             if (delayMinInput && delayMaxInput && messageLimitInput && cooldownMinutesInput && windowMinutesInput) {
                 delayMinInput.value = configDisparo.delayMin;
@@ -1600,6 +1662,7 @@
                 cooldownMinutesInput.value = configDisparo.cooldownMinutes;
                 windowMinutesInput.value = configDisparo.windowMinutes;
                 if (simulateTypingInput) simulateTypingInput.checked = !!configDisparo.simulateTyping;
+                if (randomMessageAIInput) randomMessageAIInput.checked = !!configDisparo.randomMessageAI;
                 atualizarResumoConfig();
                 aplicarConfigDisparo(null, true);
             }
@@ -2123,22 +2186,140 @@ const estados = [
             
             // Carregar estados
             const filtroEstado = document.getElementById('filtroEstado');
+            const dropdownEstadoMenu = document.getElementById('dropdownEstadoMenu');
+            const dropdownEstadoLabel = document.getElementById('dropdownEstadoLabel');
+
             if (filtroEstado) {
-                filtroEstado.innerHTML = '<option value="">Todos os estados</option>';
+                filtroEstado.innerHTML = '<option value=\"\">Todos os estados</option>';
+                if (dropdownEstadoMenu) {
+                    dropdownEstadoMenu.innerHTML = '';
+                }
+
+                const atualizarLabelEstado = () => {
+                    const selecionados = Array.from(filtroEstado.selectedOptions)
+                        .map(opt => opt.value)
+                        .filter(v => v && v.trim() !== '');
+
+                    if (!dropdownEstadoLabel) return;
+
+                    if (selecionados.length === 0) {
+                        dropdownEstadoLabel.textContent = 'Todos os estados';
+                    } else if (selecionados.length === 1) {
+                        dropdownEstadoLabel.textContent = selecionados[0];
+                    } else {
+                        dropdownEstadoLabel.textContent = `${selecionados.length} estados selecionados`;
+                    }
+                };
+
+                // Checkbox "Todos os estados"
+                if (dropdownEstadoMenu) {
+                    const itemTodos = document.createElement('div');
+                    itemTodos.className = 'dropdown-item';
+                    itemTodos.innerHTML = `
+                        <div class=\"form-check\">
+                            <input class=\"form-check-input\" type=\"checkbox\" id=\"chkEstadoTodos\" checked>
+                            <label class=\"form-check-label\" for=\"chkEstadoTodos\">Todos os estados</label>
+                        </div>
+                    `;
+                    dropdownEstadoMenu.appendChild(itemTodos);
+
+                    const chkTodos = itemTodos.querySelector('input');
+                    chkTodos.addEventListener('change', () => {
+                        if (chkTodos.checked) {
+                            Array.from(filtroEstado.options).forEach(opt => { opt.selected = false; });
+                            Array.from(dropdownEstadoMenu.querySelectorAll('.form-check-input'))
+                                .forEach(input => {
+                                    if (input !== chkTodos) input.checked = false;
+                                });
+                            atualizarLabelEstado();
+                            aplicarFiltros();
+                        } else {
+                            const algumOutroMarcado = Array.from(dropdownEstadoMenu.querySelectorAll('.form-check-input'))
+                                .some(input => input !== chkTodos && input.checked);
+                            if (!algumOutroMarcado) {
+                                chkTodos.checked = true;
+                            }
+                        }
+                    });
+                }
+
                 estados.forEach(estado => {
                     const option = document.createElement('option');
                     option.value = estado;
                     option.textContent = estado;
                     filtroEstado.appendChild(option);
+
+                    if (dropdownEstadoMenu) {
+                        const idCheck = `chkEstado_${estado.replace(/[^a-zA-Z0-9]/g, '_')}`;
+                        const item = document.createElement('div');
+                        item.className = 'dropdown-item';
+                        item.innerHTML = `
+                            <div class=\"form-check\">
+                                <input class=\"form-check-input\" type=\"checkbox\" id=\"${idCheck}\" data-valor=\"${estado}\">
+                                <label class=\"form-check-label\" for=\"${idCheck}\">${estado}</label>
+                            </div>
+                        `;
+                        dropdownEstadoMenu.appendChild(item);
+
+                        const input = item.querySelector('input');
+                        input.addEventListener('change', () => {
+                            const optMatch = Array.from(filtroEstado.options).find(o => o.value === estado);
+                            if (optMatch) {
+                                optMatch.selected = input.checked;
+                            }
+
+                            const chkTodos = dropdownEstadoMenu.querySelector('#chkEstadoTodos');
+                            if (chkTodos) {
+                                if (input.checked) {
+                                    chkTodos.checked = false;
+                                } else {
+                                    const algumMarcado = Array.from(dropdownEstadoMenu.querySelectorAll('.form-check-input'))
+                                        .some(el => el !== chkTodos && el.checked);
+                                    if (!algumMarcado) {
+                                        chkTodos.checked = true;
+                                        Array.from(filtroEstado.options).forEach(opt => { opt.selected = false; });
+                                    }
+                                }
+                            }
+
+                            atualizarLabelEstado();
+                            aplicarFiltros();
+                        });
+                    }
                 });
-                
+
+                atualizarLabelEstado();
                 console.log('✅ Filtro de estados carregado');
             }
 
             // Carregar tipos de veículo do backend (distinct via service role)
             const filtroTipoVeiculo = document.getElementById('filtroTipoVeiculo');
+            const dropdownTipoVeiculoMenu = document.getElementById('dropdownTipoVeiculoMenu');
+            const dropdownTipoVeiculoLabel = document.getElementById('dropdownTipoVeiculoLabel');
+
             if (filtroTipoVeiculo) {
-                filtroTipoVeiculo.innerHTML = '<option value="">Todos os tipos</option>';
+                filtroTipoVeiculo.innerHTML = '<option value=\"\">Todos os tipos</option>';
+                if (dropdownTipoVeiculoMenu) {
+                    dropdownTipoVeiculoMenu.innerHTML = '';
+                }
+
+                // Helper para atualizar o texto do botão conforme seleção
+                const atualizarLabelTipoVeiculo = () => {
+                    const selecionados = Array.from(filtroTipoVeiculo.selectedOptions)
+                        .map(opt => opt.value)
+                        .filter(v => v && v.trim() !== '');
+
+                    if (!dropdownTipoVeiculoLabel) return;
+
+                    if (selecionados.length === 0) {
+                        dropdownTipoVeiculoLabel.textContent = 'Todos os tipos';
+                    } else if (selecionados.length === 1) {
+                        dropdownTipoVeiculoLabel.textContent = selecionados[0];
+                    } else {
+                        dropdownTipoVeiculoLabel.textContent = `${selecionados.length} tipos selecionados`;
+                    }
+                };
+
                 try {
                     const resp = await fetch('/api/filtros/motoristas/tipos');
                     if (resp.ok) {
@@ -2163,14 +2344,90 @@ const estados = [
                             }
                         });
 
+                        // Criar checkbox "Todos"
+                        if (dropdownTipoVeiculoMenu) {
+                            const itemTodos = document.createElement('div');
+                            itemTodos.className = 'dropdown-item';
+                            itemTodos.innerHTML = `
+                                <div class=\"form-check\">
+                                    <input class=\"form-check-input\" type=\"checkbox\" id=\"chkTipoVeiculoTodos\" checked>
+                                    <label class=\"form-check-label\" for=\"chkTipoVeiculoTodos\">Todos os tipos</label>
+                                </div>
+                            `;
+                            dropdownTipoVeiculoMenu.appendChild(itemTodos);
+
+                            const chkTodos = itemTodos.querySelector('input');
+                            chkTodos.addEventListener('change', () => {
+                                if (chkTodos.checked) {
+                                    // Limpar todas as seleções no select e nos outros checkboxes
+                                    Array.from(filtroTipoVeiculo.options).forEach(opt => { opt.selected = false; });
+                                    Array.from(dropdownTipoVeiculoMenu.querySelectorAll('.form-check-input'))
+                                        .forEach(input => {
+                                            if (input !== chkTodos) input.checked = false;
+                                        });
+                                    atualizarLabelTipoVeiculo();
+                                    aplicarFiltros();
+                                } else {
+                                    // Evitar estado sem nada marcado: mantemos "Todos" ligado se nenhum outro estiver marcado
+                                    const algumOutroMarcado = Array.from(dropdownTipoVeiculoMenu.querySelectorAll('.form-check-input'))
+                                        .some(input => input !== chkTodos && input.checked);
+                                    if (!algumOutroMarcado) {
+                                        chkTodos.checked = true;
+                                    }
+                                }
+                            });
+                        }
+
                         Array.from(valoresMap.values())
                             .sort((a, b) => a.localeCompare(b, 'pt-BR'))
                             .forEach(valor => {
-                            const option = document.createElement('option');
+                                const option = document.createElement('option');
                                 option.value = valor;
                                 option.textContent = valor;
-                            filtroTipoVeiculo.appendChild(option);
-                        });
+                                filtroTipoVeiculo.appendChild(option);
+
+                                if (dropdownTipoVeiculoMenu) {
+                                    const idCheck = `chkTipoVeiculo_${valor.replace(/[^a-zA-Z0-9]/g, '_')}`;
+                                    const item = document.createElement('div');
+                                    item.className = 'dropdown-item';
+                                    item.innerHTML = `
+                                        <div class=\"form-check\">
+                                            <input class=\"form-check-input\" type=\"checkbox\" id=\"${idCheck}\" data-valor=\"${valor}\">
+                                            <label class=\"form-check-label\" for=\"${idCheck}\">${valor}</label>
+                                        </div>
+                                    `;
+                                    dropdownTipoVeiculoMenu.appendChild(item);
+
+                                    const input = item.querySelector('input');
+                                    input.addEventListener('change', () => {
+                                        const optMatch = Array.from(filtroTipoVeiculo.options).find(o => o.value === valor);
+                                        if (optMatch) {
+                                            optMatch.selected = input.checked;
+                                        }
+
+                                        // Se qualquer um específico estiver marcado, desmarca "Todos"
+                                        const chkTodos = dropdownTipoVeiculoMenu.querySelector('#chkTipoVeiculoTodos');
+                                        if (chkTodos) {
+                                            if (input.checked) {
+                                                chkTodos.checked = false;
+                                            } else {
+                                                const algumMarcado = Array.from(dropdownTipoVeiculoMenu.querySelectorAll('.form-check-input'))
+                                                    .some(el => el !== chkTodos && el.checked);
+                                                if (!algumMarcado) {
+                                                    chkTodos.checked = true;
+                                                    // E limpar seleção no select
+                                                    Array.from(filtroTipoVeiculo.options).forEach(opt => { opt.selected = false; });
+                                                }
+                                            }
+                                        }
+
+                                        atualizarLabelTipoVeiculo();
+                                        aplicarFiltros();
+                                    });
+                                }
+                            });
+
+                        atualizarLabelTipoVeiculo();
                         console.log('✅ Filtro de tipos de veículo carregado:', (json.tipos||[]).length);
                     }
                 } catch (error) {
@@ -2182,8 +2439,31 @@ const estados = [
 
             // Carregar carrocerias do backend (distinct via service role)
             const filtroCarroceria = document.getElementById('filtroCarroceria');
+            const dropdownCarroceriaMenu = document.getElementById('dropdownCarroceriaMenu');
+            const dropdownCarroceriaLabel = document.getElementById('dropdownCarroceriaLabel');
+
             if (filtroCarroceria) {
-                filtroCarroceria.innerHTML = '<option value="">Todas as carrocerias</option>';
+                filtroCarroceria.innerHTML = '<option value=\"\">Todas as carrocerias</option>';
+                if (dropdownCarroceriaMenu) {
+                    dropdownCarroceriaMenu.innerHTML = '';
+                }
+
+                const atualizarLabelCarroceria = () => {
+                    const selecionados = Array.from(filtroCarroceria.selectedOptions)
+                        .map(opt => opt.value)
+                        .filter(v => v && v.trim() !== '');
+
+                    if (!dropdownCarroceriaLabel) return;
+
+                    if (selecionados.length === 0) {
+                        dropdownCarroceriaLabel.textContent = 'Todas as carrocerias';
+                    } else if (selecionados.length === 1) {
+                        dropdownCarroceriaLabel.textContent = selecionados[0];
+                    } else {
+                        dropdownCarroceriaLabel.textContent = `${selecionados.length} carrocerias selecionadas`;
+                    }
+                };
+
                 try {
                     const resp = await fetch('/api/filtros/motoristas/carrocerias');
                     if (resp.ok) {
@@ -2225,12 +2505,85 @@ const estados = [
                         
                         const listaOrdenada = Array.from(valoresMap.values())
                             .sort((a,b)=> a.localeCompare(b,'pt-BR'));
+
+                        // Checkbox "Todas"
+                        if (dropdownCarroceriaMenu) {
+                            const itemTodas = document.createElement('div');
+                            itemTodas.className = 'dropdown-item';
+                            itemTodas.innerHTML = `
+                                <div class=\"form-check\">
+                                    <input class=\"form-check-input\" type=\"checkbox\" id=\"chkCarroceriaTodas\" checked>
+                                    <label class=\"form-check-label\" for=\"chkCarroceriaTodas\">Todas as carrocerias</label>
+                                </div>
+                            `;
+                            dropdownCarroceriaMenu.appendChild(itemTodas);
+
+                            const chkTodas = itemTodas.querySelector('input');
+                            chkTodas.addEventListener('change', () => {
+                                if (chkTodas.checked) {
+                                    Array.from(filtroCarroceria.options).forEach(opt => { opt.selected = false; });
+                                    Array.from(dropdownCarroceriaMenu.querySelectorAll('.form-check-input'))
+                                        .forEach(input => {
+                                            if (input !== chkTodas) input.checked = false;
+                                        });
+                                    atualizarLabelCarroceria();
+                                    aplicarFiltros();
+                                } else {
+                                    const algumOutroMarcado = Array.from(dropdownCarroceriaMenu.querySelectorAll('.form-check-input'))
+                                        .some(input => input !== chkTodas && input.checked);
+                                    if (!algumOutroMarcado) {
+                                        chkTodas.checked = true;
+                                    }
+                                }
+                            });
+                        }
+
                         listaOrdenada.forEach(valorOriginal => {
                             const option = document.createElement('option');
                             option.value = valorOriginal;
                             option.textContent = valorOriginal;
                             filtroCarroceria.appendChild(option);
+
+                            if (dropdownCarroceriaMenu) {
+                                const idCheck = `chkCarroceria_${valorOriginal.replace(/[^a-zA-Z0-9]/g, '_')}`;
+                                const item = document.createElement('div');
+                                item.className = 'dropdown-item';
+                                item.innerHTML = `
+                                    <div class=\"form-check\">
+                                        <input class=\"form-check-input\" type=\"checkbox\" id=\"${idCheck}\" data-valor=\"${valorOriginal}\">
+                                        <label class=\"form-check-label\" for=\"${idCheck}\">${valorOriginal}</label>
+                                    </div>
+                                `;
+                                dropdownCarroceriaMenu.appendChild(item);
+
+                                const input = item.querySelector('input');
+                                input.addEventListener('change', () => {
+                                    const optMatch = Array.from(filtroCarroceria.options).find(o => o.value === valorOriginal);
+                                    if (optMatch) {
+                                        optMatch.selected = input.checked;
+                                    }
+
+                                    const chkTodas = dropdownCarroceriaMenu.querySelector('#chkCarroceriaTodas');
+                                    if (chkTodas) {
+                                        if (input.checked) {
+                                            chkTodas.checked = false;
+                                        } else {
+                                            const algumMarcado = Array.from(dropdownCarroceriaMenu.querySelectorAll('.form-check-input'))
+                                                .some(el => el !== chkTodas && el.checked);
+                                            if (!algumMarcado) {
+                                                chkTodas.checked = true;
+                                                Array.from(filtroCarroceria.options).forEach(opt => { opt.selected = false; });
+                                            }
+                                        }
+                                    }
+
+                                    atualizarLabelCarroceria();
+                                    aplicarFiltros();
+                                });
+                            }
                         });
+
+                        atualizarLabelCarroceria();
                         console.log('✅ Filtro de carrocerias carregado com', listaOrdenada.length, 'opções');
                     }
                 } catch (error) {
@@ -2271,7 +2624,7 @@ const estados = [
             if (btnAplicarConfig) {
                 btnAplicarConfig.addEventListener('click', aplicarConfigDisparo);
             }
-            ['configDelayMin','configDelayMax','configMessageLimit','configCooldownMinutes','configWindowMinutes','configSimulateTyping'].forEach(id => {
+            ['configDelayMin','configDelayMax','configMessageLimit','configCooldownMinutes','configWindowMinutes','configSimulateTyping','configRandomMessageAI'].forEach(id => {
                 const input = document.getElementById(id);
                 if (input) {
                     input.addEventListener('change', () => aplicarConfigDisparo(null, true));
@@ -2279,9 +2632,7 @@ const estados = [
                 }
             });
 
-            // Filtros
-            document.getElementById('filtroTipoVeiculo').addEventListener('change', aplicarFiltros);
-            document.getElementById('filtroCarroceria').addEventListener('change', aplicarFiltros);
+            // Filtros simples (estado, status, busca, favoritos)
             document.getElementById('filtroEstado').addEventListener('change', aplicarFiltros);
             document.getElementById('filtroStatus').addEventListener('change', aplicarFiltros);
             document.getElementById('filtroBusca').addEventListener('input', aplicarFiltros);
@@ -2805,9 +3156,28 @@ const estados = [
                 return;
             }
 
-            const filtroTipoVeiculo = document.getElementById('filtroTipoVeiculo').value;
-            const filtroCarroceria = document.getElementById('filtroCarroceria').value;
-            const filtroEstado = document.getElementById('filtroEstado').value;
+            const filtroTipoVeiculoSelect = document.getElementById('filtroTipoVeiculo');
+            const filtroCarroceriaSelect = document.getElementById('filtroCarroceria');
+            const filtroEstadoSelect = document.getElementById('filtroEstado');
+
+            // Suportar múltiplas seleções (arrays de valores)
+            const filtroTipoVeiculo = filtroTipoVeiculoSelect
+                ? Array.from(filtroTipoVeiculoSelect.selectedOptions)
+                    .map(opt => opt.value)
+                    .filter(v => v && v.trim() !== '')
+                : [];
+
+            const filtroCarroceria = filtroCarroceriaSelect
+                ? Array.from(filtroCarroceriaSelect.selectedOptions)
+                    .map(opt => opt.value)
+                    .filter(v => v && v.trim() !== '')
+                : [];
+
+            const filtroEstado = filtroEstadoSelect
+                ? Array.from(filtroEstadoSelect.selectedOptions)
+                    .map(opt => opt.value)
+                    .filter(v => v && v.trim() !== '')
+                : [];
             const filtroStatus = document.getElementById('filtroStatus').value;
             const filtroBusca = document.getElementById('filtroBusca').value.toLowerCase();
             const filtroFavoritos = document.getElementById('filtroFavoritos').checked;
@@ -2852,8 +3222,8 @@ const estados = [
                     // Se aplicarmos aqui, pode não funcionar quando banco tem "carreta" e filtro tem "Carreta"
                     // ou "bau" e filtro tem "Baú"
                     
-                    if (filtroEstado) {
-                        query = query.eq('estado', filtroEstado);
+                    if (filtroEstado && filtroEstado.length > 0) {
+                        query = query.in('estado', filtroEstado);
                     }
 
                     // Para busca por nome/telefone, usar ilike
@@ -2889,30 +3259,28 @@ const estados = [
                     }
                     
                     // Aplicar filtros de tipo de veículo e carroceria client-side para garantir normalização
-                    // Isso garante que funcione mesmo se o banco tiver "carreta" e o filtro "Carreta"
-                    // ou "bau" e o filtro "Baú"
-                    if (filtroTipoVeiculo) {
-                        const filtroNormalizado = normalizarTexto(filtroTipoVeiculo);
-                        console.log('🔍 Filtrando tipo de veículo:', {
-                            filtroOriginal: filtroTipoVeiculo,
-                            filtroNormalizado: filtroNormalizado,
+                    // Agora suportando múltiplas seleções
+                    if (Array.isArray(filtroTipoVeiculo) && filtroTipoVeiculo.length > 0) {
+                        const filtrosNormalizados = filtroTipoVeiculo
+                            .map(v => normalizarTexto(v))
+                            .filter(v => v);
+
+                        console.log('🔍 Filtrando tipo de veículo (múltiplo):', {
+                            filtrosOriginais: filtroTipoVeiculo,
+                            filtrosNormalizados,
                             totalAntes: todosMotoristas.length
                         });
                         
                         const antes = todosMotoristas.length;
                         todosMotoristas = todosMotoristas.filter(motorista => {
                             const tipoVeiculoMotorista = normalizarTexto(motorista.tipo_veiculo || '');
-                            const match = tipoVeiculoMotorista.includes(filtroNormalizado) || 
-                                         filtroNormalizado.includes(tipoVeiculoMotorista) ||
-                                         tipoVeiculoMotorista === filtroNormalizado;
-                            
-                            if (!match && motorista.tipo_veiculo && filtroNormalizado) {
-                                console.log('❌ Tipo veículo não match:', {
-                                    original: motorista.tipo_veiculo,
-                                    normalizado: tipoVeiculoMotorista,
-                                    filtro: filtroNormalizado
-                                });
-                            }
+                            if (!tipoVeiculoMotorista) return false;
+
+                            const match = filtrosNormalizados.some(filtroNormalizado =>
+                                tipoVeiculoMotorista.includes(filtroNormalizado) ||
+                                filtroNormalizado.includes(tipoVeiculoMotorista) ||
+                                tipoVeiculoMotorista === filtroNormalizado
+                            );
                             
                             return match;
                         });
@@ -2920,27 +3288,23 @@ const estados = [
                         console.log(`✅ Filtro de tipo de veículo: ${antes} → ${todosMotoristas.length} motoristas`);
                     }
                     
-                    if (filtroCarroceria) {
-                        const filtroNormalizado = normalizarChaveCarroceria(filtroCarroceria);
-                        console.log('🔍 Filtrando carroceria:', {
-                            filtroOriginal: filtroCarroceria,
-                            filtroNormalizado: filtroNormalizado,
+                    if (Array.isArray(filtroCarroceria) && filtroCarroceria.length > 0) {
+                        const filtrosNormalizados = filtroCarroceria
+                            .map(v => normalizarChaveCarroceria(v))
+                            .filter(v => v);
+
+                        console.log('🔍 Filtrando carroceria (múltiplo):', {
+                            filtrosOriginais: filtroCarroceria,
+                            filtrosNormalizados,
                             totalAntes: todosMotoristas.length
                         });
                         
                         const antes = todosMotoristas.length;
                         todosMotoristas = todosMotoristas.filter(motorista => {
                             const carroceriaMotorista = normalizarChaveCarroceria(motorista.tipo_carroceria || '');
-                            
-                            const match = carroceriaMotorista === filtroNormalizado;
-                            
-                            if (!match && motorista.tipo_carroceria && filtroNormalizado) {
-                                console.log('❌ Não match:', {
-                                    original: motorista.tipo_carroceria,
-                                    normalizado: carroceriaMotorista,
-                                    filtro: filtroNormalizado
-                                });
-                            }
+                            if (!carroceriaMotorista) return false;
+
+                            const match = filtrosNormalizados.includes(carroceriaMotorista);
                             
                             return match;
                         });
@@ -2974,29 +3338,40 @@ const estados = [
                         // Filtro de classe usando currentClass
                         if (motorista.classe_veiculo !== currentClass) return false;
                         
-                        // Filtro de tipo de veículo (tolerante, case-insensitive, sem acentos)
-                        if (filtroTipoVeiculo) {
+                        // Filtro de tipo de veículo (tolerante, case-insensitive, sem acentos) com múltiplas seleções
+                        if (Array.isArray(filtroTipoVeiculo) && filtroTipoVeiculo.length > 0) {
                             const tipoVeiculoMotorista = normalizarTexto(motorista.tipo_veiculo || '');
-                            const filtroNormalizado = normalizarTexto(filtroTipoVeiculo);
-                            
-                            // Verificar se tipo contém o filtro OU se o filtro contém o tipo
-                            const match = tipoVeiculoMotorista.includes(filtroNormalizado) || 
-                                         filtroNormalizado.includes(tipoVeiculoMotorista) ||
-                                         tipoVeiculoMotorista === filtroNormalizado;
+                            if (!tipoVeiculoMotorista) return false;
+
+                            const filtrosNormalizados = filtroTipoVeiculo
+                                .map(v => normalizarTexto(v))
+                                .filter(v => v);
+
+                            const match = filtrosNormalizados.some(filtroNormalizado =>
+                                tipoVeiculoMotorista.includes(filtroNormalizado) ||
+                                filtroNormalizado.includes(tipoVeiculoMotorista) ||
+                                tipoVeiculoMotorista === filtroNormalizado
+                            );
                             
                             if (!match) return false;
                         }
                         
-                        // Filtro de carroceria (tolerante, contém, case-insensitive, sem acentos)
-                        if (filtroCarroceria) {
+                        // Filtro de carroceria (case-insensitive, sem acentos) com múltiplas seleções
+                        if (Array.isArray(filtroCarroceria) && filtroCarroceria.length > 0) {
                             const carroceriaMotorista = normalizarChaveCarroceria(motorista.tipo_carroceria || '');
-                            const filtroNormalizado = normalizarChaveCarroceria(filtroCarroceria);
+                            if (!carroceriaMotorista) return false;
+
+                            const filtrosNormalizados = filtroCarroceria
+                                .map(v => normalizarChaveCarroceria(v))
+                                .filter(v => v);
                             
-                            if (carroceriaMotorista !== filtroNormalizado) return false;
+                            if (!filtrosNormalizados.includes(carroceriaMotorista)) return false;
                         }
                         
-                        // Filtro de estado
-                        if (filtroEstado && motorista.estado !== filtroEstado) return false;
+                        // Filtro de estado (múltipla seleção)
+                        if (filtroEstado && filtroEstado.length > 0) {
+                            if (!filtroEstado.includes(motorista.estado)) return false;
+                        }
                         
                         // Filtro de status (se não houver filtro, não filtrar)
                         if (filtroStatus && motorista.status !== filtroStatus) return false;
@@ -3603,28 +3978,57 @@ const estados = [
                 if (response.ok) {
                     const data = await response.json();
                     
-                    if (data.success) {
-                        adicionarLogEvolution(`✅ Evolution API conectada`, 'success');
-                        adicionarLogEvolution(`📊 Status: ${data.status}`, 'info');
-                        adicionarLogEvolution(`🔗 URL: ${data.url}`, 'info');
-                        adicionarLogEvolution(`📱 Instância: ${data.instance}`, 'info');
-                        adicionarLogEvolution(`💬 ${data.message}`, 'success');
-                    } else {
-                        adicionarLogEvolution(`❌ Evolution API com problemas`, 'warning');
-                        adicionarLogEvolution(`📊 Status: ${data.status}`, 'warning');
-                        adicionarLogEvolution(`🔗 URL: ${data.url}`, 'info');
-                        adicionarLogEvolution(`📱 Instância: ${data.instance}`, 'info');
-                        adicionarLogEvolution(`❌ Erro: ${data.error}`, 'danger');
+                    console.log('📡 Status Evolution API:', data);
+
+                    // Status conectado
+                    if (data.success && data.status === 'connected') {
+                        adicionarLogEvolution(`✅ Evolution API CONECTADA`, 'success');
+                        if (data.status) adicionarLogEvolution(`📊 Status: ${data.status}`, 'info');
+                        if (data.url) adicionarLogEvolution(`🔗 URL: ${data.url}`, 'info');
+                        if (data.instance) adicionarLogEvolution(`📱 Instância: ${data.instance}`, 'info');
+                        if (data.message) adicionarLogEvolution(`💬 ${data.message}`, 'success');
+                        return;
+                    }
+
+                    // Status desconectado (ex.: servidor fora do ar, sessão caída, sem conexão)
+                    if (data.status === 'disconnected') {
+                        adicionarLogEvolution(`⚠️ Evolution API DESCONECTADA`, 'warning');
+                        if (data.url) adicionarLogEvolution(`🔗 URL: ${data.url}`, 'info');
+                        if (data.instance) adicionarLogEvolution(`📱 Instância: ${data.instance}`, 'info');
+                        if (data.error) adicionarLogEvolution(`❌ Detalhe técnico: ${data.error}`, 'danger');
+                        adicionarLogEvolution(
+                            `💬 A instância parece estar desconectada. Se você acabou de deslogar, gere um novo QR Code para reconectar.`,
+                            'warning'
+                        );
+                        return;
+                    }
+
+                    // Erros gerais (configuração incorreta, erro HTTP, etc.)
+                    adicionarLogEvolution(`❌ Evolution API com problemas`, 'warning');
+                    if (data.status) adicionarLogEvolution(`📊 Status: ${data.status}`, 'warning');
+                    if (data.url) adicionarLogEvolution(`🔗 URL: ${data.url}`, 'info');
+                    if (data.instance) adicionarLogEvolution(`📱 Instância: ${data.instance}`, 'info');
+                    if (data.error) adicionarLogEvolution(`❌ Erro: ${data.error}`, 'danger');
+                    if (data.message) {
                         adicionarLogEvolution(`💬 ${data.message}`, 'warning');
+                    } else {
+                        adicionarLogEvolution(`💬 Verifique a configuração da Evolution API em Settings > Evolution API.`, 'warning');
                     }
     } else {
                     const error = await response.text();
                     adicionarLogEvolution(`❌ Erro HTTP ${response.status}`, 'danger');
-                    adicionarLogEvolution(`💬 ${error}`, 'danger');
+                    adicionarLogEvolution(
+                        `💬 ${error || 'O servidor da Evolution não respondeu corretamente. Verifique se a instância está online.'}`,
+                        'danger'
+                    );
                 }
   } catch (error) {
                 adicionarLogEvolution(`❌ Erro de conexão: ${error.message}`, 'danger');
-                adicionarLogEvolution(`💬 Verifique se o servidor está rodando`, 'warning');
+                adicionarLogEvolution(
+                    `💬 Verifique se o servidor da Evolution está rodando e se a instância está conectada. ` +
+                    `Se você estiver deslogado, será necessário gerar um novo QR Code.`,
+                    'warning'
+                );
             }
         }
 
@@ -3838,7 +4242,11 @@ const estados = [
                     throw new Error(errorMsg);
                 }
 
-                mostrarSucesso('Instância desconectada com sucesso. Gere um novo QR Code para reconectar.');
+                // Mensagens imediatas para o usuário
+                mostrarSucesso('Instância Evolution desconectada com sucesso. Gere um novo QR Code para reconectar.');
+                adicionarLogEvolution('🔌 Instância Evolution desconectada pelo usuário. Nenhuma mensagem será enviada até reconectar.', 'warning');
+
+                // Atualizar status (mostrará como desconectada se o servidor não estiver mais conectado)
                 verificarEvolutionAPI();
             } catch (error) {
                 console.error('Erro ao desconectar instância:', error);
@@ -3923,6 +4331,11 @@ const estados = [
 
         async function gerarMensagemVariada(textoOriginal, contextoExtra = {}) {
             if (!textoOriginal || !textoOriginal.trim()) {
+                return textoOriginal;
+            }
+
+            // Verificar se a randomização de mensagens com IA está ativada
+            if (!configDisparo.randomMessageAI) {
                 return textoOriginal;
             }
 

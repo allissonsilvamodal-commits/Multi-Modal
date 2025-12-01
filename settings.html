@@ -2767,22 +2767,43 @@
             console.log(`🔧 Cliente Supabase disponível:`, !!supabase);
 
             try {
+                // Verificar se o usuário existe na tabela user_profiles
+                const { data: usuarioData, error: usuarioError } = await supabase
+                    .from('user_profiles')
+                    .select('id, email, nome')
+                    .eq('id', usuarioId)
+                    .maybeSingle();
+                
+                if (usuarioError) {
+                    console.error('❌ Erro ao verificar usuário:', usuarioError);
+                    throw new Error(`Erro ao verificar usuário: ${usuarioError.message}`);
+                }
+                
+                if (!usuarioData) {
+                    console.error(`❌ Usuário com ID ${usuarioId} não encontrado na tabela user_profiles`);
+                    mostrarErro(`Usuário não encontrado no banco de dados. Por favor, recarregue a página e tente novamente.`);
+                    return;
+                }
+                
+                console.log(`✅ Usuário verificado: ${usuarioData.nome || usuarioData.email} (ID: ${usuarioData.id})`);
+                
                 if (permitido) {
                     // Verificar se a permissão já existe antes de inserir
                     const { data: existing, error: checkError } = await supabase
                         .from('permissoes_portal')
-                        .select('id')
+                        .select('id, usuario_id, permissao_id')
                         .eq('usuario_id', usuarioId)
                         .eq('permissao_id', permissaoId)
                         .maybeSingle();
                     
                     if (checkError && checkError.code !== 'PGRST116') {
+                        console.error('❌ Erro ao verificar permissão existente:', checkError);
                         throw checkError;
                     }
                     
                     // Se não existe, inserir
                     if (!existing) {
-                        console.log(`📝 Inserindo nova permissão ${permissaoId}...`);
+                        console.log(`📝 Inserindo nova permissão ${permissaoId} para usuário ${usuarioId}...`);
                         const { data, error } = await supabase
                             .from('permissoes_portal')
                             .insert([{
@@ -2791,31 +2812,37 @@
                                 permissao_id: permissaoId
                             }]);
                         if (error) {
-                            console.error('❌ Erro ao inserir:', error);
+                            console.error('❌ Erro ao inserir permissão:', error);
+                            console.error('❌ Detalhes do erro:', JSON.stringify(error, null, 2));
                             throw error;
                         }
                         console.log('✅ Permissão inserida com sucesso:', data);
                     } else {
-                        console.log(`⚠️ Permissão já existe: ${permissaoId}`);
+                        console.log(`⚠️ Permissão já existe: ${permissaoId} (ID: ${existing.id})`);
                     }
                 } else {
-                    console.log(`🗑️ Removendo permissão ${permissaoId}...`);
-                    const { error } = await supabase
+                    console.log(`🗑️ Removendo permissão ${permissaoId} do usuário ${usuarioId}...`);
+                    const { data: deleted, error } = await supabase
                         .from('permissoes_portal')
                         .delete()
                         .eq('usuario_id', usuarioId)
-                        .eq('permissao_id', permissaoId);
+                        .eq('permissao_id', permissaoId)
+                        .select();
                     if (error) {
-                        console.error('❌ Erro ao deletar:', error);
+                        console.error('❌ Erro ao deletar permissão:', error);
                         throw error;
                     }
-                    console.log('✅ Permissão removida com sucesso');
+                    console.log('✅ Permissão removida com sucesso. Registros deletados:', deleted);
                 }
                 console.log(`✅ Permissão ${permitido ? 'adicionada' : 'removida'}: ${permissaoId}`);
-                mostrarSucesso(`Permissão ${permitido ? 'habilitada' : 'desabilitada'} com sucesso!`);
+                mostrarSucesso(`Permissão ${permitido ? 'habilitada' : 'desabilitada'} com sucesso para ${usuarioData.nome || usuarioData.email}!`);
+                
+                // Recarregar as permissões do usuário para atualizar a interface
+                await carregarPermissoesUsuario();
             } catch (error) {
                 console.error('❌ Erro ao salvar permissão:', error);
-                mostrarErro(`Erro ao salvar permissão: ${error.message}`);
+                console.error('❌ Stack trace:', error.stack);
+                mostrarErro(`Erro ao salvar permissão: ${error.message || 'Erro desconhecido'}`);
             }
         }
 

@@ -118,12 +118,41 @@ async function verificarPermissaoPagina(pageName) {
         }
         
         console.log('📡 Buscando permissões do usuário no Supabase...');
+        console.log('🔍 ID do usuário sendo usado na busca:', userData.id);
         
-        // Buscar permissões do usuário
-        const { data, error } = await client
+        // Buscar permissões do usuário - tentar com o ID do auth primeiro
+        let { data, error } = await client
             .from('permissoes_portal')
-            .select('permissao_id, tipo')
+            .select('permissao_id, tipo, usuario_id')
             .eq('usuario_id', userData.id);
+        
+        // Se não encontrar permissões, tentar buscar pelo email (caso o ID seja diferente)
+        if ((!data || data.length === 0) && userData.email) {
+            console.log('⚠️ Nenhuma permissão encontrada com o ID do auth, tentando buscar pelo email...');
+            
+            // Buscar o ID correto na tabela user_profiles pelo email
+            const { data: profileData, error: profileError } = await client
+                .from('user_profiles')
+                .select('id')
+                .eq('email', userData.email)
+                .maybeSingle();
+            
+            if (!profileError && profileData && profileData.id) {
+                console.log('✅ ID encontrado na tabela user_profiles:', profileData.id);
+                
+                // Buscar permissões com o ID correto
+                const { data: permData, error: permError } = await client
+                    .from('permissoes_portal')
+                    .select('permissao_id, tipo, usuario_id')
+                    .eq('usuario_id', profileData.id);
+                
+                if (!permError) {
+                    data = permData;
+                    error = null;
+                    console.log('✅ Permissões encontradas com o ID correto:', data);
+                }
+            }
+        }
         
         if (error) {
             console.error('❌ Erro ao buscar permissões:', error);
@@ -174,9 +203,11 @@ async function verificarPermissaoPagina(pageName) {
         
         const requiredPermission = pagePermissionsMap[pageName];
         console.log(`🔍 Permissão requerida para ${pageName}:`, requiredPermission);
+        console.log(`📋 Mapeamento completo:`, pagePermissionsMap);
         
         if (!requiredPermission) {
             console.log(`⚠️ Página ${pageName} não tem mapeamento de permissão definido`);
+            console.log(`📋 Páginas disponíveis no mapeamento:`, Object.keys(pagePermissionsMap));
             // Para páginas sem mapeamento definido, NEGA acesso por segurança
             console.log('❌ Acesso negado: página sem mapeamento de permissão');
             return false;
@@ -184,7 +215,17 @@ async function verificarPermissaoPagina(pageName) {
         
         const temPermissao = permissoes.includes(requiredPermission);
         console.log(`🔑 Usuário tem a permissão '${requiredPermission}' para ${pageName}:`, temPermissao);
-        console.log(`📝 Resumo: permissoes[${permissoes.length}] inclui '${requiredPermission}'?`, temPermissao);
+        console.log(`📝 Resumo: permissoes[${permissoes.length}] = [${permissoes.join(', ')}] inclui '${requiredPermission}'?`, temPermissao);
+        
+        if (!temPermissao) {
+            console.log(`❌ PERMISSÃO NEGADA para ${pageName}`);
+            console.log(`   - Permissão requerida: ${requiredPermission}`);
+            console.log(`   - Permissões do usuário: [${permissoes.join(', ')}]`);
+            console.log(`   - ID do usuário: ${userData.id}`);
+            console.log(`   - Email do usuário: ${userData.email}`);
+        } else {
+            console.log(`✅ PERMISSÃO CONCEDIDA para ${pageName}`);
+        }
         
         return temPermissao;
         

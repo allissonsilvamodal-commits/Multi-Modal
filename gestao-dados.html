@@ -441,6 +441,14 @@
                   <option value="Erro de Sistema / Integração / Processamento">Erro de Sistema / Integração / Processamento</option>
                 </select>
               </div>
+              <div class="col-md-3">
+                <label class="form-label-modern">Sistema *</label>
+                <select id="sistema" class="form-select form-select-modern" required>
+                  <option value="">Selecione o sistema...</option>
+                  <option value="B2">B2</option>
+                  <option value="GW">GW</option>
+                </select>
+              </div>
             </div>
             
             <div class="row g-3 mt-2">
@@ -673,6 +681,7 @@
                   <th>OC</th>
                   <th>Operação</th>
                   <th>Tipo de Erro</th>
+                  <th>Sistema</th>
                   <th>Motivo da Devolução</th>
                   <th>Hora Envio</th>
                   <th>Hora Retorno</th>
@@ -766,6 +775,14 @@
                   <option value="Erro de Nomeclatura de Arquivos">Erro de Nomeclatura de Arquivos</option>
                   <option value="Problema Operacional / Autorização / Procedimento">Problema Operacional / Autorização / Procedimento</option>
                   <option value="Erro de Sistema / Integração / Processamento">Erro de Sistema / Integração / Processamento</option>
+                </select>
+              </div>
+              <div class="col-md-3">
+                <label class="form-label-modern">Sistema *</label>
+                <select id="editarSistema" class="form-select form-select-modern" required>
+                  <option value="">Selecione o sistema...</option>
+                  <option value="B2">B2</option>
+                  <option value="GW">GW</option>
                 </select>
               </div>
             </div>
@@ -1112,6 +1129,7 @@
         oc: document.getElementById('oc').value.trim(),
         operacao: document.getElementById('operacao').value.trim(),
         tipo_erro: document.getElementById('tipo_erro').value,
+        sistema: document.getElementById('sistema').value,
         motivo_devolucao: document.getElementById('motivo_devolucao').value.trim(),
         hora_envio: document.getElementById('hora_envio').value,
         hora_retorno: document.getElementById('hora_retorno').value,
@@ -1256,7 +1274,7 @@
       if (dados.length === 0) {
         tbody.innerHTML = `
           <tr>
-            <td colspan="12" class="text-center py-4 text-muted">
+            <td colspan="13" class="text-center py-4 text-muted">
               <i class="fas fa-inbox fa-2x mb-3 d-block"></i>
               Nenhum registro encontrado
             </td>
@@ -1280,6 +1298,7 @@
           <td><strong>${dado.oc}</strong></td>
           <td>${dado.operacao}</td>
           <td><span class="badge-modern bg-warning text-dark">${dado.tipo_erro}</span></td>
+          <td><span class="badge-modern ${dado.sistema === 'B2' ? 'bg-info' : 'bg-primary'}">${dado.sistema || '-'}</span></td>
           <td>${dado.motivo_devolucao}</td>
           <td>${dado.hora_envio}</td>
           <td>${dado.hora_retorno}</td>
@@ -1382,6 +1401,7 @@
       document.getElementById('editarOC').value = registro.oc;
       document.getElementById('editarOperacao').value = registro.operacao;
       document.getElementById('editarTipoErro').value = registro.tipo_erro;
+      document.getElementById('editarSistema').value = registro.sistema || '';
       document.getElementById('editarMotivoDevolucao').value = registro.motivo_devolucao;
       document.getElementById('editarHoraEnvio').value = registro.hora_envio;
       document.getElementById('editarHoraRetorno').value = registro.hora_retorno;
@@ -1506,6 +1526,7 @@
         oc: document.getElementById('editarOC').value.trim(),
         operacao: document.getElementById('editarOperacao').value,
         tipo_erro: document.getElementById('editarTipoErro').value,
+        sistema: document.getElementById('editarSistema').value,
         motivo_devolucao: document.getElementById('editarMotivoDevolucao').value.trim(),
         hora_envio: document.getElementById('editarHoraEnvio').value,
         hora_retorno: document.getElementById('editarHoraRetorno').value,
@@ -1514,7 +1535,7 @@
       };
 
       // Validação
-      if (!dados.data || !dados.oc || !dados.operacao || !dados.tipo_erro || 
+      if (!dados.data || !dados.oc || !dados.operacao || !dados.tipo_erro || !dados.sistema ||
           !dados.motivo_devolucao || !dados.hora_envio || !dados.hora_retorno || !dados.responsavel) {
         mostrarAlerta('Preencha todos os campos obrigatórios', 'warning');
         return;

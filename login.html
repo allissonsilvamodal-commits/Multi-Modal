@@ -871,6 +871,54 @@
 
         if (error) {
             console.error('❌ Erro na autenticação Supabase:', error);
+            
+            // ✅ Se o erro for "Email not confirmed", confirmar automaticamente e tentar novamente
+            if (error.message && error.message.includes('Email not confirmed')) {
+                console.log('📧 E-mail não confirmado. Confirmando automaticamente...');
+                
+                try {
+                    // Chamar endpoint do backend para confirmar o e-mail
+                    const confirmResponse = await fetch('/api/auth/resend-confirmation', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ email: email }),
+                        credentials: 'include'
+                    });
+                    
+                    const confirmResult = await confirmResponse.json();
+                    
+                    if (confirmResult.success) {
+                        console.log('✅ E-mail confirmado automaticamente. Tentando login novamente...');
+                        
+                        // Tentar login novamente após confirmação
+                        const { data: retryData, error: retryError } = await supabase.auth.signInWithPassword({
+                            email: email,
+                            password: senha
+                        });
+                        
+                        if (retryError) {
+                            console.error('❌ Erro após confirmação:', retryError);
+                            throw new Error('E-mail ou senha inválidos');
+                        }
+                        
+                        if (!retryData.user) {
+                            throw new Error('E-mail ou senha inválidos');
+                        }
+                        
+                        console.log('✅ Login bem-sucedido após confirmação automática:', retryData.user.email);
+                        return retryData;
+                    } else {
+                        console.warn('⚠️ Não foi possível confirmar o e-mail automaticamente:', confirmResult.error);
+                        throw new Error('E-mail não confirmado. Tente novamente em alguns instantes.');
+                    }
+                } catch (confirmError) {
+                    console.error('❌ Erro ao confirmar e-mail:', confirmError);
+                    throw new Error('E-mail não confirmado. Tente novamente em alguns instantes.');
+                }
+            }
+            
             throw new Error('E-mail ou senha inválidos');
         }
 

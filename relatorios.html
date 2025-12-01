@@ -724,10 +724,12 @@
                     <div class="card-futuristic">
                         <div class="card-header-futuristic"><h5><i class="fas fa-exclamation-triangle"></i> Lançamentos por Tipo de Erro</h5></div>
                         <div class="chart-container"><canvas id="chartTipoErroGestao"></canvas></div>
+                        <small class="text-muted d-block text-center mt-2" style="padding: 0 1rem;"><i class="fas fa-mouse-pointer"></i> Clique em um segmento para ver detalhes</small>
                     </div>
                     <div class="card-futuristic">
                         <div class="card-header-futuristic"><h5><i class="fas fa-cogs"></i> Lançamentos por Operação</h5></div>
                         <div class="chart-container"><canvas id="chartOperacaoGestao"></canvas></div>
+                        <small class="text-muted d-block text-center mt-2" style="padding: 0 1rem;"><i class="fas fa-mouse-pointer"></i> Clique em uma barra para ver detalhes</small>
                     </div>
                 </div>
                 
@@ -735,10 +737,12 @@
                     <div class="card-futuristic">
                         <div class="card-header-futuristic"><h5><i class="fas fa-user-tie"></i> Top 10 Responsáveis</h5></div>
                         <div class="chart-container"><canvas id="chartResponsavelGestao"></canvas></div>
+                        <small class="text-muted d-block text-center mt-2" style="padding: 0 1rem;"><i class="fas fa-mouse-pointer"></i> Clique em uma barra para ver detalhes</small>
                     </div>
                     <div class="card-futuristic">
                         <div class="card-header-futuristic"><h5><i class="fas fa-calendar"></i> Evolução Temporal</h5></div>
                         <div class="chart-container"><canvas id="chartTemporalGestao"></canvas></div>
+                        <small class="text-muted d-block text-center mt-2" style="padding: 0 1rem;"><i class="fas fa-mouse-pointer"></i> Clique em um ponto para ver detalhes</small>
                     </div>
                 </div>
                 
@@ -753,6 +757,115 @@
     <div id="loadingOverlay" class="loading-overlay" style="display: none;">
         <div class="text-center"><div class="spinner"></div><p class="loading-text">Carregando relatórios...</p></div>
         </div>
+    
+    <!-- Modal de Detalhes do Tipo de Erro -->
+    <div class="modal fade" id="modalDetalhesTipoErro" tabindex="-1" aria-labelledby="modalDetalhesTipoErroLabel" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable">
+            <div class="modal-content" style="background: #ffffff; border: none; box-shadow: 0 10px 40px rgba(0,0,0,0.2);">
+                <div class="modal-header" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-bottom: none; padding: 1.5rem 2rem;">
+                    <h5 class="modal-title" id="modalDetalhesTipoErroLabel" style="color: white; font-weight: 700; font-size: 1.25rem;">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <span id="modalTipoErroTitulo">Detalhes do Tipo de Erro</span>
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                </div>
+                <div class="modal-body" style="background: #f8f9fa; color: #212529; padding: 2rem;">
+                    <div id="modalDetalhesConteudo">
+                        <div class="text-center py-5">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Carregando...</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer" style="background: #ffffff; border-top: 1px solid #dee2e6; padding: 1rem 2rem;">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal de Detalhes da Operação -->
+    <div class="modal fade" id="modalDetalhesOperacao" tabindex="-1" aria-labelledby="modalDetalhesOperacaoLabel" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable">
+            <div class="modal-content" style="background: #ffffff; border: none; box-shadow: 0 10px 40px rgba(0,0,0,0.2);">
+                <div class="modal-header" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-bottom: none; padding: 1.5rem 2rem;">
+                    <h5 class="modal-title" id="modalDetalhesOperacaoLabel" style="color: white; font-weight: 700; font-size: 1.25rem;">
+                        <i class="fas fa-building me-2"></i>
+                        <span id="modalOperacaoTitulo">Detalhes da Operação</span>
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                </div>
+                <div class="modal-body" style="background: #f8f9fa; color: #212529; padding: 2rem;">
+                    <div id="modalDetalhesOperacaoConteudo">
+                        <div class="text-center py-5">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Carregando...</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer" style="background: #ffffff; border-top: 1px solid #dee2e6; padding: 1rem 2rem;">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal de Detalhes do Responsável -->
+    <div class="modal fade" id="modalDetalhesResponsavel" tabindex="-1" aria-labelledby="modalDetalhesResponsavelLabel" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable">
+            <div class="modal-content" style="background: #ffffff; border: none; box-shadow: 0 10px 40px rgba(0,0,0,0.2);">
+                <div class="modal-header" style="background: linear-gradient(135deg, #764ba2 0%, #9b59b6 100%); border-bottom: none; padding: 1.5rem 2rem;">
+                    <h5 class="modal-title" id="modalDetalhesResponsavelLabel" style="color: white; font-weight: 700; font-size: 1.25rem;">
+                        <i class="fas fa-user-tie me-2"></i>
+                        <span id="modalResponsavelTitulo">Detalhes do Responsável</span>
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                </div>
+                <div class="modal-body" style="background: #f8f9fa; color: #212529; padding: 2rem;">
+                    <div id="modalDetalhesResponsavelConteudo">
+                        <div class="text-center py-5">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Carregando...</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer" style="background: #ffffff; border-top: 1px solid #dee2e6; padding: 1rem 2rem;">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal de Detalhes da Data -->
+    <div class="modal fade" id="modalDetalhesData" tabindex="-1" aria-labelledby="modalDetalhesDataLabel" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable">
+            <div class="modal-content" style="background: #ffffff; border: none; box-shadow: 0 10px 40px rgba(0,0,0,0.2);">
+                <div class="modal-header" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); border-bottom: none; padding: 1.5rem 2rem;">
+                    <h5 class="modal-title" id="modalDetalhesDataLabel" style="color: white; font-weight: 700; font-size: 1.25rem;">
+                        <i class="fas fa-calendar-alt me-2"></i>
+                        <span id="modalDataTitulo">Detalhes da Data</span>
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                </div>
+                <div class="modal-body" style="background: #f8f9fa; color: #212529; padding: 2rem;">
+                    <div id="modalDetalhesDataConteudo">
+                        <div class="text-center py-5">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Carregando...</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer" style="background: #ffffff; border-top: 1px solid #dee2e6; padding: 1rem 2rem;">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 	<script src="js/permissions.js"></script>
     <script>
@@ -1696,6 +1809,17 @@
                             layout: {
                                 padding: 10
                             },
+                            onClick: (event, elements) => {
+                                if (elements.length > 0) {
+                                    const element = elements[0];
+                                    const index = element.index;
+                                    const tipoErro = tiposErroData[index].tipo;
+                                    mostrarDetalhesTipoErro(tipoErro);
+                                }
+                            },
+                            onHover: (event, elements) => {
+                                event.native.target.style.cursor = elements.length > 0 ? 'pointer' : 'default';
+                            },
                             plugins: {
                                 legend: { 
                                     display: true, 
@@ -1816,6 +1940,17 @@
                     options: {
                         responsive: true,
                         maintainAspectRatio: false,
+                        onClick: (event, elements) => {
+                            if (elements.length > 0) {
+                                const element = elements[0];
+                                const index = element.index;
+                                const operacao = operacoesData[index].operacao;
+                                mostrarDetalhesOperacao(operacao);
+                            }
+                        },
+                        onHover: (event, elements) => {
+                            event.native.target.style.cursor = elements.length > 0 ? 'pointer' : 'default';
+                        },
                         layout: {
                             padding: {
                                 left: 5,
@@ -2004,6 +2139,17 @@
                             indexAxis: 'y',
                             responsive: true,
                             maintainAspectRatio: false,
+                            onClick: (event, elements) => {
+                                if (elements.length > 0) {
+                                    const element = elements[0];
+                                    const index = element.index;
+                                    const responsavel = responsaveisData[index].responsavel;
+                                    mostrarDetalhesResponsavel(responsavel);
+                                }
+                            },
+                            onHover: (event, elements) => {
+                                event.native.target.style.cursor = elements.length > 0 ? 'pointer' : 'default';
+                            },
                             layout: {
                                 padding: {
                                     left: 5,
@@ -2180,6 +2326,17 @@
                         options: {
                             responsive: true,
                             maintainAspectRatio: false,
+                            onClick: (event, elements) => {
+                                if (elements.length > 0) {
+                                    const element = elements[0];
+                                    const index = element.index;
+                                    const data = temporalData[index];
+                                    mostrarDetalhesData(data.date);
+                                }
+                            },
+                            onHover: (event, elements) => {
+                                event.native.target.style.cursor = elements.length > 0 ? 'pointer' : 'default';
+                            },
                             layout: {
                                 padding: {
                                     left: 5,
@@ -2503,24 +2660,26 @@
                                         tooltip: {
                                             enabled: true,
                                             backgroundColor: 'rgba(0, 0, 0, 0.88)',
-                                            padding: 14,
+                                            padding: 20,
                                             titleFont: { 
-                                                size: 14, 
+                                                size: 16, 
                                                 weight: 'bold',
                                                 family: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif"
                                             },
                                             bodyFont: { 
-                                                size: 12,
+                                                size: 14,
+                                                weight: '500',
                                                 family: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif"
                                             },
                                             footerFont: {
-                                                size: 12,
+                                                size: 14,
                                                 weight: 'bold',
                                                 family: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif"
                                             },
                                             mode: 'index',
                                             intersect: false,
                                             axis: 'x',
+                                            maxWidth: 400,
                                             callbacks: {
                                                 title: function(context) {
                                                     if (!context || context.length === 0) return '';
@@ -2553,14 +2712,14 @@
                                                     return `Total: ${total} ocorrências`;
                                                 }
                                             },
-                                            cornerRadius: 8,
+                                            cornerRadius: 10,
                                             displayColors: true,
-                                            boxPadding: 6,
-                                            borderColor: 'rgba(255, 255, 255, 0.1)',
-                                            borderWidth: 1,
-                                            titleSpacing: 8,
-                                            bodySpacing: 5,
-                                            footerSpacing: 8
+                                            boxPadding: 8,
+                                            borderColor: 'rgba(255, 255, 255, 0.15)',
+                                            borderWidth: 1.5,
+                                            titleSpacing: 12,
+                                            bodySpacing: 8,
+                                            footerSpacing: 12
                                         }
                                     },
                                     scales: {
@@ -2644,6 +2803,721 @@
             alert('Erro ao carregar dados do BI Gestão de Dados. Verifique o console para mais detalhes.');
         } finally {
             if(overlay) overlay.style.display = 'none';
+        }
+    }
+    
+    // Função para mostrar detalhes do tipo de erro
+    async function mostrarDetalhesTipoErro(tipoErro) {
+        const modal = new bootstrap.Modal(document.getElementById('modalDetalhesTipoErro'));
+        const conteudo = document.getElementById('modalDetalhesConteudo');
+        const titulo = document.getElementById('modalTipoErroTitulo');
+        
+        titulo.textContent = tipoErro;
+        conteudo.innerHTML = '<div class="text-center py-5"><div class="spinner-border text-primary" role="status"></div><p class="mt-3">Carregando detalhes...</p></div>';
+        modal.show();
+        
+        try {
+            const periodo = calcularPeriodoGestao();
+            const operacaoSelect = document.getElementById('filtroOperacaoGestao');
+            const operacao = operacaoSelect ? operacaoSelect.value : '';
+            
+            const params = new URLSearchParams({
+                inicio: periodo.inicio || '',
+                fim: periodo.fim || '',
+                tipo_erro: tipoErro
+            });
+            
+            if (operacao && operacao.trim() !== '') {
+                params.append('operacao', operacao.trim());
+            }
+            
+            const response = await fetch(`/api/relatorios/gestao-dados/detalhes?${params}`, { credentials: 'include' });
+            
+            if (!response.ok) {
+                throw new Error('Erro ao buscar detalhes');
+            }
+            
+            const dados = await response.json();
+            
+            // Agrupar dados
+            const porOperacao = {};
+            const porResponsavel = {};
+            const porData = {};
+            const porUsuario = {};
+            const motivosDevolucao = [];
+            
+            (dados.registros || []).forEach(reg => {
+                // Por operação
+                const op = reg.operacao || 'Não informado';
+                porOperacao[op] = (porOperacao[op] || 0) + 1;
+                
+                // Por responsável
+                const resp = reg.responsavel || 'Não informado';
+                porResponsavel[resp] = (porResponsavel[resp] || 0) + 1;
+                
+                // Por data
+                const data = reg.data || 'Não informado';
+                porData[data] = (porData[data] || 0) + 1;
+                
+                // Por usuário que criou
+                const usuario = reg.usuario_nome || reg.criado_por_nome || 'Não informado';
+                porUsuario[usuario] = (porUsuario[usuario] || 0) + 1;
+                
+                // Motivos de devolução
+                if (reg.motivo_devolucao) {
+                    motivosDevolucao.push({
+                        motivo: reg.motivo_devolucao,
+                        data: reg.data,
+                        operacao: reg.operacao,
+                        responsavel: reg.responsavel,
+                        oc: reg.oc
+                    });
+                }
+            });
+            
+            // Ordenar por quantidade
+            const ordenarPorQuantidade = (obj) => {
+                return Object.entries(obj)
+                    .sort((a, b) => b[1] - a[1])
+                    .map(([nome, qtd]) => ({ nome, qtd }));
+            };
+            
+            let html = `
+                <div class="row g-4">
+                    <div class="col-md-6">
+                        <div class="card shadow-sm" style="background: #ffffff; border: 1px solid #e0e0e0; border-radius: 12px;">
+                            <div class="card-header" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-bottom: none; color: white; border-radius: 12px 12px 0 0; padding: 1rem 1.25rem;">
+                                <h6 class="mb-0" style="color: white; font-weight: 600;"><i class="fas fa-building me-2"></i>Por Operação</h6>
+                            </div>
+                            <div class="card-body" style="max-height: 300px; overflow-y: auto; padding: 1rem;">
+                                ${ordenarPorQuantidade(porOperacao).map(item => `
+                                    <div class="d-flex justify-content-between align-items-center mb-2 p-2" style="background: #f8f9fa; border-radius: 8px; border: 1px solid #e9ecef;">
+                                        <span style="color: #212529; font-weight: 500;">${item.nome}</span>
+                                        <span class="badge" style="background: #667eea; color: white; font-size: 0.875rem; padding: 0.4rem 0.7rem;">${item.qtd}</span>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card shadow-sm" style="background: #ffffff; border: 1px solid #e0e0e0; border-radius: 12px;">
+                            <div class="card-header" style="background: linear-gradient(135deg, #764ba2 0%, #9b59b6 100%); border-bottom: none; color: white; border-radius: 12px 12px 0 0; padding: 1rem 1.25rem;">
+                                <h6 class="mb-0" style="color: white; font-weight: 600;"><i class="fas fa-user-tie me-2"></i>Por Responsável</h6>
+                            </div>
+                            <div class="card-body" style="max-height: 300px; overflow-y: auto; padding: 1rem;">
+                                ${ordenarPorQuantidade(porResponsavel).map(item => `
+                                    <div class="d-flex justify-content-between align-items-center mb-2 p-2" style="background: #f8f9fa; border-radius: 8px; border: 1px solid #e9ecef;">
+                                        <span style="color: #212529; font-weight: 500;">${item.nome}</span>
+                                        <span class="badge" style="background: #17a2b8; color: white; font-size: 0.875rem; padding: 0.4rem 0.7rem;">${item.qtd}</span>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card shadow-sm" style="background: #ffffff; border: 1px solid #e0e0e0; border-radius: 12px;">
+                            <div class="card-header" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); border-bottom: none; color: white; border-radius: 12px 12px 0 0; padding: 1rem 1.25rem;">
+                                <h6 class="mb-0" style="color: white; font-weight: 600;"><i class="fas fa-calendar-alt me-2"></i>Por Data</h6>
+                            </div>
+                            <div class="card-body" style="max-height: 300px; overflow-y: auto; padding: 1rem;">
+                                ${ordenarPorQuantidade(porData).map(item => `
+                                    <div class="d-flex justify-content-between align-items-center mb-2 p-2" style="background: #f8f9fa; border-radius: 8px; border: 1px solid #e9ecef;">
+                                        <span style="color: #212529; font-weight: 500;">${new Date(item.nome).toLocaleDateString('pt-BR')}</span>
+                                        <span class="badge" style="background: #28a745; color: white; font-size: 0.875rem; padding: 0.4rem 0.7rem;">${item.qtd}</span>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card shadow-sm" style="background: #ffffff; border: 1px solid #e0e0e0; border-radius: 12px;">
+                            <div class="card-header" style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); border-bottom: none; color: white; border-radius: 12px 12px 0 0; padding: 1rem 1.25rem;">
+                                <h6 class="mb-0" style="color: white; font-weight: 600;"><i class="fas fa-user me-2"></i>Por Usuário que Criou</h6>
+                            </div>
+                            <div class="card-body" style="max-height: 300px; overflow-y: auto; padding: 1rem;">
+                                ${ordenarPorQuantidade(porUsuario).map(item => `
+                                    <div class="d-flex justify-content-between align-items-center mb-2 p-2" style="background: #f8f9fa; border-radius: 8px; border: 1px solid #e9ecef;">
+                                        <span style="color: #212529; font-weight: 500;">${item.nome}</span>
+                                        <span class="badge" style="background: #ffc107; color: #212529; font-size: 0.875rem; padding: 0.4rem 0.7rem; font-weight: 600;">${item.qtd}</span>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-12">
+                        <div class="card shadow-sm" style="background: #ffffff; border: 1px solid #e0e0e0; border-radius: 12px;">
+                            <div class="card-header" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); border-bottom: none; color: white; border-radius: 12px 12px 0 0; padding: 1rem 1.25rem;">
+                                <h6 class="mb-0" style="color: white; font-weight: 600;"><i class="fas fa-comment-dots me-2"></i>Motivos de Devolução</h6>
+                            </div>
+                            <div class="card-body" style="max-height: 400px; overflow-y: auto; padding: 1rem;">
+                                ${motivosDevolucao.length > 0 ? motivosDevolucao.map((item, idx) => `
+                                    <div class="mb-3 p-3" style="background: #f8f9fa; border-radius: 10px; border-left: 4px solid #fa709a; border: 1px solid #e9ecef;">
+                                        <div class="d-flex justify-content-between align-items-start mb-2">
+                                            <div>
+                                                <strong style="color: #fa709a; font-size: 1rem;">OC: ${item.oc || 'N/A'}</strong>
+                                                <span class="ms-2" style="color: #6c757d; font-size: 0.9rem;">${item.data ? new Date(item.data).toLocaleDateString('pt-BR') : 'N/A'}</span>
+                                            </div>
+                                        </div>
+                                        <div class="mb-2">
+                                            <small style="color: #6c757d; font-weight: 500;">Operação: ${item.operacao || 'N/A'}</small> | 
+                                            <small style="color: #6c757d; font-weight: 500;">Responsável: ${item.responsavel || 'N/A'}</small>
+                                        </div>
+                                        <p class="mb-0" style="color: #212529; line-height: 1.6; font-size: 0.95rem;">${item.motivo}</p>
+                                    </div>
+                                `).join('') : '<p class="text-muted text-center py-4" style="color: #6c757d;">Nenhum motivo de devolução encontrado</p>'}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            conteudo.innerHTML = html;
+        } catch (error) {
+            console.error('❌ Erro ao carregar detalhes:', error);
+            conteudo.innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    Erro ao carregar detalhes: ${error.message}
+                </div>
+            `;
+        }
+    }
+    
+    // Função para mostrar detalhes da operação
+    async function mostrarDetalhesOperacao(operacao) {
+        const modal = new bootstrap.Modal(document.getElementById('modalDetalhesOperacao'));
+        const conteudo = document.getElementById('modalDetalhesOperacaoConteudo');
+        const titulo = document.getElementById('modalOperacaoTitulo');
+        
+        titulo.textContent = operacao;
+        conteudo.innerHTML = '<div class="text-center py-5"><div class="spinner-border text-primary" role="status"></div><p class="mt-3">Carregando detalhes...</p></div>';
+        modal.show();
+        
+        try {
+            const periodo = calcularPeriodoGestao();
+            const params = new URLSearchParams({
+                inicio: periodo.inicio || '',
+                fim: periodo.fim || ''
+            });
+            
+            if (operacao && operacao.trim() !== '') {
+                params.append('operacao', operacao.trim());
+            }
+            
+            const response = await fetch(`/api/relatorios/gestao-dados/detalhes?${params}`, { credentials: 'include' });
+            
+            if (!response.ok) {
+                throw new Error('Erro ao buscar detalhes');
+            }
+            
+            const dados = await response.json();
+            
+            // Agrupar dados
+            const porTipoErro = {};
+            const porResponsavel = {};
+            const porData = {};
+            const porUsuario = {};
+            const motivosDevolucao = [];
+            
+            (dados.registros || []).forEach(reg => {
+                // Por tipo de erro
+                const tipo = reg.tipo_erro || 'Não informado';
+                porTipoErro[tipo] = (porTipoErro[tipo] || 0) + 1;
+                
+                // Por responsável
+                const resp = reg.responsavel || 'Não informado';
+                porResponsavel[resp] = (porResponsavel[resp] || 0) + 1;
+                
+                // Por data
+                const data = reg.data || 'Não informado';
+                porData[data] = (porData[data] || 0) + 1;
+                
+                // Por usuário que criou
+                const usuario = reg.usuario_nome || reg.criado_por_nome || 'Não informado';
+                porUsuario[usuario] = (porUsuario[usuario] || 0) + 1;
+                
+                // Motivos de devolução
+                if (reg.motivo_devolucao) {
+                    motivosDevolucao.push({
+                        motivo: reg.motivo_devolucao,
+                        data: reg.data,
+                        tipo_erro: reg.tipo_erro,
+                        responsavel: reg.responsavel,
+                        oc: reg.oc
+                    });
+                }
+            });
+            
+            const ordenarPorQuantidade = (obj) => {
+                return Object.entries(obj)
+                    .sort((a, b) => b[1] - a[1])
+                    .map(([nome, qtd]) => ({ nome, qtd }));
+            };
+            
+            let html = `
+                <div class="row g-4">
+                    <div class="col-md-6">
+                        <div class="card shadow-sm" style="background: #ffffff; border: 1px solid #e0e0e0; border-radius: 12px;">
+                            <div class="card-header" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-bottom: none; color: white; border-radius: 12px 12px 0 0; padding: 1rem 1.25rem;">
+                                <h6 class="mb-0" style="color: white; font-weight: 600;"><i class="fas fa-exclamation-triangle me-2"></i>Por Tipo de Erro</h6>
+                            </div>
+                            <div class="card-body" style="max-height: 300px; overflow-y: auto; padding: 1rem;">
+                                ${ordenarPorQuantidade(porTipoErro).map(item => `
+                                    <div class="d-flex justify-content-between align-items-center mb-2 p-2" style="background: #f8f9fa; border-radius: 8px; border: 1px solid #e9ecef;">
+                                        <span style="color: #212529; font-weight: 500;">${item.nome}</span>
+                                        <span class="badge" style="background: #667eea; color: white; font-size: 0.875rem; padding: 0.4rem 0.7rem;">${item.qtd}</span>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card shadow-sm" style="background: #ffffff; border: 1px solid #e0e0e0; border-radius: 12px;">
+                            <div class="card-header" style="background: linear-gradient(135deg, #764ba2 0%, #9b59b6 100%); border-bottom: none; color: white; border-radius: 12px 12px 0 0; padding: 1rem 1.25rem;">
+                                <h6 class="mb-0" style="color: white; font-weight: 600;"><i class="fas fa-user-tie me-2"></i>Por Responsável</h6>
+                            </div>
+                            <div class="card-body" style="max-height: 300px; overflow-y: auto; padding: 1rem;">
+                                ${ordenarPorQuantidade(porResponsavel).map(item => `
+                                    <div class="d-flex justify-content-between align-items-center mb-2 p-2" style="background: #f8f9fa; border-radius: 8px; border: 1px solid #e9ecef;">
+                                        <span style="color: #212529; font-weight: 500;">${item.nome}</span>
+                                        <span class="badge" style="background: #17a2b8; color: white; font-size: 0.875rem; padding: 0.4rem 0.7rem;">${item.qtd}</span>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card shadow-sm" style="background: #ffffff; border: 1px solid #e0e0e0; border-radius: 12px;">
+                            <div class="card-header" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); border-bottom: none; color: white; border-radius: 12px 12px 0 0; padding: 1rem 1.25rem;">
+                                <h6 class="mb-0" style="color: white; font-weight: 600;"><i class="fas fa-calendar-alt me-2"></i>Por Data</h6>
+                            </div>
+                            <div class="card-body" style="max-height: 300px; overflow-y: auto; padding: 1rem;">
+                                ${ordenarPorQuantidade(porData).map(item => `
+                                    <div class="d-flex justify-content-between align-items-center mb-2 p-2" style="background: #f8f9fa; border-radius: 8px; border: 1px solid #e9ecef;">
+                                        <span style="color: #212529; font-weight: 500;">${new Date(item.nome).toLocaleDateString('pt-BR')}</span>
+                                        <span class="badge" style="background: #28a745; color: white; font-size: 0.875rem; padding: 0.4rem 0.7rem;">${item.qtd}</span>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card shadow-sm" style="background: #ffffff; border: 1px solid #e0e0e0; border-radius: 12px;">
+                            <div class="card-header" style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); border-bottom: none; color: white; border-radius: 12px 12px 0 0; padding: 1rem 1.25rem;">
+                                <h6 class="mb-0" style="color: white; font-weight: 600;"><i class="fas fa-user me-2"></i>Por Usuário que Criou</h6>
+                            </div>
+                            <div class="card-body" style="max-height: 300px; overflow-y: auto; padding: 1rem;">
+                                ${ordenarPorQuantidade(porUsuario).map(item => `
+                                    <div class="d-flex justify-content-between align-items-center mb-2 p-2" style="background: #f8f9fa; border-radius: 8px; border: 1px solid #e9ecef;">
+                                        <span style="color: #212529; font-weight: 500;">${item.nome}</span>
+                                        <span class="badge" style="background: #ffc107; color: #212529; font-size: 0.875rem; padding: 0.4rem 0.7rem; font-weight: 600;">${item.qtd}</span>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-12">
+                        <div class="card shadow-sm" style="background: #ffffff; border: 1px solid #e0e0e0; border-radius: 12px;">
+                            <div class="card-header" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); border-bottom: none; color: white; border-radius: 12px 12px 0 0; padding: 1rem 1.25rem;">
+                                <h6 class="mb-0" style="color: white; font-weight: 600;"><i class="fas fa-comment-dots me-2"></i>Motivos de Devolução</h6>
+                            </div>
+                            <div class="card-body" style="max-height: 400px; overflow-y: auto; padding: 1rem;">
+                                ${motivosDevolucao.length > 0 ? motivosDevolucao.map((item, idx) => `
+                                    <div class="mb-3 p-3" style="background: #f8f9fa; border-radius: 10px; border-left: 4px solid #fa709a; border: 1px solid #e9ecef;">
+                                        <div class="d-flex justify-content-between align-items-start mb-2">
+                                            <div>
+                                                <strong style="color: #fa709a; font-size: 1rem;">OC: ${item.oc || 'N/A'}</strong>
+                                                <span class="ms-2" style="color: #6c757d; font-size: 0.9rem;">${item.data ? new Date(item.data).toLocaleDateString('pt-BR') : 'N/A'}</span>
+                                            </div>
+                                        </div>
+                                        <div class="mb-2">
+                                            <small style="color: #6c757d; font-weight: 500;">Tipo de Erro: ${item.tipo_erro || 'N/A'}</small> | 
+                                            <small style="color: #6c757d; font-weight: 500;">Responsável: ${item.responsavel || 'N/A'}</small>
+                                        </div>
+                                        <p class="mb-0" style="color: #212529; line-height: 1.6; font-size: 0.95rem;">${item.motivo}</p>
+                                    </div>
+                                `).join('') : '<p class="text-muted text-center py-4" style="color: #6c757d;">Nenhum motivo de devolução encontrado</p>'}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            conteudo.innerHTML = html;
+        } catch (error) {
+            console.error('❌ Erro ao carregar detalhes:', error);
+            conteudo.innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    Erro ao carregar detalhes: ${error.message}
+                </div>
+            `;
+        }
+    }
+    
+    // Função para mostrar detalhes do responsável
+    async function mostrarDetalhesResponsavel(responsavel) {
+        const modal = new bootstrap.Modal(document.getElementById('modalDetalhesResponsavel'));
+        const conteudo = document.getElementById('modalDetalhesResponsavelConteudo');
+        const titulo = document.getElementById('modalResponsavelTitulo');
+        
+        titulo.textContent = responsavel;
+        conteudo.innerHTML = '<div class="text-center py-5"><div class="spinner-border text-primary" role="status"></div><p class="mt-3">Carregando detalhes...</p></div>';
+        modal.show();
+        
+        try {
+            const periodo = calcularPeriodoGestao();
+            const operacaoSelect = document.getElementById('filtroOperacaoGestao');
+            const operacao = operacaoSelect ? operacaoSelect.value : '';
+            
+            const params = new URLSearchParams({
+                inicio: periodo.inicio || '',
+                fim: periodo.fim || '',
+                responsavel: responsavel
+            });
+            
+            if (operacao && operacao.trim() !== '') {
+                params.append('operacao', operacao.trim());
+            }
+            
+            const response = await fetch(`/api/relatorios/gestao-dados/detalhes?${params}`, { credentials: 'include' });
+            
+            if (!response.ok) {
+                throw new Error('Erro ao buscar detalhes');
+            }
+            
+            const dados = await response.json();
+            
+            // Agrupar dados
+            const porTipoErro = {};
+            const porOperacao = {};
+            const porData = {};
+            const porUsuario = {};
+            const motivosDevolucao = [];
+            
+            (dados.registros || []).forEach(reg => {
+                // Por tipo de erro
+                const tipo = reg.tipo_erro || 'Não informado';
+                porTipoErro[tipo] = (porTipoErro[tipo] || 0) + 1;
+                
+                // Por operação
+                const op = reg.operacao || 'Não informado';
+                porOperacao[op] = (porOperacao[op] || 0) + 1;
+                
+                // Por data
+                const data = reg.data || 'Não informado';
+                porData[data] = (porData[data] || 0) + 1;
+                
+                // Por usuário que criou
+                const usuario = reg.usuario_nome || reg.criado_por_nome || 'Não informado';
+                porUsuario[usuario] = (porUsuario[usuario] || 0) + 1;
+                
+                // Motivos de devolução
+                if (reg.motivo_devolucao) {
+                    motivosDevolucao.push({
+                        motivo: reg.motivo_devolucao,
+                        data: reg.data,
+                        tipo_erro: reg.tipo_erro,
+                        operacao: reg.operacao,
+                        oc: reg.oc
+                    });
+                }
+            });
+            
+            const ordenarPorQuantidade = (obj) => {
+                return Object.entries(obj)
+                    .sort((a, b) => b[1] - a[1])
+                    .map(([nome, qtd]) => ({ nome, qtd }));
+            };
+            
+            let html = `
+                <div class="row g-4">
+                    <div class="col-md-6">
+                        <div class="card shadow-sm" style="background: #ffffff; border: 1px solid #e0e0e0; border-radius: 12px;">
+                            <div class="card-header" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-bottom: none; color: white; border-radius: 12px 12px 0 0; padding: 1rem 1.25rem;">
+                                <h6 class="mb-0" style="color: white; font-weight: 600;"><i class="fas fa-exclamation-triangle me-2"></i>Por Tipo de Erro</h6>
+                            </div>
+                            <div class="card-body" style="max-height: 300px; overflow-y: auto; padding: 1rem;">
+                                ${ordenarPorQuantidade(porTipoErro).map(item => `
+                                    <div class="d-flex justify-content-between align-items-center mb-2 p-2" style="background: #f8f9fa; border-radius: 8px; border: 1px solid #e9ecef;">
+                                        <span style="color: #212529; font-weight: 500;">${item.nome}</span>
+                                        <span class="badge" style="background: #667eea; color: white; font-size: 0.875rem; padding: 0.4rem 0.7rem;">${item.qtd}</span>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card shadow-sm" style="background: #ffffff; border: 1px solid #e0e0e0; border-radius: 12px;">
+                            <div class="card-header" style="background: linear-gradient(135deg, #764ba2 0%, #9b59b6 100%); border-bottom: none; color: white; border-radius: 12px 12px 0 0; padding: 1rem 1.25rem;">
+                                <h6 class="mb-0" style="color: white; font-weight: 600;"><i class="fas fa-building me-2"></i>Por Operação</h6>
+                            </div>
+                            <div class="card-body" style="max-height: 300px; overflow-y: auto; padding: 1rem;">
+                                ${ordenarPorQuantidade(porOperacao).map(item => `
+                                    <div class="d-flex justify-content-between align-items-center mb-2 p-2" style="background: #f8f9fa; border-radius: 8px; border: 1px solid #e9ecef;">
+                                        <span style="color: #212529; font-weight: 500;">${item.nome}</span>
+                                        <span class="badge" style="background: #17a2b8; color: white; font-size: 0.875rem; padding: 0.4rem 0.7rem;">${item.qtd}</span>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card shadow-sm" style="background: #ffffff; border: 1px solid #e0e0e0; border-radius: 12px;">
+                            <div class="card-header" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); border-bottom: none; color: white; border-radius: 12px 12px 0 0; padding: 1rem 1.25rem;">
+                                <h6 class="mb-0" style="color: white; font-weight: 600;"><i class="fas fa-calendar-alt me-2"></i>Por Data</h6>
+                            </div>
+                            <div class="card-body" style="max-height: 300px; overflow-y: auto; padding: 1rem;">
+                                ${ordenarPorQuantidade(porData).map(item => `
+                                    <div class="d-flex justify-content-between align-items-center mb-2 p-2" style="background: #f8f9fa; border-radius: 8px; border: 1px solid #e9ecef;">
+                                        <span style="color: #212529; font-weight: 500;">${new Date(item.nome).toLocaleDateString('pt-BR')}</span>
+                                        <span class="badge" style="background: #28a745; color: white; font-size: 0.875rem; padding: 0.4rem 0.7rem;">${item.qtd}</span>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card shadow-sm" style="background: #ffffff; border: 1px solid #e0e0e0; border-radius: 12px;">
+                            <div class="card-header" style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); border-bottom: none; color: white; border-radius: 12px 12px 0 0; padding: 1rem 1.25rem;">
+                                <h6 class="mb-0" style="color: white; font-weight: 600;"><i class="fas fa-user me-2"></i>Por Usuário que Criou</h6>
+                            </div>
+                            <div class="card-body" style="max-height: 300px; overflow-y: auto; padding: 1rem;">
+                                ${ordenarPorQuantidade(porUsuario).map(item => `
+                                    <div class="d-flex justify-content-between align-items-center mb-2 p-2" style="background: #f8f9fa; border-radius: 8px; border: 1px solid #e9ecef;">
+                                        <span style="color: #212529; font-weight: 500;">${item.nome}</span>
+                                        <span class="badge" style="background: #ffc107; color: #212529; font-size: 0.875rem; padding: 0.4rem 0.7rem; font-weight: 600;">${item.qtd}</span>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-12">
+                        <div class="card shadow-sm" style="background: #ffffff; border: 1px solid #e0e0e0; border-radius: 12px;">
+                            <div class="card-header" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); border-bottom: none; color: white; border-radius: 12px 12px 0 0; padding: 1rem 1.25rem;">
+                                <h6 class="mb-0" style="color: white; font-weight: 600;"><i class="fas fa-comment-dots me-2"></i>Motivos de Devolução</h6>
+                            </div>
+                            <div class="card-body" style="max-height: 400px; overflow-y: auto; padding: 1rem;">
+                                ${motivosDevolucao.length > 0 ? motivosDevolucao.map((item, idx) => `
+                                    <div class="mb-3 p-3" style="background: #f8f9fa; border-radius: 10px; border-left: 4px solid #fa709a; border: 1px solid #e9ecef;">
+                                        <div class="d-flex justify-content-between align-items-start mb-2">
+                                            <div>
+                                                <strong style="color: #fa709a; font-size: 1rem;">OC: ${item.oc || 'N/A'}</strong>
+                                                <span class="ms-2" style="color: #6c757d; font-size: 0.9rem;">${item.data ? new Date(item.data).toLocaleDateString('pt-BR') : 'N/A'}</span>
+                                            </div>
+                                        </div>
+                                        <div class="mb-2">
+                                            <small style="color: #6c757d; font-weight: 500;">Tipo de Erro: ${item.tipo_erro || 'N/A'}</small> | 
+                                            <small style="color: #6c757d; font-weight: 500;">Operação: ${item.operacao || 'N/A'}</small>
+                                        </div>
+                                        <p class="mb-0" style="color: #212529; line-height: 1.6; font-size: 0.95rem;">${item.motivo}</p>
+                                    </div>
+                                `).join('') : '<p class="text-muted text-center py-4" style="color: #6c757d;">Nenhum motivo de devolução encontrado</p>'}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            conteudo.innerHTML = html;
+        } catch (error) {
+            console.error('❌ Erro ao carregar detalhes:', error);
+            conteudo.innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    Erro ao carregar detalhes: ${error.message}
+                </div>
+            `;
+        }
+    }
+    
+    // Função para mostrar detalhes da data
+    async function mostrarDetalhesData(data) {
+        const modal = new bootstrap.Modal(document.getElementById('modalDetalhesData'));
+        const conteudo = document.getElementById('modalDetalhesDataConteudo');
+        const titulo = document.getElementById('modalDataTitulo');
+        
+        const dataFormatada = new Date(data).toLocaleDateString('pt-BR', { 
+            weekday: 'long',
+            day: '2-digit', 
+            month: 'long', 
+            year: 'numeric' 
+        });
+        
+        titulo.textContent = dataFormatada;
+        conteudo.innerHTML = '<div class="text-center py-5"><div class="spinner-border text-primary" role="status"></div><p class="mt-3">Carregando detalhes...</p></div>';
+        modal.show();
+        
+        try {
+            const periodo = calcularPeriodoGestao();
+            const operacaoSelect = document.getElementById('filtroOperacaoGestao');
+            const operacao = operacaoSelect ? operacaoSelect.value : '';
+            
+            const params = new URLSearchParams({
+                data: data
+            });
+            
+            if (operacao && operacao.trim() !== '') {
+                params.append('operacao', operacao.trim());
+            }
+            
+            const response = await fetch(`/api/relatorios/gestao-dados/detalhes?${params}`, { credentials: 'include' });
+            
+            if (!response.ok) {
+                throw new Error('Erro ao buscar detalhes');
+            }
+            
+            const dados = await response.json();
+            
+            // Agrupar dados
+            const porTipoErro = {};
+            const porOperacao = {};
+            const porResponsavel = {};
+            const porUsuario = {};
+            const motivosDevolucao = [];
+            
+            (dados.registros || []).forEach(reg => {
+                // Por tipo de erro
+                const tipo = reg.tipo_erro || 'Não informado';
+                porTipoErro[tipo] = (porTipoErro[tipo] || 0) + 1;
+                
+                // Por operação
+                const op = reg.operacao || 'Não informado';
+                porOperacao[op] = (porOperacao[op] || 0) + 1;
+                
+                // Por responsável
+                const resp = reg.responsavel || 'Não informado';
+                porResponsavel[resp] = (porResponsavel[resp] || 0) + 1;
+                
+                // Por usuário que criou
+                const usuario = reg.usuario_nome || reg.criado_por_nome || 'Não informado';
+                porUsuario[usuario] = (porUsuario[usuario] || 0) + 1;
+                
+                // Motivos de devolução
+                if (reg.motivo_devolucao) {
+                    motivosDevolucao.push({
+                        motivo: reg.motivo_devolucao,
+                        tipo_erro: reg.tipo_erro,
+                        operacao: reg.operacao,
+                        responsavel: reg.responsavel,
+                        oc: reg.oc,
+                        hora_envio: reg.hora_envio,
+                        hora_retorno: reg.hora_retorno
+                    });
+                }
+            });
+            
+            const ordenarPorQuantidade = (obj) => {
+                return Object.entries(obj)
+                    .sort((a, b) => b[1] - a[1])
+                    .map(([nome, qtd]) => ({ nome, qtd }));
+            };
+            
+            let html = `
+                <div class="row g-4">
+                    <div class="col-md-6">
+                        <div class="card shadow-sm" style="background: #ffffff; border: 1px solid #e0e0e0; border-radius: 12px;">
+                            <div class="card-header" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-bottom: none; color: white; border-radius: 12px 12px 0 0; padding: 1rem 1.25rem;">
+                                <h6 class="mb-0" style="color: white; font-weight: 600;"><i class="fas fa-exclamation-triangle me-2"></i>Por Tipo de Erro</h6>
+                            </div>
+                            <div class="card-body" style="max-height: 300px; overflow-y: auto; padding: 1rem;">
+                                ${ordenarPorQuantidade(porTipoErro).map(item => `
+                                    <div class="d-flex justify-content-between align-items-center mb-2 p-2" style="background: #f8f9fa; border-radius: 8px; border: 1px solid #e9ecef;">
+                                        <span style="color: #212529; font-weight: 500;">${item.nome}</span>
+                                        <span class="badge" style="background: #667eea; color: white; font-size: 0.875rem; padding: 0.4rem 0.7rem;">${item.qtd}</span>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card shadow-sm" style="background: #ffffff; border: 1px solid #e0e0e0; border-radius: 12px;">
+                            <div class="card-header" style="background: linear-gradient(135deg, #764ba2 0%, #9b59b6 100%); border-bottom: none; color: white; border-radius: 12px 12px 0 0; padding: 1rem 1.25rem;">
+                                <h6 class="mb-0" style="color: white; font-weight: 600;"><i class="fas fa-building me-2"></i>Por Operação</h6>
+                            </div>
+                            <div class="card-body" style="max-height: 300px; overflow-y: auto; padding: 1rem;">
+                                ${ordenarPorQuantidade(porOperacao).map(item => `
+                                    <div class="d-flex justify-content-between align-items-center mb-2 p-2" style="background: #f8f9fa; border-radius: 8px; border: 1px solid #e9ecef;">
+                                        <span style="color: #212529; font-weight: 500;">${item.nome}</span>
+                                        <span class="badge" style="background: #17a2b8; color: white; font-size: 0.875rem; padding: 0.4rem 0.7rem;">${item.qtd}</span>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card shadow-sm" style="background: #ffffff; border: 1px solid #e0e0e0; border-radius: 12px;">
+                            <div class="card-header" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); border-bottom: none; color: white; border-radius: 12px 12px 0 0; padding: 1rem 1.25rem;">
+                                <h6 class="mb-0" style="color: white; font-weight: 600;"><i class="fas fa-user-tie me-2"></i>Por Responsável</h6>
+                            </div>
+                            <div class="card-body" style="max-height: 300px; overflow-y: auto; padding: 1rem;">
+                                ${ordenarPorQuantidade(porResponsavel).map(item => `
+                                    <div class="d-flex justify-content-between align-items-center mb-2 p-2" style="background: #f8f9fa; border-radius: 8px; border: 1px solid #e9ecef;">
+                                        <span style="color: #212529; font-weight: 500;">${item.nome}</span>
+                                        <span class="badge" style="background: #fa709a; color: white; font-size: 0.875rem; padding: 0.4rem 0.7rem;">${item.qtd}</span>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card shadow-sm" style="background: #ffffff; border: 1px solid #e0e0e0; border-radius: 12px;">
+                            <div class="card-header" style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); border-bottom: none; color: white; border-radius: 12px 12px 0 0; padding: 1rem 1.25rem;">
+                                <h6 class="mb-0" style="color: white; font-weight: 600;"><i class="fas fa-user me-2"></i>Por Usuário que Criou</h6>
+                            </div>
+                            <div class="card-body" style="max-height: 300px; overflow-y: auto; padding: 1rem;">
+                                ${ordenarPorQuantidade(porUsuario).map(item => `
+                                    <div class="d-flex justify-content-between align-items-center mb-2 p-2" style="background: #f8f9fa; border-radius: 8px; border: 1px solid #e9ecef;">
+                                        <span style="color: #212529; font-weight: 500;">${item.nome}</span>
+                                        <span class="badge" style="background: #ffc107; color: #212529; font-size: 0.875rem; padding: 0.4rem 0.7rem; font-weight: 600;">${item.qtd}</span>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-12">
+                        <div class="card shadow-sm" style="background: #ffffff; border: 1px solid #e0e0e0; border-radius: 12px;">
+                            <div class="card-header" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); border-bottom: none; color: white; border-radius: 12px 12px 0 0; padding: 1rem 1.25rem;">
+                                <h6 class="mb-0" style="color: white; font-weight: 600;"><i class="fas fa-comment-dots me-2"></i>Motivos de Devolução</h6>
+                            </div>
+                            <div class="card-body" style="max-height: 400px; overflow-y: auto; padding: 1rem;">
+                                ${motivosDevolucao.length > 0 ? motivosDevolucao.map((item, idx) => `
+                                    <div class="mb-3 p-3" style="background: #f8f9fa; border-radius: 10px; border-left: 4px solid #fa709a; border: 1px solid #e9ecef;">
+                                        <div class="d-flex justify-content-between align-items-start mb-2">
+                                            <div>
+                                                <strong style="color: #fa709a; font-size: 1rem;">OC: ${item.oc || 'N/A'}</strong>
+                                            </div>
+                                        </div>
+                                        <div class="mb-2">
+                                            <small style="color: #6c757d; font-weight: 500;">Tipo de Erro: ${item.tipo_erro || 'N/A'}</small> | 
+                                            <small style="color: #6c757d; font-weight: 500;">Operação: ${item.operacao || 'N/A'}</small> | 
+                                            <small style="color: #6c757d; font-weight: 500;">Responsável: ${item.responsavel || 'N/A'}</small>
+                                        </div>
+                                        ${item.hora_envio && item.hora_retorno ? `
+                                            <div class="mb-2">
+                                                <small style="color: #6c757d; font-weight: 500;">
+                                                    <i class="fas fa-clock me-1"></i>Envio: ${item.hora_envio} | Retorno: ${item.hora_retorno}
+                                                </small>
+                                            </div>
+                                        ` : ''}
+                                        <p class="mb-0" style="color: #212529; line-height: 1.6; font-size: 0.95rem;">${item.motivo}</p>
+                                    </div>
+                                `).join('') : '<p class="text-muted text-center py-4" style="color: #6c757d;">Nenhum motivo de devolução encontrado</p>'}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            conteudo.innerHTML = html;
+        } catch (error) {
+            console.error('❌ Erro ao carregar detalhes:', error);
+            conteudo.innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    Erro ao carregar detalhes: ${error.message}
+                </div>
+            `;
         }
     }
     </script>

@@ -1193,6 +1193,12 @@
                 </button>
             </li>
             <li class="nav-item" role="presentation">
+                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-minhas-acoes" type="button">
+                    <i class="fas fa-tasks me-1"></i>Minhas Ações
+                    <span class="badge bg-danger ms-1" id="badgeMinhasAcoes" style="display: none;">0</span>
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
                 <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-arquivos" type="button">
                     <i class="fas fa-archive me-1"></i>Arquivos
                     <span class="badge bg-danger ms-1" id="badgeAlertas" style="display: none;">0</span>
@@ -2025,6 +2031,29 @@
                 </div>
             </div>
 
+            <!-- Tab Minhas Ações -->
+            <div class="tab-pane fade" id="tab-minhas-acoes" role="tabpanel">
+                <div class="tool-card">
+                    <div class="d-flex align-items-center mb-4">
+                        <div class="tool-icon" style="background: #e74c3c;">
+                            <i class="fas fa-tasks"></i>
+                        </div>
+                        <div class="ms-3">
+                            <h3>Minhas Ações</h3>
+                            <p class="text-muted mb-0">Ações atribuídas a você no 5W2H</p>
+                        </div>
+                    </div>
+                    
+                    <div id="listaMinhasAcoes">
+                        <div class="text-center py-5">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Carregando...</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Tab Arquivos -->
             <div class="tab-pane fade" id="tab-arquivos" role="tabpanel">
                 <div class="tool-card">
@@ -2835,6 +2864,14 @@
             }
             
             // Listener para aba de arquivos
+            // Listener para aba de Minhas Ações - carregar ações quando abrir
+            const tabMinhasAcoes = document.querySelector('[data-bs-target="#tab-minhas-acoes"]');
+            if (tabMinhasAcoes) {
+                tabMinhasAcoes.addEventListener('shown.bs.tab', () => {
+                    carregarMinhasAcoes();
+                });
+            }
+            
             const tabArquivos = document.querySelector('[data-bs-target="#tab-arquivos"]');
             if (tabArquivos) {
                 tabArquivos.addEventListener('shown.bs.tab', () => {
@@ -3100,6 +3137,14 @@
             const linha = linhas5W2H.find(l => l.id === id);
             if (linha) {
                 linha[campo] = valor;
+                
+                // Se o campo "who" (responsável) foi alterado e o 5W2H já está salvo, criar/atualizar ação pendente
+                if (campo === 'who' && valor && valor.trim() !== '' && ferramentaAtualId) {
+                    // Criar/atualizar ação pendente de forma assíncrona (não bloqueia a interface)
+                    criarAcaoPendenteParaLinha(linha).catch(error => {
+                        console.warn('⚠️ Erro ao criar ação pendente:', error);
+                    });
+                }
                 
                 // Se o campo for "status", atualizar a cor do select
                 if (campo === 'status') {
@@ -3564,12 +3609,340 @@
                     alert('✅ 5W2H salvo com sucesso!');
                     atualizarStatusEtapa('5w2h', 'concluido');
                     salvarStatusEtapas();
+                    
+                    // Criar/atualizar ações pendentes para os responsáveis
+                    await criarAcoesPendentes5W2H();
                 } else {
                     alert('❌ Erro ao salvar: ' + (data.error || 'Erro desconhecido'));
                 }
             } catch (error) {
                 console.error('❌ Erro ao salvar 5W2H:', error);
                 alert('❌ Erro ao salvar 5W2H.');
+            }
+        }
+        
+        // ========== MINHAS AÇÕES ==========
+        // Obter usuário atual
+        async function obterUsuarioAtual() {
+            try {
+                // Tentar obter do Supabase
+                if (supabase) {
+                    const { data: { session } } = await supabase.auth.getSession();
+                    if (session && session.user) {
+                        return {
+                            id: session.user.id,
+                            email: session.user.email
+                        };
+                    }
+                }
+                
+                // Tentar obter do localStorage
+                const userData = localStorage.getItem('userData');
+                if (userData) {
+                    const parsed = JSON.parse(userData);
+                    if (parsed.id || parsed.email) {
+                        return {
+                            id: parsed.id,
+                            email: parsed.email
+                        };
+                    }
+                }
+                
+                // Tentar obter do loggedInUser
+                const loggedInUser = localStorage.getItem('loggedInUser');
+                if (loggedInUser) {
+                    const parsed = typeof loggedInUser === 'string' ? JSON.parse(loggedInUser) : loggedInUser;
+                    if (parsed.id || parsed.email) {
+                        return {
+                            id: parsed.id,
+                            email: parsed.email
+                        };
+                    }
+                }
+            } catch (error) {
+                console.warn('⚠️ Erro ao obter usuário atual:', error);
+            }
+            return null;
+        }
+        
+        // Criar ação pendente para uma linha específica
+        async function criarAcaoPendenteParaLinha(linha) {
+            if (!linha || !linha.who || !ferramentaAtualId) return;
+            
+            try {
+                const titulo = document.getElementById('titulo5w2h').value || '5W2H';
+                const acaoExistente = await verificarAcaoExistente(ferramentaAtualId, linha.id);
+                
+                const headers = await getAuthHeaders();
+                
+                if (!acaoExistente) {
+                    // Criar nova ação pendente
+                    await fetch('/api/ferramentas-qualidade/acoes-pendentes', {
+                        method: 'POST',
+                        headers: { ...headers, 'Content-Type': 'application/json' },
+                        credentials: 'include',
+                        body: JSON.stringify({
+                            ferramenta_id: ferramentaAtualId,
+                            ferramenta_tipo: '5w2h',
+                            linha_id: linha.id,
+                            responsavel_id: linha.who,
+                            titulo: titulo,
+                            descricao: linha.what || 'Ação do 5W2H',
+                            prazo: linha.when || null,
+                            status: linha.status || 'pendente',
+                            dados_linha: linha
+                        })
+                    });
+                } else {
+                    // Atualizar ação existente
+                    await fetch('/api/ferramentas-qualidade/acoes-pendentes', {
+                        method: 'PUT',
+                        headers: { ...headers, 'Content-Type': 'application/json' },
+                        credentials: 'include',
+                        body: JSON.stringify({
+                            id: acaoExistente.id,
+                            status: linha.status || 'pendente',
+                            dados_linha: linha
+                        })
+                    });
+                }
+            } catch (error) {
+                console.warn('⚠️ Erro ao criar ação pendente para linha:', error);
+            }
+        }
+        
+        // Criar ações pendentes quando 5W2H é salvo
+        async function criarAcoesPendentes5W2H() {
+            try {
+                const titulo = document.getElementById('titulo5w2h').value || '5W2H';
+                const linhasComResponsavel = linhas5W2H.filter(l => l.who && l.who.trim() !== '');
+                
+                if (linhasComResponsavel.length === 0) return;
+                
+                const headers = await getAuthHeaders();
+                
+                for (const linha of linhasComResponsavel) {
+                    // Verificar se já existe uma ação pendente para esta linha
+                    const acaoExistente = await verificarAcaoExistente(ferramentaAtualId, linha.id);
+                    
+                    if (!acaoExistente) {
+                        // Criar nova ação pendente
+                        await fetch('/api/ferramentas-qualidade/acoes-pendentes', {
+                            method: 'POST',
+                            headers: { ...headers, 'Content-Type': 'application/json' },
+                            credentials: 'include',
+                            body: JSON.stringify({
+                                ferramenta_id: ferramentaAtualId,
+                                ferramenta_tipo: '5w2h',
+                                linha_id: linha.id,
+                                responsavel_id: linha.who,
+                                titulo: titulo,
+                                descricao: linha.what || 'Ação do 5W2H',
+                                prazo: linha.when || null,
+                                status: linha.status || 'pendente',
+                                dados_linha: linha
+                            })
+                        });
+                    } else {
+                        // Atualizar ação existente
+                        await fetch('/api/ferramentas-qualidade/acoes-pendentes', {
+                            method: 'PUT',
+                            headers: { ...headers, 'Content-Type': 'application/json' },
+                            credentials: 'include',
+                            body: JSON.stringify({
+                                id: acaoExistente.id,
+                                status: linha.status || 'pendente',
+                                dados_linha: linha
+                            })
+                        });
+                    }
+                }
+                
+                // Recarregar ações do usuário atual se estiver na aba
+                const tabMinhasAcoes = document.querySelector('[data-bs-target="#tab-minhas-acoes"]');
+                if (tabMinhasAcoes && tabMinhasAcoes.classList.contains('active')) {
+                    await carregarMinhasAcoes();
+                }
+            } catch (error) {
+                console.warn('⚠️ Erro ao criar ações pendentes:', error);
+            }
+        }
+        
+        // Verificar se ação já existe
+        async function verificarAcaoExistente(ferramentaId, linhaId) {
+            try {
+                const headers = await getAuthHeaders();
+                const response = await fetch(`/api/ferramentas-qualidade/acoes-pendentes?ferramenta_id=${ferramentaId}&linha_id=${linhaId}`, {
+                    headers: headers,
+                    credentials: 'include'
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    // Retornar a primeira ação encontrada (se houver)
+                    if (data.acoes && data.acoes.length > 0) {
+                        return data.acoes[0];
+                    }
+                }
+            } catch (error) {
+                console.warn('⚠️ Erro ao verificar ação existente:', error);
+            }
+            return null;
+        }
+        
+        // Carregar ações pendentes do usuário atual
+        async function carregarMinhasAcoes() {
+            const container = document.getElementById('listaMinhasAcoes');
+            if (!container) return;
+            
+            container.innerHTML = '<div class="text-center py-3"><div class="spinner-border text-primary" role="status"></div></div>';
+            
+            try {
+                const usuarioAtual = await obterUsuarioAtual();
+                if (!usuarioAtual || !usuarioAtual.id) {
+                    container.innerHTML = '<div class="alert alert-warning">Não foi possível identificar o usuário atual.</div>';
+                    return;
+                }
+                
+                const headers = await getAuthHeaders();
+                const response = await fetch(`/api/ferramentas-qualidade/acoes-pendentes?responsavel_id=${usuarioAtual.id}`, {
+                    headers: headers,
+                    credentials: 'include'
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Erro ao carregar ações');
+                }
+                
+                const data = await response.json();
+                const acoes = data.acoes || [];
+                
+                // Filtrar apenas ações não concluídas
+                const acoesPendentes = acoes.filter(a => !a.concluida);
+                
+                // Atualizar badge
+                const badge = document.getElementById('badgeMinhasAcoes');
+                if (badge) {
+                    if (acoesPendentes.length > 0) {
+                        badge.textContent = acoesPendentes.length;
+                        badge.style.display = 'inline-block';
+                    } else {
+                        badge.style.display = 'none';
+                    }
+                }
+                
+                renderizarMinhasAcoes(acoesPendentes);
+            } catch (error) {
+                console.error('❌ Erro ao carregar minhas ações:', error);
+                container.innerHTML = '<div class="alert alert-danger">Erro ao carregar ações. Tente novamente.</div>';
+            }
+        }
+        
+        // Renderizar ações pendentes
+        function renderizarMinhasAcoes(acoes) {
+            const container = document.getElementById('listaMinhasAcoes');
+            if (!container) return;
+            
+            if (acoes.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-5">
+                        <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
+                        <h5 class="text-muted">Nenhuma ação pendente</h5>
+                        <p class="text-muted">Você não possui ações atribuídas no momento.</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            let html = '<div class="row g-3">';
+            
+            acoes.forEach(acao => {
+                const dadosLinha = acao.dados_linha || {};
+                const prazo = dadosLinha.when ? new Date(dadosLinha.when).toLocaleDateString('pt-BR') : 'Não definido';
+                const status = dadosLinha.status || 'pendente';
+                const statusClass = {
+                    'pendente': 'bg-secondary',
+                    'em_andamento': 'bg-warning',
+                    'finalizado': 'bg-success',
+                    'atrasado': 'bg-danger'
+                }[status] || 'bg-secondary';
+                
+                const statusText = {
+                    'pendente': 'Pendente',
+                    'em_andamento': 'Em Andamento',
+                    'finalizado': 'Finalizado',
+                    'atrasado': 'Atrasado'
+                }[status] || 'Pendente';
+                
+                html += `
+                    <div class="col-md-6 col-lg-4">
+                        <div class="card h-100 shadow-sm border-start border-4 border-primary">
+                            <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                                <strong>${acao.titulo || '5W2H'}</strong>
+                                <span class="badge ${statusClass}">${statusText}</span>
+                            </div>
+                            <div class="card-body">
+                                <h6 class="card-title"><i class="fas fa-question-circle me-2"></i>O quê?</h6>
+                                <p class="card-text">${dadosLinha.what || 'Não especificado'}</p>
+                                
+                                <h6 class="card-title mt-3"><i class="fas fa-lightbulb me-2"></i>Por quê?</h6>
+                                <p class="card-text text-muted small">${dadosLinha.why || 'Não especificado'}</p>
+                                
+                                <h6 class="card-title mt-3"><i class="fas fa-calendar-alt me-2"></i>Prazo</h6>
+                                <p class="card-text">${prazo}</p>
+                                
+                                ${dadosLinha.how ? `
+                                    <h6 class="card-title mt-3"><i class="fas fa-cogs me-2"></i>Como?</h6>
+                                    <p class="card-text text-muted small">${dadosLinha.how}</p>
+                                ` : ''}
+                                
+                                ${dadosLinha.observacao ? `
+                                    <h6 class="card-title mt-3"><i class="fas fa-comment me-2"></i>Observação</h6>
+                                    <p class="card-text text-muted small">${dadosLinha.observacao}</p>
+                                ` : ''}
+                            </div>
+                            <div class="card-footer bg-white">
+                                <button class="btn btn-success w-100" onclick="confirmarConclusaoAcao('${acao.id}')">
+                                    <i class="fas fa-check me-2"></i>Confirmar Conclusão
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            html += '</div>';
+            container.innerHTML = html;
+        }
+        
+        // Confirmar conclusão de ação
+        async function confirmarConclusaoAcao(acaoId) {
+            if (!confirm('Deseja confirmar a conclusão desta ação?')) {
+                return;
+            }
+            
+            try {
+                const headers = await getAuthHeaders();
+                const response = await fetch(`/api/ferramentas-qualidade/acoes-pendentes/${acaoId}/concluir`, {
+                    method: 'POST',
+                    headers: { ...headers, 'Content-Type': 'application/json' },
+                    credentials: 'include'
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Erro ao confirmar conclusão');
+                }
+                
+                const data = await response.json();
+                if (data.success) {
+                    alert('✅ Ação confirmada como concluída!');
+                    await carregarMinhasAcoes();
+                } else {
+                    alert('❌ Erro: ' + (data.error || 'Erro desconhecido'));
+                }
+            } catch (error) {
+                console.error('❌ Erro ao confirmar conclusão:', error);
+                alert('❌ Erro ao confirmar conclusão. Tente novamente.');
             }
         }
         

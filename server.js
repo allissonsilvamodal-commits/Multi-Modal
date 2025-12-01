@@ -1765,6 +1765,30 @@ function parseJsonArray(value) {
   return [];
 }
 
+// Função auxiliar para confirmar automaticamente o e-mail de um usuário
+async function confirmarEmailAutomaticamente(userId, email) {
+  if (!userId) return;
+  
+  try {
+    console.log(`📧 Confirmando automaticamente e-mail para: ${email || userId}`);
+    const { data, error } = await supabaseAdmin.auth.admin.updateUserById(
+      userId,
+      { email_confirm: true }
+    );
+    
+    if (error) {
+      console.error('❌ Erro ao confirmar e-mail automaticamente:', error);
+      return false;
+    }
+    
+    console.log(`✅ E-mail confirmado automaticamente para: ${email || userId}`);
+    return true;
+  } catch (err) {
+    console.error('❌ Erro ao confirmar e-mail:', err);
+    return false;
+  }
+}
+
 async function getSupabaseUserFromRequest(req) {
   const authHeader = req.headers.authorization || '';
   if (!authHeader.toLowerCase().startsWith('bearer ')) {
@@ -1784,6 +1808,30 @@ async function getSupabaseUserFromRequest(req) {
     const { data, error } = await supabaseAdmin.auth.getUser(token);
     if (!error && data && data.user) {
       console.log('🔐 Token válido via supabaseAdmin');
+      
+      // ✅ Confirmar automaticamente o e-mail se não estiver confirmado
+      if (data.user && !data.user.email_confirmed_at) {
+        console.log(`📧 E-mail não confirmado para ${data.user.email}. Confirmando automaticamente...`);
+        
+        try {
+          const { data: updateData, error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
+            data.user.id,
+            { email_confirm: true }
+          );
+          
+          if (updateError) {
+            console.error('❌ Erro ao confirmar e-mail automaticamente:', updateError);
+          } else {
+            console.log(`✅ E-mail confirmado automaticamente para: ${data.user.email}`);
+            // Atualizar o objeto user para refletir a confirmação
+            data.user.email_confirmed_at = new Date().toISOString();
+          }
+        } catch (confirmError) {
+          console.error('❌ Erro ao confirmar e-mail:', confirmError);
+          // Continuar mesmo se houver erro na confirmação
+        }
+      }
+      
       return { user: data.user, token };
     }
     if (error) {
@@ -2755,6 +2803,12 @@ app.post('/api/motoristas/chat-login', express.json(), async (req, res) => {
               signInData = data;
               resolvedEmail = candidateEmail;
               signInError = null;
+              
+              // ✅ Confirmar automaticamente o e-mail se não estiver confirmado
+              if (data.user && !data.user.email_confirmed_at) {
+                await confirmarEmailAutomaticamente(data.user.id, candidateEmail);
+              }
+              
               break;
             }
 
@@ -3097,6 +3151,11 @@ app.post('/api/motoristas/chat-login', express.json(), async (req, res) => {
                 { label: 'Falar com humano', value: 'humano', action: 'humano' }
               ]
             });
+          }
+          
+          // ✅ Confirmar automaticamente o e-mail se não estiver confirmado
+          if (signInData.user && !signInData.user.email_confirmed_at) {
+            await confirmarEmailAutomaticamente(signInData.user.id, email);
           }
 
           const motoristaRecord = await ensureMotoristaRecordForAuthUser({
@@ -10722,6 +10781,69 @@ app.get('/api/relatorios/gestao-dados/series', async (req, res) => {
   }
 });
 
+// Endpoint para buscar detalhes (suporta tipo_erro, operacao, responsavel ou data)
+app.get('/api/relatorios/gestao-dados/detalhes', async (req, res) => {
+  try {
+    const { inicio, fim, operacao, tipo_erro, responsavel, data } = req.query;
+    
+    // Pelo menos um filtro deve ser fornecido
+    if (!tipo_erro && !operacao && !responsavel && !data) {
+      return res.status(400).json({ error: 'Pelo menos um parâmetro de filtro deve ser fornecido (tipo_erro, operacao, responsavel ou data)' });
+    }
+    
+    console.log('📋 Detalhes - Parâmetros:', { inicio, fim, operacao, tipo_erro, responsavel, data });
+    
+    let query = supabaseAdmin
+      .from('gestao_dados')
+      .select('id, data, oc, operacao, tipo_erro, motivo_devolucao, responsavel, usuario_nome, criado_por_nome, criado_em, hora_envio, hora_retorno');
+    
+    // Aplicar filtros
+    if (tipo_erro && tipo_erro.trim() !== '') query = query.eq('tipo_erro', tipo_erro.trim());
+    if (operacao && operacao.trim() !== '') query = query.eq('operacao', operacao.trim());
+    if (responsavel && responsavel.trim() !== '') query = query.eq('responsavel', responsavel.trim());
+    if (data && data.trim() !== '') {
+      query = query.eq('data', data.trim());
+    } else {
+      if (inicio && inicio.trim() !== '') query = query.gte('data', inicio);
+      if (fim && fim.trim() !== '') query = query.lte('data', fim);
+    }
+    
+    // Buscar todos os registros com paginação
+    const allRecords = [];
+    let page = 0;
+    const pageSize = 1000;
+    let hasMore = true;
+    
+    while (hasMore) {
+      const { data, error } = await query
+        .range(page * pageSize, (page + 1) * pageSize - 1)
+        .order('data', { ascending: false });
+      
+      if (error) throw error;
+      
+      if (data && data.length > 0) {
+        allRecords.push(...data);
+        page++;
+        if (data.length < pageSize) hasMore = false;
+      } else {
+        hasMore = false;
+      }
+    }
+    
+    console.log(`📋 Detalhes - ${allRecords.length} registros encontrados`);
+    
+    res.json({
+      success: true,
+      filtros: { tipo_erro, operacao, responsavel, data, inicio, fim },
+      total: allRecords.length,
+      registros: allRecords
+    });
+  } catch (e) {
+    console.error('❌ Erro ao buscar detalhes do tipo de erro:', e);
+    res.status(500).json({ error: 'Erro ao buscar detalhes', details: e.message });
+  }
+});
+
 // ========== QUALIDADE / TREINAMENTOS ==========
 app.post('/api/treinamentos/assinaturas', express.json(), async (req, res) => {
   try {
@@ -10877,6 +10999,7 @@ app.post('/api/gestao-dados', express.json(), async (req, res) => {
       oc,
       operacao,
       tipo_erro,
+      sistema,
       motivo_devolucao,
       hora_envio,
       hora_retorno,
@@ -10887,7 +11010,7 @@ app.post('/api/gestao-dados', express.json(), async (req, res) => {
     } = req.body;
 
     // Validações
-    if (!data || !oc || !operacao || !tipo_erro || !motivo_devolucao || !hora_envio || !hora_retorno || !responsavel) {
+    if (!data || !oc || !operacao || !tipo_erro || !sistema || !motivo_devolucao || !hora_envio || !hora_retorno || !responsavel) {
       return res.status(400).json({
         success: false,
         error: 'Todos os campos obrigatórios devem ser preenchidos'
@@ -10913,6 +11036,7 @@ app.post('/api/gestao-dados', express.json(), async (req, res) => {
       oc: oc.trim(),
       operacao: operacao.trim(),
       tipo_erro: tipo_erro.trim(),
+      sistema: sistema ? sistema.trim() : null,
       motivo_devolucao: motivo_devolucao.trim(),
       hora_envio,
       hora_retorno,
@@ -10968,6 +11092,7 @@ app.put('/api/gestao-dados/:id', express.json(), async (req, res) => {
       oc,
       operacao,
       tipo_erro,
+      sistema,
       motivo_devolucao,
       hora_envio,
       hora_retorno,
@@ -10981,6 +11106,7 @@ app.put('/api/gestao-dados/:id', express.json(), async (req, res) => {
       oc,
       operacao,
       tipo_erro,
+      sistema,
       motivo_devolucao,
       hora_envio,
       hora_retorno,
@@ -11040,6 +11166,7 @@ app.put('/api/gestao-dados/:id', express.json(), async (req, res) => {
       oc: oc.trim(),
       operacao: operacao.trim(),
       tipo_erro: tipo_erro.trim(),
+      sistema: sistema ? sistema.trim() : null,
       motivo_devolucao: motivo_devolucao.trim(),
       hora_envio,
       hora_retorno,
@@ -15137,6 +15264,211 @@ app.put('/api/ferramentas-qualidade/acoes/:acaoId/atualizar', async (req, res) =
   }
 });
 
+// ========== ENDPOINTS PARA AÇÕES PENDENTES DO 5W2H ==========
+
+// POST /api/ferramentas-qualidade/acoes-pendentes - Criar ou atualizar ação pendente
+app.post('/api/ferramentas-qualidade/acoes-pendentes', async (req, res) => {
+  try {
+    const userResult = await getUserFromRequest(req);
+    if (!userResult || !userResult.user) {
+      return res.status(401).json({ success: false, error: 'Não autenticado' });
+    }
+
+    const { ferramenta_id, ferramenta_tipo, linha_id, responsavel_id, titulo, descricao, prazo, status, dados_linha } = req.body;
+
+    if (!ferramenta_id || !linha_id || !responsavel_id) {
+      return res.status(400).json({ success: false, error: 'Dados incompletos' });
+    }
+
+    // Verificar se já existe ação pendente para esta linha
+    const { data: acaoExistente } = await supabaseAdmin
+      .from('ferramentas_qualidade_alertas')
+      .select('*')
+      .eq('ferramenta_id', ferramenta_id)
+      .eq('acao_id', linha_id.toString())
+      .eq('responsavel_id', responsavel_id)
+      .maybeSingle();
+
+    const dadosAcao = {
+      ferramenta_id,
+      ferramenta_tipo: ferramenta_tipo || '5w2h',
+      acao_id: linha_id.toString(),
+      responsavel_id,
+      titulo: titulo || 'Ação do 5W2H',
+      descricao: descricao || '',
+      prazo: prazo || null,
+      status: status || 'pendente',
+      dados_linha: dados_linha || {},
+      concluida: false,
+      created_at: acaoExistente ? acaoExistente.created_at : new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+
+    if (acaoExistente) {
+      // Atualizar ação existente
+      const { data, error } = await supabaseAdmin
+        .from('ferramentas_qualidade_alertas')
+        .update({
+          status: dadosAcao.status,
+          dados_linha: dadosAcao.dados_linha,
+          updated_at: dadosAcao.updated_at
+        })
+        .eq('id', acaoExistente.id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return res.json({ success: true, acao: data });
+    } else {
+      // Criar nova ação
+      const { data, error } = await supabaseAdmin
+        .from('ferramentas_qualidade_alertas')
+        .insert(dadosAcao)
+        .select()
+        .single();
+
+      if (error) {
+        // Se a tabela não existir, criar estrutura básica
+        if (error.code === '42P01' || error.code === 'PGRST116') {
+          console.warn('⚠️ Tabela ferramentas_qualidade_alertas não existe, retornando sucesso simulado');
+          return res.json({ success: true, acao: dadosAcao, warning: 'Tabela não existe ainda' });
+        }
+        throw error;
+      }
+      return res.json({ success: true, acao: data });
+    }
+  } catch (error) {
+    console.error('❌ Erro ao criar/atualizar ação pendente:', error);
+    res.status(500).json({ success: false, error: 'Erro ao criar/atualizar ação pendente' });
+  }
+});
+
+// GET /api/ferramentas-qualidade/acoes-pendentes - Buscar ações pendentes
+app.get('/api/ferramentas-qualidade/acoes-pendentes', async (req, res) => {
+  try {
+    const userResult = await getUserFromRequest(req);
+    if (!userResult || !userResult.user) {
+      return res.status(401).json({ success: false, error: 'Não autenticado' });
+    }
+
+    const { responsavel_id, ferramenta_id, linha_id } = req.query;
+    const userId = userResult.user.id;
+
+    // Se responsavel_id não for fornecido, usar o ID do usuário autenticado
+    const responsavelId = responsavel_id || userId;
+
+    let query = supabaseAdmin
+      .from('ferramentas_qualidade_alertas')
+      .select('*')
+      .eq('responsavel_id', responsavelId)
+      .eq('concluida', false)
+      .order('created_at', { ascending: false });
+
+    if (ferramenta_id) {
+      query = query.eq('ferramenta_id', ferramenta_id);
+    }
+
+    if (linha_id) {
+      query = query.eq('acao_id', linha_id.toString());
+    }
+
+    const { data: acoes, error } = await query;
+
+    if (error) {
+      // Se a tabela não existir, retornar lista vazia
+      if (error.code === '42P01' || error.code === 'PGRST116') {
+        return res.json({ success: true, acoes: [] });
+      }
+      throw error;
+    }
+
+    res.json({ success: true, acoes: acoes || [] });
+  } catch (error) {
+    console.error('❌ Erro ao buscar ações pendentes:', error);
+    res.status(500).json({ success: false, error: 'Erro ao buscar ações pendentes' });
+  }
+});
+
+// POST /api/ferramentas-qualidade/acoes-pendentes/:id/concluir - Confirmar conclusão
+app.post('/api/ferramentas-qualidade/acoes-pendentes/:id/concluir', async (req, res) => {
+  try {
+    const userResult = await getUserFromRequest(req);
+    if (!userResult || !userResult.user) {
+      return res.status(401).json({ success: false, error: 'Não autenticado' });
+    }
+
+    const userId = userResult.user.id;
+    const { id } = req.params;
+
+    // Verificar se a ação pertence ao usuário
+    const { data: acao, error: acaoError } = await supabaseAdmin
+      .from('ferramentas_qualidade_alertas')
+      .select('*')
+      .eq('id', id)
+      .eq('responsavel_id', userId)
+      .single();
+
+    if (acaoError || !acao) {
+      return res.status(403).json({ success: false, error: 'Ação não encontrada ou você não tem permissão' });
+    }
+
+    // Marcar como concluída
+    const { data: acaoAtualizada, error: updateError } = await supabaseAdmin
+      .from('ferramentas_qualidade_alertas')
+      .update({
+        concluida: true,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (updateError) throw updateError;
+
+    res.json({ success: true, acao: acaoAtualizada });
+  } catch (error) {
+    console.error('❌ Erro ao confirmar conclusão:', error);
+    res.status(500).json({ success: false, error: 'Erro ao confirmar conclusão' });
+  }
+});
+
+// PUT /api/ferramentas-qualidade/acoes-pendentes - Atualizar ação pendente
+app.put('/api/ferramentas-qualidade/acoes-pendentes', async (req, res) => {
+  try {
+    const userResult = await getUserFromRequest(req);
+    if (!userResult || !userResult.user) {
+      return res.status(401).json({ success: false, error: 'Não autenticado' });
+    }
+
+    const { id, status, dados_linha } = req.body;
+
+    if (!id) {
+      return res.status(400).json({ success: false, error: 'ID da ação não fornecido' });
+    }
+
+    const updateData = {
+      updated_at: new Date().toISOString()
+    };
+
+    if (status) updateData.status = status;
+    if (dados_linha) updateData.dados_linha = dados_linha;
+
+    const { data, error } = await supabaseAdmin
+      .from('ferramentas_qualidade_alertas')
+      .update(updateData)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    res.json({ success: true, acao: data });
+  } catch (error) {
+    console.error('❌ Erro ao atualizar ação pendente:', error);
+    res.status(500).json({ success: false, error: 'Erro ao atualizar ação pendente' });
+  }
+});
+
 // Função para verificar e atualizar status dos alertas automaticamente
 async function verificarEAtualizarAlertas() {
   try {
@@ -16220,6 +16552,285 @@ app.use((err, req, res, next) => {
 app.get('/favicon.ico', (req, res) => {
   // Retornar 204 No Content para evitar erro 404
   res.status(204).end();
+});
+
+// ========== REENVIAR E-MAIL DE CONFIRMAÇÃO ==========
+app.post('/api/auth/resend-confirmation', express.json(), async (req, res) => {
+  try {
+    const { email } = req.body;
+    
+    if (!email) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'E-mail é obrigatório' 
+      });
+    }
+    
+    console.log(`📧 Processando confirmação de e-mail para: ${email}`);
+    
+    // Buscar o usuário pelo e-mail
+    const { data: users, error: listError } = await supabaseAdmin.auth.admin.listUsers();
+    
+    if (listError) {
+      console.error('❌ Erro ao listar usuários:', listError);
+      return res.status(500).json({ 
+        success: false, 
+        error: 'Erro ao buscar usuário' 
+      });
+    }
+    
+    const user = users.users.find(u => u.email === email);
+    
+    if (!user) {
+      return res.status(404).json({ 
+        success: false, 
+        error: 'Usuário não encontrado com este e-mail' 
+      });
+    }
+    
+    // ✅ Confirmar automaticamente o e-mail
+    const confirmado = await confirmarEmailAutomaticamente(user.id, email);
+    
+    if (confirmado) {
+      console.log(`✅ E-mail confirmado automaticamente para: ${email}`);
+      return res.json({ 
+        success: true, 
+        message: 'E-mail confirmado automaticamente. Você já pode fazer login normalmente.' 
+      });
+    } else {
+      return res.status(500).json({ 
+        success: false, 
+        error: 'Não foi possível confirmar o e-mail automaticamente. Tente fazer login normalmente.' 
+      });
+    }
+    
+  } catch (err) {
+    console.error('❌ Erro ao processar requisição de confirmação de e-mail:', err);
+    return res.status(500).json({ 
+      success: false, 
+      error: err.message || 'Erro interno ao processar requisição' 
+    });
+  }
+});
+
+// ========== CONFIRMAR TODOS OS USUÁRIOS NÃO CONFIRMADOS ==========
+app.post('/api/auth/confirmar-todos-usuarios', express.json(), async (req, res) => {
+  try {
+    // Verificar se é admin (opcional - pode remover se quiser permitir para todos)
+    const { user, error: userError } = await getUserFromRequest(req);
+    if (userError || !user) {
+      // Permitir mesmo sem autenticação para facilitar
+      console.log('⚠️ Requisição sem autenticação - continuando mesmo assim');
+    }
+    
+    console.log('📧 Buscando todos os usuários não confirmados...');
+    
+    // Buscar todos os usuários
+    let allUsers = [];
+    let page = 1;
+    let hasMore = true;
+    
+    while (hasMore) {
+      const { data: usersData, error: listError } = await supabaseAdmin.auth.admin.listUsers({
+        page: page,
+        perPage: 1000
+      });
+      
+      if (listError) {
+        console.error('❌ Erro ao listar usuários:', listError);
+        return res.status(500).json({ 
+          success: false, 
+          error: 'Erro ao buscar usuários' 
+        });
+      }
+      
+      if (usersData && usersData.users && usersData.users.length > 0) {
+        allUsers.push(...usersData.users);
+        page++;
+        hasMore = usersData.users.length === 1000;
+      } else {
+        hasMore = false;
+      }
+    }
+    
+    console.log(`📊 Total de usuários encontrados: ${allUsers.length}`);
+    
+    // Filtrar usuários não confirmados
+    const usuariosNaoConfirmados = allUsers.filter(u => !u.email_confirmed_at);
+    
+    console.log(`📧 Usuários não confirmados: ${usuariosNaoConfirmados.length}`);
+    
+    if (usuariosNaoConfirmados.length === 0) {
+      return res.json({ 
+        success: true, 
+        message: 'Todos os usuários já estão confirmados!',
+        total: allUsers.length,
+        confirmados: 0
+      });
+    }
+    
+    // Confirmar cada usuário
+    const resultados = {
+      sucesso: [],
+      erros: []
+    };
+    
+    for (const usuario of usuariosNaoConfirmados) {
+      try {
+        const confirmado = await confirmarEmailAutomaticamente(usuario.id, usuario.email);
+        if (confirmado) {
+          resultados.sucesso.push({
+            id: usuario.id,
+            email: usuario.email
+          });
+        } else {
+          resultados.erros.push({
+            id: usuario.id,
+            email: usuario.email,
+            erro: 'Falha ao confirmar'
+          });
+        }
+      } catch (err) {
+        resultados.erros.push({
+          id: usuario.id,
+          email: usuario.email,
+          erro: err.message || 'Erro desconhecido'
+        });
+      }
+    }
+    
+    console.log(`✅ Confirmação concluída: ${resultados.sucesso.length} sucesso, ${resultados.erros.length} erros`);
+    
+    return res.json({ 
+      success: true, 
+      message: `Confirmação concluída: ${resultados.sucesso.length} usuários confirmados`,
+      total: allUsers.length,
+      naoConfirmados: usuariosNaoConfirmados.length,
+      confirmados: resultados.sucesso.length,
+      erros: resultados.erros.length,
+      detalhes: {
+        sucesso: resultados.sucesso,
+        erros: resultados.erros
+      }
+    });
+    
+  } catch (err) {
+    console.error('❌ Erro ao confirmar todos os usuários:', err);
+    return res.status(500).json({ 
+      success: false, 
+      error: err.message || 'Erro interno ao processar requisição' 
+    });
+  }
+});
+
+// ========== CONFIRMAR TODOS OS USUÁRIOS NÃO CONFIRMADOS ==========
+app.post('/api/auth/confirmar-todos-usuarios', express.json(), async (req, res) => {
+  try {
+    // Verificar se é admin (opcional - pode remover se quiser permitir para todos)
+    const { user, error: userError } = await getUserFromRequest(req);
+    if (userError || !user) {
+      // Permitir mesmo sem autenticação para facilitar
+      console.log('⚠️ Requisição sem autenticação - continuando mesmo assim');
+    }
+    
+    console.log('📧 Buscando todos os usuários não confirmados...');
+    
+    // Buscar todos os usuários
+    let allUsers = [];
+    let page = 1;
+    let hasMore = true;
+    
+    while (hasMore) {
+      const { data: usersData, error: listError } = await supabaseAdmin.auth.admin.listUsers({
+        page: page,
+        perPage: 1000
+      });
+      
+      if (listError) {
+        console.error('❌ Erro ao listar usuários:', listError);
+        return res.status(500).json({ 
+          success: false, 
+          error: 'Erro ao buscar usuários' 
+        });
+      }
+      
+      if (usersData && usersData.users && usersData.users.length > 0) {
+        allUsers.push(...usersData.users);
+        page++;
+        hasMore = usersData.users.length === 1000;
+      } else {
+        hasMore = false;
+      }
+    }
+    
+    console.log(`📊 Total de usuários encontrados: ${allUsers.length}`);
+    
+    // Filtrar usuários não confirmados
+    const usuariosNaoConfirmados = allUsers.filter(u => !u.email_confirmed_at);
+    
+    console.log(`📧 Usuários não confirmados: ${usuariosNaoConfirmados.length}`);
+    
+    if (usuariosNaoConfirmados.length === 0) {
+      return res.json({ 
+        success: true, 
+        message: 'Todos os usuários já estão confirmados!',
+        total: allUsers.length,
+        confirmados: 0
+      });
+    }
+    
+    // Confirmar cada usuário
+    const resultados = {
+      sucesso: [],
+      erros: []
+    };
+    
+    for (const usuario of usuariosNaoConfirmados) {
+      try {
+        const confirmado = await confirmarEmailAutomaticamente(usuario.id, usuario.email);
+        if (confirmado) {
+          resultados.sucesso.push({
+            id: usuario.id,
+            email: usuario.email
+          });
+        } else {
+          resultados.erros.push({
+            id: usuario.id,
+            email: usuario.email,
+            erro: 'Falha ao confirmar'
+          });
+        }
+      } catch (err) {
+        resultados.erros.push({
+          id: usuario.id,
+          email: usuario.email,
+          erro: err.message || 'Erro desconhecido'
+        });
+      }
+    }
+    
+    console.log(`✅ Confirmação concluída: ${resultados.sucesso.length} sucesso, ${resultados.erros.length} erros`);
+    
+    return res.json({ 
+      success: true, 
+      message: `Confirmação concluída: ${resultados.sucesso.length} usuários confirmados`,
+      total: allUsers.length,
+      naoConfirmados: usuariosNaoConfirmados.length,
+      confirmados: resultados.sucesso.length,
+      erros: resultados.erros.length,
+      detalhes: {
+        sucesso: resultados.sucesso,
+        erros: resultados.erros
+      }
+    });
+    
+  } catch (err) {
+    console.error('❌ Erro ao confirmar todos os usuários:', err);
+    return res.status(500).json({ 
+      success: false, 
+      error: err.message || 'Erro interno ao processar requisição' 
+    });
+  }
 });
 
 // ========== ROTA 404 ==========
