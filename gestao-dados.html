@@ -657,6 +657,12 @@
               Aplicar Filtros
             </button>
           </div>
+          <div class="col-md-2">
+            <button type="button" class="btn btn-success-modern btn-modern w-100" onclick="exportarParaExcel()">
+              <i class="fas fa-file-excel"></i>
+              Exportar Excel
+            </button>
+          </div>
         </div>
       </div>
 
@@ -1191,6 +1197,7 @@
         }
 
         dadosCarregados = result.data || [];
+        dadosFiltradosAtuais = [...dadosCarregados]; // Inicializar dados filtrados
         preencherFiltroOperacao();
         preencherFiltroResponsavel();
         renderizarTabela(dadosCarregados);
@@ -1351,6 +1358,8 @@
     }
 
     // ========== FILTROS ==========
+    let dadosFiltradosAtuais = []; // Variável global para armazenar dados filtrados atuais
+
     function aplicarFiltros() {
       const filtroData = document.getElementById('filtroData').value;
       const filtroOC = document.getElementById('filtroOC').value.toLowerCase();
@@ -1380,7 +1389,147 @@
         dadosFiltrados = dadosFiltrados.filter(d => d.responsavel === filtroResponsavel);
       }
 
+      dadosFiltradosAtuais = dadosFiltrados; // Armazenar dados filtrados
       renderizarTabela(dadosFiltrados);
+    }
+
+    // ========== EXPORTAÇÃO EXCEL ==========
+    function exportarParaExcel() {
+      // Usar dados filtrados se existirem, senão usar todos os dados carregados
+      const dadosParaExportar = dadosFiltradosAtuais.length > 0 ? dadosFiltradosAtuais : dadosCarregados;
+      
+      if (!dadosParaExportar || dadosParaExportar.length === 0) {
+        mostrarAlerta('Não há dados para exportar. Carregue os registros primeiro.', 'warning');
+        return;
+      }
+
+      const dataAtual = new Date().toISOString().split('T')[0];
+      const nomeArquivo = `gestao_dados_${dataAtual}`;
+
+      // Cabeçalhos
+      const headers = [
+        'Data',
+        'OC',
+        'Operação',
+        'Tipo de Erro',
+        'Sistema',
+        'Motivo da Devolução',
+        'Hora Envio',
+        'Hora Retorno',
+        'Responsável',
+        'Evidências',
+        'Criado por',
+        'Data Criação',
+        'Editado por',
+        'Data Edição'
+      ];
+
+      // Criar conteúdo HTML para Excel (formato que Excel entende)
+      let htmlContent = `
+        <html>
+          <head>
+            <meta charset="UTF-8">
+            <style>
+              table {
+                border-collapse: collapse;
+                width: 100%;
+              }
+              th {
+                background-color: #667eea;
+                color: white;
+                font-weight: bold;
+                padding: 8px;
+                text-align: left;
+                border: 1px solid #ddd;
+              }
+              td {
+                padding: 8px;
+                border: 1px solid #ddd;
+              }
+              tr:nth-child(even) {
+                background-color: #f9fafb;
+              }
+            </style>
+          </head>
+          <body>
+            <table>
+              <thead>
+                <tr>
+                  ${headers.map(h => `<th>${escaparHTML(h)}</th>`).join('')}
+                </tr>
+              </thead>
+              <tbody>
+      `;
+
+      // Adicionar linhas de dados
+      dadosParaExportar.forEach(dado => {
+        // Formatar informações de criação
+        const criadoPor = dado.criado_por_nome || dado.usuario_nome || 'Não informado';
+        const criadoEm = dado.criado_em ? formatarDataHora(dado.criado_em) : (dado.created_at ? formatarDataHora(dado.created_at) : '-');
+        
+        // Formatar informações de edição
+        const editadoPor = dado.editado_por_nome || 'Não editado';
+        const editadoEm = dado.editado_em ? formatarDataHora(dado.editado_em) : '-';
+        
+        // Formatar evidências (juntar URLs separadas por vírgula)
+        let evidencias = '-';
+        if (dado.evidencia_url) {
+          if (Array.isArray(dado.evidencia_url)) {
+            evidencias = dado.evidencia_url.join(', ');
+          } else if (typeof dado.evidencia_url === 'string' && dado.evidencia_url.trim()) {
+            evidencias = dado.evidencia_url.trim();
+          }
+        }
+
+        htmlContent += '<tr>';
+        htmlContent += `<td>${escaparHTML(formatarData(dado.data))}</td>`;
+        htmlContent += `<td>${escaparHTML(dado.oc || '')}</td>`;
+        htmlContent += `<td>${escaparHTML(dado.operacao || '')}</td>`;
+        htmlContent += `<td>${escaparHTML(dado.tipo_erro || '')}</td>`;
+        htmlContent += `<td>${escaparHTML(dado.sistema || '-')}</td>`;
+        htmlContent += `<td>${escaparHTML(dado.motivo_devolucao || '')}</td>`;
+        htmlContent += `<td>${escaparHTML(dado.hora_envio || '')}</td>`;
+        htmlContent += `<td>${escaparHTML(dado.hora_retorno || '')}</td>`;
+        htmlContent += `<td>${escaparHTML(dado.responsavel || '')}</td>`;
+        htmlContent += `<td>${escaparHTML(evidencias)}</td>`;
+        htmlContent += `<td>${escaparHTML(criadoPor)}</td>`;
+        htmlContent += `<td>${escaparHTML(criadoEm)}</td>`;
+        htmlContent += `<td>${escaparHTML(editadoPor)}</td>`;
+        htmlContent += `<td>${escaparHTML(editadoEm)}</td>`;
+        htmlContent += '</tr>';
+      });
+
+      htmlContent += `
+              </tbody>
+            </table>
+          </body>
+        </html>
+      `;
+
+      // Criar arquivo e fazer download
+      const blob = new Blob(['\ufeff' + htmlContent], { type: 'application/vnd.ms-excel;charset=utf-8;' });
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+
+      link.setAttribute('href', url);
+      link.setAttribute('download', `${nomeArquivo}.xls`);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      mostrarAlerta(`✅ Arquivo Excel exportado com sucesso!\n\nTotal de registros: ${dadosParaExportar.length}`, 'success');
+    }
+
+    function escaparHTML(texto) {
+      if (texto === null || texto === undefined) return '';
+      const textoStr = String(texto);
+      return textoStr
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
     }
 
     // ========== EDITAR ==========
