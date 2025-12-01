@@ -11036,7 +11036,6 @@ app.post('/api/gestao-dados', express.json(), async (req, res) => {
       oc: oc.trim(),
       operacao: operacao.trim(),
       tipo_erro: tipo_erro.trim(),
-      sistema: sistema ? sistema.trim() : null,
       motivo_devolucao: motivo_devolucao.trim(),
       hora_envio,
       hora_retorno,
@@ -11050,12 +11049,38 @@ app.post('/api/gestao-dados', express.json(), async (req, res) => {
       criado_em: new Date().toISOString()
     };
 
+    // Adicionar sistema apenas se fornecido (coluna pode não existir ainda)
+    if (sistema && sistema.trim()) {
+      dadosInsercao.sistema = sistema.trim();
+    }
+
     const { data: insertedData, error: insertError } = await supabaseAdmin
       .from('gestao_dados')
       .insert([dadosInsercao])
       .select();
 
     if (insertError) {
+      // Se o erro for sobre a coluna 'sistema' não existir, tentar novamente sem ela
+      if (insertError.message && insertError.message.includes('sistema') && sistema) {
+        console.warn('⚠️ Coluna "sistema" não existe, tentando inserir sem ela...');
+        delete dadosInsercao.sistema;
+        
+        const { data: retryData, error: retryError } = await supabaseAdmin
+          .from('gestao_dados')
+          .insert([dadosInsercao])
+          .select();
+        
+        if (retryError) {
+          throw retryError;
+        }
+        
+        console.log('✅ Lançamento salvo sem campo sistema (coluna não existe ainda)');
+        return res.json({
+          success: true,
+          data: retryData[0],
+          warning: 'Coluna "sistema" não existe na tabela. Execute o SQL: ALTER TABLE gestao_dados ADD COLUMN sistema VARCHAR(10);'
+        });
+      }
       throw insertError;
     }
 
@@ -11106,12 +11131,13 @@ app.put('/api/gestao-dados/:id', express.json(), async (req, res) => {
       oc,
       operacao,
       tipo_erro,
-      sistema,
       motivo_devolucao,
       hora_envio,
       hora_retorno,
       responsavel
     };
+    
+    // Sistema é opcional (coluna pode não existir ainda)
 
     const camposFaltando = Object.entries(camposObrigatorios)
       .filter(([key, value]) => !value || (typeof value === 'string' && !value.trim()))
@@ -11166,7 +11192,6 @@ app.put('/api/gestao-dados/:id', express.json(), async (req, res) => {
       oc: oc.trim(),
       operacao: operacao.trim(),
       tipo_erro: tipo_erro.trim(),
-      sistema: sistema ? sistema.trim() : null,
       motivo_devolucao: motivo_devolucao.trim(),
       hora_envio,
       hora_retorno,
@@ -11178,6 +11203,11 @@ app.put('/api/gestao-dados/:id', express.json(), async (req, res) => {
       editado_em: new Date().toISOString()
     };
 
+    // Adicionar sistema apenas se fornecido (coluna pode não existir ainda)
+    if (sistema && sistema.trim()) {
+      dadosAtualizacao.sistema = sistema.trim();
+    }
+
     console.log('📤 Dados para atualização:', dadosAtualizacao);
 
     const { data: updatedData, error: updateError } = await supabaseAdmin
@@ -11187,6 +11217,29 @@ app.put('/api/gestao-dados/:id', express.json(), async (req, res) => {
       .select();
 
     if (updateError) {
+      // Se o erro for sobre a coluna 'sistema' não existir, tentar novamente sem ela
+      if (updateError.message && updateError.message.includes('sistema') && sistema) {
+        console.warn('⚠️ Coluna "sistema" não existe, tentando atualizar sem ela...');
+        delete dadosAtualizacao.sistema;
+        
+        const { data: retryData, error: retryError } = await supabaseAdmin
+          .from('gestao_dados')
+          .update(dadosAtualizacao)
+          .eq('id', id)
+          .select();
+        
+        if (retryError) {
+          console.error('❌ Erro do Supabase ao atualizar:', retryError);
+          throw retryError;
+        }
+        
+        console.log('✅ Registro atualizado sem campo sistema (coluna não existe ainda)');
+        return res.json({
+          success: true,
+          data: retryData[0],
+          warning: 'Coluna "sistema" não existe na tabela. Execute o SQL: ALTER TABLE gestao_dados ADD COLUMN sistema VARCHAR(10);'
+        });
+      }
       console.error('❌ Erro do Supabase ao atualizar:', updateError);
       throw updateError;
     }
@@ -11259,6 +11312,119 @@ app.post('/api/gestao-dados/upload-evidencia', uploadDocumentos.single('evidenci
     return res.status(500).json({ 
       success: false, 
       error: 'Erro ao fazer upload de evidência: ' + (err.message || 'Erro desconhecido') 
+    });
+  }
+});
+
+// POST - Adicionar coluna 'sistema' à tabela gestao_dados (apenas admin)
+app.post('/api/gestao-dados/adicionar-coluna-sistema', async (req, res) => {
+  try {
+    const { user, error } = await getUserFromRequest(req);
+    if (error || !user) {
+      return res.status(401).json({ success: false, error: 'Usuário não autenticado' });
+    }
+
+    // Verificar se é admin
+    const isAdmin = req.session?.usuario?.isAdmin || false;
+    if (!isAdmin) {
+      return res.status(403).json({ success: false, error: 'Apenas administradores podem executar esta operação' });
+    }
+
+    console.log('🔧 Tentando adicionar coluna "sistema" à tabela gestao_dados...');
+
+    // Primeiro, verificar se a coluna já existe
+    const { data: testData, error: testError } = await supabaseAdmin
+      .from('gestao_dados')
+      .select('sistema')
+      .limit(1);
+
+    if (!testError) {
+      console.log('✅ Coluna "sistema" já existe!');
+      return res.json({
+        success: true,
+        message: 'Coluna "sistema" já existe na tabela gestao_dados',
+        colunaExiste: true
+      });
+    }
+
+    // Tentar criar função RPC se não existir
+    console.log('📝 Tentando criar função RPC exec_sql...');
+    const createFunctionSQL = `
+      CREATE OR REPLACE FUNCTION exec_sql(sql_query TEXT)
+      RETURNS void
+      LANGUAGE plpgsql
+      SECURITY DEFINER
+      AS $$
+      BEGIN
+        EXECUTE sql_query;
+      END;
+      $$;
+    `;
+
+    // Tentar executar via RPC exec_sql (se já existir)
+    const alterTableSQL = `ALTER TABLE gestao_dados ADD COLUMN IF NOT EXISTS sistema VARCHAR(10);`;
+    
+    try {
+      // Primeiro, tentar criar a função
+      const { error: createFunctionError } = await supabaseAdmin.rpc('exec_sql', {
+        sql_query: createFunctionSQL
+      });
+
+      if (createFunctionError && !createFunctionError.message.includes('exec_sql')) {
+        console.warn('⚠️ Não foi possível criar função RPC:', createFunctionError.message);
+      }
+
+      // Agora tentar adicionar a coluna
+      const { error: alterError } = await supabaseAdmin.rpc('exec_sql', {
+        sql_query: alterTableSQL
+      });
+
+      if (alterError) {
+        throw alterError;
+      }
+
+      console.log('✅ Coluna "sistema" adicionada com sucesso via RPC!');
+
+      // Verificar se foi criada
+      const { data: verifyData, error: verifyError } = await supabaseAdmin
+        .from('gestao_dados')
+        .select('sistema')
+        .limit(1);
+
+      if (verifyError && verifyError.message.includes('sistema')) {
+        throw new Error('Coluna não foi criada. Execute o SQL manualmente no Supabase Dashboard.');
+      }
+
+      return res.json({
+        success: true,
+        message: 'Coluna "sistema" adicionada com sucesso à tabela gestao_dados',
+        colunaExiste: true
+      });
+
+    } catch (rpcError) {
+      console.warn('⚠️ RPC não disponível:', rpcError.message);
+      console.log('📋 Fornecendo SQL para execução manual...');
+
+      return res.json({
+        success: false,
+        error: 'Não foi possível executar via API. Execute o SQL manualmente no Supabase Dashboard.',
+        sql: alterTableSQL,
+        instrucoes: [
+          '1. Acesse: https://supabase.com/dashboard',
+          '2. Selecione seu projeto',
+          '3. Vá em: SQL Editor > New Query',
+          '4. Cole o SQL fornecido',
+          '5. Execute (Run ou Ctrl+Enter)'
+        ]
+      });
+    }
+
+  } catch (err) {
+    console.error('❌ Erro ao adicionar coluna:', err);
+    return res.status(500).json({
+      success: false,
+      error: 'Erro ao adicionar coluna: ' + (err.message || 'Erro desconhecido'),
+      sql: 'ALTER TABLE gestao_dados ADD COLUMN IF NOT EXISTS sistema VARCHAR(10);'
     });
   }
 });
