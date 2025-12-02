@@ -1313,6 +1313,80 @@
         </div>
     </div>
 
+    <!-- Modal Editar Usuário -->
+    <div class="modal fade" id="modalEditarUsuario" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="fas fa-user-edit me-2"></i>Editar Usuário
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="formEditarUsuario">
+                        <input type="hidden" id="editarUsuarioId">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Nome Completo *</label>
+                                <input type="text" id="editarNomeUsuarioInput" class="form-control" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Email *</label>
+                                <input type="email" id="editarEmailUsuarioInput" class="form-control" required>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Nova Senha</label>
+                                <div class="input-group">
+                                    <input type="password" id="editarSenhaUsuarioInput" class="form-control" 
+                                           minlength="6" placeholder="Deixe em branco para manter a senha atual"
+                                           autocomplete="new-password">
+                                    <button class="btn btn-outline-secondary" type="button" id="toggleSenhaEditarUsuario" 
+                                            onclick="togglePasswordVisibility('editarSenhaUsuarioInput', 'toggleSenhaEditarUsuario')">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                </div>
+                                <small class="text-muted">Deixe em branco para manter a senha atual. Mínimo 6 caracteres se alterar.</small>
+                                <div id="editarSenhaStrengthIndicator" class="mt-2" style="display: none;">
+                                    <div class="progress" style="height: 4px;">
+                                        <div class="progress-bar" id="editarSenhaStrengthBar" role="progressbar" style="width: 0%"></div>
+                                    </div>
+                                    <small id="editarSenhaStrengthText" class="text-muted"></small>
+                                </div>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Tipo de Usuário *</label>
+                                <select id="editarTipoUsuarioInput" class="form-select" required>
+                                    <option value="">Selecione...</option>
+                                    <option value="user">Usuário</option>
+                                    <option value="admin">Administrador</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Departamento</label>
+                                <input type="text" id="editarDepartamentoUsuarioInput" class="form-control" placeholder="Ex: TI, Comercial, Operações">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Cargo</label>
+                                <input type="text" id="editarCargoUsuarioInput" class="form-control" placeholder="Ex: Desenvolvedor, Analista">
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" onclick="salvarEdicaoUsuario()">
+                        <i class="fas fa-save me-2"></i>Salvar Alterações
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Modal Nova Etiqueta -->
     <div class="modal fade" id="modalNovaEtiqueta" tabindex="-1">
         <div class="modal-dialog">
@@ -2273,6 +2347,9 @@
                             <button class="btn btn-${usuario.active !== false ? 'danger' : 'success'} btn-sm" onclick="toggleUsuario('${usuario.id}')" title="${usuario.active !== false ? 'Desativar' : 'Ativar'}">
                                 <i class="fas fa-${usuario.active !== false ? 'pause' : 'play'}"></i>
                             </button>
+                            <button class="btn btn-danger btn-sm" onclick="excluirUsuarioAuth('${usuario.id}', '${(usuario.nome || usuario.email || '').replace(/'/g, "\\'")}')" title="Excluir do Auth">
+                                <i class="fas fa-trash"></i>
+                            </button>
                         </div>
                     </td>
                 `;
@@ -2319,6 +2396,7 @@
         
         // Validar força da senha em tempo real
         document.addEventListener('DOMContentLoaded', function() {
+            // Validação para campo de nova senha
             const senhaInput = document.getElementById('senhaUsuarioInput');
             if (senhaInput) {
                 senhaInput.addEventListener('input', function() {
@@ -2326,6 +2404,55 @@
                     const indicator = document.getElementById('senhaStrengthIndicator');
                     const bar = document.getElementById('senhaStrengthBar');
                     const text = document.getElementById('senhaStrengthText');
+                    
+                    if (senha.length === 0) {
+                        indicator.style.display = 'none';
+                        return;
+                    }
+                    
+                    indicator.style.display = 'block';
+                    
+                    // Calcular força da senha
+                    let strength = 0;
+                    let strengthText = '';
+                    let strengthColor = '';
+                    
+                    if (senha.length >= 6) strength += 25;
+                    if (senha.length >= 8) strength += 15;
+                    if (senha.length >= 12) strength += 10;
+                    if (/[a-z]/.test(senha)) strength += 15;
+                    if (/[A-Z]/.test(senha)) strength += 15;
+                    if (/[0-9]/.test(senha)) strength += 10;
+                    if (/[^a-zA-Z0-9]/.test(senha)) strength += 10;
+                    
+                    if (strength < 30) {
+                        strengthText = 'Senha fraca';
+                        strengthColor = 'bg-danger';
+                    } else if (strength < 60) {
+                        strengthText = 'Senha média';
+                        strengthColor = 'bg-warning';
+                    } else if (strength < 80) {
+                        strengthText = 'Senha boa';
+                        strengthColor = 'bg-info';
+                    } else {
+                        strengthText = 'Senha forte';
+                        strengthColor = 'bg-success';
+                    }
+                    
+                    bar.style.width = Math.min(strength, 100) + '%';
+                    bar.className = 'progress-bar ' + strengthColor;
+                    text.textContent = strengthText;
+                });
+            }
+
+            // Validação para campo de edição de senha
+            const editarSenhaInput = document.getElementById('editarSenhaUsuarioInput');
+            if (editarSenhaInput) {
+                editarSenhaInput.addEventListener('input', function() {
+                    const senha = this.value;
+                    const indicator = document.getElementById('editarSenhaStrengthIndicator');
+                    const bar = document.getElementById('editarSenhaStrengthBar');
+                    const text = document.getElementById('editarSenhaStrengthText');
                     
                     if (senha.length === 0) {
                         indicator.style.display = 'none';
@@ -2442,7 +2569,137 @@
         }
 
         async function editarUsuario(usuarioId) {
-            mostrarInfo('Funcionalidade de edição em desenvolvimento');
+            try {
+                const usuario = usuariosData.find(u => u.id === usuarioId);
+                if (!usuario) {
+                    mostrarErro('Usuário não encontrado');
+                    return;
+                }
+
+                // Preencher o formulário com os dados do usuário
+                document.getElementById('editarUsuarioId').value = usuario.id;
+                document.getElementById('editarNomeUsuarioInput').value = usuario.nome || '';
+                document.getElementById('editarEmailUsuarioInput').value = usuario.email || '';
+                document.getElementById('editarTipoUsuarioInput').value = usuario.role || 'user';
+                document.getElementById('editarDepartamentoUsuarioInput').value = usuario.departamento || '';
+                document.getElementById('editarCargoUsuarioInput').value = usuario.cargo || '';
+                
+                // Limpar campo de senha
+                document.getElementById('editarSenhaUsuarioInput').value = '';
+                document.getElementById('editarSenhaStrengthIndicator').style.display = 'none';
+                document.getElementById('toggleSenhaEditarUsuario').innerHTML = '<i class="fas fa-eye"></i>';
+
+                // Abrir modal
+                new bootstrap.Modal(document.getElementById('modalEditarUsuario')).show();
+            } catch (error) {
+                console.error('❌ Erro ao abrir edição de usuário:', error);
+                mostrarErro('Erro ao carregar dados do usuário');
+            }
+        }
+
+        async function salvarEdicaoUsuario() {
+            try {
+                const usuarioId = document.getElementById('editarUsuarioId').value;
+                const nome = document.getElementById('editarNomeUsuarioInput').value.trim();
+                const email = document.getElementById('editarEmailUsuarioInput').value.trim();
+                const senha = document.getElementById('editarSenhaUsuarioInput').value;
+                const tipo = document.getElementById('editarTipoUsuarioInput').value;
+                const departamento = document.getElementById('editarDepartamentoUsuarioInput').value.trim();
+                const cargo = document.getElementById('editarCargoUsuarioInput').value.trim();
+
+                if (!nome || !email || !tipo) {
+                    mostrarErro('Preencha todos os campos obrigatórios');
+                    return;
+                }
+
+                // Validar senha se fornecida
+                if (senha && senha.length < 6) {
+                    mostrarErro('A senha deve ter no mínimo 6 caracteres');
+                    document.getElementById('editarSenhaUsuarioInput').focus();
+                    return;
+                }
+
+                const usuario = usuariosData.find(u => u.id === usuarioId);
+                if (!usuario) {
+                    mostrarErro('Usuário não encontrado');
+                    return;
+                }
+
+                // Atualizar perfil no user_profiles
+                const updateData = {
+                    nome: nome,
+                    email: email,
+                    role: tipo
+                };
+
+                if (departamento) updateData.departamento = departamento;
+                if (cargo) updateData.cargo = cargo;
+
+                const { error: updateError } = await window.supabase
+                    .from('user_profiles')
+                    .update(updateData)
+                    .eq('id', usuarioId);
+
+                if (updateError) {
+                    console.error('❌ Erro ao atualizar perfil:', updateError);
+                    throw new Error(`Erro ao atualizar perfil: ${updateError.message}`);
+                }
+
+                // Atualizar email no Auth se mudou
+                if (email !== usuario.email) {
+                    try {
+                        const response = await fetch(`/api/auth/atualizar-usuario/${usuarioId}`, {
+                            method: 'PUT',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                email: email
+                            })
+                        });
+
+                        const result = await response.json();
+
+                        if (!response.ok) {
+                            console.warn('⚠️ Erro ao atualizar email no Auth:', result.error);
+                            // Continuar mesmo se falhar, pois o perfil já foi atualizado
+                        }
+                    } catch (authError) {
+                        console.warn('⚠️ Erro ao atualizar email no Auth:', authError);
+                    }
+                }
+
+                // Atualizar senha no Auth se fornecida
+                if (senha) {
+                    try {
+                        const response = await fetch(`/api/auth/atualizar-senha/${usuarioId}`, {
+                            method: 'PUT',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                password: senha
+                            })
+                        });
+
+                        const result = await response.json();
+
+                        if (!response.ok) {
+                            console.warn('⚠️ Erro ao atualizar senha no Auth:', result.error);
+                            // Continuar mesmo se falhar, pois o perfil já foi atualizado
+                        }
+                    } catch (authError) {
+                        console.warn('⚠️ Erro ao atualizar senha no Auth:', authError);
+                    }
+                }
+
+                bootstrap.Modal.getInstance(document.getElementById('modalEditarUsuario')).hide();
+                mostrarSucesso('Usuário atualizado com sucesso!');
+                await carregarUsuarios();
+            } catch (error) {
+                console.error('❌ Erro ao salvar edição de usuário:', error);
+                mostrarErro('Erro ao salvar alterações: ' + error.message);
+            }
         }
 
         async function toggleUsuario(usuarioId) {
@@ -2465,6 +2722,87 @@
                 console.error('❌ Erro ao alterar status:', error);
                 mostrarErro('Erro ao alterar status do usuário');
             }
+        }
+
+        async function excluirUsuarioAuth(usuarioId, usuarioNome) {
+            if (!confirm(`⚠️ ATENÇÃO: Tem certeza que deseja excluir o usuário "${usuarioNome}" do Supabase Auth?\n\nEsta ação não pode ser desfeita e o usuário não poderá mais fazer login no sistema.`)) {
+                return;
+            }
+
+            if (!confirm(`Confirma a exclusão do usuário "${usuarioNome}" do Auth?`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/auth/excluir-usuario/${usuarioId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                const result = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(result.error || 'Erro ao excluir usuário do Auth');
+                }
+
+                mostrarSucesso(`Usuário "${usuarioNome}" excluído do Auth com sucesso!`);
+                await carregarUsuarios();
+            } catch (error) {
+                console.error('❌ Erro ao excluir usuário do Auth:', error);
+                mostrarErro(`Erro ao excluir usuário do Auth: ${error.message}`);
+            }
+        }
+
+        // Função auxiliar para excluir usuários duplicados específicos
+        async function excluirUsuariosDuplicados() {
+            const usuariosDuplicados = [
+                { id: '9c3f8908-565c-4297-a70d-cde5558d12c6', nome: 'Natan Nascimento (duplicata)', email: 'natan.nascimento@logmultimodal.com' },
+                { id: 'bb6cb08e-2c48-427a-bde5-c23f867e20f5', nome: 'Vanderley Melicio (duplicata)', email: 'vanderley.melicio@logmultimodal.com.br' }
+            ];
+
+            if (!confirm(`⚠️ ATENÇÃO: Deseja excluir ${usuariosDuplicados.length} usuários duplicados do Auth?\n\nUsuários:\n${usuariosDuplicados.map(u => `- ${u.nome} (${u.email})`).join('\n')}\n\nEsta ação não pode ser desfeita.`)) {
+                return;
+            }
+
+            const resultados = {
+                sucesso: [],
+                erros: []
+            };
+
+            for (const usuario of usuariosDuplicados) {
+                try {
+                    const response = await fetch(`/api/auth/excluir-usuario/${usuario.id}`, {
+                        method: 'DELETE',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        }
+                    });
+
+                    const result = await response.json();
+
+                    if (!response.ok) {
+                        throw new Error(result.error || 'Erro ao excluir usuário do Auth');
+                    }
+
+                    resultados.sucesso.push(usuario);
+                    console.log(`✅ Usuário ${usuario.nome} excluído com sucesso`);
+                } catch (error) {
+                    resultados.erros.push({ ...usuario, erro: error.message });
+                    console.error(`❌ Erro ao excluir ${usuario.nome}:`, error);
+                }
+            }
+
+            if (resultados.sucesso.length > 0) {
+                mostrarSucesso(`${resultados.sucesso.length} usuário(s) duplicado(s) excluído(s) do Auth com sucesso!`);
+            }
+
+            if (resultados.erros.length > 0) {
+                mostrarErro(`${resultados.erros.length} erro(s) ao excluir usuário(s):\n${resultados.erros.map(e => `- ${e.nome}: ${e.erro}`).join('\n')}`);
+            }
+
+            await carregarUsuarios();
         }
 
         // ========== PERMISSÕES ==========

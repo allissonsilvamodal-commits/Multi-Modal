@@ -11429,6 +11429,151 @@ app.post('/api/gestao-dados/adicionar-coluna-sistema', async (req, res) => {
   }
 });
 
+// POST - Adicionar colunas para chat interno (apenas admin)
+app.post('/api/chat-interno/adicionar-colunas', async (req, res) => {
+  try {
+    const { user, error } = await getUserFromRequest(req);
+    if (error || !user) {
+      return res.status(401).json({ success: false, error: 'Usuário não autenticado' });
+    }
+
+    // Verificar se é admin
+    const isAdmin = req.session?.usuario?.isAdmin || false;
+    if (!isAdmin) {
+      return res.status(403).json({ success: false, error: 'Apenas administradores podem executar esta operação' });
+    }
+
+    console.log('🔧 Tentando adicionar colunas para chat interno na tabela chat_mensagens...');
+
+    // Verificar se as colunas já existem
+    try {
+      const { data: testData, error: testError } = await supabaseAdmin
+        .from('chat_mensagens')
+        .select('remetente_id, destinatario_id, lida')
+        .limit(1);
+
+      if (!testError) {
+        console.log('✅ Colunas já existem!');
+        return res.json({
+          success: true,
+          message: 'Colunas para chat interno já existem na tabela chat_mensagens',
+          colunasExistem: true
+        });
+      }
+    } catch (checkError) {
+      // Se der erro, significa que as colunas não existem, continuar
+      console.log('📝 Colunas não encontradas. Adicionando...');
+    }
+
+    // SQL para adicionar colunas
+    const sqlCommands = [
+      `ALTER TABLE chat_mensagens ADD COLUMN IF NOT EXISTS remetente_id UUID;`,
+      `ALTER TABLE chat_mensagens ADD COLUMN IF NOT EXISTS destinatario_id UUID;`,
+      `ALTER TABLE chat_mensagens ADD COLUMN IF NOT EXISTS remetente_nome TEXT;`,
+      `ALTER TABLE chat_mensagens ADD COLUMN IF NOT EXISTS destinatario_nome TEXT;`,
+      `ALTER TABLE chat_mensagens ADD COLUMN IF NOT EXISTS lida BOOLEAN DEFAULT false;`,
+      `CREATE INDEX IF NOT EXISTS idx_chat_mensagens_remetente ON chat_mensagens(remetente_id);`,
+      `CREATE INDEX IF NOT EXISTS idx_chat_mensagens_destinatario ON chat_mensagens(destinatario_id);`,
+      `CREATE INDEX IF NOT EXISTS idx_chat_mensagens_lida ON chat_mensagens(lida) WHERE lida = false;`,
+      `CREATE INDEX IF NOT EXISTS idx_chat_mensagens_remetente_destinatario ON chat_mensagens(remetente_id, destinatario_id);`
+    ];
+
+    // Tentar criar função RPC se não existir
+    const createFunctionSQL = `
+      CREATE OR REPLACE FUNCTION exec_sql(sql_query TEXT)
+      RETURNS void
+      LANGUAGE plpgsql
+      SECURITY DEFINER
+      AS $$
+      BEGIN
+        EXECUTE sql_query;
+      END;
+      $$;
+    `;
+
+    try {
+      // Primeiro, tentar criar a função RPC
+      const { error: createFunctionError } = await supabaseAdmin.rpc('exec_sql', {
+        sql_query: createFunctionSQL
+      });
+
+      if (createFunctionError && !createFunctionError.message.includes('exec_sql')) {
+        console.warn('⚠️ Não foi possível criar função RPC:', createFunctionError.message);
+      }
+
+      // Executar cada comando SQL
+      const resultados = [];
+      for (const sql of sqlCommands) {
+        try {
+          const { error: sqlError } = await supabaseAdmin.rpc('exec_sql', {
+            sql_query: sql
+          });
+
+          if (sqlError) {
+            resultados.push({ comando: sql.substring(0, 50) + '...', sucesso: false, erro: sqlError.message });
+          } else {
+            resultados.push({ comando: sql.substring(0, 50) + '...', sucesso: true });
+          }
+        } catch (err) {
+          resultados.push({ comando: sql.substring(0, 50) + '...', sucesso: false, erro: err.message });
+        }
+      }
+
+      const sucessos = resultados.filter(r => r.sucesso).length;
+      const falhas = resultados.filter(r => !r.sucesso).length;
+
+      if (falhas > 0) {
+        console.warn('⚠️ Alguns comandos falharam:', resultados);
+      }
+
+      // Verificar se as colunas foram criadas
+      const { data: verifyData, error: verifyError } = await supabaseAdmin
+        .from('chat_mensagens')
+        .select('remetente_id, destinatario_id, lida')
+        .limit(1);
+
+      if (verifyError && verifyError.message.includes('remetente_id')) {
+        throw new Error('Colunas não foram criadas. Execute o SQL manualmente no Supabase Dashboard.');
+      }
+
+      console.log(`✅ Migração concluída: ${sucessos} comandos executados com sucesso, ${falhas} falhas`);
+
+      return res.json({
+        success: true,
+        message: `Colunas para chat interno adicionadas com sucesso! ${sucessos} comandos executados.`,
+        resultados,
+        colunasExistem: true
+      });
+
+    } catch (rpcError) {
+      console.warn('⚠️ RPC não disponível:', rpcError.message);
+      console.log('📋 Fornecendo SQL para execução manual...');
+
+      const sqlCompleto = sqlCommands.join('\n');
+
+      return res.json({
+        success: false,
+        error: 'Não foi possível executar via API. Execute o SQL manualmente no Supabase Dashboard.',
+        sql: sqlCompleto,
+        instrucoes: [
+          '1. Acesse: https://supabase.com/dashboard',
+          '2. Selecione seu projeto',
+          '3. Vá em: SQL Editor > New Query',
+          '4. Cole o SQL fornecido',
+          '5. Execute (Run ou Ctrl+Enter)'
+        ]
+      });
+    }
+
+  } catch (err) {
+    console.error('❌ Erro ao adicionar colunas:', err);
+    return res.status(500).json({
+      success: false,
+      error: 'Erro ao adicionar colunas: ' + (err.message || 'Erro desconhecido')
+    });
+  }
+});
+
 // POST - Importar CSV em massa
 app.post('/api/gestao-dados/importar-csv', upload.single('csv'), async (req, res) => {
   try {
@@ -16882,6 +17027,160 @@ app.post('/api/auth/confirmar-todos-usuarios', express.json(), async (req, res) 
     
   } catch (err) {
     console.error('❌ Erro ao confirmar todos os usuários:', err);
+    return res.status(500).json({ 
+      success: false, 
+      error: err.message || 'Erro interno ao processar requisição' 
+    });
+  }
+});
+
+// ========== EXCLUIR USUÁRIO DO AUTH ==========
+app.delete('/api/auth/excluir-usuario/:userId', express.json(), async (req, res) => {
+  try {
+    const { userId } = req.params;
+    
+    if (!userId) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'ID do usuário é obrigatório' 
+      });
+    }
+    
+    console.log(`🗑️ Excluindo usuário do Auth: ${userId}`);
+    
+    // Excluir usuário do Auth usando Admin API
+    const { data, error } = await supabaseAdmin.auth.admin.deleteUser(userId);
+    
+    if (error) {
+      console.error('❌ Erro ao excluir usuário do Auth:', error);
+      return res.status(500).json({ 
+        success: false, 
+        error: error.message || 'Erro ao excluir usuário do Auth' 
+      });
+    }
+    
+    console.log(`✅ Usuário ${userId} excluído do Auth com sucesso`);
+    
+    return res.json({ 
+      success: true, 
+      message: 'Usuário excluído do Auth com sucesso',
+      userId: userId
+    });
+    
+  } catch (err) {
+    console.error('❌ Erro ao excluir usuário do Auth:', err);
+    return res.status(500).json({ 
+      success: false, 
+      error: err.message || 'Erro interno ao processar requisição' 
+    });
+  }
+});
+
+// ========== ATUALIZAR EMAIL DO USUÁRIO NO AUTH ==========
+app.put('/api/auth/atualizar-usuario/:userId', express.json(), async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { email } = req.body;
+    
+    if (!userId) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'ID do usuário é obrigatório' 
+      });
+    }
+    
+    if (!email) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Email é obrigatório' 
+      });
+    }
+    
+    console.log(`📧 Atualizando email do usuário ${userId} para ${email}`);
+    
+    // Atualizar email no Auth usando Admin API
+    const { data, error } = await supabaseAdmin.auth.admin.updateUserById(userId, {
+      email: email
+    });
+    
+    if (error) {
+      console.error('❌ Erro ao atualizar email do usuário no Auth:', error);
+      return res.status(500).json({ 
+        success: false, 
+        error: error.message || 'Erro ao atualizar email do usuário no Auth' 
+      });
+    }
+    
+    console.log(`✅ Email do usuário ${userId} atualizado com sucesso`);
+    
+    return res.json({ 
+      success: true, 
+      message: 'Email atualizado com sucesso',
+      userId: userId,
+      email: email
+    });
+    
+  } catch (err) {
+    console.error('❌ Erro ao atualizar email do usuário no Auth:', err);
+    return res.status(500).json({ 
+      success: false, 
+      error: err.message || 'Erro interno ao processar requisição' 
+    });
+  }
+});
+
+// ========== ATUALIZAR SENHA DO USUÁRIO NO AUTH ==========
+app.put('/api/auth/atualizar-senha/:userId', express.json(), async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { password } = req.body;
+    
+    if (!userId) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'ID do usuário é obrigatório' 
+      });
+    }
+    
+    if (!password) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Senha é obrigatória' 
+      });
+    }
+    
+    if (password.length < 6) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'A senha deve ter no mínimo 6 caracteres' 
+      });
+    }
+    
+    console.log(`🔐 Atualizando senha do usuário ${userId}`);
+    
+    // Atualizar senha no Auth usando Admin API
+    const { data, error } = await supabaseAdmin.auth.admin.updateUserById(userId, {
+      password: password
+    });
+    
+    if (error) {
+      console.error('❌ Erro ao atualizar senha do usuário no Auth:', error);
+      return res.status(500).json({ 
+        success: false, 
+        error: error.message || 'Erro ao atualizar senha do usuário no Auth' 
+      });
+    }
+    
+    console.log(`✅ Senha do usuário ${userId} atualizada com sucesso`);
+    
+    return res.json({ 
+      success: true, 
+      message: 'Senha atualizada com sucesso',
+      userId: userId
+    });
+    
+  } catch (err) {
+    console.error('❌ Erro ao atualizar senha do usuário no Auth:', err);
     return res.status(500).json({ 
       success: false, 
       error: err.message || 'Erro interno ao processar requisição' 
