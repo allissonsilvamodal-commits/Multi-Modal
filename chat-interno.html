@@ -287,6 +287,13 @@
             animation: pulse 2s infinite;
             box-shadow: 0 0 8px rgba(37, 211, 102, 0.5);
             border: 1.5px solid rgba(255, 255, 255, 0.2);
+            flex-shrink: 0;
+        }
+        
+        .status-dot.offline {
+            background: #6b7280;
+            animation: none;
+            box-shadow: 0 0 4px rgba(107, 114, 128, 0.3);
         }
 
         @keyframes pulse {
@@ -871,6 +878,7 @@
         .message-text {
             margin-bottom: 0.375rem;
             word-wrap: break-word;
+            white-space: pre-wrap;
             line-height: 1.5;
             letter-spacing: 0.01em;
         }
@@ -1358,6 +1366,14 @@
             font-size: 0.95rem;
             transition: all 0.3s ease;
             backdrop-filter: blur(10px);
+            resize: none;
+            overflow-y: auto;
+            min-height: 52px;
+            max-height: 150px;
+            line-height: 1.5;
+            font-family: inherit;
+            word-wrap: break-word;
+            white-space: pre-wrap;
         }
 
         .chat-input::placeholder {
@@ -1370,6 +1386,25 @@
             border-color: var(--primary);
             background: rgba(255, 255, 255, 0.12);
             box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1), var(--shadow-sm);
+        }
+        
+        /* Estilizar scrollbar do textarea */
+        .chat-input::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        .chat-input::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 3px;
+        }
+        
+        .chat-input::-webkit-scrollbar-thumb {
+            background: rgba(102, 126, 234, 0.5);
+            border-radius: 3px;
+        }
+        
+        .chat-input::-webkit-scrollbar-thumb:hover {
+            background: rgba(102, 126, 234, 0.7);
         }
 
         .btn-send {
@@ -2097,13 +2132,13 @@
                     <button class="btn-emoji" id="emojiButton" title="Emojis" disabled>
                         <i class="fas fa-smile"></i>
                     </button>
-                    <input 
-                        type="text" 
+                    <textarea 
                         class="chat-input" 
                         id="messageInput" 
                         placeholder="Digite sua mensagem..."
+                        rows="1"
                         disabled
-                    >
+                    ></textarea>
                     <button class="btn-send" id="sendButton" disabled>
                         <i class="fas fa-paper-plane"></i>
                     </button>
@@ -2146,6 +2181,8 @@
         let isGrupoMode = false; // Flag para indicar se está em modo grupo
         let gruposData = []; // Armazenar dados dos grupos
         let grupoSelecionadoParaAdicionar = null; // Grupo selecionado para adicionar participantes
+        let userStatusMap = new Map(); // Mapa de status dos usuários (userId -> { online: boolean, lastSeen: Date })
+        let statusUpdateInterval = null; // Intervalo para atualizar status
 
         // Inicializar Supabase
         async function initSupabase() {
@@ -2187,6 +2224,138 @@
             }
         }
 
+        // ========== SISTEMA DE STATUS ONLINE/OFFLINE ==========
+        
+        // Atualizar status do usuário atual (heartbeat)
+        async function updateCurrentUserStatus() {
+            if (!currentUserId || !supabaseClient) return;
+            
+            try {
+                // Atualizar última atividade na tabela user_profiles
+                // Usaremos um campo last_seen ou podemos criar uma tabela de presença
+                // Por enquanto, vamos usar uma abordagem simples: verificar última mensagem
+                const now = new Date().toISOString();
+                
+                // Marcar usuário atual como online no mapa local
+                userStatusMap.set(currentUserId, {
+                    online: true,
+                    lastSeen: new Date()
+                });
+            } catch (error) {
+                console.warn('Erro ao atualizar status:', error);
+            }
+        }
+        
+        // Verificar status de outros usuários baseado na última atividade
+        async function checkUsersStatus() {
+            if (!supabaseClient || !allUsersData || allUsersData.length === 0) return;
+            
+            try {
+                const userIds = allUsersData.map(u => u.id);
+                if (userIds.length === 0) return;
+                
+                // Buscar últimas mensagens de cada usuário para determinar atividade
+                const { data: recentMessages, error } = await supabaseClient
+                    .from('chat_mensagens')
+                    .select('remetente_id, created_at')
+                    .in('remetente_id', userIds)
+                    .order('created_at', { ascending: false })
+                    .limit(1000);
+                
+                if (error) {
+                    console.warn('Erro ao verificar status:', error);
+                    return;
+                }
+                
+                // Agrupar por usuário e pegar a mensagem mais recente
+                const lastActivityMap = new Map();
+                if (recentMessages) {
+                    recentMessages.forEach(msg => {
+                        if (!lastActivityMap.has(msg.remetente_id)) {
+                            lastActivityMap.set(msg.remetente_id, new Date(msg.created_at));
+                        }
+                    });
+                }
+                
+                // Determinar status: online se última atividade foi há menos de 5 minutos
+                const OFFLINE_THRESHOLD = 5 * 60 * 1000; // 5 minutos em milissegundos
+                const now = new Date();
+                
+                userIds.forEach(userId => {
+                    // Usuário atual sempre está online
+                    if (userId === currentUserId) {
+                        userStatusMap.set(userId, {
+                            online: true,
+                            lastSeen: new Date()
+                        });
+                        return;
+                    }
+                    
+                    const lastActivity = lastActivityMap.get(userId);
+                    if (lastActivity) {
+                        const timeSinceLastActivity = now - lastActivity;
+                        const isOnline = timeSinceLastActivity < OFFLINE_THRESHOLD;
+                        
+                        userStatusMap.set(userId, {
+                            online: isOnline,
+                            lastSeen: lastActivity
+                        });
+                    } else {
+                        // Se não tem mensagens recentes, considerar offline
+                        userStatusMap.set(userId, {
+                            online: false,
+                            lastSeen: null
+                        });
+                    }
+                });
+                
+                // Atualizar interface
+                updateUsersStatusInUI();
+                
+            } catch (error) {
+                console.warn('Erro ao verificar status dos usuários:', error);
+            }
+        }
+        
+        // Atualizar status na interface
+        function updateUsersStatusInUI() {
+            // Atualizar status dots na lista de usuários
+            document.querySelectorAll('.user-item[data-user-id]').forEach(item => {
+                const userId = item.getAttribute('data-user-id');
+                
+                if (!userId) return;
+                
+                const status = userStatusMap.get(userId);
+                const statusDot = item.querySelector('.status-dot');
+                
+                if (statusDot) {
+                    // Se não há status ou status.online é true, remover classe offline
+                    if (!status || status.online !== false) {
+                        statusDot.classList.remove('offline');
+                    } else {
+                        statusDot.classList.add('offline');
+                    }
+                }
+            });
+        }
+        
+        // Iniciar sistema de status
+        function startStatusSystem() {
+            // Atualizar status do usuário atual imediatamente
+            updateCurrentUserStatus();
+            
+            // Atualizar status do usuário atual a cada 30 segundos (heartbeat)
+            setInterval(() => {
+                updateCurrentUserStatus();
+            }, 30000);
+            
+            // Verificar status de outros usuários a cada 1 minuto
+            checkUsersStatus();
+            setInterval(() => {
+                checkUsersStatus();
+            }, 60000);
+        }
+        
         // Carregar lista de usuários
         async function loadUsers() {
             try {
@@ -2334,6 +2503,9 @@
 
                 // Renderizar usuários e grupos
                 renderUsersAndGrupos(usersWithConversation, gruposData);
+                
+                // Verificar status dos usuários após renderizar
+                await checkUsersStatus();
 
             } catch (error) {
                 // Verificar se é erro de coluna não existente
@@ -2442,8 +2614,13 @@
                         const unread = item.unreadCount;
                         const isSelected = !isGrupoMode && selectedUserId === item.id;
                         
+                        // Verificar status do usuário (online por padrão se não houver status ainda)
+                        const userStatus = userStatusMap.get(item.id);
+                        const isOffline = userStatus && userStatus.online === false;
+                        const statusClass = isOffline ? 'offline' : '';
+                        
                         return `
-                            <div class="user-item ${isSelected ? 'active' : ''}" onclick="selectUser('${item.id}')">
+                            <div class="user-item ${isSelected ? 'active' : ''}" onclick="selectUser('${item.id}')" data-user-id="${item.id}">
                                 <div style="display: flex; align-items: center; width: 100%;">
                                     <div class="user-avatar">${initials}</div>
                                     <div class="user-info" style="flex: 1; min-width: 0;">
@@ -2452,7 +2629,7 @@
                                             ${lastMsg ? `<span style="font-size: 0.7rem; opacity: 0.6; margin-left: 0.5rem;">${new Date(lastMsg.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>` : ''}
                                         </div>
                                         <div class="user-status">
-                                            <span class="status-dot"></span>
+                                            <span class="status-dot ${statusClass}"></span>
                                             ${escapeHtml(item.departamento || 'Sem departamento')}
                                         </div>
                                         ${lastMsg ? `<small style="opacity: ${unread > 0 ? 1 : 0.7}; font-size: 0.8rem; margin-top: 0.25rem; display: block; font-weight: ${unread > 0 ? '600' : '400'};">${escapeHtml(lastMsg.mensagem.substring(0, 30))}${lastMsg.mensagem.length > 30 ? '...' : ''}</small>` : ''}
@@ -4676,11 +4853,18 @@
                 }
 
                 input.value = '';
+                // Resetar altura do textarea após enviar
+                ajustarAlturaTextarea();
                 clearSelectedFile(); // Limpar arquivo selecionado
                 cancelAudioRecording(); // Limpar áudio gravado
                 cancelReply(); // Limpar preview de resposta
                 addMessageToUI(data, true);
                 lastMessageId = data.id;
+                
+                // Atualizar status do usuário atual (marcar como online)
+                updateCurrentUserStatus();
+                // Verificar status de outros usuários
+                await checkUsersStatus();
 
                 // Atualizar lista de usuários para mostrar última mensagem
                 await loadUsers();
@@ -4934,15 +5118,58 @@
             input.value = textBefore + emoji + textAfter;
             input.focus();
             input.setSelectionRange(cursorPos + emoji.length, cursorPos + emoji.length);
+            // Ajustar altura após inserir emoji
+            ajustarAlturaTextarea();
         }
 
+        // Função para ajustar altura do textarea automaticamente
+        function ajustarAlturaTextarea() {
+            const textarea = document.getElementById('messageInput');
+            if (!textarea) return;
+            
+            // Resetar altura para calcular scrollHeight corretamente
+            textarea.style.height = 'auto';
+            
+            // Ajustar altura baseado no conteúdo (min 52px, max 150px)
+            const scrollHeight = textarea.scrollHeight;
+            const minHeight = 52;
+            const maxHeight = 150;
+            
+            if (scrollHeight <= minHeight) {
+                textarea.style.height = minHeight + 'px';
+            } else if (scrollHeight > maxHeight) {
+                textarea.style.height = maxHeight + 'px';
+                textarea.style.overflowY = 'auto';
+            } else {
+                textarea.style.height = scrollHeight + 'px';
+                textarea.style.overflowY = 'hidden';
+            }
+        }
+        
         // Event listeners
         document.getElementById('sendButton').addEventListener('click', sendMessage);
         document.getElementById('replyPreviewClose').addEventListener('click', cancelReply);
-        document.getElementById('messageInput').addEventListener('keypress', (e) => {
+        
+        const messageInput = document.getElementById('messageInput');
+        
+        // Ajustar altura ao digitar
+        messageInput.addEventListener('input', ajustarAlturaTextarea);
+        
+        // Ajustar altura ao colar texto
+        messageInput.addEventListener('paste', () => {
+            setTimeout(ajustarAlturaTextarea, 10);
+        });
+        
+        // Controle de Enter para enviar e Shift+Enter para quebrar linha
+        messageInput.addEventListener('keydown', (e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
                 sendMessage();
+                // Resetar altura após enviar
+                setTimeout(() => {
+                    messageInput.style.height = '52px';
+                    messageInput.style.overflowY = 'hidden';
+                }, 100);
             }
         });
 
@@ -4954,6 +5181,9 @@
             initAudioRecording();
             initSearch();
             initUsersSearch();
+            
+            // Iniciar sistema de status online/offline
+            startStatusSystem();
             
             // Verificar bucket na inicialização (silenciosamente)
             const bucketExists = await verificarBucketChatFiles();

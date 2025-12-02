@@ -1,0 +1,939 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Treinamento – Chat Interno</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- QR Code Library -->
+    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+    <!-- HTML to PDF Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <style>
+        :root {
+            --primary:#6759ff;
+            --secondary:#8b5cf6;
+            --bg-page:#edf2ff;
+            --bg-card:#ffffff;
+            --text:#1f2937;
+        }
+        body{
+            font-family:"Segoe UI",system-ui,-apple-system,BlinkMacSystemFont,sans-serif;
+            background:var(--bg-page);
+            padding:2rem 0;
+            color:var(--text);
+        }
+        .container-training{max-width:960px;margin:0 auto;}
+        .hero{
+            background:linear-gradient(135deg,var(--primary),var(--secondary));
+            color:#fff;border-radius:20px;padding:2rem;
+            box-shadow:0 18px 40px rgba(103,89,255,.25);
+        }
+        .hero h1{font-weight:800;margin-bottom:.4rem;}
+        .hero p{opacity:.9;margin:0;}
+        .hero .tag{display:inline-flex;align-items:center;gap:.4rem;background:rgba(0,0,0,.25);padding:.2rem .8rem;border-radius:999px;font-weight:600;}
+        a.btn-back{
+            display:inline-flex;align-items:center;gap:.5rem;
+            padding:.55rem 1rem;border-radius:999px;
+            background:#111827;color:#fff;text-decoration:none;
+            margin-bottom:1.25rem;font-weight:600;
+        }
+        section.training-block{
+            margin-top:1.5rem;
+            background:var(--bg-card);
+            border-radius:18px;
+            padding:1.75rem;
+            box-shadow:0 16px 35px rgba(31,41,55,.08);
+        }
+        section.training-block h2{
+            font-size:1.2rem;
+            font-weight:800;
+            margin-bottom:1rem;
+            display:flex;
+            align-items:center;
+            gap:.5rem;
+        }
+        .step-card{
+            border-left:4px solid var(--primary);
+            background:#f8fafc;
+            padding:1rem 1.25rem;
+            border-radius:12px;
+            margin:.8rem 0;
+            box-shadow:0 8px 18px rgba(0,0,0,.05);
+        }
+        .media-figure{
+            margin:1.5rem 0;
+            text-align:center;
+        }
+        .media-figure img{
+            width:100%;
+            border-radius:16px;
+            border:3px solid #e5e7eb;
+            box-shadow:0 20px 45px rgba(15,23,42,.18);
+        }
+        .media-figure figcaption{
+            margin-top:.6rem;font-size:.9rem;color:#4b5563;
+            background:#f3f4f6;border-radius:10px;padding:.75rem 1rem;
+        }
+        .info-box,.warning-box,.tip-box{
+            padding:1rem 1.2rem;border-radius:12px;margin:1rem 0;
+        }
+        .info-box{background:#e0f2fe;border-left:5px solid #0284c7;}
+        .warning-box{background:#fee2e2;border-left:5px solid #dc2626;}
+        .tip-box{background:#fef3c7;border-left:5px solid #f59e0b;}
+        .signature-card{
+            border:2px dashed #cbd5f5;
+            padding:1.25rem;
+            border-radius:16px;
+            background:#f8fafc;
+        }
+        .signature-card label{font-weight:600;color:#111827;margin-top:.75rem;}
+        canvas.signature-canvas{
+            width:100%;height:200px;
+            border:2px solid #e2e8f0;
+            border-radius:12px;
+            background:#fff;
+        }
+        
+        /* Estilos para impressão/PDF */
+        @media print {
+            body { background: white !important; color: #1f2937 !important; }
+            .btn-back, button, .signature-card, canvas { display: none !important; }
+        }
+        
+        /* Estilos específicos para PDF - reduzir espaçamentos */
+        .pdf-optimized .training-block {
+            margin-top: 1rem !important;
+            margin-bottom: 1rem !important;
+            padding: 1.25rem !important;
+            page-break-inside: avoid !important;
+        }
+        
+        .pdf-optimized .step-card {
+            margin-top: 0.5rem !important;
+            margin-bottom: 0.5rem !important;
+            page-break-inside: avoid !important;
+        }
+        
+        .pdf-optimized .media-figure {
+            margin-top: 0.75rem !important;
+            margin-bottom: 0.75rem !important;
+            page-break-inside: avoid !important;
+        }
+        
+        .pdf-optimized .hero {
+            margin-bottom: 1.5rem !important;
+            padding: 1.5rem !important;
+        }
+        
+        .pdf-optimized h1,
+        .pdf-optimized h2,
+        .pdf-optimized h3 {
+            page-break-after: avoid !important;
+            page-break-inside: avoid !important;
+            margin-top: 0.75rem !important;
+            margin-bottom: 0.5rem !important;
+        }
+        
+        .pdf-optimized p {
+            margin-top: 0.5rem !important;
+            margin-bottom: 0.5rem !important;
+        }
+        
+        .pdf-optimized ul,
+        .pdf-optimized ol {
+            margin-top: 0.5rem !important;
+            margin-bottom: 0.5rem !important;
+        }
+        
+        /* Estilos para o botão de download PDF */
+        #btnBaixarPDF {
+            transition: all 0.3s ease;
+        }
+        #btnBaixarPDF:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(16, 185, 129, 0.4) !important;
+        }
+        #btnBaixarPDF:active {
+            transform: translateY(0);
+        }
+    </style>
+</head>
+<body>
+<main class="container-training">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <a class="btn-back" href="treinamentos.html"><i class="fas fa-chevron-left"></i>Voltar para Treinamentos</a>
+        <button type="button" class="btn btn-success" onclick="baixarTreinamentoPDF()" id="btnBaixarPDF" style="display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.55rem 1rem; border-radius: 999px; background: #10b981; color: #fff; border: none; font-weight: 600; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3); transition: all 0.3s ease;">
+            <i class="fas fa-file-pdf"></i>
+            Baixar PDF
+        </button>
+    </div>
+    <header class="hero">
+        <span class="tag"><i class="fas fa-comments"></i> Treinamento obrigatório</span>
+        <h1><i class="fas fa-comments me-2"></i>Chat Interno - Sistema de Comunicação</h1>
+        <p>Este guia completo ensina como utilizar o sistema de chat interno para comunicação entre usuários administrativos, incluindo conversas individuais, grupos, envio de arquivos, áudios e muito mais.</p>
+        <ul style="margin-top:1rem;padding-left:1.25rem;list-style:disc;opacity:.9">
+            <li><strong>Tempo estimado:</strong> 20 minutos para ler + 5 minutos para assinar.</li>
+            <li><strong>Público:</strong> Todos os usuários administrativos do sistema.</li>
+            <li><strong>Objetivo:</strong> Dominar todas as funcionalidades do chat interno para comunicação eficiente.</li>
+        </ul>
+    </header>
+
+    <section class="training-block" id="acesso">
+        <h2><i class="fas fa-door-open"></i>1. Acesso ao Chat Interno</h2>
+        <p>O Chat Interno é uma ferramenta de comunicação integrada ao sistema Multimodal, permitindo comunicação rápida e eficiente entre usuários administrativos.</p>
+        <div class="step-card">
+            <strong>1.1 Como acessar</strong>
+            <ul>
+                <li>No menu principal do <strong>Portal</strong>, clique em <strong>"Chat Interno"</strong>.</li>
+                <li>O sistema abrirá a interface do chat em uma nova página.</li>
+                <li>Você precisa estar autenticado e ter permissões de usuário administrativo.</li>
+            </ul>
+            <p class="mb-0"><strong>Importante:</strong> Motoristas não têm acesso ao chat interno. Apenas usuários administrativos podem utilizar esta ferramenta.</p>
+        </div>
+        <div class="step-card">
+            <strong>1.2 Interface inicial</strong>
+            <p>Ao acessar, você verá:</p>
+            <ul>
+                <li><strong>Sidebar esquerda:</strong> Lista de usuários e grupos disponíveis para conversar.</li>
+                <li><strong>Área central:</strong> Área de mensagens (vazia até selecionar um contato).</li>
+                <li><strong>Barra inferior:</strong> Campo de texto e botões para enviar mensagens, arquivos e áudios.</li>
+            </ul>
+            <p class="mb-0">A interface é inspirada no WhatsApp, facilitando o uso intuitivo.</p>
+        </div>
+        <div class="info-box">
+            <strong>Dica:</strong> A lista de usuários é ordenada automaticamente: primeiro aparecem conversas com mensagens não lidas, depois as mais recentes.
+        </div>
+    </section>
+
+    <section class="training-block" id="conversas-individuais">
+        <h2><i class="fas fa-user"></i>2. Conversas Individuais</h2>
+        <p>As conversas individuais permitem comunicação direta entre dois usuários do sistema.</p>
+        <div class="step-card">
+            <strong>2.1 Selecionar um usuário</strong>
+            <ul>
+                <li>Na sidebar esquerda, você verá a lista de todos os usuários administrativos disponíveis.</li>
+                <li>Clique no nome do usuário com quem deseja conversar.</li>
+                <li>A área de mensagens será carregada com o histórico de conversas (se houver).</li>
+            </ul>
+            <p class="mb-0">O contador vermelho ao lado do nome indica quantas mensagens não lidas você possui.</p>
+        </div>
+        <div class="step-card">
+            <strong>2.2 Buscar usuários</strong>
+            <p>Para encontrar um usuário rapidamente:</p>
+            <ul>
+                <li>Use o campo de busca no topo da sidebar (ícone de lupa).</li>
+                <li>Digite o nome, e-mail ou departamento do usuário.</li>
+                <li>A lista será filtrada automaticamente enquanto você digita.</li>
+            </ul>
+            <p class="mb-0">Clique no "X" ao lado do campo de busca para limpar o filtro.</p>
+        </div>
+        <div class="step-card">
+            <strong>2.3 Enviar mensagens de texto</strong>
+            <ul>
+                <li>Digite sua mensagem no campo de texto na parte inferior.</li>
+                <li>Pressione <strong>Enter</strong> ou clique no botão de enviar (ícone de avião de papel).</li>
+                <li>A mensagem aparecerá à direita (suas mensagens) ou à esquerda (mensagens recebidas).</li>
+            </ul>
+            <p class="mb-0">As mensagens são exibidas com o horário de envio e separadas por data (Hoje, Ontem, ou data completa).</p>
+        </div>
+        <div class="tip-box">
+            <strong>Dica:</strong> Use Shift + Enter para quebrar linha sem enviar a mensagem.
+        </div>
+    </section>
+
+    <section class="training-block" id="emojis">
+        <h2><i class="fas fa-smile"></i>3. Envio de Emojis</h2>
+        <p>O chat interno possui um seletor de emojis integrado para tornar as conversas mais expressivas.</p>
+        <div class="step-card">
+            <strong>3.1 Abrir o seletor de emojis</strong>
+            <ul>
+                <li>Clique no botão com ícone de sorriso (😊) ao lado do campo de mensagem.</li>
+                <li>Um painel de emojis será exibido abaixo do campo de texto.</li>
+                <li>O painel possui categorias: Smileys, Gestos, Corações, Objetos e Símbolos.</li>
+            </ul>
+            <p class="mb-0">Clique nas categorias no topo do painel para navegar entre diferentes tipos de emojis.</p>
+        </div>
+        <div class="step-card">
+            <strong>3.2 Inserir emojis</strong>
+            <ul>
+                <li>Clique no emoji desejado para inseri-lo no campo de mensagem.</li>
+                <li>O emoji será inserido na posição do cursor.</li>
+                <li>Você pode inserir múltiplos emojis na mesma mensagem.</li>
+            </ul>
+            <p class="mb-0">O painel de emojis fecha automaticamente quando você clica fora dele ou envia a mensagem.</p>
+        </div>
+        <div class="tip-box">
+            <strong>Dica:</strong> Use emojis com moderação para manter a comunicação profissional quando necessário.
+        </div>
+    </section>
+
+    <section class="training-block" id="respostas">
+        <h2><i class="fas fa-reply"></i>4. Responder Mensagens</h2>
+        <p>O sistema permite responder mensagens específicas, facilitando conversas em contextos complexos.</p>
+        <div class="step-card">
+            <strong>4.1 Iniciar uma resposta</strong>
+            <ul>
+                <li>Passe o mouse sobre uma mensagem recebida ou enviada.</li>
+                <li>Clique no botão <strong>"Responder"</strong> que aparece no canto superior direito da mensagem.</li>
+                <li>Uma prévia da mensagem original aparecerá acima do campo de texto.</li>
+            </ul>
+            <p class="mb-0">A prévia mostra o nome do autor e um trecho da mensagem original.</p>
+        </div>
+        <div class="step-card">
+            <strong>4.2 Enviar a resposta</strong>
+            <ul>
+                <li>Digite sua resposta normalmente no campo de texto.</li>
+                <li>A prévia da mensagem original permanecerá visível.</li>
+                <li>Envie a mensagem normalmente (Enter ou botão de enviar).</li>
+            </ul>
+            <p class="mb-0">A mensagem enviada aparecerá com a prévia da mensagem original acima do texto.</p>
+        </div>
+        <div class="step-card">
+            <strong>4.3 Cancelar resposta</strong>
+            <ul>
+                <li>Para cancelar uma resposta, clique no "X" na prévia da mensagem.</li>
+                <li>A prévia será removida e você poderá enviar uma mensagem normal.</li>
+            </ul>
+            <p class="mb-0">Ao trocar de conversa, a resposta pendente é automaticamente cancelada.</p>
+        </div>
+        <div class="info-box">
+            <strong>Importante:</strong> As respostas ajudam a manter o contexto em conversas com muitas mensagens, especialmente em grupos.
+        </div>
+    </section>
+
+    <section class="training-block" id="arquivos">
+        <h2><i class="fas fa-paperclip"></i>5. Envio de Arquivos</h2>
+        <p>O chat interno permite enviar diversos tipos de arquivos: imagens, PDFs, documentos e outros formatos.</p>
+        <div class="step-card">
+            <strong>5.1 Anexar arquivo</strong>
+            <ul>
+                <li>Clique no botão de anexo (📎) ao lado do campo de mensagem.</li>
+                <li>Selecione o arquivo desejado no explorador de arquivos.</li>
+                <li>Uma prévia do arquivo aparecerá acima do campo de texto mostrando nome e tamanho.</li>
+            </ul>
+            <p class="mb-0"><strong>Limite:</strong> Arquivos de até 50MB podem ser enviados.</p>
+        </div>
+        <div class="step-card">
+            <strong>5.2 Tipos de arquivo suportados</strong>
+            <ul>
+                <li><strong>Imagens:</strong> JPG, PNG, GIF, WebP - serão exibidas diretamente no chat.</li>
+                <li><strong>PDFs:</strong> Visualização inline com preview e opção de download.</li>
+                <li><strong>Documentos:</strong> Word, Excel, PowerPoint - exibidos com ícone e opção de download.</li>
+                <li><strong>Outros:</strong> Qualquer tipo de arquivo pode ser enviado e baixado pelo destinatário.</li>
+            </ul>
+            <p class="mb-0">Todos os arquivos são armazenados de forma segura no Supabase Storage.</p>
+        </div>
+        <div class="step-card">
+            <strong>5.3 Visualizar imagens</strong>
+            <ul>
+                <li>Clique em uma imagem enviada para visualizá-la em tela cheia.</li>
+                <li>No modal de visualização, você pode:</li>
+                <ul>
+                    <li><strong>Responder:</strong> Responder à mensagem que contém a imagem.</li>
+                    <li><strong>Baixar:</strong> Baixar a imagem para seu dispositivo.</li>
+                </ul>
+            </ul>
+            <p class="mb-0">Clique fora da imagem ou no "X" para fechar o modal.</p>
+        </div>
+        <div class="step-card">
+            <strong>5.4 Remover arquivo antes de enviar</strong>
+            <ul>
+                <li>Se você anexou um arquivo por engano, clique no "X" na prévia do arquivo.</li>
+                <li>O arquivo será removido e você poderá anexar outro ou enviar apenas texto.</li>
+            </ul>
+            <p class="mb-0">Você pode enviar mensagem de texto junto com o arquivo ou apenas o arquivo.</p>
+        </div>
+        <div class="warning-box">
+            <strong>Atenção:</strong> Certifique-se de que os arquivos enviados não contenham informações sensíveis ou confidenciais, a menos que seja necessário para o trabalho.
+        </div>
+    </section>
+
+    <section class="training-block" id="audios">
+        <h2><i class="fas fa-microphone"></i>6. Gravação e Envio de Áudios</h2>
+        <p>O sistema permite gravar e enviar mensagens de áudio diretamente pelo navegador.</p>
+        <div class="step-card">
+            <strong>6.1 Iniciar gravação</strong>
+            <ul>
+                <li>Clique no botão de microfone (🎤) ao lado do campo de mensagem.</li>
+                <li>O navegador solicitará permissão para acessar o microfone (na primeira vez).</li>
+                <li>Após permitir, a gravação iniciará automaticamente.</li>
+                <li>Um indicador visual mostrará que você está gravando, com um timer mostrando a duração.</li>
+            </ul>
+            <p class="mb-0">O botão de microfone ficará vermelho e pulsante durante a gravação.</p>
+        </div>
+        <div class="step-card">
+            <strong>6.2 Parar gravação</strong>
+            <ul>
+                <li>Clique novamente no botão de microfone ou no botão "Parar" no indicador de gravação.</li>
+                <li>A gravação será finalizada e um preview do áudio aparecerá acima do campo de texto.</li>
+                <li>Você pode reproduzir o áudio antes de enviar para verificar se está correto.</li>
+            </ul>
+            <p class="mb-0">O preview permite ouvir o áudio antes de enviar.</p>
+        </div>
+        <div class="step-card">
+            <strong>6.3 Enviar ou cancelar áudio</strong>
+            <ul>
+                <li>Se estiver satisfeito, digite uma mensagem opcional e envie normalmente.</li>
+                <li>O áudio será enviado junto com a mensagem (ou apenas o áudio se não houver texto).</li>
+                <li>Para cancelar, clique no "X" no preview do áudio.</li>
+            </ul>
+            <p class="mb-0">Os áudios são salvos no formato WebM e podem ser reproduzidos diretamente no chat.</p>
+        </div>
+        <div class="step-card">
+            <strong>6.4 Reproduzir áudios recebidos</strong>
+            <ul>
+                <li>Os áudios recebidos aparecem com um player de áudio integrado.</li>
+                <li>Clique no botão de play para iniciar a reprodução.</li>
+                <li>Você pode pausar, ajustar volume e ver a duração do áudio.</li>
+            </ul>
+            <p class="mb-0">Os áudios são carregados automaticamente quando você visualiza a conversa.</p>
+        </div>
+        <div class="info-box">
+            <strong>Dica:</strong> Mensagens de áudio são ideais para explicações rápidas ou quando você não pode digitar.
+        </div>
+        <div class="warning-box">
+            <strong>Atenção:</strong> Certifique-se de ter um ambiente silencioso ao gravar áudios para melhor qualidade.
+        </div>
+    </section>
+
+    <section class="training-block" id="busca-mensagens">
+        <h2><i class="fas fa-search"></i>7. Buscar Mensagens</h2>
+        <p>O sistema possui uma ferramenta de busca para localizar mensagens específicas em conversas.</p>
+        <div class="step-card">
+            <strong>7.1 Abrir busca</strong>
+            <ul>
+                <li>Com uma conversa aberta, clique no botão de busca (🔍) no canto superior direito do header.</li>
+                <li>Um modal de busca será aberto sobre a tela.</li>
+                <li>Digite o termo que deseja buscar no campo de busca.</li>
+            </ul>
+            <p class="mb-0">A busca é realizada em tempo real enquanto você digita.</p>
+        </div>
+        <div class="step-card">
+            <strong>7.2 Visualizar resultados</strong>
+            <ul>
+                <li>Os resultados aparecem abaixo do campo de busca.</li>
+                <li>Cada resultado mostra:</li>
+                <ul>
+                    <li>O texto da mensagem com o termo buscado destacado.</li>
+                    <li>O autor da mensagem.</li>
+                    <li>A data e hora de envio.</li>
+                </ul>
+            </ul>
+            <p class="mb-0">Os resultados são limitados a 50 mensagens mais recentes que correspondem à busca.</p>
+        </div>
+        <div class="step-card">
+            <strong>7.3 Navegar para mensagem</strong>
+            <ul>
+                <li>Clique em um resultado da busca.</li>
+                <li>O modal será fechado e você será direcionado para a mensagem no chat.</li>
+                <li>A mensagem será destacada temporariamente para facilitar a localização.</li>
+                <li>Se a mensagem não estiver visível, o sistema carregará mensagens ao redor automaticamente.</li>
+            </ul>
+            <p class="mb-0">O destaque desaparece após 3 segundos.</p>
+        </div>
+        <div class="step-card">
+            <strong>7.4 Fechar busca</strong>
+            <ul>
+                <li>Clique no "X" no canto superior direito do modal.</li>
+                <li>Ou pressione <strong>ESC</strong> no teclado.</li>
+                <li>Ou clique fora do modal.</li>
+            </ul>
+            <p class="mb-0">A busca é específica para a conversa atual (individual ou grupo).</p>
+        </div>
+        <div class="tip-box">
+            <strong>Dica:</strong> Use a busca para encontrar informações específicas em conversas longas sem precisar rolar manualmente.
+        </div>
+    </section>
+
+    <section class="training-block" id="grupos">
+        <h2><i class="fas fa-users"></i>8. Grupos de Chat</h2>
+        <p>O sistema permite criar e gerenciar grupos de chat para comunicação com múltiplos usuários simultaneamente.</p>
+        <div class="step-card">
+            <strong>8.1 Criar um grupo</strong>
+            <ul>
+                <li>Clique no botão <strong>"Criar Grupo"</strong> no topo da sidebar esquerda.</li>
+                <li>Preencha o nome do grupo (obrigatório).</li>
+                <li>Adicione uma descrição opcional explicando o propósito do grupo.</li>
+                <li>Selecione os participantes marcando as caixas de seleção ao lado dos nomes.</li>
+                <li>Clique em <strong>"Criar Grupo"</strong>.</li>
+            </ul>
+            <p class="mb-0">Você será automaticamente adicionado como criador e administrador do grupo.</p>
+        </div>
+        <div class="step-card">
+            <strong>8.2 Selecionar um grupo</strong>
+            <ul>
+                <li>Os grupos aparecem na lista da sidebar com um ícone de grupo (👥).</li>
+                <li>Clique no grupo desejado para abrir a conversa.</li>
+                <li>O header mostrará o nome do grupo e a quantidade de participantes.</li>
+            </ul>
+            <p class="mb-0">Grupos com mensagens não lidas aparecem no topo da lista, assim como conversas individuais.</p>
+        </div>
+        <div class="step-card">
+            <strong>8.3 Enviar mensagens em grupos</strong>
+            <ul>
+                <li>Envie mensagens normalmente como em conversas individuais.</li>
+                <li>Todas as funcionalidades estão disponíveis: texto, emojis, arquivos, áudios e respostas.</li>
+                <li>As mensagens mostram o nome do remetente para identificar quem enviou.</li>
+            </ul>
+            <p class="mb-0">Todas as mensagens do grupo são visíveis para todos os participantes.</p>
+        </div>
+        <div class="info-box">
+            <strong>Importante:</strong> Motoristas não podem ser adicionados a grupos. Apenas usuários administrativos participam do chat interno.
+        </div>
+    </section>
+
+    <section class="training-block" id="gerenciar-grupos">
+        <h2><i class="fas fa-cog"></i>9. Gerenciar Grupos</h2>
+        <p>Apenas criadores e administradores podem gerenciar grupos (adicionar/remover participantes).</p>
+        <div class="step-card">
+            <strong>9.1 Adicionar participantes</strong>
+            <ul>
+                <li>Com o grupo aberto, clique no botão <strong>"Adicionar Participantes"</strong> (ícone de usuário com +) no header.</li>
+                <li>Um modal será aberto mostrando usuários disponíveis (que ainda não estão no grupo).</li>
+                <li>Marque as caixas de seleção dos usuários que deseja adicionar.</li>
+                <li>Clique em <strong>"Adicionar"</strong>.</li>
+            </ul>
+            <p class="mb-0">Os novos participantes receberão acesso imediato ao grupo e poderão ver todo o histórico de mensagens.</p>
+        </div>
+        <div class="step-card">
+            <strong>9.2 Gerenciar participantes</strong>
+            <ul>
+                <li>Clique no botão <strong>"Gerenciar Grupo"</strong> (ícone de engrenagem) no header.</li>
+                <li>Um modal mostrará a lista de todos os participantes.</li>
+                <li>Você verá quem é o criador e quem são os administradores.</li>
+            </ul>
+            <p class="mb-0">Apenas criadores e administradores veem os botões de gerenciamento.</p>
+        </div>
+        <div class="step-card">
+            <strong>9.3 Remover participantes</strong>
+            <ul>
+                <li>No modal de gerenciamento, clique no botão <strong>"Remover"</strong> (ícone de usuário com -) ao lado do participante.</li>
+                <li>Confirme a remoção quando solicitado.</li>
+                <li>O participante será removido imediatamente e perderá acesso ao grupo.</li>
+            </ul>
+            <p class="mb-0">Apenas criadores e administradores podem remover participantes. O criador não pode ser removido.</p>
+        </div>
+        <div class="step-card">
+            <strong>9.4 Promover administradores</strong>
+            <ul>
+                <li>No modal de gerenciamento, o criador verá um botão <strong>"Promover a administrador"</strong> ao lado de cada participante.</li>
+                <li>Clique no botão para promover um usuário a administrador.</li>
+                <li>Administradores podem adicionar e remover participantes, mas não podem promover outros administradores ou excluir o grupo.</li>
+            </ul>
+            <p class="mb-0">Apenas o criador pode promover ou remover administradores.</p>
+        </div>
+        <div class="step-card">
+            <strong>9.5 Excluir grupo</strong>
+            <ul>
+                <li>Apenas o criador pode excluir um grupo.</li>
+                <li>No modal de gerenciamento, clique no botão <strong>"Excluir Grupo"</strong> (vermelho, no rodapé).</li>
+                <li>Confirme a exclusão duas vezes (medida de segurança).</li>
+                <li>Todas as mensagens e participantes serão removidos permanentemente.</li>
+            </ul>
+            <p class="mb-0"><strong>Atenção:</strong> A exclusão é permanente e não pode ser desfeita. Todas as mensagens do grupo serão perdidas.</p>
+        </div>
+        <div class="warning-box">
+            <strong>Atenção:</strong> Use com cuidado as funções de remoção e exclusão. Certifique-se de que realmente deseja realizar essas ações.
+        </div>
+    </section>
+
+    <section class="training-block" id="organizacao">
+        <h2><i class="fas fa-calendar-alt"></i>10. Organização e Separação por Data</h2>
+        <p>O sistema organiza automaticamente as mensagens por data para facilitar a navegação.</p>
+        <div class="step-card">
+            <strong>10.1 Separadores de data</strong>
+            <ul>
+                <li>As mensagens são automaticamente separadas por data.</li>
+                <li>Você verá separadores mostrando:</li>
+                <ul>
+                    <li><strong>"Hoje"</strong> - para mensagens do dia atual.</li>
+                    <li><strong>"Ontem"</strong> - para mensagens de ontem.</li>
+                    <li><strong>Data completa</strong> - para mensagens mais antigas (ex: "segunda-feira, 15 de janeiro").</li>
+                </ul>
+            </ul>
+            <p class="mb-0">Os separadores aparecem automaticamente quando há mudança de data entre mensagens.</p>
+        </div>
+        <div class="step-card">
+            <strong>10.2 Navegação no chat</strong>
+            <ul>
+                <li>Use a roda do mouse ou a barra de rolagem para navegar pelas mensagens.</li>
+                <li>O chat rola automaticamente para a última mensagem ao abrir uma conversa.</li>
+                <li>Ao enviar uma nova mensagem, o chat rola automaticamente para exibi-la.</li>
+            </ul>
+            <p class="mb-0">O sistema carrega até 100 mensagens por vez. Mensagens mais antigas podem não estar visíveis imediatamente.</p>
+        </div>
+        <div class="tip-box">
+            <strong>Dica:</strong> Use a busca de mensagens para encontrar informações específicas sem precisar rolar manualmente por conversas longas.
+        </div>
+    </section>
+
+    <section class="training-block" id="boas-praticas">
+        <h2><i class="fas fa-lightbulb"></i>11. Boas Práticas e Dicas</h2>
+        <p>Seguir boas práticas garante comunicação eficiente e profissional.</p>
+        <div class="step-card">
+            <strong>11.1 Comunicação profissional</strong>
+            <ul>
+                <li>Mantenha um tom profissional, especialmente em grupos de trabalho.</li>
+                <li>Use emojis com moderação para manter a seriedade quando necessário.</li>
+                <li>Seja claro e objetivo nas mensagens.</li>
+                <li>Evite mensagens muito longas; quebre em múltiplas mensagens se necessário.</li>
+            </ul>
+        </div>
+        <div class="step-card">
+            <strong>11.2 Organização de grupos</strong>
+            <ul>
+                <li>Crie grupos com nomes descritivos que indiquem claramente o propósito.</li>
+                <li>Adicione uma descrição ao criar o grupo para que todos entendam o objetivo.</li>
+                <li>Promova administradores apenas para usuários que realmente precisam gerenciar o grupo.</li>
+                <li>Remova participantes que não precisam mais estar no grupo para manter a organização.</li>
+            </ul>
+        </div>
+        <div class="step-card">
+            <strong>11.3 Uso de arquivos</strong>
+            <ul>
+                <li>Verifique o tamanho do arquivo antes de enviar (limite de 50MB).</li>
+                <li>Use nomes descritivos para arquivos para facilitar a identificação.</li>
+                <li>Para imagens, considere comprimi-las antes de enviar se forem muito grandes.</li>
+                <li>Certifique-se de que os arquivos não contenham informações sensíveis, a menos que seja necessário.</li>
+            </ul>
+        </div>
+        <div class="step-card">
+            <strong>11.4 Mensagens de áudio</strong>
+            <ul>
+                <li>Grave em ambiente silencioso para melhor qualidade.</li>
+                <li>Seja conciso; áudios muito longos podem ser difíceis de acompanhar.</li>
+                <li>Considere enviar um resumo em texto após um áudio longo.</li>
+                <li>Use áudios para explicações que seriam difíceis de escrever.</li>
+            </ul>
+        </div>
+        <div class="step-card">
+            <strong>11.5 Notificações e mensagens não lidas</strong>
+            <ul>
+                <li>Verifique regularmente o contador de mensagens não lidas no menu do portal.</li>
+                <li>Responda mensagens importantes o mais rápido possível.</li>
+                <li>Use a busca para encontrar informações em conversas antigas.</li>
+            </ul>
+        </div>
+        <div class="info-box">
+            <strong>Lembrete:</strong> O chat interno é uma ferramenta de trabalho. Mantenha a comunicação focada e profissional.
+        </div>
+    </section>
+
+    <section class="training-block" id="troubleshooting">
+        <h2><i class="fas fa-tools"></i>12. Solução de Problemas</h2>
+        <p>Problemas comuns e como resolvê-los.</p>
+        <div class="step-card">
+            <strong>12.1 Mensagens não aparecem</strong>
+            <ul>
+                <li>Verifique sua conexão com a internet.</li>
+                <li>Recarregue a página (F5 ou Ctrl+R).</li>
+                <li>Verifique se você está autenticado corretamente.</li>
+                <li>Limpe o cache do navegador se o problema persistir.</li>
+            </ul>
+        </div>
+        <div class="step-card">
+            <strong>12.2 Arquivo não envia</strong>
+            <ul>
+                <li>Verifique se o arquivo não excede 50MB.</li>
+                <li>Verifique sua conexão com a internet.</li>
+                <li>Tente enviar novamente após alguns segundos.</li>
+                <li>Se o problema persistir, entre em contato com o suporte técnico.</li>
+            </ul>
+        </div>
+        <div class="step-card">
+            <strong>12.3 Áudio não grava</strong>
+            <ul>
+                <li>Verifique se o navegador tem permissão para acessar o microfone.</li>
+                <li>Verifique as configurações de privacidade do navegador.</li>
+                <li>Tente usar outro navegador (Chrome, Firefox, Edge).</li>
+                <li>Verifique se o microfone está funcionando em outros aplicativos.</li>
+            </ul>
+        </div>
+        <div class="step-card">
+            <strong>12.4 Imagens não carregam</strong>
+            <ul>
+                <li>Verifique sua conexão com a internet.</li>
+                <li>Recarregue a página.</li>
+                <li>As imagens podem levar alguns segundos para carregar dependendo do tamanho.</li>
+                <li>Se o problema persistir, tente baixar a imagem diretamente.</li>
+            </ul>
+        </div>
+        <div class="step-card">
+            <strong>12.5 Não consigo criar grupo</strong>
+            <ul>
+                <li>Verifique se você está autenticado como usuário administrativo.</li>
+                <li>Certifique-se de selecionar pelo menos um participante.</li>
+                <li>Verifique se o nome do grupo foi preenchido.</li>
+                <li>Recarregue a página e tente novamente.</li>
+            </ul>
+        </div>
+        <div class="warning-box">
+            <strong>Importante:</strong> Se os problemas persistirem, entre em contato com o suporte técnico ou o administrador do sistema.
+        </div>
+    </section>
+
+    <!-- Seção de Assinatura -->
+    <section class="training-block signature-card" id="assinatura">
+        <h2><i class="fas fa-signature"></i>Declaração de Conclusão</h2>
+        <p>Ao concluir este treinamento, declare que leu e compreendeu todas as informações apresentadas.</p>
+        
+        <div class="mb-3">
+            <label for="nomeCompleto">Nome Completo *</label>
+            <input type="text" class="form-control" id="nomeCompleto" required placeholder="Digite seu nome completo">
+        </div>
+        
+        <div class="mb-3">
+            <label>Assinatura Digital *</label>
+            <canvas class="signature-canvas" id="signatureCanvas"></canvas>
+            <div class="d-flex gap-2 mt-2">
+                <button type="button" class="btn btn-secondary btn-sm" onclick="limparAssinatura()">
+                    <i class="fas fa-eraser me-1"></i>Limpar
+                </button>
+            </div>
+        </div>
+        
+        <div class="mb-3">
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="declaracao" required>
+                <label class="form-check-label" for="declaracao">
+                    Declaro que li e compreendi todas as informações deste treinamento sobre o uso do Chat Interno. *
+                </label>
+            </div>
+        </div>
+        
+        <button type="button" class="btn btn-primary w-100" onclick="finalizarTreinamento()" style="background: linear-gradient(135deg, var(--primary), var(--secondary)); border: none; padding: 0.75rem; border-radius: 12px; font-weight: 600;">
+            <i class="fas fa-check-circle me-2"></i>Finalizar Treinamento
+        </button>
+        
+        <div id="qrCodeContainer" class="mt-3 text-center" style="display: none;">
+            <p class="text-muted small">Escaneie o QR Code para acessar este treinamento novamente:</p>
+            <div id="qrcode"></div>
+        </div>
+    </section>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    // Variáveis para assinatura
+    let canvas = document.getElementById('signatureCanvas');
+    let ctx = canvas.getContext('2d');
+    let isDrawing = false;
+    let signatureData = null;
+    
+    // Ajustar tamanho do canvas
+    function resizeCanvas() {
+        canvas.width = canvas.offsetWidth;
+        canvas.height = canvas.offsetHeight;
+        ctx.strokeStyle = '#1f2937';
+        ctx.lineWidth = 2;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+    }
+    
+    resizeCanvas();
+    window.addEventListener('resize', resizeCanvas);
+    
+    // Eventos de desenho
+    canvas.addEventListener('mousedown', startDrawing);
+    canvas.addEventListener('mousemove', draw);
+    canvas.addEventListener('mouseup', stopDrawing);
+    canvas.addEventListener('mouseout', stopDrawing);
+    
+    // Touch events para mobile
+    canvas.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        const touch = e.touches[0];
+        const mouseEvent = new MouseEvent('mousedown', {
+            clientX: touch.clientX,
+            clientY: touch.clientY
+        });
+        canvas.dispatchEvent(mouseEvent);
+    });
+    
+    canvas.addEventListener('touchmove', (e) => {
+        e.preventDefault();
+        const touch = e.touches[0];
+        const mouseEvent = new MouseEvent('mousemove', {
+            clientX: touch.clientX,
+            clientY: touch.clientY
+        });
+        canvas.dispatchEvent(mouseEvent);
+    });
+    
+    canvas.addEventListener('touchend', (e) => {
+        e.preventDefault();
+        const mouseEvent = new MouseEvent('mouseup', {});
+        canvas.dispatchEvent(mouseEvent);
+    });
+    
+    function startDrawing(e) {
+        isDrawing = true;
+        const rect = canvas.getBoundingClientRect();
+        ctx.beginPath();
+        ctx.moveTo(e.clientX - rect.left, e.clientY - rect.top);
+    }
+    
+    function draw(e) {
+        if (!isDrawing) return;
+        const rect = canvas.getBoundingClientRect();
+        ctx.lineTo(e.clientX - rect.left, e.clientY - rect.top);
+        ctx.stroke();
+    }
+    
+    function stopDrawing() {
+        if (isDrawing) {
+            isDrawing = false;
+            signatureData = canvas.toDataURL();
+        }
+    }
+    
+    function limparAssinatura() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        signatureData = null;
+    }
+    
+    async function finalizarTreinamento() {
+        const nome = document.getElementById('nomeCompleto').value.trim();
+        const declaracao = document.getElementById('declaracao').checked;
+        
+        if (!nome) {
+            alert('Por favor, preencha seu nome completo.');
+            return;
+        }
+        
+        if (!signatureData || !ctx.getImageData(0, 0, canvas.width, canvas.height).data.some(channel => channel !== 0)) {
+            alert('Por favor, forneça sua assinatura digital.');
+            return;
+        }
+        
+        if (!declaracao) {
+            alert('Por favor, confirme que leu e compreendeu o treinamento.');
+            return;
+        }
+        
+        try {
+            // Obter token de autenticação
+            let authToken = null;
+            let userEmail = null;
+            let userId = null;
+            
+            // Tentar obter do Supabase se disponível
+            if (typeof window.supabase !== 'undefined') {
+                try {
+                    const { data: session } = await window.supabase.auth.getSession();
+                    if (session?.session?.access_token) {
+                        authToken = session.session.access_token;
+                    }
+                    if (session?.session?.user?.email) {
+                        userEmail = session.session.user.email;
+                    }
+                    if (session?.session?.user?.id) {
+                        userId = session.session.user.id;
+                    }
+                } catch (err) {
+                    console.warn('Erro ao obter sessão:', err);
+                }
+            }
+            
+            // Preparar dados
+            const dados = {
+                nome: nome,
+                assinatura_texto: signatureData,
+                treinamento_slug: 'chat_interno'
+            };
+            
+            // Preparar headers
+            const headers = {
+                'Content-Type': 'application/json'
+            };
+            
+            if (authToken) {
+                headers['Authorization'] = `Bearer ${authToken}`;
+            } else if (userEmail) {
+                headers['X-User-Email'] = userEmail;
+            }
+            
+            // Enviar para o servidor
+            const response = await fetch('/api/treinamentos/assinaturas', {
+                method: 'POST',
+                headers: headers,
+                credentials: 'include',
+                body: JSON.stringify(dados)
+            });
+            
+            if (!response.ok) {
+                const errorText = await response.text();
+                let errorMessage = 'Erro ao salvar assinatura';
+                try {
+                    const errorJson = JSON.parse(errorText);
+                    errorMessage = errorJson.error || errorMessage;
+                } catch (e) {
+                    errorMessage = errorText || errorMessage;
+                }
+                throw new Error(errorMessage);
+            }
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                alert('✅ Treinamento concluído com sucesso!');
+                window.location.href = 'treinamentos.html';
+            } else {
+                throw new Error(result.error || 'Erro ao salvar');
+            }
+            
+        } catch (error) {
+            console.error('Erro ao finalizar treinamento:', error);
+            let errorMessage = 'Erro ao finalizar treinamento.';
+            
+            if (error.message) {
+                errorMessage += '\n\n' + error.message;
+            }
+            
+            if (error.message && error.message.includes('404')) {
+                errorMessage += '\n\nA rota de assinatura não foi encontrada. Verifique se o servidor está configurado corretamente.';
+            }
+            
+            alert(errorMessage);
+        }
+    }
+    
+    // Função para baixar PDF
+    function baixarTreinamentoPDF() {
+        const element = document.body;
+        const opt = {
+            margin: [10, 10, 10, 10],
+            filename: 'treinamento-chat-interno.pdf',
+            image: { type: 'jpeg', quality: 0.98 },
+            html2canvas: { scale: 2, useCORS: true },
+            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+        };
+        
+        // Adicionar classe para otimização PDF
+        element.classList.add('pdf-optimized');
+        
+        html2pdf().set(opt).from(element).save().then(() => {
+            element.classList.remove('pdf-optimized');
+        });
+    }
+    
+    // Gerar QR Code após carregar
+    window.addEventListener('load', () => {
+        if (typeof QRCode !== 'undefined') {
+            const qrContainer = document.getElementById('qrCodeContainer');
+            if (qrContainer) {
+                new QRCode(document.getElementById('qrcode'), {
+                    text: window.location.href,
+                    width: 200,
+                    height: 200
+                });
+                qrContainer.style.display = 'block';
+            }
+        }
+    });
+</script>
+</body>
+</html>
+
