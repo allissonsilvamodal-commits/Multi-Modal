@@ -1111,6 +1111,14 @@
             const localUser = verificarUsuarioLocalStorage();
             if (localUser && localUser.authenticated) {
                 console.log('✅ Usuário já logado (cache), redirecionando...');
+                
+                // Marcar como online
+                try {
+                    await supabase.rpc('mark_user_online', { p_user_id: localUser.id });
+                } catch (e) {
+                    console.warn('⚠️ Erro ao marcar presença:', e);
+                }
+                
                 showAlert(`<i class="fas fa-check-circle"></i> Bem-vindo de volta, ${localUser.username}!`, 'success');
                 
                 setTimeout(() => {
@@ -1127,6 +1135,14 @@
                 
                 if (userData) {
                     console.log('✅ Usuário já logado, redirecionando...');
+                    
+                    // Marcar como online
+                    try {
+                        await supabase.rpc('mark_user_online', { p_user_id: session.user.id });
+                    } catch (e) {
+                        console.warn('⚠️ Erro ao marcar presença:', e);
+                    }
+                    
                     showAlert(`<i class="fas fa-check-circle"></i> Bem-vindo de volta, ${profile.username}!`, 'success');
                     
                     setTimeout(() => {
@@ -1223,7 +1239,22 @@
             const userData = salvarUsuarioLocalStorage(authData.user, profile);
             console.log('✅ UserData salvo:', userData);
             
-            // 4. Mostrar sucesso
+            // 4. Marcar usuário como online na plataforma
+            try {
+                console.log('🟢 Marcando usuário como online...');
+                const { error: presenceError } = await supabase.rpc('mark_user_online', {
+                    p_user_id: authData.user.id
+                });
+                if (presenceError) {
+                    console.warn('⚠️ Erro ao marcar usuário como online:', presenceError);
+                } else {
+                    console.log('✅ Usuário marcado como online');
+                }
+            } catch (presenceErr) {
+                console.warn('⚠️ Erro ao marcar presença:', presenceErr);
+            }
+            
+            // 5. Mostrar sucesso
             showAlert(`<i class="fas fa-check-circle"></i> Login realizado! Redirecionando...`, 'success');
             updateSystemInfo(`Usuário autenticado com sucesso`, 'success');
             

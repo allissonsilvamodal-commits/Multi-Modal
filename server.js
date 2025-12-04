@@ -5922,6 +5922,37 @@ app.get('/api/active-sessions', async (req, res) => {
     
     const totalUsuariosLogados = usuariosCompletos.length;
     
+    // 4. Sincronizar com a tabela user_presence (marcar usuários logados como online)
+    try {
+      const userIdsLogados = usuariosCompletos.map(u => u.id);
+      if (userIdsLogados.length > 0) {
+        // Marcar todos os usuários logados como online
+        for (const userId of userIdsLogados) {
+          try {
+            const { error: presenceError } = await supabaseAdmin
+              .from('user_presence')
+              .upsert({
+                user_id: userId,
+                is_online: true,
+                last_seen: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+              }, {
+                onConflict: 'user_id'
+              });
+            
+            if (presenceError) {
+              console.warn(`⚠️ Erro ao sincronizar presença do usuário ${userId}:`, presenceError.message);
+            }
+          } catch (err) {
+            console.warn(`⚠️ Erro ao sincronizar presença do usuário ${userId}:`, err.message);
+          }
+        }
+        console.log(`✅ ${userIdsLogados.length} usuário(s) sincronizado(s) com user_presence`);
+      }
+    } catch (syncError) {
+      console.warn('⚠️ Erro ao sincronizar user_presence:', syncError.message);
+    }
+    
     console.log(`👥 Usuários administrativos únicos logados: ${totalUsuariosLogados} (motoristas excluídos)`);
     
     res.json({

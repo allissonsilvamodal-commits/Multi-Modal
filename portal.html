@@ -1250,6 +1250,12 @@
                             <span class="badge-notification" id="badgeChatInterno" style="display: none; background: #ef4444; color: white; border-radius: 10px; padding: 0.15rem 0.4rem; font-size: 0.7rem; font-weight: 700; margin-left: 0.5rem;">0</span>
                         </a>
                     </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="avaliacao-360.html">
+                            <i class="fas fa-chart-pie me-1"></i>Avaliação 360º
+                            <span class="badge-notification" id="badgeAvaliacao360" style="display: none; background: #ef4444; color: white; border-radius: 10px; padding: 0.15rem 0.4rem; font-size: 0.7rem; font-weight: 700; margin-left: 0.5rem;">0</span>
+                        </a>
+                    </li>
                 </ul>
                 
                 <div class="navbar-nav">
@@ -1615,6 +1621,9 @@
                 atualizarContadorMensagens();
                 setInterval(atualizarContadorMensagens, 10000); // Atualizar a cada 10 segundos
                 
+                atualizarContadorAvaliacao360();
+                setInterval(atualizarContadorAvaliacao360, 10000); // Atualizar a cada 10 segundos
+                
                 return true;
             } catch (error) {
                 console.error('❌ Erro ao inicializar Supabase:', error);
@@ -1658,6 +1667,44 @@
             } catch (error) {
                 // Silenciosamente ignorar erros (tabela pode não existir ainda)
                 console.debug('Contador de mensagens:', error.message);
+            }
+        }
+
+        // ========== CONTADOR DE NOTIFICAÇÕES AVALIAÇÃO 360º ==========
+        async function atualizarContadorAvaliacao360() {
+            try {
+                if (!supabase || !currentUser || !currentUser.id) {
+                    return;
+                }
+
+                const { data: notificacoes, error } = await supabase
+                    .from('avaliacao_360_notificacoes')
+                    .select('id')
+                    .eq('usuario_id', currentUser.id)
+                    .eq('lida', false);
+
+                if (error) {
+                    // Ignorar erros de coluna não existente
+                    if (error.message && error.message.includes('does not exist')) {
+                        return;
+                    }
+                    throw error;
+                }
+
+                const unreadCount = notificacoes ? notificacoes.length : 0;
+                const badgeElement = document.getElementById('badgeAvaliacao360');
+                
+                if (badgeElement) {
+                    if (unreadCount > 0) {
+                        badgeElement.textContent = unreadCount > 99 ? '99+' : unreadCount;
+                        badgeElement.style.display = 'inline-block';
+                    } else {
+                        badgeElement.style.display = 'none';
+                    }
+                }
+            } catch (error) {
+                // Silenciosamente ignorar erros (tabela pode não existir ainda)
+                console.debug('Contador de avaliação 360º:', error.message);
             }
         }
 
@@ -2188,6 +2235,14 @@
                         url: 'recrutamento.html',
                         permission: 'recrutamento',
                         adminOnly: true
+                    },
+                    { 
+                        name: 'Avaliação 360º', 
+                        description: 'Sistema completo de avaliação de desempenho',
+                        icon: 'fas fa-chart-pie',
+                        url: 'avaliacao-360.html',
+                        permission: 'avaliacao_360',
+                        adminOnly: false
                     }
                 ]
             },

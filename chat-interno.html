@@ -2226,15 +2226,19 @@
 
         // ========== SISTEMA DE STATUS ONLINE/OFFLINE ==========
         
-        // Atualizar status do usuário atual (heartbeat)
+        // Atualizar status do usuário atual (heartbeat) - marca como online na plataforma
         async function updateCurrentUserStatus() {
             if (!currentUserId || !supabaseClient) return;
             
             try {
-                // Atualizar última atividade na tabela user_profiles
-                // Usaremos um campo last_seen ou podemos criar uma tabela de presença
-                // Por enquanto, vamos usar uma abordagem simples: verificar última mensagem
-                const now = new Date().toISOString();
+                // Chamar função do banco para marcar usuário como online
+                const { error } = await supabaseClient.rpc('mark_user_online', {
+                    p_user_id: currentUserId
+                });
+                
+                if (error) {
+                    console.warn('Erro ao marcar usuário como online:', error);
+                }
                 
                 // Marcar usuário atual como online no mapa local
                 userStatusMap.set(currentUserId, {
@@ -2246,7 +2250,7 @@
             }
         }
         
-        // Verificar status de outros usuários baseado na última atividade
+        // Verificar status de outros usuários baseado na tabela de presença
         async function checkUsersStatus() {
             if (!supabaseClient || !allUsersData || allUsersData.length === 0) return;
             
@@ -2254,33 +2258,29 @@
                 const userIds = allUsersData.map(u => u.id);
                 if (userIds.length === 0) return;
                 
-                // Buscar últimas mensagens de cada usuário para determinar atividade
-                const { data: recentMessages, error } = await supabaseClient
-                    .from('chat_mensagens')
-                    .select('remetente_id, created_at')
-                    .in('remetente_id', userIds)
-                    .order('created_at', { ascending: false })
-                    .limit(1000);
+                // Buscar status de presença na tabela user_presence
+                const { data: presenceData, error } = await supabaseClient
+                    .from('user_presence')
+                    .select('user_id, is_online, last_seen')
+                    .in('user_id', userIds);
                 
                 if (error) {
                     console.warn('Erro ao verificar status:', error);
                     return;
                 }
                 
-                // Agrupar por usuário e pegar a mensagem mais recente
-                const lastActivityMap = new Map();
-                if (recentMessages) {
-                    recentMessages.forEach(msg => {
-                        if (!lastActivityMap.has(msg.remetente_id)) {
-                            lastActivityMap.set(msg.remetente_id, new Date(msg.created_at));
-                        }
+                // Criar mapa de presença
+                const presenceMap = new Map();
+                if (presenceData) {
+                    presenceData.forEach(p => {
+                        presenceMap.set(p.user_id, {
+                            online: p.is_online,
+                            lastSeen: p.last_seen ? new Date(p.last_seen) : null
+                        });
                     });
                 }
                 
-                // Determinar status: online se última atividade foi há menos de 5 minutos
-                const OFFLINE_THRESHOLD = 5 * 60 * 1000; // 5 minutos em milissegundos
-                const now = new Date();
-                
+                // Atualizar mapa de status
                 userIds.forEach(userId => {
                     // Usuário atual sempre está online
                     if (userId === currentUserId) {
@@ -2291,17 +2291,29 @@
                         return;
                     }
                     
-                    const lastActivity = lastActivityMap.get(userId);
-                    if (lastActivity) {
-                        const timeSinceLastActivity = now - lastActivity;
-                        const isOnline = timeSinceLastActivity < OFFLINE_THRESHOLD;
+                    const presence = presenceMap.get(userId);
+                    if (presence) {
+                        // Verificar se ainda está online (última atividade há menos de 5 minutos)
+                        const OFFLINE_THRESHOLD = 5 * 60 * 1000; // 5 minutos
+                        const now = new Date();
+                        const lastSeen = presence.lastSeen ? new Date(presence.lastSeen) : null;
+                        
+                        let isOnline = presence.online;
+                        
+                        // Se está marcado como online mas não teve atividade recente, considerar offline
+                        if (isOnline && lastSeen) {
+                            const timeSinceLastSeen = now - lastSeen;
+                            if (timeSinceLastSeen > OFFLINE_THRESHOLD) {
+                                isOnline = false;
+                            }
+                        }
                         
                         userStatusMap.set(userId, {
                             online: isOnline,
-                            lastSeen: lastActivity
+                            lastSeen: lastSeen
                         });
                     } else {
-                        // Se não tem mensagens recentes, considerar offline
+                        // Se não tem registro de presença, considerar offline
                         userStatusMap.set(userId, {
                             online: false,
                             lastSeen: null
@@ -2339,6 +2351,24 @@
             });
         }
         
+        // Marcar usuário como offline
+        async function markUserOffline() {
+            if (!currentUserId || !supabaseClient) return;
+            
+            try {
+                // Chamar função do banco para marcar usuário como offline
+                const { error } = await supabaseClient.rpc('mark_user_offline', {
+                    p_user_id: currentUserId
+                });
+                
+                if (error) {
+                    console.warn('Erro ao marcar usuário como offline:', error);
+                }
+            } catch (error) {
+                console.warn('Erro ao marcar usuário como offline:', error);
+            }
+        }
+        
         // Iniciar sistema de status
         function startStatusSystem() {
             // Atualizar status do usuário atual imediatamente
@@ -2355,7 +2385,7 @@
                 checkUsersStatus();
             }, 60000);
         }
-        
+
         // Carregar lista de usuários
         async function loadUsers() {
             try {
@@ -2399,7 +2429,21 @@
 
                 const usersListEl = document.getElementById('usersList');
                 if (!usuariosAdministrativos || usuariosAdministrativos.length === 0) {
-                    usersListEl.innerHTML = '<div class="empty-state"><i class="fas fa-users"></i><p>Nenhum usuário encontrado</p></div>';
+                    console.warn('⚠️ Nenhum usuário administrativo encontrado!');
+                    console.warn('📋 Verificando possíveis causas:');
+                    console.warn('   - Todos os usuários podem estar marcados como active=false');
+                    console.warn('   - Todos os usuários podem ser motoristas');
+                    console.warn('   - Pode não haver usuários cadastrados em user_profiles');
+                    
+                    usersListEl.innerHTML = `
+                        <div class="empty-state">
+                            <i class="fas fa-users"></i>
+                            <p>Nenhum usuário encontrado</p>
+                            <small style="margin-top: 0.5rem; opacity: 0.7;">
+                                Verifique se há usuários administrativos cadastrados em Settings
+                            </small>
+                        </div>
+                    `;
                     return;
                 }
 
@@ -2496,7 +2540,16 @@
                 const totalUsuarios = (users || []).length;
                 const totalMotoristas = motoristaIds.size;
                 const totalAdministrativos = usuariosAdministrativos.length;
+                const totalComConversa = usersWithConversation.length;
                 console.log(`✅ Chat Interno: ${totalAdministrativos} usuário(s) administrativo(s) carregado(s) (${totalMotoristas} motorista(s) excluído(s) de ${totalUsuarios} total)`);
+                console.log(`📊 Usuários com conversas: ${totalComConversa}, Total para exibir: ${usersWithConversation.length}`);
+                
+                // Debug: listar IDs dos usuários
+                if (usuariosAdministrativos.length > 0) {
+                    console.log('👥 IDs dos usuários administrativos:', usuariosAdministrativos.map(u => ({ id: u.id, nome: u.nome, email: u.email })));
+                } else {
+                    console.warn('⚠️ Nenhum usuário administrativo encontrado! Verifique se há usuários com active=true em user_profiles');
+                }
 
                 // Carregar grupos do usuário
                 await loadGrupos();
@@ -4188,19 +4241,36 @@
 
         // Buscar mensagens
         async function searchMessages(query) {
-            if (!selectedUserId || !query) return;
+            // Verificar se está em modo grupo ou conversa individual
+            if ((!selectedUserId && !selectedGrupoId) || !query) return;
 
             const searchResults = document.getElementById('searchResults');
             searchResults.innerHTML = '<div class="search-empty"><i class="fas fa-spinner fa-spin"></i><p>Buscando...</p></div>';
 
             try {
-                const { data: messages, error } = await supabaseClient
-                    .from('chat_mensagens')
-                    .select('*')
-                    .or(`and(remetente_id.eq.${currentUserId},destinatario_id.eq.${selectedUserId}),and(remetente_id.eq.${selectedUserId},destinatario_id.eq.${currentUserId})`)
-                    .ilike('mensagem', `%${query}%`)
-                    .order('created_at', { ascending: false })
-                    .limit(50);
+                let queryBuilder;
+                
+                // Se estiver em modo grupo
+                if (isGrupoMode && selectedGrupoId) {
+                    queryBuilder = supabaseClient
+                        .from('chat_mensagens')
+                        .select('*')
+                        .eq('grupo_id', selectedGrupoId)
+                        .ilike('mensagem', `%${query}%`)
+                        .order('created_at', { ascending: false })
+                        .limit(50);
+                } else {
+                    // Modo conversa individual
+                    queryBuilder = supabaseClient
+                        .from('chat_mensagens')
+                        .select('*')
+                        .or(`and(remetente_id.eq.${currentUserId},destinatario_id.eq.${selectedUserId}),and(remetente_id.eq.${selectedUserId},destinatario_id.eq.${currentUserId})`)
+                        .ilike('mensagem', `%${query}%`)
+                        .order('created_at', { ascending: false })
+                        .limit(50);
+                }
+
+                const { data: messages, error } = await queryBuilder;
 
                 if (error) throw error;
 
@@ -4275,14 +4345,34 @@
                         return;
                     }
                     
+                    // Determinar se é grupo ou conversa individual baseado na mensagem encontrada
+                    const isGroupMessage = targetMessage.grupo_id !== null;
+                    
                     // Buscar mensagens ao redor (antes e depois)
-                    const { data: nearbyMessages, error: nearbyError } = await supabaseClient
-                        .from('chat_mensagens')
-                        .select('*')
-                        .or(`and(remetente_id.eq.${currentUserId},destinatario_id.eq.${selectedUserId}),and(remetente_id.eq.${selectedUserId},destinatario_id.eq.${currentUserId})`)
-                        .gte('created_at', new Date(new Date(targetMessage.created_at).getTime() - 24 * 60 * 60 * 1000).toISOString()) // 24h antes
-                        .lte('created_at', new Date(new Date(targetMessage.created_at).getTime() + 24 * 60 * 60 * 1000).toISOString()) // 24h depois
-                        .order('created_at', { ascending: true });
+                    let queryBuilder;
+                    
+                    if (isGroupMessage) {
+                        // Modo grupo
+                        queryBuilder = supabaseClient
+                            .from('chat_mensagens')
+                            .select('*')
+                            .eq('grupo_id', targetMessage.grupo_id)
+                            .gte('created_at', new Date(new Date(targetMessage.created_at).getTime() - 24 * 60 * 60 * 1000).toISOString()) // 24h antes
+                            .lte('created_at', new Date(new Date(targetMessage.created_at).getTime() + 24 * 60 * 60 * 1000).toISOString()) // 24h depois
+                            .order('created_at', { ascending: true });
+                    } else {
+                        // Modo conversa individual
+                        queryBuilder = supabaseClient
+                            .from('chat_mensagens')
+                            .select('*')
+                            .or(`and(remetente_id.eq.${currentUserId},destinatario_id.eq.${targetMessage.destinatario_id || targetMessage.remetente_id}),and(remetente_id.eq.${targetMessage.destinatario_id || targetMessage.remetente_id},destinatario_id.eq.${currentUserId})`)
+                            .is('grupo_id', null) // Garantir que não é mensagem de grupo
+                            .gte('created_at', new Date(new Date(targetMessage.created_at).getTime() - 24 * 60 * 60 * 1000).toISOString()) // 24h antes
+                            .lte('created_at', new Date(new Date(targetMessage.created_at).getTime() + 24 * 60 * 60 * 1000).toISOString()) // 24h depois
+                            .order('created_at', { ascending: true });
+                    }
+                    
+                    const { data: nearbyMessages, error: nearbyError } = await queryBuilder;
                     
                     if (!nearbyError && nearbyMessages) {
                         // Limpar mensagens atuais
@@ -5145,7 +5235,7 @@
                 textarea.style.overflowY = 'hidden';
             }
         }
-        
+
         // Event listeners
         document.getElementById('sendButton').addEventListener('click', sendMessage);
         document.getElementById('replyPreviewClose').addEventListener('click', cancelReply);
@@ -5192,10 +5282,45 @@
             }
         });
 
-        // Limpar intervalos ao sair
+        // Limpar intervalos e marcar como offline ao sair
         window.addEventListener('beforeunload', () => {
             if (messagesInterval) clearInterval(messagesInterval);
             if (usersInterval) clearInterval(usersInterval);
+            if (statusUpdateInterval) clearInterval(statusUpdateInterval);
+            
+            // Tentar marcar usuário como offline (pode não executar se a página fechar muito rápido)
+            // O sistema tem cleanup automático que marca como offline usuários inativos há mais de 30 minutos
+            if (currentUserId && supabaseClient) {
+                // Usar fetch com keepalive para garantir que a requisição seja enviada
+                try {
+                    const url = `${supabaseClient.supabaseUrl}/rest/v1/rpc/mark_user_offline`;
+                    const headers = {
+                        'Content-Type': 'application/json',
+                        'apikey': supabaseClient.supabaseKey,
+                        'Authorization': `Bearer ${supabaseClient.supabaseKey}`
+                    };
+                    
+                    // Tentar fazer requisição com keepalive (mais confiável)
+                    fetch(url, {
+                        method: 'POST',
+                        headers: headers,
+                        body: JSON.stringify({ p_user_id: currentUserId }),
+                        keepalive: true
+                    }).catch(() => {
+                        // Ignorar erros silenciosamente
+                    });
+                } catch (e) {
+                    // Ignorar erros silenciosamente
+                }
+            }
+        });
+        
+        // Atualizar status quando a página volta ao foco
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden && currentUserId) {
+                // Página voltou ao foco, marcar como online novamente
+                updateCurrentUserStatus();
+            }
         });
 
         // Variável para armazenar dados da mensagem da imagem no modal
