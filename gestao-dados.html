@@ -458,11 +458,11 @@
               </div>
               <div class="col-md-3">
                 <label class="form-label-modern">Hora que Enviou a Demanda *</label>
-                <input type="time" id="hora_envio" class="form-control form-control-modern" required>
+                <input type="time" id="hora_envio" class="form-control form-control-modern" min="00:00" max="23:59" required>
               </div>
               <div class="col-md-3">
                 <label class="form-label-modern">Hora que Retornou a Demanda *</label>
-                <input type="time" id="hora_retorno" class="form-control form-control-modern" required>
+                <input type="time" id="hora_retorno" class="form-control form-control-modern" min="00:00" max="23:59" required>
               </div>
             </div>
             
@@ -800,11 +800,11 @@
               </div>
               <div class="col-md-3">
                 <label class="form-label-modern">Hora que Enviou a Demanda *</label>
-                <input type="time" id="editarHoraEnvio" class="form-control form-control-modern" required>
+                <input type="time" id="editarHoraEnvio" class="form-control form-control-modern" min="00:00" max="23:59" required>
               </div>
               <div class="col-md-3">
                 <label class="form-label-modern">Hora que Retornou a Demanda *</label>
-                <input type="time" id="editarHoraRetorno" class="form-control form-control-modern" required>
+                <input type="time" id="editarHoraRetorno" class="form-control form-control-modern" min="00:00" max="23:59" required>
               </div>
             </div>
             
@@ -1130,15 +1130,42 @@
         }
       }
       
+      // Validar horas (deve estar entre 00:00 e 23:59)
+      const horaEnvio = document.getElementById('hora_envio').value;
+      const horaRetorno = document.getElementById('hora_retorno').value;
+      
+      if (horaEnvio) {
+        const [hora, minuto] = horaEnvio.split(':').map(Number);
+        if (hora < 0 || hora > 23 || minuto < 0 || minuto > 59) {
+          mostrarAlerta('A hora de envio deve estar entre 00:00 e 23:59', 'warning');
+          return;
+        }
+      }
+      
+      if (horaRetorno) {
+        const [hora, minuto] = horaRetorno.split(':').map(Number);
+        if (hora < 0 || hora > 23 || minuto < 0 || minuto > 59) {
+          mostrarAlerta('A hora de retorno deve estar entre 00:00 e 23:59', 'warning');
+          return;
+        }
+      }
+      
+      // Validar sistema
+      const sistema = document.getElementById('sistema').value;
+      if (!sistema || sistema.trim() === '') {
+        mostrarAlerta('Por favor, selecione o sistema', 'warning');
+        return;
+      }
+      
       const dados = {
         data: document.getElementById('data').value,
         oc: document.getElementById('oc').value.trim(),
         operacao: document.getElementById('operacao').value.trim(),
         tipo_erro: document.getElementById('tipo_erro').value,
-        sistema: document.getElementById('sistema').value,
+        sistema: sistema.trim(),
         motivo_devolucao: document.getElementById('motivo_devolucao').value.trim(),
-        hora_envio: document.getElementById('hora_envio').value,
-        hora_retorno: document.getElementById('hora_retorno').value,
+        hora_envio: horaEnvio,
+        hora_retorno: horaRetorno,
         responsavel: document.getElementById('responsavel').value.trim(),
         evidencia_url: evidenciasUrls.length > 0 ? evidenciasUrls : null,
         usuario_id: currentUser.id,
@@ -1670,15 +1697,42 @@
       // Combinar evidências existentes (não removidas) com novas
       const evidenciasFinais = [...evidenciasExistentes, ...novasEvidenciasUrls];
 
+      // Validar horas (deve estar entre 00:00 e 23:59)
+      const horaEnvio = document.getElementById('editarHoraEnvio').value;
+      const horaRetorno = document.getElementById('editarHoraRetorno').value;
+      
+      if (horaEnvio) {
+        const [hora, minuto] = horaEnvio.split(':').map(Number);
+        if (hora < 0 || hora > 23 || minuto < 0 || minuto > 59) {
+          mostrarAlerta('A hora de envio deve estar entre 00:00 e 23:59', 'warning');
+          return;
+        }
+      }
+      
+      if (horaRetorno) {
+        const [hora, minuto] = horaRetorno.split(':').map(Number);
+        if (hora < 0 || hora > 23 || minuto < 0 || minuto > 59) {
+          mostrarAlerta('A hora de retorno deve estar entre 00:00 e 23:59', 'warning');
+          return;
+        }
+      }
+      
+      // Validar sistema
+      const sistema = document.getElementById('editarSistema').value;
+      if (!sistema || sistema.trim() === '') {
+        mostrarAlerta('Por favor, selecione o sistema', 'warning');
+        return;
+      }
+      
       const dados = {
         data: document.getElementById('editarData').value,
         oc: document.getElementById('editarOC').value.trim(),
         operacao: document.getElementById('editarOperacao').value,
         tipo_erro: document.getElementById('editarTipoErro').value,
-        sistema: document.getElementById('editarSistema').value,
+        sistema: sistema.trim(),
         motivo_devolucao: document.getElementById('editarMotivoDevolucao').value.trim(),
-        hora_envio: document.getElementById('editarHoraEnvio').value,
-        hora_retorno: document.getElementById('editarHoraRetorno').value,
+        hora_envio: horaEnvio,
+        hora_retorno: horaRetorno,
         responsavel: document.getElementById('editarResponsavel').value,
         evidencia_url: evidenciasFinais.length > 0 ? evidenciasFinais : null
       };
