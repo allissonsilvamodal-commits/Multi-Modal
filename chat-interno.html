@@ -883,17 +883,60 @@
             letter-spacing: 0.01em;
         }
 
+        .message-footer {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 0.5rem;
+            margin-top: 0.25rem;
+        }
+
+        .message.sent .message-footer {
+            justify-content: flex-start;
+        }
+
         .message-time {
             font-size: 0.7rem;
             opacity: 0.75;
-            text-align: right;
             font-weight: 500;
-            margin-top: 0.25rem;
             letter-spacing: 0.3px;
         }
 
-        .message.sent .message-time {
-            text-align: left;
+        .message-status {
+            display: flex;
+            align-items: center;
+            gap: 0.1rem;
+            font-size: 0.7rem;
+        }
+
+        .message-status-icon {
+            font-size: 0.7rem;
+            line-height: 1;
+        }
+
+        .message-status-sent {
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        .message-status-delivered {
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        .message.sent .message-status-delivered {
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        .message-status-read {
+            color: #4FC3F7;
+        }
+
+        .message.sent .message-status-read {
+            color: #4FC3F7;
+        }
+
+        /* Garantir que os vistos sejam visíveis nas mensagens enviadas */
+        .message.sent .message-status {
+            opacity: 1;
         }
 
         .message.highlighted {
@@ -2167,6 +2210,7 @@
         let supabaseClient = null;
         let messagesInterval = null;
         let usersInterval = null;
+        let statusInterval = null;
         let lastMessageId = null;
         let replyingToMessage = null;
         let messagesCache = new Map(); // Cache de mensagens para buscar respostas
@@ -2183,6 +2227,8 @@
         let grupoSelecionadoParaAdicionar = null; // Grupo selecionado para adicionar participantes
         let userStatusMap = new Map(); // Mapa de status dos usuários (userId -> { online: boolean, lastSeen: Date })
         let statusUpdateInterval = null; // Intervalo para atualizar status
+        let columnsAvailable = { entregue: false, visualizada: false }; // Flag para rastrear se as colunas existem
+        let columnsChecked = false; // Flag para evitar verificar múltiplas vezes
 
         // Inicializar Supabase
         async function initSupabase() {
@@ -2217,10 +2263,127 @@
 
                 if (profile) {
                     currentUserData = profile;
+                    // Verificar e tentar executar migration das colunas de vistos se necessário
+                    // Usar silent=true para evitar logs desnecessários na primeira verificação
+                    await checkColumnsAvailability(true);
+                    await tryExecuteMigration();
                     await loadUsers();
                 }
             } catch (error) {
                 console.error('Erro ao carregar perfil:', error);
+            }
+        }
+
+        // Verificar se as colunas entregue e visualizada existem
+        // Em vez de fazer SELECT (que gera erro 400), vamos tentar usar as colunas em operações reais
+        // e tratar os erros quando ocorrerem
+        async function checkColumnsAvailability(silent = false, force = false) {
+            // Se já foi verificado e não é forçado, retornar cache
+            if (columnsChecked && !force) {
+                return columnsAvailable;
+            }
+            
+            // Por padrão, assumir que as colunas não existem
+            // Elas serão marcadas como existentes quando forem usadas com sucesso
+            columnsAvailable = { entregue: false, visualizada: false };
+            columnsChecked = true;
+            
+            if (!silent) {
+                console.log('📊 Status das colunas (assumindo que não existem até serem usadas):', columnsAvailable);
+            }
+            
+            return columnsAvailable;
+        }
+        
+        // Função auxiliar para marcar colunas como disponíveis quando usadas com sucesso
+        function markColumnAsAvailable(columnName) {
+            if (columnName === 'entregue') {
+                columnsAvailable.entregue = true;
+            } else if (columnName === 'visualizada') {
+                columnsAvailable.visualizada = true;
+            }
+        }
+        
+        // Função auxiliar para marcar colunas como indisponíveis quando falharem
+        function markColumnAsUnavailable(columnName) {
+            if (columnName === 'entregue') {
+                columnsAvailable.entregue = false;
+            } else if (columnName === 'visualizada') {
+                columnsAvailable.visualizada = false;
+            }
+        }
+
+        // Tentar executar migration das colunas entregue e visualizada
+        async function tryExecuteMigration() {
+            try {
+                // Verificar se as colunas já existem
+                const cols = await checkColumnsAvailability();
+                
+                if (cols.entregue && cols.visualizada) {
+                    // Colunas já existem
+                    console.log('✅ Colunas entregue e visualizada já existem');
+                    return;
+                }
+
+                // Se não existirem, verificar se o usuário é admin antes de tentar executar
+                const { data: { session } } = await supabaseClient.auth.getSession();
+                if (!session || !session.access_token) {
+                    console.warn('⚠️ Usuário não autenticado. Não é possível executar migration automaticamente.');
+                    return;
+                }
+
+                // Verificar se é admin
+                const { data: userProfile } = await supabaseClient
+                    .from('user_profiles')
+                    .select('role')
+                    .eq('id', currentUserId)
+                    .maybeSingle();
+
+                const isAdmin = userProfile?.role === 'admin';
+                if (!isAdmin) {
+                    console.warn('⚠️ Apenas administradores podem executar migration. Execute manualmente no Supabase Dashboard.');
+                    return;
+                }
+
+                // Se não existirem, tentar executar migration via API
+                console.log('🔧 Colunas entregue/visualizada não existem. Tentando executar migration...');
+                const response = await fetch('/api/chat-interno/adicionar-colunas', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${session.access_token}`
+                    },
+                    credentials: 'include'
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    if (result.success) {
+                        console.log('✅ Migration executada com sucesso!');
+                        // Aguardar um pouco e verificar novamente se as colunas foram criadas (forçar verificação)
+                        setTimeout(async () => {
+                            await checkColumnsAvailability(false, true);
+                        }, 1000);
+                    } else {
+                        console.warn('⚠️ Migration não foi executada:', result.message);
+                    }
+                } else {
+                    const errorData = await response.json().catch(() => ({}));
+                    if (response.status === 401) {
+                        console.warn('⚠️ Não autenticado. Não é possível executar migration automaticamente.');
+                    } else if (response.status === 403) {
+                        console.warn('⚠️ Apenas administradores podem executar migration. Execute manualmente no Supabase Dashboard.');
+                    } else {
+                        console.warn('⚠️ Não foi possível executar migration automaticamente. Execute manualmente no Supabase Dashboard.');
+                    }
+                }
+            } catch (error) {
+                console.warn('⚠️ Erro ao tentar executar migration:', error);
+                console.log('📋 Para adicionar as colunas manualmente, execute no Supabase Dashboard:');
+                console.log(`
+ALTER TABLE chat_mensagens ADD COLUMN IF NOT EXISTS entregue BOOLEAN DEFAULT false;
+ALTER TABLE chat_mensagens ADD COLUMN IF NOT EXISTS visualizada BOOLEAN DEFAULT false;
+                `);
             }
         }
 
@@ -3671,11 +3834,17 @@
         async function addMessageToUI(message, isNew = true) {
             const messagesEl = document.getElementById('chatMessages');
             
-            // Verificar se a mensagem já existe no DOM para evitar duplicatas
+            // Verificar se a mensagem já existe no DOM ou no cache para evitar duplicatas
             const existingMessage = messagesEl.querySelector(`[data-message-id="${message.id}"]`);
             if (existingMessage) {
-                // Mensagem já existe, apenas atualizar o cache e retornar
+                // Mensagem já existe no DOM, apenas atualizar o cache e retornar
                 messagesCache.set(message.id, message);
+                return;
+            }
+            
+            // Verificar se já está no cache (proteção adicional contra duplicatas)
+            if (messagesCache.has(message.id)) {
+                // Mensagem já está no cache, não adicionar novamente
                 return;
             }
             
@@ -3879,7 +4048,22 @@
                     ${replyPreview}
                     ${fileHtml}
                     ${message.mensagem ? `<div class="message-text">${escapeHtml(message.mensagem)}</div>` : ''}
-                    <div class="message-time">${time}</div>
+                    <div class="message-footer">
+                        <div class="message-time">${time}</div>
+                        ${isSent ? `
+                            <div class="message-status" data-message-id="${message.id}">
+                                ${(message.visualizada !== undefined && message.visualizada) ? `
+                                    <i class="fas fa-check-double message-status-icon message-status-read"></i>
+                                    <i class="fas fa-check-double message-status-icon message-status-read"></i>
+                                ` : (message.entregue !== undefined && message.entregue) ? `
+                                    <i class="fas fa-check-double message-status-icon message-status-delivered"></i>
+                                    <i class="fas fa-check-double message-status-icon message-status-delivered"></i>
+                                ` : `
+                                    <i class="fas fa-check message-status-icon message-status-sent"></i>
+                                `}
+                            </div>
+                        ` : ''}
+                    </div>
                 </div>
                 <div class="message-actions">
                     <button class="btn-reply" onclick="startReply('${message.id}')" title="Responder">
@@ -4886,6 +5070,9 @@
                         lida: false
                 };
 
+                // Adicionar campos de vistos apenas se as colunas existirem (será verificado no backend)
+                // Não adicionar aqui para evitar erro se as colunas não existirem
+
                 // Se estiver em modo grupo, adicionar grupo_id, senão adicionar destinatario_id
                 if (isGrupoMode && selectedGrupoId) {
                     messageData.grupo_id = selectedGrupoId;
@@ -4932,6 +5119,45 @@
 
                 if (error) throw error;
 
+                // Marcar como entregue imediatamente após envio (simula entrega instantânea)
+                // Em um sistema real, isso seria feito quando o destinatário recebe a mensagem
+                if (data && !isGrupoMode) {
+                    // Se já sabemos que entregue não existe, não tentar atualizar
+                    if (!columnsChecked || columnsAvailable.entregue) {
+                        try {
+                            const { data: updatedData, error: updateError } = await supabaseClient
+                                .from('chat_mensagens')
+                                .update({ entregue: true })
+                                .eq('id', data.id)
+                                .select()
+                                .single();
+                            
+                            if (!updateError && updatedData) {
+                                // Coluna existe e foi atualizada com sucesso
+                                markColumnAsAvailable('entregue');
+                                // Atualizar no cache e na UI
+                                data.entregue = true;
+                                messagesCache.set(data.id, data);
+                                // Aguardar um pouco para garantir que o DOM foi atualizado
+                                setTimeout(() => {
+                                    updateMessageStatus(data.id, true, false);
+                                }, 100);
+                            } else if (updateError) {
+                                // Se a coluna entregue não existir, marcar como indisponível
+                                if (updateError.code === 'PGRST204' || (updateError.message && updateError.message.includes('entregue'))) {
+                                    markColumnAsUnavailable('entregue');
+                                }
+                            }
+                        } catch (updateError) {
+                            // Se a coluna entregue não existir, marcar como indisponível
+                            if (updateError.code === 'PGRST204' || (updateError.message && updateError.message.includes('entregue'))) {
+                                markColumnAsUnavailable('entregue');
+                            }
+                        }
+                    }
+                    // Se a coluna não existe, apenas continuar sem atualizar (mensagem já foi enviada)
+                }
+
                 // Debug: verificar dados do áudio
                 if (audioData) {
                     console.log('✅ Áudio enviado:', {
@@ -4948,8 +5174,12 @@
                 clearSelectedFile(); // Limpar arquivo selecionado
                 cancelAudioRecording(); // Limpar áudio gravado
                 cancelReply(); // Limpar preview de resposta
-                addMessageToUI(data, true);
+                
+                // Atualizar lastMessageId ANTES de adicionar na UI para evitar duplicatas no polling
                 lastMessageId = data.id;
+                
+                // Adicionar mensagem na UI
+                addMessageToUI(data, true);
                 
                 // Atualizar status do usuário atual (marcar como online)
                 updateCurrentUserStatus();
@@ -5025,16 +5255,164 @@
             if (!selectedUserId) return;
 
             try {
-                await supabaseClient
+                // Se já sabemos que visualizada não existe, usar apenas lida
+                if (columnsChecked && !columnsAvailable.visualizada) {
+                    const { data: updatedMessages, error } = await supabaseClient
+                        .from('chat_mensagens')
+                        .update({ lida: true })
+                        .eq('destinatario_id', currentUserId)
+                        .eq('remetente_id', selectedUserId)
+                        .eq('lida', false)
+                        .select();
+
+                    if (error) throw error;
+                    return;
+                }
+
+                // Tentar atualizar com visualizada primeiro (se ainda não sabemos se existe)
+                const { data: updatedMessages, error } = await supabaseClient
                     .from('chat_mensagens')
-                    .update({ lida: true })
+                    .update({ 
+                        lida: true,
+                        visualizada: true 
+                    })
                     .eq('destinatario_id', currentUserId)
                     .eq('remetente_id', selectedUserId)
-                    .eq('lida', false);
+                    .eq('lida', false)
+                    .select();
+
+                if (!error) {
+                    // Sucesso - coluna visualizada existe
+                    markColumnAsAvailable('visualizada');
+                    
+                    // Atualizar status na UI para mensagens do remetente
+                    if (updatedMessages && updatedMessages.length > 0) {
+                        updatedMessages.forEach(msg => {
+                            messagesCache.set(msg.id, msg);
+                            updateMessageStatus(msg.id, msg.entregue || true, msg.visualizada || false);
+                        });
+                    }
+                    return;
+                }
+                
+                // Se der erro de coluna não existente, marcar como indisponível e tentar apenas com lida
+                if (error.code === 'PGRST204' || (error.message && error.message.includes('visualizada'))) {
+                    markColumnAsUnavailable('visualizada');
+                    
+                    // Tentar apenas com lida
+                    const { data: updatedMessages2, error: error2 } = await supabaseClient
+                        .from('chat_mensagens')
+                        .update({ lida: true })
+                        .eq('destinatario_id', currentUserId)
+                        .eq('remetente_id', selectedUserId)
+                        .eq('lida', false)
+                        .select();
+
+                    if (error2) throw error2;
+                    return;
+                }
+                
+                throw error;
             } catch (error) {
-                // Ignorar erros de coluna não existente
-                if (error.message && !error.message.includes('does not exist')) {
+                // Ignorar erros de coluna não existente silenciosamente
+                if (error.code === 'PGRST204' || (error.message && error.message.includes('visualizada'))) {
+                    markColumnAsUnavailable('visualizada');
+                    // Tentar novamente sem visualizada
+                    try {
+                        await supabaseClient
+                            .from('chat_mensagens')
+                            .update({ lida: true })
+                            .eq('destinatario_id', currentUserId)
+                            .eq('remetente_id', selectedUserId)
+                            .eq('lida', false);
+                    } catch (retryError) {
+                        // Ignorar erro silenciosamente
+                    }
+                    return;
+                }
+                
+                // Para outros erros, apenas logar se não for relacionado a colunas
+                if (error.message && !error.message.includes('does not exist') && !error.message.includes('visualizada')) {
                     console.error('Erro ao marcar mensagens como lidas:', error);
+                }
+            }
+        }
+
+        // Atualizar status dos vistos na UI
+        function updateMessageStatus(messageId, entregue, visualizada) {
+            const messageDiv = document.querySelector(`[data-message-id="${messageId}"]`);
+            if (!messageDiv) return;
+
+            const statusDiv = messageDiv.querySelector('.message-status');
+            if (!statusDiv) return;
+
+            // Atualizar HTML do status
+            if (visualizada) {
+                statusDiv.innerHTML = `
+                    <i class="fas fa-check-double message-status-icon message-status-read"></i>
+                    <i class="fas fa-check-double message-status-icon message-status-read"></i>
+                `;
+            } else if (entregue) {
+                statusDiv.innerHTML = `
+                    <i class="fas fa-check-double message-status-icon message-status-delivered"></i>
+                    <i class="fas fa-check-double message-status-icon message-status-delivered"></i>
+                `;
+            } else {
+                statusDiv.innerHTML = `
+                    <i class="fas fa-check message-status-icon message-status-sent"></i>
+                `;
+            }
+        }
+
+        // Atualizar status dos vistos das mensagens enviadas em tempo real
+        async function updateMessageStatuses() {
+            // Apenas para conversas individuais (grupos não têm vistos)
+            if (!selectedUserId || isGrupoMode) return;
+            
+            // Se as colunas não existem, não fazer nada
+            if (!columnsAvailable.entregue && !columnsAvailable.visualizada) return;
+
+            try {
+                // Montar campos de select baseado nas colunas disponíveis
+                let selectFields = 'id';
+                if (columnsAvailable.entregue) selectFields += ', entregue';
+                if (columnsAvailable.visualizada) selectFields += ', visualizada';
+
+                // Buscar mensagens enviadas para o destinatário atual
+                const { data: sentMessages, error } = await supabaseClient
+                    .from('chat_mensagens')
+                    .select(selectFields)
+                    .eq('remetente_id', currentUserId)
+                    .eq('destinatario_id', selectedUserId)
+                    .is('grupo_id', null)
+                    .limit(50);
+
+                if (error) throw error;
+
+                if (sentMessages && sentMessages.length > 0) {
+                    sentMessages.forEach(msg => {
+                        const cachedMsg = messagesCache.get(msg.id);
+                        const entregue = (columnsAvailable.entregue && msg.entregue !== undefined) ? msg.entregue : false;
+                        const visualizada = (columnsAvailable.visualizada && msg.visualizada !== undefined) ? msg.visualizada : false;
+                        
+                        if (cachedMsg) {
+                            // Atualizar cache se o status mudou
+                            if (cachedMsg.entregue !== entregue || cachedMsg.visualizada !== visualizada) {
+                                cachedMsg.entregue = entregue;
+                                cachedMsg.visualizada = visualizada;
+                                messagesCache.set(msg.id, cachedMsg);
+                                updateMessageStatus(msg.id, entregue, visualizada);
+                            }
+                        } else {
+                            // Se não está no cache, apenas atualizar a UI se a mensagem estiver visível
+                            updateMessageStatus(msg.id, entregue, visualizada);
+                        }
+                    });
+                }
+            } catch (error) {
+                // Ignorar erros silenciosamente para não poluir o console
+                if (error.message && !error.message.includes('does not exist') && !error.message.includes('visualizada') && !error.message.includes('entregue')) {
+                    console.warn('⚠️ Erro ao atualizar status dos vistos:', error);
                 }
             }
         }
@@ -5076,17 +5454,23 @@
                     if (error) throw error;
 
                     if (newMessages && newMessages.length > 0) {
-                        // Filtrar mensagens que já existem no DOM (proteção adicional)
+                        // Filtrar mensagens que já existem no DOM ou no cache (proteção adicional)
                         const messagesEl = document.getElementById('chatMessages');
                         const newUniqueMessages = newMessages.filter(msg => {
-                            const exists = messagesEl.querySelector(`[data-message-id="${msg.id}"]`);
-                            return !exists;
+                            // Verificar se já existe no DOM
+                            const existsInDOM = messagesEl.querySelector(`[data-message-id="${msg.id}"]`);
+                            // Verificar se já está no cache
+                            const existsInCache = messagesCache.has(msg.id);
+                            return !existsInDOM && !existsInCache;
                         });
 
                         if (newUniqueMessages.length > 0) {
+                            // Atualizar lastMessageId com a mensagem mais recente ANTES de adicionar na UI
+                            const mostRecentMessage = newUniqueMessages[newUniqueMessages.length - 1];
+                            lastMessageId = mostRecentMessage.id;
+                            
                             newUniqueMessages.forEach(msg => {
                             addMessageToUI(msg, true);
-                            lastMessageId = msg.id;
                         });
 
                             if (isGrupoMode && selectedGrupoId) {
@@ -5096,6 +5480,11 @@
                             }
                         await loadUsers(); // Atualizar contadores
                         }
+                    }
+
+                    // Atualizar status dos vistos das mensagens enviadas
+                    if (!isGrupoMode) {
+                        await updateMessageStatuses();
                     }
                 } catch (error) {
                     // Ignorar erros de coluna não existente (será corrigido após migração SQL)

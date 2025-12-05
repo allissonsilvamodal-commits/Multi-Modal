@@ -255,6 +255,7 @@
         .stat-icon.success { background: var(--success); }
         .stat-icon.warning { background: var(--warning); }
         .stat-icon.info { background: var(--info); }
+        .stat-icon.danger { background: var(--danger, #dc3545); }
 
         .stat-number {
       font-size: 2.5rem;
@@ -972,6 +973,13 @@
                     <div class="stat-label">Motoristas Ativos</div>
                 </div>
                 <div class="stat-card">
+                    <div class="stat-icon danger">
+                        <i class="fas fa-times-circle"></i>
+                    </div>
+                    <div class="stat-number" id="motoristasInativos">0</div>
+                    <div class="stat-label">Motoristas Inativos</div>
+                </div>
+                <div class="stat-card">
                     <div class="stat-icon warning">
                         <i class="fas fa-hand-pointer"></i>
                     </div>
@@ -1090,7 +1098,7 @@
                         <label class="form-label">Status</label>
                         <select id="filtroStatus" class="form-control form-control-modern">
                             <option value="">Todos os status</option>
-                            <option value="ativo">Ativo</option>
+                            <option value="ativo" selected>Ativo</option>
                             <option value="inativo">Inativo</option>
                         </select>
                     </div>
@@ -1880,6 +1888,9 @@ const estados = [
             await carregarFiltros();
             await carregarFavoritos(); // Carregar favoritos do usuário
             
+            // Inativar automaticamente contatos antigos com erro ao carregar a página
+            inativarContatosComErro().catch(err => console.error('Erro ao inativar contatos:', err));
+            
             // Selecionar automaticamente a categoria "pesado" ao carregar a página
             if (!currentClass) {
                 console.log('🚚 Selecionando categoria "pesado" automaticamente...');
@@ -2047,6 +2058,17 @@ const estados = [
                     console.error('❌ Erro ao contar motoristas ativos:', ativosError);
                     throw ativosError;
                 }
+                
+                // Contar motoristas inativos
+                const { count: inativosCount, error: inativosError } = await supabase
+                    .from('motoristas')
+                    .select('*', { count: 'exact', head: true })
+                    .eq('status', 'inativo');
+
+                if (inativosError) {
+                    console.error('❌ Erro ao contar motoristas inativos:', inativosError);
+                    throw inativosError;
+                }
 
                 // Contar por classe de veículo
                 console.log('🔍 Contando motoristas por classe...');
@@ -2074,17 +2096,20 @@ const estados = [
                 
                 totalMotoristasCount = totalCount || 0;
                 const totalAtivos = ativosCount || 0;
+                const totalInativos = inativosCount || 0;
                 const leve = leveCount || 0;
                 const medio = medioCount || 0;
                 const pesado = pesadoCount || 0;
                 
                 console.log(`📊 Total de motoristas no Supabase: ${totalMotoristasCount.toLocaleString('pt-BR')}`);
                 console.log(`📊 Motoristas ativos: ${totalAtivos.toLocaleString('pt-BR')}`);
+                console.log(`📊 Motoristas inativos: ${totalInativos.toLocaleString('pt-BR')}`);
                 console.log(`📊 Por classe - Leve: ${leve}, Médio: ${medio}, Pesado: ${pesado}`);
                 
                 // Atualizar interface com dados reais
                 const totalMotoristasEl = document.getElementById('totalMotoristas');
                 const motoristasAtivosEl = document.getElementById('motoristasAtivos');
+                const motoristasInativosEl = document.getElementById('motoristasInativos');
                 const motoristasSelecionadosEl = document.getElementById('motoristasSelecionados');
                 const categoriaAtivaEl = document.getElementById('categoriaAtiva');
                 const countLeveEl = document.getElementById('count-leve');
@@ -2101,6 +2126,12 @@ const estados = [
                     motoristasAtivosEl.textContent = totalAtivos.toLocaleString('pt-BR');
                 } else {
                     console.warn('⚠️ Elemento motoristasAtivos não encontrado');
+                }
+                
+                if (motoristasInativosEl) {
+                    motoristasInativosEl.textContent = totalInativos.toLocaleString('pt-BR');
+                } else {
+                    console.warn('⚠️ Elemento motoristasInativos não encontrado');
                 }
                 
                 if (motoristasSelecionadosEl) {
@@ -2140,12 +2171,14 @@ const estados = [
                 // Fallback para dados mockados
                 totalMotoristasCount = 1000;
                 const totalAtivos = 950;
+                const totalInativos = 50;
                 const leve = 350;
                 const medio = 300;
                 const pesado = 300;
                 
                 const totalMotoristasEl = document.getElementById('totalMotoristas');
                 const motoristasAtivosEl = document.getElementById('motoristasAtivos');
+                const motoristasInativosEl = document.getElementById('motoristasInativos');
                 const motoristasSelecionadosEl = document.getElementById('motoristasSelecionados');
                 const categoriaAtivaEl = document.getElementById('categoriaAtiva');
                 const countLeveEl = document.getElementById('count-leve');
@@ -2157,6 +2190,9 @@ const estados = [
                 }
                 if (motoristasAtivosEl) {
                     motoristasAtivosEl.textContent = totalAtivos.toLocaleString('pt-BR');
+                }
+                if (motoristasInativosEl) {
+                    motoristasInativosEl.textContent = totalInativos.toLocaleString('pt-BR');
                 }
                 if (motoristasSelecionadosEl) {
                     motoristasSelecionadosEl.textContent = '0';
@@ -2802,13 +2838,22 @@ const estados = [
                     const limit = 1000; // Carregar em lotes de 1000
                     let hasMore = true;
                     
+                    // Obter filtro de status do select (padrão: 'ativo')
+                    const filtroStatus = document.getElementById('filtroStatus')?.value || 'ativo';
+                    
                     while (hasMore) {
                         console.log(`📥 Buscando motoristas: de ${from} até ${from + limit - 1}`);
-                        const { data: motoristas, error } = await supabase
+                        let query = supabase
                             .from('motoristas')
                             .select('id, nome, telefone1, telefone2, estado, classe_veiculo, tipo_veiculo, tipo_carroceria, status, telefone1_erro, telefone2_erro, telefone1_erro_motivo, telefone2_erro_motivo')
-                            .eq('classe_veiculo', classe)
-                            .eq('status', 'ativo')
+                            .eq('classe_veiculo', classe);
+                        
+                        // Aplicar filtro de status se especificado
+                        if (filtroStatus) {
+                            query = query.eq('status', filtroStatus);
+                        }
+                        
+                        const { data: motoristas, error } = await query
                             .order('nome')
                             .range(from, from + limit - 1);
 
@@ -2948,6 +2993,20 @@ const estados = [
             `;
             }).join('');
 
+            // Remover motoristas inativos e com erro da seleção
+            motoristas.forEach(motorista => {
+                if (selectedMotoristas.has(motorista.id)) {
+                    // Remover se estiver inativo
+                    if (motorista.status === 'inativo') {
+                        selectedMotoristas.delete(motorista.id);
+                    }
+                    // Remover se tiver erro de telefone
+                    else if (motorista.telefone1_erro || motorista.telefone2_erro) {
+                        selectedMotoristas.delete(motorista.id);
+                    }
+                }
+            });
+
             // Adicionar eventos de clique (apenas para motoristas sem erro)
             motoristasList.querySelectorAll('.motorista-item').forEach(item => {
                 item.addEventListener('click', () => {
@@ -2962,14 +3021,50 @@ const estados = [
 
             // Atualizar paginação
             atualizarPaginacao(motoristas.length);
+            
+            // Atualizar contador após remover motoristas com erro
+            atualizarContadorSelecionados();
         }
 
         // ========== TOGGLE SELEÇÃO DE MOTORISTA ==========
         function toggleSelecaoMotorista(id) {
-            // Verificar se o motorista tem erro de telefone
+            // Verificar se o motorista existe
             const motorista = motoristasFiltrados.find(m => m.id === id);
-            if (motorista && (motorista.telefone1_erro || motorista.telefone2_erro)) {
-                alert('⚠️ Este motorista não pode ser selecionado pois possui telefone com erro de disparo.');
+            if (!motorista) return;
+            
+            // Verificar se o motorista está inativo
+            if (motorista.status === 'inativo') {
+                // Se já estiver selecionado, remover da seleção
+                if (selectedMotoristas.has(id)) {
+                    selectedMotoristas.delete(id);
+                    const item = document.querySelector(`[data-id="${id}"]`);
+                    if (item) {
+                        item.classList.remove('selected');
+                        const checkbox = item.querySelector('.motorista-checkbox');
+                        checkbox.classList.remove('checked');
+                        checkbox.innerHTML = '';
+                    }
+                    atualizarContadorSelecionados();
+                }
+                mostrarAviso('⚠️ Este motorista não pode ser selecionado pois está inativo.');
+                return;
+            }
+            
+            // Verificar se o motorista tem erro de telefone (independente do status - ativo ou inativo)
+            if (motorista.telefone1_erro || motorista.telefone2_erro) {
+                // Se já estiver selecionado, remover da seleção
+                if (selectedMotoristas.has(id)) {
+                    selectedMotoristas.delete(id);
+                    const item = document.querySelector(`[data-id="${id}"]`);
+                    if (item) {
+                        item.classList.remove('selected');
+                        const checkbox = item.querySelector('.motorista-checkbox');
+                        checkbox.classList.remove('checked');
+                        checkbox.innerHTML = '';
+                    }
+                    atualizarContadorSelecionados();
+                }
+                mostrarAviso('⚠️ Este motorista não pode ser selecionado pois possui telefone com erro de disparo.');
                 return;
             }
             
@@ -2994,11 +3089,13 @@ const estados = [
 
         // ========== SELECIONAR TODOS ==========
         function selecionarTodos() {
-            // Selecionar até o limite configurado (itemsPerPage), excluindo motoristas com erro
+            // Selecionar até o limite configurado (itemsPerPage), excluindo motoristas com erro e inativos
             const limite = itemsPerPage;
             const motoristasParaSelecionar = motoristasFiltrados
                 .slice(0, limite)
                 .filter(motorista => {
+                    // Não selecionar motoristas inativos
+                    if (motorista.status === 'inativo') return false;
                     // Não selecionar motoristas com erro de telefone
                     return !motorista.telefone1_erro && !motorista.telefone2_erro;
                 });
@@ -3020,12 +3117,14 @@ const estados = [
 
         // ========== SELECIONAR PÁGINA ATUAL ==========
         function selecionarPaginaAtual() {
-            // Selecionar apenas os motoristas da página atual, excluindo motoristas com erro
+            // Selecionar apenas os motoristas da página atual, excluindo motoristas com erro e inativos
             const startIndex = (currentPage - 1) * itemsPerPage;
             const endIndex = startIndex + itemsPerPage;
             const motoristasPagina = motoristasFiltrados
                 .slice(startIndex, endIndex)
                 .filter(motorista => {
+                    // Não selecionar motoristas inativos
+                    if (motorista.status === 'inativo') return false;
                     // Não selecionar motoristas com erro de telefone
                     return !motorista.telefone1_erro && !motorista.telefone2_erro;
                 });
@@ -4427,8 +4526,44 @@ const estados = [
             }
             adicionarLog(`⚙️ Configuração: ${getConfigResumoTexto()}`, 'info');
 
-            // Converter Set em Array para ter controle de índice
-            const motoristasArray = Array.from(selectedMotoristas);
+            // Converter Set em Array e filtrar motoristas inativos e com erro
+            const motoristasArray = Array.from(selectedMotoristas).filter(motoristaId => {
+                const motorista = motoristasFiltrados.find(m => m.id === motoristaId);
+                if (!motorista) {
+                    selectedMotoristas.delete(motoristaId);
+                    return false;
+                }
+                // Remover da seleção se estiver inativo
+                if (motorista.status === 'inativo') {
+                    selectedMotoristas.delete(motoristaId);
+                    return false; // Não incluir no array de envio
+                }
+                // Remover da seleção se tiver erro de telefone
+                if (motorista.telefone1_erro || motorista.telefone2_erro) {
+                    selectedMotoristas.delete(motoristaId);
+                    return false; // Não incluir no array de envio
+                }
+                return true;
+            });
+
+            // Se foram removidos motoristas, atualizar a interface
+            const totalSelecionadosAntes = selectedMotoristas.size;
+            if (motoristasArray.length < totalSelecionadosAntes) {
+                const removidos = totalSelecionadosAntes - motoristasArray.length;
+                adicionarLog(`⚠️ ${removidos} motorista(s) inativo(s) ou com erro de telefone foram removidos da seleção antes do disparo.`, 'warning');
+                atualizarListaMotoristas(motoristasFiltrados);
+                atualizarContadorSelecionados();
+            }
+
+            // Verificar se ainda há motoristas para enviar
+            if (motoristasArray.length === 0) {
+                isDisparoAtivo = false;
+                document.getElementById('btnIniciarDisparo').disabled = false;
+                document.getElementById('btnIniciarDisparo').innerHTML = '<i class="fas fa-rocket me-2"></i>Iniciar Disparo';
+                document.getElementById('btnPararDisparo').style.display = 'none';
+                mostrarAviso('Nenhum motorista válido selecionado. Todos os motoristas selecionados possuem erro de telefone.');
+                return;
+            }
 
             let motivoCancelamento = null;
             let minutosCooldownRestante = configDisparo.cooldownMinutes;
@@ -4444,6 +4579,18 @@ const estados = [
                 const motoristaId = motoristasArray[i];
                 const motorista = motoristasFiltrados.find(m => m.id === motoristaId);
                 if (!motorista) continue;
+
+                // Verificação adicional: garantir que está ativo
+                if (motorista.status === 'inativo') {
+                    adicionarLog(`⚠️ ${motorista.nome} foi pulado: está inativo.`, 'warning');
+                    continue;
+                }
+                
+                // Verificação adicional: garantir que não tem erro
+                if (motorista.telefone1_erro || motorista.telefone2_erro) {
+                    adicionarLog(`⚠️ ${motorista.nome} foi pulado: possui telefone com erro de disparo.`, 'warning');
+                    continue;
+                }
 
                 // Aguardar delay aleatório ANTES de cada envio (exceto o primeiro)
                 if (i > 0) {
@@ -4563,7 +4710,7 @@ const estados = [
                             // Marcar telefone com erro no banco de dados
                             try {
                                 const headers = await getAuthHeaders();
-                                await fetch('/api/motoristas/marcar-telefone-erro', {
+                                const markResponse = await fetch('/api/motoristas/marcar-telefone-erro', {
                                     method: 'POST',
                                     headers: { ...headers, 'Content-Type': 'application/json' },
                                     credentials: 'include',
@@ -4573,14 +4720,24 @@ const estados = [
                                         motivo: errorMsg.substring(0, 200) // Limitar tamanho
                                     })
                                 });
+                                const markData = await markResponse.json();
                                 console.log(`📝 Telefone ${motorista.telefone1} marcado com erro para ${motorista.nome}`);
+                                
                                 // Atualizar o motorista na lista local
                                 const motoristaIndex = motoristasFiltrados.findIndex(m => m.id === motorista.id);
                                 if (motoristaIndex !== -1) {
                                     motoristasFiltrados[motoristaIndex].telefone1_erro = true;
                                     motoristasFiltrados[motoristaIndex].telefone1_erro_motivo = errorMsg.substring(0, 200);
-                                    // Recarregar apenas a página atual
-                                    atualizarListaMotoristas(motoristasFiltrados);
+                                    // Se o motorista foi inativado, atualizar o status
+                                    if (markData.motoristaInativado) {
+                                        motoristasFiltrados[motoristaIndex].status = 'inativo';
+                                        adicionarLog(`🔄 ${motorista.nome} foi inativado automaticamente por ter erro`, 'info');
+                                        // Remover da lista se filtro estiver em "ativo"
+                                        atualizarMotoristaInativado(motorista.id, true);
+                                    } else {
+                                        // Recarregar apenas a página atual
+                                        atualizarListaMotoristas(motoristasFiltrados);
+                                    }
                                 }
                             } catch (markError) {
                                 console.error('❌ Erro ao marcar telefone com erro:', markError);
@@ -4607,7 +4764,7 @@ const estados = [
                         // Marcar telefone com erro no banco de dados
                         try {
                             const headers = await getAuthHeaders();
-                            await fetch('/api/motoristas/marcar-telefone-erro', {
+                            const markResponse = await fetch('/api/motoristas/marcar-telefone-erro', {
                                 method: 'POST',
                                 headers: { ...headers, 'Content-Type': 'application/json' },
                                 credentials: 'include',
@@ -4617,14 +4774,24 @@ const estados = [
                                     motivo: errorMsg.substring(0, 200) // Limitar tamanho
                                 })
                             });
+                            const markData = await markResponse.json();
                             console.log(`📝 Telefone ${motorista.telefone1} marcado com erro para ${motorista.nome}`);
+                            
                             // Atualizar o motorista na lista local
                             const motoristaIndex = motoristasFiltrados.findIndex(m => m.id === motorista.id);
                             if (motoristaIndex !== -1) {
                                 motoristasFiltrados[motoristaIndex].telefone1_erro = true;
                                 motoristasFiltrados[motoristaIndex].telefone1_erro_motivo = errorMsg.substring(0, 200);
-                                // Recarregar apenas a página atual
-                                atualizarListaMotoristas(motoristasFiltrados);
+                                // Se o motorista foi inativado, atualizar o status
+                                if (markData.motoristaInativado) {
+                                    motoristasFiltrados[motoristaIndex].status = 'inativo';
+                                    adicionarLog(`🔄 ${motorista.nome} foi inativado automaticamente por ter erro`, 'info');
+                                    // Remover da lista se filtro estiver em "ativo"
+                                    atualizarMotoristaInativado(motorista.id, true);
+                                } else {
+                                    // Recarregar apenas a página atual
+                                    atualizarListaMotoristas(motoristasFiltrados);
+                                }
                             }
                         } catch (markError) {
                             console.error('❌ Erro ao marcar telefone com erro:', markError);
@@ -4645,7 +4812,7 @@ const estados = [
                     // Marcar telefone com erro no banco de dados
                     try {
                         const headers = await getAuthHeaders();
-                        await fetch('/api/motoristas/marcar-telefone-erro', {
+                        const markResponse = await fetch('/api/motoristas/marcar-telefone-erro', {
                             method: 'POST',
                             headers: { ...headers, 'Content-Type': 'application/json' },
                             credentials: 'include',
@@ -4655,14 +4822,24 @@ const estados = [
                                 motivo: error.message.substring(0, 200) // Limitar tamanho
                             })
                         });
+                        const markData = await markResponse.json();
                         console.log(`📝 Telefone ${motorista.telefone1} marcado com erro para ${motorista.nome}`);
+                        
                         // Atualizar o motorista na lista local
                         const motoristaIndex = motoristasFiltrados.findIndex(m => m.id === motorista.id);
                         if (motoristaIndex !== -1) {
                             motoristasFiltrados[motoristaIndex].telefone1_erro = true;
                             motoristasFiltrados[motoristaIndex].telefone1_erro_motivo = error.message.substring(0, 200);
-                            // Recarregar apenas a página atual
-                            atualizarListaMotoristas(motoristasFiltrados);
+                            // Se o motorista foi inativado, atualizar o status
+                            if (markData.motoristaInativado) {
+                                motoristasFiltrados[motoristaIndex].status = 'inativo';
+                                adicionarLog(`🔄 ${motorista.nome} foi inativado automaticamente por ter erro`, 'info');
+                                // Remover da lista se filtro estiver em "ativo"
+                                atualizarMotoristaInativado(motorista.id, true);
+                            } else {
+                                // Recarregar apenas a página atual
+                                atualizarListaMotoristas(motoristasFiltrados);
+                            }
                         }
                     } catch (markError) {
                         console.error('❌ Erro ao marcar telefone com erro:', markError);
@@ -4700,6 +4877,9 @@ const estados = [
                 adicionarLog(`🎉 Disparo concluído! Enviados: ${totalEnviados}, Falhas: ${totalFalhas}`, 'success');
                 mostrarSucesso(`Disparo concluído!<br>Enviados: ${totalEnviados}<br>Falhas: ${totalFalhas}`);
             }
+
+            // Inativar automaticamente contatos antigos com erro após o disparo
+            await inativarContatosComErro();
         }
 
         // ========== UTILITÁRIOS ==========
@@ -4752,6 +4932,72 @@ const estados = [
             document.body.insertBefore(alert, document.body.firstChild);
             
             setTimeout(() => alert.remove(), 5000);
+        }
+
+        // ========== FUNÇÃO AUXILIAR PARA ATUALIZAR MOTORISTA INATIVADO ==========
+        function atualizarMotoristaInativado(motoristaId, statusInativo) {
+            if (!statusInativo) return;
+            
+            // Verificar filtro de status atual
+            const filtroStatus = document.getElementById('filtroStatus')?.value || '';
+            
+            // Se o filtro estiver em "ativo", remover o motorista da lista
+            if (filtroStatus === 'ativo') {
+                const motoristaIndex = motoristasFiltrados.findIndex(m => m.id === motoristaId);
+                if (motoristaIndex !== -1) {
+                    motoristasFiltrados.splice(motoristaIndex, 1);
+                    // Remover também da seleção se estiver selecionado
+                    selectedMotoristas.delete(motoristaId);
+                    atualizarContadorSelecionados();
+                }
+            }
+            
+            // Atualizar a lista na tela
+            atualizarListaMotoristas(motoristasFiltrados);
+        }
+
+        // ========== FUNÇÃO PARA INATIVAR CONTATOS COM ERRO ==========
+        async function inativarContatosComErro() {
+            try {
+                const headers = await getAuthHeaders();
+                const response = await fetch('/api/motoristas/inativar-com-erro', {
+                    method: 'POST',
+                    headers: { ...headers, 'Content-Type': 'application/json' },
+                    credentials: 'include'
+                });
+
+                const data = await response.json();
+                
+                if (data.success) {
+                    if (data.totalInativados > 0) {
+                        console.log(`✅ ${data.totalInativados} contato(s) inativado(s) automaticamente por terem erro`);
+                        adicionarLog(`🔄 ${data.totalInativados} contato(s) inativado(s) automaticamente por terem erro`, 'info');
+                        
+                        // Verificar filtro de status atual
+                        const filtroStatus = document.getElementById('filtroStatus')?.value || '';
+                        
+                        // Se o filtro estiver em "ativo", remover os contatos inativados da lista
+                        if (filtroStatus === 'ativo' && data.detalhes) {
+                            const idsInativados = data.detalhes.map(d => d.id);
+                            motoristasFiltrados = motoristasFiltrados.filter(m => !idsInativados.includes(m.id));
+                            
+                            // Remover também da seleção
+                            idsInativados.forEach(id => selectedMotoristas.delete(id));
+                            atualizarContadorSelecionados();
+                            
+                            // Atualizar a lista na tela
+                            atualizarListaMotoristas(motoristasFiltrados);
+                        }
+                    }
+                    return data;
+                } else {
+                    console.error('❌ Erro ao inativar contatos:', data.error);
+                    return null;
+                }
+            } catch (error) {
+                console.error('❌ Erro ao inativar contatos com erro:', error);
+                return null;
+            }
         }
 
         function toggleTheme() {

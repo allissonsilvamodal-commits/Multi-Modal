@@ -11468,8 +11468,20 @@ app.post('/api/chat-interno/adicionar-colunas', async (req, res) => {
       return res.status(401).json({ success: false, error: 'Usuário não autenticado' });
     }
 
-    // Verificar se é admin
-    const isAdmin = req.session?.usuario?.isAdmin || false;
+    // Verificar se é admin (via sessão ou via user_profiles)
+    let isAdmin = req.session?.usuario?.isAdmin || false;
+    
+    // Se não for admin via sessão, verificar no user_profiles
+    if (!isAdmin && user.id) {
+      const { data: userProfile } = await supabaseAdmin
+        .from('user_profiles')
+        .select('role')
+        .eq('id', user.id)
+        .maybeSingle();
+      
+      isAdmin = userProfile?.role === 'admin' || false;
+    }
+    
     if (!isAdmin) {
       return res.status(403).json({ success: false, error: 'Apenas administradores podem executar esta operação' });
     }
@@ -11503,6 +11515,8 @@ app.post('/api/chat-interno/adicionar-colunas', async (req, res) => {
       `ALTER TABLE chat_mensagens ADD COLUMN IF NOT EXISTS remetente_nome TEXT;`,
       `ALTER TABLE chat_mensagens ADD COLUMN IF NOT EXISTS destinatario_nome TEXT;`,
       `ALTER TABLE chat_mensagens ADD COLUMN IF NOT EXISTS lida BOOLEAN DEFAULT false;`,
+      `ALTER TABLE chat_mensagens ADD COLUMN IF NOT EXISTS entregue BOOLEAN DEFAULT false;`,
+      `ALTER TABLE chat_mensagens ADD COLUMN IF NOT EXISTS visualizada BOOLEAN DEFAULT false;`,
       `CREATE INDEX IF NOT EXISTS idx_chat_mensagens_remetente ON chat_mensagens(remetente_id);`,
       `CREATE INDEX IF NOT EXISTS idx_chat_mensagens_destinatario ON chat_mensagens(destinatario_id);`,
       `CREATE INDEX IF NOT EXISTS idx_chat_mensagens_lida ON chat_mensagens(lida) WHERE lida = false;`,
@@ -14174,7 +14188,7 @@ app.post('/api/motoristas/marcar-telefone-erro', express.json(), async (req, res
     // Verificar qual telefone foi usado (telefone1 ou telefone2)
     const { data: motorista } = await supabaseAdmin
       .from('motoristas')
-      .select('telefone1, telefone2')
+      .select('telefone1, telefone2, telefone1_erro, telefone2_erro, status')
       .eq('id', motoristaId)
       .single();
 
@@ -14207,12 +14221,9 @@ app.post('/api/motoristas/marcar-telefone-erro', express.json(), async (req, res
       updateData.telefone2_erro_motivo = motivo || 'Erro ao enviar mensagem';
     }
 
-    // Também inativar o motorista se ambos os telefones tiverem erro
-    if (isTelefone1 && isTelefone2) {
-      updateData.status = 'inativo';
-    } else if (isTelefone1 && motorista.telefone2_erro) {
-      updateData.status = 'inativo';
-    } else if (isTelefone2 && motorista.telefone1_erro) {
+    // Inativar automaticamente o motorista quando qualquer telefone tiver erro
+    // Se o motorista ainda estiver ativo, inativa automaticamente
+    if (motorista.status !== 'inativo') {
       updateData.status = 'inativo';
     }
 
@@ -14242,6 +14253,76 @@ app.post('/api/motoristas/marcar-telefone-erro', express.json(), async (req, res
     res.status(500).json({
       success: false,
       error: 'Erro interno ao marcar telefone com erro'
+    });
+  }
+});
+
+// ========== API PARA INATIVAR TODOS OS CONTATOS COM ERRO ==========
+app.post('/api/motoristas/inativar-com-erro', express.json(), async (req, res) => {
+  try {
+    const userResult = await getUserFromRequest(req);
+    const userId = userResult?.user?.id;
+
+    if (!userId) {
+      return res.status(401).json({ success: false, error: 'Não autenticado' });
+    }
+
+    // Buscar todos os motoristas que têm erro em qualquer telefone e ainda estão ativos
+    const { data: motoristasComErro, error: selectError } = await supabaseAdmin
+      .from('motoristas')
+      .select('id, nome, telefone1_erro, telefone2_erro, status')
+      .or('telefone1_erro.eq.true,telefone2_erro.eq.true')
+      .neq('status', 'inativo');
+
+    if (selectError) {
+      console.error('❌ Erro ao buscar motoristas com erro:', selectError);
+      return res.status(500).json({
+        success: false,
+        error: `Erro ao buscar motoristas: ${selectError.message}`
+      });
+    }
+
+    if (!motoristasComErro || motoristasComErro.length === 0) {
+      return res.json({
+        success: true,
+        message: 'Nenhum contato ativo com erro encontrado',
+        totalInativados: 0
+      });
+    }
+
+    // Inativar todos os motoristas encontrados
+    const idsParaInativar = motoristasComErro.map(m => m.id);
+    const { error: updateError } = await supabaseAdmin
+      .from('motoristas')
+      .update({ status: 'inativo' })
+      .in('id', idsParaInativar);
+
+    if (updateError) {
+      console.error('❌ Erro ao inativar motoristas:', updateError);
+      return res.status(500).json({
+        success: false,
+        error: `Erro ao inativar motoristas: ${updateError.message}`
+      });
+    }
+
+    console.log(`✅ ${motoristasComErro.length} contato(s) inativado(s) automaticamente por terem erro`);
+
+    res.json({
+      success: true,
+      message: `${motoristasComErro.length} contato(s) inativado(s) com sucesso`,
+      totalInativados: motoristasComErro.length,
+      detalhes: motoristasComErro.map(m => ({
+        id: m.id,
+        nome: m.nome,
+        telefone1_erro: m.telefone1_erro,
+        telefone2_erro: m.telefone2_erro
+      }))
+    });
+  } catch (error) {
+    console.error('❌ Erro ao inativar contatos com erro:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Erro interno ao inativar contatos com erro'
     });
   }
 });
@@ -14475,6 +14556,311 @@ app.get('/api/ferramentas-qualidade/usuarios', async (req, res) => {
   } catch (error) {
     console.error('❌ Erro ao buscar usuários:', error);
     res.status(500).json({ success: false, error: 'Erro ao buscar usuários' });
+  }
+});
+
+// ========== ENDPOINT PARA LISTAR USUÁRIOS PARA SETTINGS ==========
+app.get('/api/settings/usuarios', async (req, res) => {
+  try {
+    // Verificar autenticação e se é admin
+    const { user, error: authError } = await getUserFromRequest(req);
+    if (authError || !user) {
+      return res.status(401).json({ success: false, error: 'Não autenticado' });
+    }
+
+    // Verificar se é admin
+    const { data: userProfile } = await supabaseAdmin
+      .from('user_profiles')
+      .select('role')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    const isAdmin = userProfile?.role === 'admin' || user.isAdmin === true;
+    if (!isAdmin) {
+      return res.status(403).json({ success: false, error: 'Acesso negado. Apenas administradores podem acessar.' });
+    }
+
+    console.log('📋 Buscando usuários para Settings (admin:', user.email, ')');
+
+    // Buscar todos os usuários usando admin (contorna RLS)
+    const { data: usuarios, error: usuariosError } = await supabaseAdmin
+      .from('user_profiles')
+      .select('*')
+      .order('nome');
+
+    if (usuariosError) {
+      console.error('❌ Erro ao buscar usuários:', usuariosError);
+      throw usuariosError;
+    }
+
+    // Buscar IDs de motoristas na tabela motoristas
+    const { data: motoristas, error: motoristasError } = await supabaseAdmin
+      .from('motoristas')
+      .select('auth_user_id')
+      .not('auth_user_id', 'is', null);
+
+    if (motoristasError) {
+      console.warn('⚠️ Erro ao buscar motoristas:', motoristasError);
+    }
+
+    // Criar Set com IDs de motoristas para busca rápida
+    const motoristaIds = new Set();
+    if (motoristas && motoristas.length > 0) {
+      motoristas.forEach(m => {
+        if (m.auth_user_id) {
+          motoristaIds.add(m.auth_user_id);
+        }
+      });
+    }
+
+    // Filtrar apenas usuários administrativos (excluir motoristas)
+    const usuariosAdministrativos = (usuarios || []).filter(usuario => {
+      // Excluir se for um motorista
+      if (motoristaIds.has(usuario.id)) {
+        return false;
+      }
+      return true;
+    });
+
+    console.log(`✅ ${usuariosAdministrativos.length} usuário(s) administrativo(s) encontrado(s) (${(usuarios || []).length - usuariosAdministrativos.length} motorista(s) excluído(s))`);
+
+    res.json({
+      success: true,
+      usuarios: usuariosAdministrativos,
+      total: usuariosAdministrativos.length,
+      motoristasExcluidos: (usuarios || []).length - usuariosAdministrativos.length
+    });
+  } catch (error) {
+    console.error('❌ Erro ao buscar usuários para Settings:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: error.message || 'Erro ao buscar usuários' 
+    });
+  }
+});
+
+// ========== ENDPOINT PARA BUSCAR PERMISSÕES DE USUÁRIO ==========
+app.get('/api/settings/permissoes/:usuarioId', async (req, res) => {
+  try {
+    // Verificar autenticação e se é admin
+    const { user, error: authError } = await getUserFromRequest(req);
+    if (authError || !user) {
+      return res.status(401).json({ success: false, error: 'Não autenticado' });
+    }
+
+    // Verificar se é admin
+    const { data: userProfile } = await supabaseAdmin
+      .from('user_profiles')
+      .select('role')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    const isAdmin = userProfile?.role === 'admin' || user.isAdmin === true;
+    if (!isAdmin) {
+      return res.status(403).json({ success: false, error: 'Acesso negado. Apenas administradores podem acessar.' });
+    }
+
+    const { usuarioId } = req.params;
+    if (!usuarioId) {
+      return res.status(400).json({ success: false, error: 'ID do usuário é obrigatório' });
+    }
+
+    console.log('📋 Buscando permissões para usuário:', usuarioId);
+
+    // Buscar permissões do portal usando admin (contorna RLS)
+    const { data: permissoesPortal, error: errorPortal } = await supabaseAdmin
+      .from('permissoes_portal')
+      .select('tipo, permissao_id')
+      .eq('usuario_id', usuarioId);
+
+    if (errorPortal) {
+      console.error('❌ Erro ao buscar permissões do portal:', errorPortal);
+      throw errorPortal;
+    }
+
+    // Buscar permissões de coletas usando admin (contorna RLS)
+    const { data: permissoesColetas, error: errorColetas } = await supabaseAdmin
+      .from('permissoes_coletas')
+      .select('etapa_id')
+      .eq('usuario_id', usuarioId);
+
+    if (errorColetas) {
+      console.error('❌ Erro ao buscar permissões de coletas:', errorColetas);
+      throw errorColetas;
+    }
+
+    console.log(`✅ Permissões encontradas: ${(permissoesPortal || []).length} portal, ${(permissoesColetas || []).length} coletas`);
+
+    res.json({
+      success: true,
+      permissoesPortal: permissoesPortal || [],
+      permissoesColetas: permissoesColetas || []
+    });
+  } catch (error) {
+    console.error('❌ Erro ao buscar permissões:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: error.message || 'Erro ao buscar permissões' 
+    });
+  }
+});
+
+// ========== ENDPOINT PARA SALVAR/REMOVER PERMISSÃO DO PORTAL ==========
+app.post('/api/settings/permissoes/portal', async (req, res) => {
+  try {
+    // Verificar autenticação e se é admin
+    const { user, error: authError } = await getUserFromRequest(req);
+    if (authError || !user) {
+      return res.status(401).json({ success: false, error: 'Não autenticado' });
+    }
+
+    // Verificar se é admin
+    const { data: userProfile } = await supabaseAdmin
+      .from('user_profiles')
+      .select('role')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    const isAdmin = userProfile?.role === 'admin' || user.isAdmin === true;
+    if (!isAdmin) {
+      return res.status(403).json({ success: false, error: 'Acesso negado. Apenas administradores podem alterar permissões.' });
+    }
+
+    const { usuarioId, permissaoId, permitido } = req.body;
+    
+    if (!usuarioId || !permissaoId || permitido === undefined) {
+      return res.status(400).json({ success: false, error: 'Dados inválidos. usuarioId, permissaoId e permitido são obrigatórios.' });
+    }
+
+    console.log(`💾 ${permitido ? 'Concedendo' : 'Removendo'} permissão do portal ${permissaoId} para usuário ${usuarioId}`);
+
+    if (permitido) {
+      // Verificar se a permissão já existe
+      const { data: existing, error: checkError } = await supabaseAdmin
+        .from('permissoes_portal')
+        .select('id')
+        .eq('usuario_id', usuarioId)
+        .eq('permissao_id', permissaoId)
+        .maybeSingle();
+
+      if (checkError && checkError.code !== 'PGRST116') {
+        throw checkError;
+      }
+
+      // Se não existe, inserir
+      if (!existing) {
+        const { data, error } = await supabaseAdmin
+          .from('permissoes_portal')
+          .insert([{
+            usuario_id: usuarioId,
+            tipo: 'permissao',
+            permissao_id: permissaoId
+          }]);
+
+        if (error) throw error;
+        console.log('✅ Permissão do portal inserida com sucesso');
+        res.json({ success: true, message: 'Permissão concedida com sucesso', data });
+      } else {
+        console.log('⚠️ Permissão do portal já existe');
+        res.json({ success: true, message: 'Permissão já existe', data: existing });
+      }
+    } else {
+      // Remover permissão
+      const { error } = await supabaseAdmin
+        .from('permissoes_portal')
+        .delete()
+        .eq('usuario_id', usuarioId)
+        .eq('permissao_id', permissaoId);
+
+      if (error) throw error;
+      console.log('✅ Permissão do portal removida com sucesso');
+      res.json({ success: true, message: 'Permissão removida com sucesso' });
+    }
+  } catch (error) {
+    console.error('❌ Erro ao salvar permissão do portal:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: error.message || 'Erro ao salvar permissão do portal' 
+    });
+  }
+});
+
+// ========== ENDPOINT PARA SALVAR/REMOVER PERMISSÃO DE COLETA ==========
+app.post('/api/settings/permissoes/coleta', async (req, res) => {
+  try {
+    // Verificar autenticação e se é admin
+    const { user, error: authError } = await getUserFromRequest(req);
+    if (authError || !user) {
+      return res.status(401).json({ success: false, error: 'Não autenticado' });
+    }
+
+    // Verificar se é admin
+    const { data: userProfile } = await supabaseAdmin
+      .from('user_profiles')
+      .select('role')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    const isAdmin = userProfile?.role === 'admin' || user.isAdmin === true;
+    if (!isAdmin) {
+      return res.status(403).json({ success: false, error: 'Acesso negado. Apenas administradores podem alterar permissões.' });
+    }
+
+    const { usuarioId, etapaId, permitido } = req.body;
+    
+    if (!usuarioId || !etapaId || permitido === undefined) {
+      return res.status(400).json({ success: false, error: 'Dados inválidos. usuarioId, etapaId e permitido são obrigatórios.' });
+    }
+
+    console.log(`💾 ${permitido ? 'Concedendo' : 'Removendo'} permissão de coleta ${etapaId} para usuário ${usuarioId}`);
+
+    if (permitido) {
+      // Verificar se a permissão já existe
+      const { data: existing, error: checkError } = await supabaseAdmin
+        .from('permissoes_coletas')
+        .select('id')
+        .eq('usuario_id', usuarioId)
+        .eq('etapa_id', etapaId)
+        .maybeSingle();
+
+      if (checkError && checkError.code !== 'PGRST116') {
+        throw checkError;
+      }
+
+      // Se não existe, inserir
+      if (!existing) {
+        const { data, error } = await supabaseAdmin
+          .from('permissoes_coletas')
+          .insert([{
+            usuario_id: usuarioId,
+            etapa_id: etapaId
+          }]);
+
+        if (error) throw error;
+        console.log('✅ Permissão de coleta inserida com sucesso');
+        res.json({ success: true, message: 'Permissão concedida com sucesso', data });
+      } else {
+        console.log('⚠️ Permissão de coleta já existe');
+        res.json({ success: true, message: 'Permissão já existe', data: existing });
+      }
+    } else {
+      // Remover permissão
+      const { error } = await supabaseAdmin
+        .from('permissoes_coletas')
+        .delete()
+        .eq('usuario_id', usuarioId)
+        .eq('etapa_id', etapaId);
+
+      if (error) throw error;
+      console.log('✅ Permissão de coleta removida com sucesso');
+      res.json({ success: true, message: 'Permissão removida com sucesso' });
+    }
+  } catch (error) {
+    console.error('❌ Erro ao salvar permissão de coleta:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: error.message || 'Erro ao salvar permissão de coleta' 
+    });
   }
 });
 
@@ -17068,6 +17454,15 @@ app.post('/api/auth/confirmar-todos-usuarios', express.json(), async (req, res) 
 // ========== EXCLUIR USUÁRIO DO AUTH ==========
 app.delete('/api/auth/excluir-usuario/:userId', express.json(), async (req, res) => {
   try {
+    // Verificar autenticação
+    const { user, error: authError } = await getUserFromRequest(req);
+    if (authError || !user) {
+      return res.status(401).json({ 
+        success: false, 
+        error: 'Não autenticado' 
+      });
+    }
+
     const { userId } = req.params;
     
     if (!userId) {
@@ -17077,20 +17472,60 @@ app.delete('/api/auth/excluir-usuario/:userId', express.json(), async (req, res)
       });
     }
     
-    console.log(`🗑️ Excluindo usuário do Auth: ${userId}`);
+    console.log(`🗑️ Excluindo usuário do Auth: ${userId} (solicitado por: ${user.email || user.id})`);
+    
+    // Verificar se o usuário existe antes de tentar excluir
+    let userExists = false;
+    try {
+      const { data: userData, error: getUserError } = await supabaseAdmin.auth.admin.getUserById(userId);
+      if (!getUserError && userData && userData.user) {
+        userExists = true;
+        console.log(`✅ Usuário encontrado: ${userData.user.email || userId}`);
+      } else {
+        console.warn(`⚠️ Usuário não encontrado ou erro ao buscar: ${getUserError?.message || 'Usuário não existe'}`);
+      }
+    } catch (checkError) {
+      console.warn('⚠️ Erro ao verificar se usuário existe:', checkError.message);
+    }
     
     // Excluir usuário do Auth usando Admin API
-    const { data, error } = await supabaseAdmin.auth.admin.deleteUser(userId);
+    // O método correto do Supabase é deleteUserById
+    const { data, error } = await supabaseAdmin.auth.admin.deleteUserById(userId);
     
     if (error) {
       console.error('❌ Erro ao excluir usuário do Auth:', error);
+      console.error('❌ Detalhes do erro:', JSON.stringify(error, null, 2));
+      
+      // Melhorar mensagem de erro
+      let errorMessage = error.message || 'Erro ao excluir usuário do Auth';
+      if (error.message && error.message.includes('Database error')) {
+        errorMessage = 'Erro ao excluir usuário: pode haver registros relacionados no banco de dados. Verifique se não há foreign keys impedindo a exclusão.';
+      }
+      
       return res.status(500).json({ 
         success: false, 
-        error: error.message || 'Erro ao excluir usuário do Auth' 
+        error: errorMessage,
+        details: error.message
       });
     }
     
     console.log(`✅ Usuário ${userId} excluído do Auth com sucesso`);
+    
+    // Tentar também excluir do user_profiles se existir
+    try {
+      const { error: profileError } = await supabaseAdmin
+        .from('user_profiles')
+        .delete()
+        .eq('id', userId);
+      
+      if (profileError) {
+        console.warn('⚠️ Erro ao excluir perfil do usuário (pode não existir):', profileError.message);
+      } else {
+        console.log(`✅ Perfil do usuário ${userId} excluído com sucesso`);
+      }
+    } catch (profileErr) {
+      console.warn('⚠️ Erro ao tentar excluir perfil:', profileErr.message);
+    }
     
     return res.json({ 
       success: true, 
@@ -17100,9 +17535,11 @@ app.delete('/api/auth/excluir-usuario/:userId', express.json(), async (req, res)
     
   } catch (err) {
     console.error('❌ Erro ao excluir usuário do Auth:', err);
+    console.error('❌ Stack trace:', err.stack);
     return res.status(500).json({ 
       success: false, 
-      error: err.message || 'Erro interno ao processar requisição' 
+      error: err.message || 'Erro interno ao processar requisição',
+      details: err.stack
     });
   }
 });

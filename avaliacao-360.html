@@ -396,6 +396,20 @@
             pointer-events: auto !important;
         }
         
+        /* Estilos para cards de seleção de tipo de avaliador */
+        #etapaTipoAvaliacao .card-modern {
+            pointer-events: auto !important;
+            cursor: pointer !important;
+            transition: all 0.3s ease;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        #etapaTipoAvaliacao .card-modern:hover {
+            border-color: rgba(102, 126, 234, 0.5);
+            box-shadow: 0 0 15px rgba(102, 126, 234, 0.3);
+            transform: translateY(-5px);
+        }
+        
         #modalCiclo .card-modern[data-tipo] * {
             pointer-events: none !important;
         }
@@ -1797,14 +1811,62 @@
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    <div class="mb-3">
-                        <label class="form-label">Selecionar Avaliado</label>
-                        <select class="form-select" id="avaliadoSelect">
-                            <option value="">Selecione um avaliado...</option>
-                        </select>
+                    <!-- Etapa 1: Seleção do tipo de avaliação (apenas para avaliação Individual) -->
+                    <div id="etapaTipoAvaliacao" style="display: none;">
+                        <h6 class="mb-4" style="color: rgba(255, 255, 255, 0.95); font-weight: 600;">
+                            <i class="fas fa-question-circle me-2"></i>Escolha o tipo de avaliação
+                        </h6>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <div class="card-modern" style="cursor: pointer; transition: all 0.3s ease;" onclick="selecionarTipoAvaliador('auto')" data-tipo="auto">
+                                    <div class="text-center p-4">
+                                        <i class="fas fa-user fa-3x mb-3" style="color: #667eea;"></i>
+                                        <h6 style="color: rgba(255, 255, 255, 0.95); font-weight: 600;">Auto-avaliação</h6>
+                                        <p class="text-muted mb-0" style="font-size: 0.9rem;">O próprio colaborador se avalia</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="card-modern" style="cursor: pointer; transition: all 0.3s ease;" onclick="selecionarTipoAvaliador('par')" data-tipo="par">
+                                    <div class="text-center p-4">
+                                        <i class="fas fa-users fa-3x mb-3" style="color: #667eea;"></i>
+                                        <h6 style="color: rgba(255, 255, 255, 0.95); font-weight: 600;">Par (Colega)</h6>
+                                        <p class="text-muted mb-0" style="font-size: 0.9rem;">Colegas do mesmo departamento</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="card-modern" style="cursor: pointer; transition: all 0.3s ease;" onclick="selecionarTipoAvaliador('gestor')" data-tipo="gestor">
+                                    <div class="text-center p-4">
+                                        <i class="fas fa-user-tie fa-3x mb-3" style="color: #667eea;"></i>
+                                        <h6 style="color: rgba(255, 255, 255, 0.95); font-weight: 600;">Gestor</h6>
+                                        <p class="text-muted mb-0" style="font-size: 0.9rem;">Supervisor ou gerente direto</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="card-modern" style="cursor: pointer; transition: all 0.3s ease;" onclick="selecionarTipoAvaliador('subordinado')" data-tipo="subordinado">
+                                    <div class="text-center p-4">
+                                        <i class="fas fa-user-friends fa-3x mb-3" style="color: #667eea;"></i>
+                                        <h6 style="color: rgba(255, 255, 255, 0.95); font-weight: 600;">Subordinado</h6>
+                                        <p class="text-muted mb-0" style="font-size: 0.9rem;">Colaboradores subordinados</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                    <div id="avaliadoresContent">
-                        <!-- Conteúdo será carregado dinamicamente -->
+                    
+                    <!-- Etapa 2: Seleção de avaliado e avaliadores -->
+                    <div id="etapaSelecaoAvaliadores" style="display: none;">
+                        <div class="mb-3">
+                            <label class="form-label">Selecionar Avaliado</label>
+                            <select class="form-select" id="avaliadoSelect">
+                                <option value="">Selecione um avaliado...</option>
+                            </select>
+                        </div>
+                        <div id="avaliadoresContent">
+                            <!-- Conteúdo será carregado dinamicamente -->
+                        </div>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -1862,6 +1924,13 @@
 
         // ========== NOTIFICAÇÕES ==========
         async function loadNotificacoes() {
+            if (!currentUserId) {
+                console.error('❌ currentUserId não definido');
+                return [];
+            }
+            
+            console.log('🔔 Carregando notificações para usuário:', currentUserId);
+            
             const { data: notificacoes, error } = await supabaseClient
                 .from('avaliacao_360_notificacoes')
                 .select('*')
@@ -1870,9 +1939,12 @@
                 .limit(50);
             
             if (error) {
-                console.error('Erro ao carregar notificações:', error);
-                return;
+                console.error('❌ Erro ao carregar notificações:', error);
+                return [];
             }
+            
+            console.log('🔔 Notificações encontradas:', notificacoes?.length || 0);
+            console.log('🔔 Notificações não lidas:', notificacoes?.filter(n => !n.lida).length || 0);
             
             const naoLidas = notificacoes?.filter(n => !n.lida).length || 0;
             const badge = document.getElementById('badgeNotificacoes');
@@ -1926,7 +1998,23 @@
                 `).join('');
             }
             
-            new bootstrap.Modal(document.getElementById('modalNotificacoes')).show();
+            const modalNotificacoes = document.getElementById('modalNotificacoes');
+            const modal = new bootstrap.Modal(modalNotificacoes);
+            
+            // Corrigir aria-hidden quando o modal for mostrado
+            modalNotificacoes.addEventListener('shown.bs.modal', function() {
+                // Remover aria-hidden para corrigir aviso de acessibilidade
+                modalNotificacoes.removeAttribute('aria-hidden');
+                modalNotificacoes.setAttribute('aria-modal', 'true');
+            }, { once: false });
+            
+            // Restaurar aria-hidden quando o modal for escondido
+            modalNotificacoes.addEventListener('hidden.bs.modal', function() {
+                modalNotificacoes.setAttribute('aria-hidden', 'true');
+                modalNotificacoes.removeAttribute('aria-modal');
+            }, { once: false });
+            
+            modal.show();
         }
 
         async function marcarComoLida(notificacaoId, avaliadorId) {
@@ -2038,17 +2126,22 @@
                 
                 console.log('✅ Sessão encontrada:', session.user.id);
                 currentUserId = session.user.id;
+                console.log('✅ currentUserId definido:', currentUserId);
                 await loadUserProfile();
             
             // Aguardar um pouco para garantir que o perfil foi carregado
             await new Promise(resolve => setTimeout(resolve, 100));
+            
+            // Carregar notificações imediatamente após definir currentUserId
+            console.log('🔔 Carregando notificações após login...');
+            await loadNotificacoes();
             
             await loadCiclos();
             await loadMinhasAvaliacoes();
             await loadDashboard();
             await loadCiclosParaComparacao();
             await loadDadosRelatorios();
-            await loadNotificacoes();
+            // loadNotificacoes já foi chamado acima, removendo duplicação
             
             // Verificar permissões - RH ou Admin podem criar ciclos
             atualizarVisibilidadeBotaoNovoCiclo();
@@ -2631,7 +2724,7 @@
                 const tipoInput = document.getElementById('cicloTipoAvaliacao');
                 if (!tipoInput) {
                     console.error('❌ Campo cicloTipoAvaliacao não encontrado');
-                    alert('Erro: Campo de tipo não encontrado. Recarregue a página.');
+                    showNotification('Erro: Campo de tipo não encontrado. Recarregue a página.', 'error');
                     return;
                 }
                 
@@ -2650,7 +2743,7 @@
                 
                 if (!cardOrg || !cardLid || !cardColab || !cardEquipe) {
                     console.error('❌ Cards de tipo não encontrados');
-                    alert('Erro: Cards de seleção não encontrados. Recarregue a página.');
+                    showNotification('Erro: Cards de seleção não encontrados. Recarregue a página.', 'error');
                     return;
                 }
                 
@@ -2724,8 +2817,7 @@
                 console.log('✅ Tipo de avaliação selecionado:', tipo);
                 
             } catch (error) {
-                console.error('❌ Erro ao selecionar tipo de avaliação:', error);
-                alert('Erro ao selecionar tipo: ' + error.message);
+                tratarErro(error, 'Erro ao selecionar tipo de avaliação');
             }
         };
         
@@ -2935,7 +3027,7 @@
                 .single();
             
             if (error || !data) {
-                alert('Erro ao carregar ciclo');
+                showNotification('Erro ao carregar ciclo', 'error');
                 return;
             }
             
@@ -3256,11 +3348,11 @@
                 .single();
             
             if (error || !ciclo) {
-                alert('Erro ao carregar ciclo');
+                showNotification('Erro ao carregar ciclo', 'error');
                 return;
             }
             
-            // Criar modal de detalhes do ciclo
+            // Criar modal de detalhes do ciclo com abas
             const modalHTML = `
                 <div class="modal fade" id="modalVerCiclo" tabindex="-1" style="z-index: 1050;">
                     <div class="modal-dialog modal-xl" style="z-index: 1051;">
@@ -3297,20 +3389,42 @@
                                     </div>
                                 </div>
                                 
-                                <div class="d-flex gap-2 mb-3">
-                                    <button class="btn btn-primary-modern" onclick="abrirModalCompetencias('${cicloId}')">
-                                        <i class="fas fa-cog me-2"></i> Gerenciar Competências
-                                    </button>
-                                    ${(currentUserProfile?.departamento === 'RH' || currentUserProfile?.role === 'admin') ? `
-                                        <button class="btn btn-primary-modern" onclick="abrirModalAvaliadores('${cicloId}')">
-                                            <i class="fas fa-users me-2"></i> Gerenciar Avaliadores
+                                <!-- Abas de navegação -->
+                                <ul class="nav nav-tabs mb-4" id="tabsGerenciamento" role="tablist">
+                                    <li class="nav-item" role="presentation">
+                                        <button class="nav-link active" id="tab-competencias" data-bs-toggle="tab" data-bs-target="#pane-competencias" type="button" role="tab">
+                                            <i class="fas fa-layer-group me-2"></i> Competências
                                         </button>
+                                    </li>
+                                    ${(currentUserProfile?.departamento === 'RH' || currentUserProfile?.role === 'admin') ? `
+                                    <li class="nav-item" role="presentation">
+                                        <button class="nav-link" id="tab-avaliadores" data-bs-toggle="tab" data-bs-target="#pane-avaliadores" type="button" role="tab">
+                                            <i class="fas fa-users me-2"></i> Avaliadores
+                                        </button>
+                                    </li>
                                     ` : ''}
-                                </div>
+                                </ul>
                                 
-                                <h6 class="mb-3">Competências</h6>
-                                <div id="competenciasCicloList">
-                                    <!-- Competências serão carregadas aqui -->
+                                <!-- Conteúdo das abas -->
+                                <div class="tab-content" id="tabContentGerenciamento">
+                                    <div class="tab-pane fade show active" id="pane-competencias" role="tabpanel">
+                                        <div class="d-flex justify-content-between align-items-center mb-3">
+                                            <h6 class="mb-0">Competências do Ciclo</h6>
+                                            <button class="btn btn-sm btn-primary-modern" onclick="abrirModalCompetencias('${cicloId}')">
+                                                <i class="fas fa-plus me-1"></i> Adicionar Competência
+                                            </button>
+                                        </div>
+                                        <div id="competenciasCicloList">
+                                            <!-- Competências serão carregadas aqui -->
+                                        </div>
+                                    </div>
+                                    ${(currentUserProfile?.departamento === 'RH' || currentUserProfile?.role === 'admin') ? `
+                                    <div class="tab-pane fade" id="pane-avaliadores" role="tabpanel">
+                                        <div id="avaliadoresGerenciamentoContent">
+                                            <!-- Conteúdo de gerenciamento de avaliadores será carregado aqui -->
+                                        </div>
+                                    </div>
+                                    ` : ''}
                                 </div>
                             </div>
                         </div>
@@ -3318,62 +3432,28 @@
                 </div>
             `;
             
+            // Remover modal anterior se existir
+            const modalAnterior = document.getElementById('modalVerCiclo');
+            if (modalAnterior) {
+                modalAnterior.remove();
+            }
+            
             document.body.insertAdjacentHTML('beforeend', modalHTML);
             const modalElement = document.getElementById('modalVerCiclo');
             
-            // Garantir que o modal seja interativo ANTES de mostrar
-            modalElement.style.pointerEvents = 'auto';
-            modalElement.style.zIndex = '1050';
+            const modal = configurarModalInterativo(modalElement);
             
-            const modalDialog = modalElement.querySelector('.modal-dialog');
-            if (modalDialog) {
-                modalDialog.style.pointerEvents = 'auto';
-                modalDialog.style.zIndex = '1051';
+            // Quando a aba de avaliadores for ativada, carregar o conteúdo
+            const tabAvaliadores = document.getElementById('tab-avaliadores');
+            if (tabAvaliadores) {
+                tabAvaliadores.addEventListener('shown.bs.tab', async function() {
+                    await carregarGerenciamentoAvaliadores(cicloId);
+                });
             }
-            
-            const modalContent = modalElement.querySelector('.modal-content');
-            if (modalContent) {
-                modalContent.style.pointerEvents = 'auto';
-            }
-            
-            const modal = new bootstrap.Modal(modalElement, {
-                backdrop: 'static',
-                keyboard: true,
-                focus: true
-            });
             
             // Ajustar backdrop após mostrar
             modalElement.addEventListener('shown.bs.modal', async function() {
-                // Garantir que o backdrop não bloqueie o conteúdo do modal
-                const backdrops = document.querySelectorAll('.modal-backdrop');
-                backdrops.forEach((backdrop, index) => {
-                    if (index === backdrops.length - 1) {
-                        backdrop.style.zIndex = '1049';
-                    }
-                });
-                
-                // Garantir interatividade novamente
-                modalElement.style.pointerEvents = 'auto';
-                modalElement.style.zIndex = '1050';
-                if (modalDialog) {
-                    modalDialog.style.pointerEvents = 'auto';
-                    modalDialog.style.zIndex = '1051';
-                }
-                if (modalContent) {
-                    modalContent.style.pointerEvents = 'auto';
-                    modalContent.style.zIndex = '1052';
-                }
-                
-                // Forçar interatividade em todos os elementos clicáveis
-                const clickableElements = modalElement.querySelectorAll('button, input, select, textarea, a, .btn');
-                clickableElements.forEach(el => {
-                    el.style.pointerEvents = 'auto';
-                    el.style.cursor = 'pointer';
-                    el.style.position = 'relative';
-                    el.style.zIndex = '1053';
-                });
-                
-                // Carregar dados
+                // Carregar dados iniciais
                 await loadEstatisticasCiclo(cicloId);
                 await loadCompetenciasCiclo(cicloId);
             }, { once: true });
@@ -3383,6 +3463,305 @@
             });
             
             modal.show();
+        }
+        
+        // Nova função para carregar o gerenciamento de avaliadores diretamente na aba
+        async function carregarGerenciamentoAvaliadores(cicloId) {
+            const container = document.getElementById('avaliadoresGerenciamentoContent');
+            if (!container) return;
+            
+            container.innerHTML = '<div class="text-center py-4"><div class="spinner-border text-primary" role="status"></div><p class="mt-2">Carregando...</p></div>';
+            
+            try {
+                const { data: ciclo } = await supabaseClient
+                    .from('avaliacao_360_ciclos')
+                    .select('tipo_avaliacao')
+                    .eq('id', cicloId)
+                    .single();
+                
+                const tipoAvaliacao = ciclo?.tipo_avaliacao || '';
+                const isEquipe = tipoAvaliacao === 'equipe';
+                
+                // Para avaliação de equipe, mostrar seleção por departamento
+                if (isEquipe) {
+                    await carregarGerenciamentoAvaliadoresEquipe(cicloId, container);
+                } else {
+                    await carregarGerenciamentoAvaliadoresIndividual(cicloId, container);
+                }
+            } catch (error) {
+                console.error('Erro ao carregar gerenciamento de avaliadores:', error);
+                container.innerHTML = '<div class="alert alert-danger">Erro ao carregar avaliadores</div>';
+            }
+        }
+        
+        // Função para carregar gerenciamento de avaliadores para avaliação de equipe (por departamento)
+        async function carregarGerenciamentoAvaliadoresEquipe(cicloId, container) {
+            const { data: usuarios } = await supabaseClient
+                .from('user_profiles')
+                .select('id, nome, email, departamento, cargo')
+                .eq('active', true)
+                .order('departamento, nome');
+            
+            const departamentos = [...new Set(usuarios?.map(u => u.departamento).filter(Boolean) || [])].sort();
+            
+            // Buscar avaliações existentes
+            const { data: avaliacoes } = await supabaseClient
+                .from('avaliacao_360_avaliacoes')
+                .select('id, equipe_nome, avaliado_por_lider_id')
+                .eq('ciclo_id', cicloId)
+                .eq('tipo_avaliacao', 'equipe');
+            
+            container.innerHTML = `
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i>
+                    <strong>Avaliação de Equipe:</strong> Selecione o departamento que será avaliado. O líder do departamento avaliará sua equipe como um todo.
+                </div>
+                <div class="mb-4">
+                    <label class="form-label fw-bold">Selecionar Departamento</label>
+                    <select class="form-select" id="departamentoEquipeGerenciamento" style="background: linear-gradient(135deg, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0.1) 100%); color: #ffffff; border: 2px solid rgba(255, 255, 255, 0.2);">
+                        <option value="">Selecione um departamento...</option>
+                        ${departamentos.map(dept => `<option value="${dept}" style="background: rgba(15, 15, 35, 1); color: #ffffff;">${dept}</option>`).join('')}
+                    </select>
+                </div>
+                <div id="equipeAvaliacoesList">
+                    ${avaliacoes && avaliacoes.length > 0 ? avaliacoes.map(a => `
+                        <div class="card-modern p-3 mb-2">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <strong>${a.equipe_nome || 'Equipe'}</strong>
+                                    <small class="d-block text-muted">Avaliação de equipe</small>
+                                </div>
+                                <button class="btn btn-sm btn-outline-danger" onclick="removerAvaliacaoEquipe('${a.id}')">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                    `).join('') : '<p class="text-muted">Nenhuma avaliação de equipe criada</p>'}
+                </div>
+                <button class="btn btn-primary-modern mt-3" onclick="criarAvaliacaoEquipe('${cicloId}')">
+                    <i class="fas fa-plus me-2"></i> Criar Avaliação de Equipe
+                </button>
+            `;
+            
+            // Event listener para seleção de departamento
+            const selectDept = document.getElementById('departamentoEquipeGerenciamento');
+            if (selectDept) {
+                selectDept.addEventListener('change', function() {
+                    if (this.value) {
+                        mostrarLideresDepartamento(this.value, cicloId);
+                    }
+                });
+            }
+        }
+        
+        // Função para carregar gerenciamento de avaliadores para avaliação individual
+        async function carregarGerenciamentoAvaliadoresIndividual(cicloId, container) {
+            const { data: usuarios } = await supabaseClient
+                .from('user_profiles')
+                .select('id, nome, email, departamento, cargo')
+                .eq('active', true)
+                .order('nome');
+            
+            container.innerHTML = `
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Selecionar Avaliado</label>
+                    <select class="form-select" id="avaliadoSelectGerenciamento" style="background: linear-gradient(135deg, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0.1) 100%); color: #ffffff; border: 2px solid rgba(255, 255, 255, 0.2);">
+                        <option value="">Selecione um avaliado...</option>
+                        ${usuarios?.map(u => `<option value="${u.id}" style="background: rgba(15, 15, 35, 1); color: #ffffff;">${u.nome || u.email} - ${u.departamento || 'N/A'}</option>`).join('') || ''}
+                    </select>
+                </div>
+                <div id="avaliadoresGerenciamentoDetalhes">
+                    <p class="text-muted text-center py-4">Selecione um avaliado para gerenciar seus avaliadores</p>
+                </div>
+            `;
+            
+            const selectAvaliado = document.getElementById('avaliadoSelectGerenciamento');
+            if (selectAvaliado) {
+                selectAvaliado.addEventListener('change', async function() {
+                    if (this.value) {
+                        const detalhesContainer = document.getElementById('avaliadoresGerenciamentoDetalhes');
+                        detalhesContainer.innerHTML = '<div class="text-center py-4"><div class="spinner-border text-primary" role="status"></div><p class="mt-2">Carregando...</p></div>';
+                        
+                        // Carregar avaliadores diretamente no container de detalhes
+                        await loadAvaliadoresParaGerenciamento(this.value, detalhesContainer);
+                    } else {
+                        const detalhesContainer = document.getElementById('avaliadoresGerenciamentoDetalhes');
+                        if (detalhesContainer) {
+                            detalhesContainer.innerHTML = '<p class="text-muted text-center py-4">Selecione um avaliado para gerenciar seus avaliadores</p>';
+                        }
+                    }
+                });
+            }
+        }
+        
+        // Versão adaptada de loadAvaliadores para o contexto de gerenciamento
+        async function loadAvaliadoresParaGerenciamento(avaliadoId, container) {
+            if (!avaliadoId || avaliadoId.trim() === '') {
+                container.innerHTML = '<p class="text-danger">ID do avaliado inválido</p>';
+                return;
+            }
+            
+            // Usar a função loadAvaliadores existente mas adaptar para o novo container
+            await loadAvaliadores(avaliadoId);
+            
+            // Copiar conteúdo do avaliadoresContent para o container de gerenciamento
+            const avaliadoresContent = document.getElementById('avaliadoresContent');
+            if (avaliadoresContent && container) {
+                container.innerHTML = avaliadoresContent.innerHTML;
+            }
+        }
+        
+        async function mostrarLideresDepartamento(departamento, cicloId) {
+            const { data: usuarios } = await supabaseClient
+                .from('user_profiles')
+                .select('id, nome, email, cargo')
+                .eq('active', true)
+                .eq('departamento', departamento)
+                .order('nome');
+            
+            // Identificar líderes (geralmente têm cargo de coordenação, gerência ou direção)
+            const cargosLideranca = ['coordenador', 'coordenadora', 'gerente', 'diretor', 'diretora', 'supervisor', 'supervisora'];
+            const lideres = usuarios?.filter(u => 
+                u.cargo && cargosLideranca.some(cargo => u.cargo.toLowerCase().includes(cargo.toLowerCase()))
+            ) || [];
+            
+            const container = document.getElementById('equipeAvaliacoesList');
+            if (!container) return;
+            
+            if (lideres.length === 0) {
+                container.innerHTML += `
+                    <div class="alert alert-warning mt-3">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        Nenhum líder identificado no departamento ${departamento}. 
+                        Você pode criar a avaliação de equipe mesmo assim.
+                    </div>
+                `;
+            } else {
+                container.innerHTML += `
+                    <div class="card-modern p-3 mt-3">
+                        <h6 class="mb-3">Líderes do Departamento ${departamento}</h6>
+                        ${lideres.map(l => `
+                            <div class="d-flex justify-content-between align-items-center mb-2 p-2" style="background: rgba(255, 255, 255, 0.05); border-radius: 8px;">
+                                <div>
+                                    <strong>${l.nome || l.email}</strong>
+                                    <small class="d-block text-muted">${l.cargo || 'N/A'}</small>
+                                </div>
+                                <button class="btn btn-sm btn-primary-modern" onclick="criarAvaliacaoEquipeComLider('${cicloId}', '${departamento}', '${l.id}')">
+                                    <i class="fas fa-check me-1"></i> Usar este líder
+                                </button>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+            }
+        }
+        
+        async function criarAvaliacaoEquipe(cicloId) {
+            const selectDept = document.getElementById('departamentoEquipeGerenciamento');
+            if (!selectDept || !selectDept.value) {
+                showNotification('Selecione um departamento primeiro', 'warning');
+                return;
+            }
+            
+            const departamento = selectDept.value;
+            await mostrarLideresDepartamento(departamento, cicloId);
+        }
+        
+        async function criarAvaliacaoEquipeComLider(cicloId, departamento, liderId) {
+            try {
+                // Verificar se já existe avaliação de equipe para este departamento neste ciclo
+                const { data: avaliacaoExistente } = await supabaseClient
+                    .from('avaliacao_360_avaliacoes')
+                    .select('id')
+                    .eq('ciclo_id', cicloId)
+                    .eq('tipo_avaliacao', 'equipe')
+                    .eq('equipe_nome', departamento)
+                    .limit(1);
+                
+                if (avaliacaoExistente && avaliacaoExistente.length > 0) {
+                    showNotification('Já existe uma avaliação de equipe para este departamento neste ciclo', 'warning');
+                    return;
+                }
+                
+                // Buscar membros da equipe (todos do departamento exceto o líder)
+                const { data: membrosEquipe } = await supabaseClient
+                    .from('user_profiles')
+                    .select('id')
+                    .eq('active', true)
+                    .eq('departamento', departamento)
+                    .neq('id', liderId);
+                
+                // Criar avaliação de equipe
+                const { data: novaAvaliacao, error: errAval } = await supabaseClient
+                    .from('avaliacao_360_avaliacoes')
+                    .insert([{
+                        ciclo_id: cicloId,
+                        avaliado_id: null, // Em avaliação de equipe, não há um único avaliado
+                        avaliado_por_lider_id: liderId,
+                        tipo_avaliacao: 'equipe',
+                        equipe_nome: departamento,
+                        status: 'pendente'
+                    }])
+                    .select()
+                    .single();
+                
+                if (errAval) {
+                    tratarErro(errAval, 'Erro ao criar avaliação de equipe');
+                    return;
+                }
+                
+                // Criar avaliador (o líder que vai avaliar a equipe)
+                const { data: avaliador, error: errAvaliador } = await supabaseClient
+                    .from('avaliacao_360_avaliadores')
+                    .insert([{
+                        avaliacao_id: novaAvaliacao.id,
+                        avaliador_id: liderId,
+                        tipo_avaliador: 'gestor',
+                        status: 'pendente',
+                        anonimo: false
+                    }])
+                    .select()
+                    .single();
+                
+                if (errAvaliador) {
+                    console.error('Erro ao criar avaliador:', errAvaliador);
+                }
+                
+                // Criar notificação para o líder
+                await supabaseClient
+                    .from('avaliacao_360_notificacoes')
+                    .insert([{
+                        usuario_id: liderId,
+                        tipo: 'nova_avaliacao',
+                        titulo: 'Avaliação de Equipe Disponível',
+                        mensagem: `Você foi designado para avaliar a equipe do departamento ${departamento}`,
+                        ciclo_id: cicloId,
+                        avaliacao_id: novaAvaliacao.id,
+                        avaliador_id: avaliador?.id || null,
+                        lida: false
+                    }]);
+                
+                showNotification('Avaliação de equipe criada com sucesso!', 'success');
+                await carregarGerenciamentoAvaliadores(cicloId);
+            } catch (error) {
+                tratarErro(error, 'Erro ao criar avaliação de equipe');
+            }
+        }
+        
+        async function removerAvaliacaoEquipe(avaliacaoId) {
+            if (!confirm('Tem certeza que deseja remover esta avaliação de equipe?')) return;
+            
+            const { error } = await supabaseClient
+                .from('avaliacao_360_avaliacoes')
+                .delete()
+                .eq('id', avaliacaoId);
+            
+            if (error) {
+                showNotification('Erro ao remover avaliação', 'error');
+            } else {
+                showNotification('Avaliação removida com sucesso', 'success');
+                await carregarGerenciamentoAvaliadores(cicloAtualId);
+            }
         }
 
         async function loadEstatisticasCiclo(cicloId) {
@@ -3483,7 +3862,7 @@
         
         async function aplicarTemplateCompetencias(template) {
             if (!cicloAtualId) {
-                alert('Erro: Nenhum ciclo selecionado');
+                showNotification('Erro: Nenhum ciclo selecionado', 'warning');
                 return;
             }
             
@@ -3493,7 +3872,7 @@
             
             const competencias = TEMPLATES_COMPETENCIAS[template];
             if (!competencias) {
-                alert('Template não encontrado');
+                showNotification('Template não encontrado', 'error');
                 return;
             }
             
@@ -3510,16 +3889,14 @@
                     .insert(competenciasParaInserir);
                 
                 if (error) {
-                    console.error('Erro ao aplicar template:', error);
-                    alert('Erro ao aplicar template: ' + error.message);
+                    tratarErro(error, 'Erro ao aplicar template');
                     return;
                 }
                 
                 showNotification(`Template aplicado com sucesso! ${competencias.length} competências adicionadas.`, 'success');
                 await loadCompetencias(cicloAtualId);
             } catch (error) {
-                console.error('Erro inesperado:', error);
-                alert('Erro ao aplicar template: ' + error.message);
+                tratarErro(error, 'Erro ao aplicar template');
             }
         }
         
@@ -3610,7 +3987,7 @@
                 .single();
             
             if (error || !data) {
-                alert('Erro ao carregar competência');
+                showNotification('Erro ao carregar competência', 'error');
                 return;
             }
             
@@ -3631,7 +4008,7 @@
 
         async function salvarCompetencia() {
             if (!cicloAtualId) {
-                alert('Selecione um ciclo primeiro');
+                showNotification('Selecione um ciclo primeiro', 'warning');
                 return;
             }
             
@@ -3662,7 +4039,7 @@
             }
             
             if (result.error) {
-                alert('Erro ao salvar competência: ' + result.error.message);
+                tratarErro(result.error, 'Erro ao salvar competência');
                 return;
             }
             
@@ -3680,83 +4057,31 @@
                 .eq('id', competenciaId);
             
             if (error) {
-                alert('Erro ao excluir competência: ' + error.message);
+                tratarErro(error, 'Erro ao excluir competência');
                 return;
             }
             
             await loadCompetencias(cicloAtualId);
-            alert('Competência excluída com sucesso!');
+            showNotification('Competência excluída com sucesso!', 'success');
         }
 
-        // ========== AVALIADORES ==========
-        async function abrirModalAvaliadores(cicloId) {
-            cicloAtualId = cicloId;
-            
-            // Carregar usuários para o select
-            const { data: usuarios, error } = await supabaseClient
-                .from('user_profiles')
-                .select('id, nome, email, departamento, cargo')
-                .eq('active', true)
-                .order('nome');
-            
-            const modalElement = document.getElementById('modalAvaliadores');
-            if (!modalElement) {
-                console.error('Modal de avaliadores não encontrado');
-                return;
-            }
-            
-            // Garantir que o modal seja interativo ANTES de mostrar
-            modalElement.style.pointerEvents = 'auto';
-            modalElement.style.zIndex = '1060';
-            
-            const modalDialog = modalElement.querySelector('.modal-dialog');
-            if (modalDialog) {
-                modalDialog.style.pointerEvents = 'auto';
-                modalDialog.style.zIndex = '1061';
-            }
-            
-            const modalContent = modalElement.querySelector('.modal-content');
-            if (modalContent) {
-                modalContent.style.pointerEvents = 'auto';
-            }
-            
-            if (usuarios) {
-                const select = document.getElementById('avaliadoSelect');
-                if (select) {
-                    select.innerHTML = '<option value="" style="background: rgba(15, 15, 35, 1); color: #ffffff;">Selecione um avaliado...</option>' +
-                        usuarios.map(u => `<option value="${u.id}" style="background: rgba(15, 15, 35, 1); color: #ffffff;">${u.nome || u.email} - ${u.departamento || 'N/A'}</option>`).join('');
-                    
-                    // Garantir visibilidade do select
-                    select.style.background = 'linear-gradient(135deg, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0.1) 100%)';
-                    select.style.color = '#ffffff';
-                    select.style.border = '2px solid rgba(255, 255, 255, 0.2)';
-                }
-            }
-            
-            // Remover event listeners anteriores para evitar duplicação
-            const selectElement = document.getElementById('avaliadoSelect');
-            const newSelect = selectElement.cloneNode(true);
-            selectElement.parentNode.replaceChild(newSelect, selectElement);
-            
-            newSelect.addEventListener('change', async function() {
-                if (this.value) {
-                    await loadAvaliadores(this.value);
-                }
-            });
+        // ========== FUNÇÕES AUXILIARES ==========
+        // Função auxiliar para configurar modal (reduz redundâncias)
+        // Função consolidada para configurar modais interativos
+        function configurarModalInterativo(modalElement) {
+            if (!modalElement) return null;
             
             const modal = new bootstrap.Modal(modalElement, {
                 backdrop: 'static',
                 keyboard: true,
                 focus: true
             });
-            
-            // Ajustar backdrop após mostrar
+
             modalElement.addEventListener('shown.bs.modal', function() {
-                // Remover aria-hidden para corrigir aviso de acessibilidade
                 modalElement.removeAttribute('aria-hidden');
                 modalElement.setAttribute('aria-modal', 'true');
                 
-                // Garantir que o backdrop não bloqueie o conteúdo do modal
+                // Ajustar backdrop
                 const backdrops = document.querySelectorAll('.modal-backdrop');
                 backdrops.forEach((backdrop, index) => {
                     if (index === backdrops.length - 1) {
@@ -3764,19 +4089,23 @@
                     }
                 });
                 
-                // Garantir interatividade novamente
+                // Garantir interatividade
                 modalElement.style.pointerEvents = 'auto';
                 modalElement.style.zIndex = '1060';
+                
+                const modalDialog = modalElement.querySelector('.modal-dialog');
                 if (modalDialog) {
                     modalDialog.style.pointerEvents = 'auto';
                     modalDialog.style.zIndex = '1061';
                 }
+                
+                const modalContent = modalElement.querySelector('.modal-content');
                 if (modalContent) {
                     modalContent.style.pointerEvents = 'auto';
                     modalContent.style.zIndex = '1062';
                 }
                 
-                // Forçar interatividade em todos os elementos clicáveis
+                // Garantir interatividade em elementos clicáveis
                 const clickableElements = modalElement.querySelectorAll('button, input, select, textarea, a, .btn');
                 clickableElements.forEach(el => {
                     el.style.pointerEvents = 'auto';
@@ -3785,21 +4114,101 @@
                     el.style.zIndex = '1063';
                 });
             }, { once: true });
-            
-            // Corrigir aria-hidden quando o modal for escondido
+
             modalElement.addEventListener('hidden.bs.modal', function() {
                 modalElement.setAttribute('aria-hidden', 'true');
                 modalElement.removeAttribute('aria-modal');
             }, { once: false });
-            
-            modal.show();
+
+            return modal;
         }
+        
+        // Função auxiliar para tratamento de erros com feedback ao usuário
+        function tratarErro(erro, mensagemUsuario = 'Ocorreu um erro. Tente novamente.') {
+            console.error('❌ Erro:', erro);
+            showNotification(mensagemUsuario, 'error');
+            return null;
+        }
+        
+        // Função auxiliar para mostrar loading state
+        function mostrarLoading(elementoId, texto = 'Carregando...') {
+            const elemento = document.getElementById(elementoId);
+            if (elemento) {
+                elemento.innerHTML = `
+                    <div class="text-center py-4">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">${texto}</span>
+                        </div>
+                        <p class="mt-2 text-muted">${texto}</p>
+                    </div>
+                `;
+            }
+        }
+        
+        // ========== AVALIADORES ==========
+        let tipoAvaliadorSelecionado = null; // Variável global para armazenar o tipo selecionado
+        
+        // Função simplificada - agora apenas para compatibilidade, mas o gerenciamento é feito via abas
+        async function abrirModalAvaliadores(cicloId) {
+            // Redirecionar para a aba de avaliadores no modal de gerenciamento
+            const modalVerCiclo = document.getElementById('modalVerCiclo');
+            if (modalVerCiclo) {
+                const tabAvaliadores = document.getElementById('tab-avaliadores');
+                if (tabAvaliadores) {
+                    const tab = new bootstrap.Tab(tabAvaliadores);
+                    tab.show();
+                }
+            } else {
+                // Se o modal não estiver aberto, abrir o modal de gerenciamento
+                await verCiclo(cicloId);
+                setTimeout(() => {
+                    const tabAvaliadores = document.getElementById('tab-avaliadores');
+                    if (tabAvaliadores) {
+                        const tab = new bootstrap.Tab(tabAvaliadores);
+                        tab.show();
+                    }
+                }, 500);
+            }
+        }
+
+        // Função para selecionar o tipo de avaliador (chamada quando clica nos cards)
+        function selecionarTipoAvaliador(tipo) {
+            tipoAvaliadorSelecionado = tipo;
+            
+            // Destacar o card selecionado
+            document.querySelectorAll('#etapaTipoAvaliacao .card-modern').forEach(card => {
+                card.style.border = '2px solid rgba(255, 255, 255, 0.2)';
+                card.style.boxShadow = 'none';
+                card.style.transform = 'scale(1)';
+            });
+            
+            const cardSelecionado = document.querySelector(`#etapaTipoAvaliacao .card-modern[data-tipo="${tipo}"]`);
+            if (cardSelecionado) {
+                cardSelecionado.style.border = '3px solid #667eea';
+                cardSelecionado.style.boxShadow = '0 0 20px rgba(102, 126, 234, 0.5)';
+                cardSelecionado.style.transform = 'scale(1.02)';
+            }
+            
+            // Aguardar um pouco para mostrar o feedback visual, depois avançar
+            setTimeout(() => {
+                // Esconder etapa de seleção do tipo
+                const etapaTipo = document.getElementById('etapaTipoAvaliacao');
+                if (etapaTipo) etapaTipo.style.display = 'none';
+                
+                // Mostrar etapa de seleção de avaliado e avaliadores
+                const etapaSelecao = document.getElementById('etapaSelecaoAvaliadores');
+                if (etapaSelecao) etapaSelecao.style.display = 'block';
+            }, 300);
+        }
+        
+        // Expor função globalmente
+        window.selecionarTipoAvaliador = selecionarTipoAvaliador;
 
         async function loadAvaliadores(avaliadoId) {
             // Validar avaliadoId
             if (!avaliadoId || avaliadoId.trim() === '') {
                 console.error('❌ avaliadoId não fornecido ou vazio');
-                alert('Por favor, selecione um avaliado primeiro');
+                showNotification('Por favor, selecione um avaliado primeiro', 'warning');
                 return;
             }
             
@@ -3850,7 +4259,7 @@
                     .single();
                 
                 if (error) {
-                    alert('Erro ao criar avaliação: ' + error.message);
+                    tratarErro(error, 'Erro ao criar avaliação');
                     return;
                 }
                 
@@ -3940,8 +4349,24 @@
                     <i class="fas fa-user me-2"></i><strong>Colaborador sendo avaliado:</strong> ${avaliadoInfo.nome || avaliadoInfo.email} ${avaliadoInfo.cargo ? `(${avaliadoInfo.cargo})` : ''}
                 </div>`;
             } else if (tipoAvaliacaoCiclo === 'equipe') {
+                // Buscar todos os departamentos únicos
+                const departamentosUnicos = [...new Set(usuarios?.map(u => u.departamento).filter(Boolean) || [])].sort();
+                const departamentoSelecionado = avaliacao?.equipe_nome || avaliadoInfo?.departamento || '';
+                
                 infoContextual = `<div class="alert alert-info mb-3" style="background: linear-gradient(135deg, rgba(102, 126, 234, 0.2) 0%, rgba(118, 75, 162, 0.2) 100%); border: 1px solid rgba(102, 126, 234, 0.3); border-radius: 12px;">
                     <i class="fas fa-users me-2"></i><strong>Tipo de avaliação:</strong> Avaliação de Equipe (o líder avalia seu time como um todo)
+                </div>
+                <div class="mb-3">
+                    <label class="form-label" style="color: rgba(255, 255, 255, 0.95); font-weight: 600;">
+                        <i class="fas fa-building me-2"></i>Selecionar Departamento da Equipe
+                    </label>
+                    <select class="form-select" id="departamentoEquipeSelect" onchange="filtrarPorDepartamentoEquipe()" style="background: linear-gradient(135deg, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0.1) 100%); color: #ffffff; border: 2px solid rgba(255, 255, 255, 0.2); pointer-events: auto;">
+                        <option value="" style="background: rgba(15, 15, 35, 1); color: #ffffff;">Selecione um departamento...</option>
+                        ${departamentosUnicos.map(dept => `<option value="${dept}" ${dept === departamentoSelecionado ? 'selected' : ''} style="background: rgba(15, 15, 35, 1); color: #ffffff;">${dept}</option>`).join('')}
+                    </select>
+                    <small style="color: rgba(255, 255, 255, 0.7); margin-top: 0.5rem; display: block;">
+                        <i class="fas fa-info-circle me-1"></i> Selecione o departamento que será avaliado como equipe.
+                    </small>
                 </div>`;
             }
             
@@ -3995,10 +4420,10 @@
                     <div class="mb-3">
                         <label class="form-label" style="color: rgba(255, 255, 255, 0.95); font-weight: 600;">Tipo de Avaliador</label>
                         <select class="form-select" id="tipoAvaliadorSelect" style="background: linear-gradient(135deg, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0.1) 100%); color: #ffffff; border: 2px solid rgba(255, 255, 255, 0.2); pointer-events: auto;">
-                            <option value="auto" style="background: rgba(15, 15, 35, 1); color: #ffffff;">Auto-avaliação</option>
-                            <option value="gestor" style="background: rgba(15, 15, 35, 1); color: #ffffff;">Gestor</option>
-                            <option value="par" style="background: rgba(15, 15, 35, 1); color: #ffffff;">Par (Colega)</option>
-                            <option value="subordinado" style="background: rgba(15, 15, 35, 1); color: #ffffff;">Subordinado</option>
+                            <option value="auto" ${tipoAvaliadorSelecionado === 'auto' ? 'selected' : ''} style="background: rgba(15, 15, 35, 1); color: #ffffff;">Auto-avaliação</option>
+                            <option value="gestor" ${tipoAvaliadorSelecionado === 'gestor' ? 'selected' : ''} style="background: rgba(15, 15, 35, 1); color: #ffffff;">Gestor</option>
+                            <option value="par" ${tipoAvaliadorSelecionado === 'par' ? 'selected' : ''} style="background: rgba(15, 15, 35, 1); color: #ffffff;">Par (Colega)</option>
+                            <option value="subordinado" ${tipoAvaliadorSelecionado === 'subordinado' ? 'selected' : ''} style="background: rgba(15, 15, 35, 1); color: #ffffff;">Subordinado</option>
                         </select>
                     </div>
                     <div class="mb-3">
@@ -4188,7 +4613,7 @@
                 .neq('id', avaliadoId);
             
             if (!pares || pares.length === 0) {
-                alert('Nenhum par encontrado no mesmo departamento');
+                showNotification('Nenhum par encontrado no mesmo departamento', 'info');
                 return;
             }
             
@@ -4243,9 +4668,18 @@
                         lida: false
                     }));
                     
-                    await supabaseClient
+                    console.log('📬 Criando notificações (pares):', notificacoes);
+                    
+                    const { data: notificacoesInseridas, error: errNotificacoes } = await supabaseClient
                         .from('avaliacao_360_notificacoes')
-                        .insert(notificacoes);
+                        .insert(notificacoes)
+                        .select();
+                    
+                    if (errNotificacoes) {
+                        console.error('❌ Erro ao criar notificações:', errNotificacoes);
+                    } else {
+                        console.log('✅ Notificações criadas (pares):', notificacoesInseridas?.length || 0);
+                    }
                 }
             }
             
@@ -4279,7 +4713,7 @@
             ) || [];
             
             if (subordinados.length === 0) {
-                alert('Nenhum subordinado encontrado automaticamente. Adicione manualmente.');
+                showNotification('Nenhum subordinado encontrado automaticamente. Adicione manualmente.', 'info');
                 return;
             }
             
@@ -4355,12 +4789,12 @@
             console.log('🔍 Tipo de avaliador:', tipoAvaliador);
             
             if (avaliadores.length === 0) {
-                alert('Selecione pelo menos um avaliador');
+                showNotification('Selecione pelo menos um avaliador', 'warning');
                 return;
             }
             
             if (!tipoAvaliador) {
-                alert('Selecione o tipo de avaliador');
+                showNotification('Selecione o tipo de avaliador', 'warning');
                 return;
             }
             
@@ -4453,9 +4887,19 @@
                         lida: false
                     }));
                     
-                    await supabaseClient
+                    console.log('📬 Criando notificações:', notificacoes);
+                    
+                    const { data: notificacoesInseridas, error: errNotificacoes } = await supabaseClient
                         .from('avaliacao_360_notificacoes')
-                        .insert(notificacoes);
+                        .insert(notificacoes)
+                        .select();
+                    
+                    if (errNotificacoes) {
+                        console.error('❌ Erro ao criar notificações:', errNotificacoes);
+                        showNotification('Avaliadores adicionados, mas houve erro ao criar notificações: ' + errNotificacoes.message, 'warning');
+                    } else {
+                        console.log('✅ Notificações criadas com sucesso:', notificacoesInseridas?.length || 0);
+                    }
                 }
             }
             
@@ -4492,7 +4936,7 @@
                 .eq('id', avaliadorId);
             
             if (error) {
-                alert('Erro ao remover avaliador: ' + error.message);
+                tratarErro(error, 'Erro ao remover avaliador');
                 return;
             }
             
@@ -4556,30 +5000,46 @@
             // Avaliações onde sou avaliador
             const { data: avaliadores, error: err2 } = await supabaseClient
                 .from('avaliacao_360_avaliadores')
-                .select(`
-                    *,
-                    avaliacao:avaliacao_360_avaliacoes (
-                        *,
-                        ciclo:avaliacao_360_ciclos (
-                            nome,
-                            data_inicio,
-                            data_fim
-                        )
-                    )
-                `)
+                .select('*')
                 .eq('avaliador_id', currentUserId)
                 .order('convidado_em', { ascending: false });
             
-            // Buscar dados dos avaliados separadamente
-            if (avaliadores && !err2) {
-                const avaliadoIds = [...new Set(avaliadores.map(a => a.avaliacao?.avaliado_id).filter(Boolean))];
-                if (avaliadoIds.length > 0) {
-                    const avaliadosMap = await buscarDadosAvaliados(avaliadoIds);
+            console.log('🔍 Avaliadores encontrados:', avaliadores?.length || 0);
+            console.log('🔍 Erro ao buscar avaliadores:', err2);
+            
+            // Buscar dados das avaliações separadamente
+            if (avaliadores && !err2 && avaliadores.length > 0) {
+                const avaliacaoIds = [...new Set(avaliadores.map(a => a.avaliacao_id).filter(Boolean))];
+                
+                if (avaliacaoIds.length > 0) {
+                    // Buscar avaliações
+                    const { data: avaliacoesData } = await supabaseClient
+                        .from('avaliacao_360_avaliacoes')
+                        .select('*')
+                        .in('id', avaliacaoIds);
                     
-                    // Mapear dados dos avaliados para as avaliações
+                    // Buscar ciclos
+                    const cicloIds = [...new Set((avaliacoesData || []).map(a => a.ciclo_id).filter(Boolean))];
+                    const { data: ciclosData } = await supabaseClient
+                        .from('avaliacao_360_ciclos')
+                        .select('*')
+                        .in('id', cicloIds);
+                    
+                    // Criar mapas para facilitar acesso
+                    const avaliacoesMap = new Map((avaliacoesData || []).map(a => [a.id, a]));
+                    const ciclosMap = new Map((ciclosData || []).map(c => [c.id, c]));
+                    
+                    // Buscar dados dos avaliados
+                    const avaliadoIds = [...new Set((avaliacoesData || []).map(a => a.avaliado_id).filter(Boolean))];
+                    const avaliadosMap = avaliadoIds.length > 0 ? await buscarDadosAvaliados(avaliadoIds) : new Map();
+                    
+                    // Enriquecer avaliadores com dados das avaliações e ciclos
                     avaliadores.forEach(avaliador => {
-                        if (avaliador.avaliacao?.avaliado_id) {
-                            avaliador.avaliacao.avaliado = avaliadosMap.get(avaliador.avaliacao.avaliado_id) || {
+                        const avaliacao = avaliacoesMap.get(avaliador.avaliacao_id);
+                        if (avaliacao) {
+                            avaliador.avaliacao = avaliacao;
+                            avaliador.avaliacao.ciclo = ciclosMap.get(avaliacao.ciclo_id);
+                            avaliador.avaliacao.avaliado = avaliadosMap.get(avaliacao.avaliado_id) || {
                                 nome: 'Usuário não encontrado',
                                 email: '',
                                 departamento: null,
@@ -4621,7 +5081,17 @@
                     <div class="card-modern">
                         <h5 class="mb-3"><i class="fas fa-edit me-2"></i> Avaliações Pendentes</h5>
                         ${avaliadores && avaliadores.length > 0 ? 
-                            avaliadores.filter(a => a.status === 'pendente' || a.status === 'em_andamento').map(a => {
+                            (() => {
+                                const pendentes = avaliadores.filter(a => a.status === 'pendente' || a.status === 'em_andamento');
+                                console.log('📋 Total de avaliadores:', avaliadores.length);
+                                console.log('📋 Avaliadores pendentes:', pendentes.length);
+                                console.log('📋 Status dos avaliadores:', avaliadores.map(a => ({ id: a.id, status: a.status, avaliacao_id: a.avaliacao_id })));
+                                
+                                if (pendentes.length === 0) {
+                                    return '<p class="text-muted">Nenhuma avaliação pendente. Todas as avaliações foram concluídas.</p>';
+                                }
+                                
+                                return pendentes.map(a => {
                                 const tipoLabel = {
                                     'auto': 'Auto-avaliação',
                                     'gestor': 'Avaliação do Gestor',
@@ -4650,13 +5120,20 @@
                                     <p style="color: rgba(255, 255, 255, 0.7); font-size: 0.85rem; margin-bottom: 0.5rem;">
                                         <i class="fas fa-tag me-2"></i><strong>Tipo:</strong> ${tipoLabel}
                                     </p>
+                                    ${a.avaliacao_id && a.id ? `
                                     <button class="btn btn-sm btn-primary-modern w-100" onclick="responderAvaliacao('${a.avaliacao_id}', '${a.id}')" style="pointer-events: auto;">
                                         <i class="fas fa-edit me-2"></i> Responder Avaliação
                                     </button>
+                                    ` : `
+                                    <button class="btn btn-sm btn-secondary w-100" disabled title="Dados incompletos - entre em contato com o RH">
+                                        <i class="fas fa-exclamation-triangle me-2"></i> Dados Incompletos
+                                    </button>
+                                    `}
                                 </div>
                             `;
-                            }).join('') : 
-                            '<p class="text-muted">Nenhuma avaliação pendente</p>'
+                                }).join('');
+                            })() : 
+                            '<p class="text-muted" style="padding: 2rem; text-align: center;"><i class="fas fa-info-circle me-2"></i>Nenhuma avaliação pendente. Você não foi designado como avaliador em nenhum ciclo ativo.</p>'
                         }
                     </div>
                 </div>
@@ -4679,6 +5156,21 @@
 
         // ========== RESPONDER AVALIAÇÃO ==========
         async function responderAvaliacao(avaliacaoId, avaliadorId) {
+            // Validar parâmetros
+            if (!avaliacaoId || avaliacaoId.trim() === '') {
+                console.error('❌ avaliacaoId não fornecido ou vazio');
+                showNotification('Erro: ID da avaliação não fornecido', 'error');
+                return;
+            }
+            
+            if (!avaliadorId || avaliadorId.trim() === '') {
+                console.error('❌ avaliadorId não fornecido ou vazio');
+                showNotification('Erro: ID do avaliador não fornecido', 'error');
+                return;
+            }
+            
+            console.log('📝 Respondendo avaliação:', { avaliacaoId, avaliadorId });
+            
             avaliacaoAtualId = avaliacaoId;
             avaliadorAtualId = avaliadorId;
             
@@ -4686,23 +5178,37 @@
             document.getElementById('avaliar-tab-item').style.display = 'block';
             document.getElementById('avaliar-tab').click();
             
-            // Carregar dados da avaliação
+            // Carregar dados da avaliação (sem relacionamento direto para evitar erros)
             const { data: avaliacao, error: err1 } = await supabaseClient
                 .from('avaliacao_360_avaliacoes')
-                .select(`
-                    *,
-                    ciclo:avaliacao_360_ciclos (
-                        nome,
-                        descricao
-                    )
-                `)
+                .select('*')
                 .eq('id', avaliacaoId)
                 .single();
             
-            if (err1 || !avaliacao) {
-                alert('Erro ao carregar avaliação');
+            if (err1) {
+                console.error('❌ Erro ao buscar avaliação:', err1);
+                tratarErro(err1, 'Erro ao carregar avaliação');
                 return;
             }
+            
+            // Buscar dados do ciclo separadamente
+            if (avaliacao && avaliacao.ciclo_id) {
+                const { data: cicloData } = await supabaseClient
+                    .from('avaliacao_360_ciclos')
+                    .select('nome, descricao')
+                    .eq('id', avaliacao.ciclo_id)
+                    .single();
+                
+                avaliacao.ciclo = cicloData || { nome: 'Ciclo não encontrado', descricao: '' };
+            }
+            
+            if (!avaliacao) {
+                console.error('❌ Avaliação não encontrada');
+                showNotification('Erro: Avaliação não encontrada', 'error');
+                return;
+            }
+            
+            console.log('✅ Avaliação carregada:', avaliacao);
             
             // Buscar dados do avaliado separadamente
             if (avaliacao.avaliado_id) {
@@ -4720,8 +5226,32 @@
                 .eq('ciclo_id', avaliacao.ciclo_id)
                 .order('ordem', { ascending: true });
             
+            console.log('📋 Competências encontradas:', competencias?.length || 0);
+            console.log('📋 Erro ao buscar competências:', err2);
+            
             if (err2) {
-                alert('Erro ao carregar competências');
+                console.error('❌ Erro ao carregar competências:', err2);
+                tratarErro(err2, 'Erro ao carregar competências');
+                return;
+            }
+            
+            if (!competencias || competencias.length === 0) {
+                const container = document.getElementById('avaliarContent');
+                container.innerHTML = `
+                    <div class="card-modern">
+                        <div class="alert alert-warning" style="background: linear-gradient(135deg, rgba(255, 193, 7, 0.2) 0%, rgba(255, 193, 7, 0.1) 100%); border: 1px solid rgba(255, 193, 7, 0.3); border-radius: 12px; padding: 2rem; text-align: center;">
+                            <i class="fas fa-exclamation-triangle" style="font-size: 3rem; color: #ffc107; margin-bottom: 1rem;"></i>
+                            <h4 style="color: rgba(255, 255, 255, 0.95); margin-bottom: 1rem;">Nenhuma Competência Cadastrada</h4>
+                            <p style="color: rgba(255, 255, 255, 0.8); margin-bottom: 1.5rem;">
+                                Este ciclo de avaliação ainda não possui competências cadastradas.<br>
+                                Entre em contato com o RH para adicionar as competências que serão avaliadas.
+                            </p>
+                            <button class="btn btn-primary-modern" onclick="document.getElementById('minhas-avaliacoes-tab').click()">
+                                <i class="fas fa-arrow-left me-2"></i> Voltar para Minhas Avaliações
+                            </button>
+                        </div>
+                    </div>
+                `;
                 return;
             }
             
@@ -4856,7 +5386,7 @@
                 
                 const valor = input.value;
                 if (!valor && competencia.obrigatoria) {
-                    alert(`A competência "${competencia.competencia}" é obrigatória`);
+                    showNotification(`A competência "${competencia.competencia}" é obrigatória`, 'warning');
                     return;
                 }
                 
@@ -4923,7 +5453,7 @@
                 .single();
             
             if (error || !avaliacao) {
-                alert('Erro ao carregar resultados');
+                showNotification('Erro ao carregar resultados', 'error');
                 return;
             }
             
@@ -5196,7 +5726,7 @@
                     .single();
                 
                 if (error || !avaliacao) {
-                    alert('Erro ao carregar dados para exportação');
+                    tratarErro(null, 'Erro ao carregar dados para exportação');
                     return;
                 }
                 
@@ -5323,10 +5853,9 @@
                 const fileName = `Avaliacao_360_${avaliacao.ciclo?.nome.replace(/\s/g, '_')}_${avaliacao.avaliado?.nome?.replace(/\s/g, '_') || 'Avaliado'}_${new Date().toISOString().split('T')[0]}.pdf`;
                 doc.save(fileName);
                 
-                alert('PDF exportado com sucesso!');
+                showNotification('PDF exportado com sucesso!', 'success');
             } catch (error) {
-                console.error('Erro ao exportar PDF:', error);
-                alert('Erro ao exportar PDF: ' + error.message);
+                tratarErro(error, 'Erro ao exportar PDF');
             }
         }
 
@@ -5682,12 +6211,12 @@
             const avaliadoId = document.getElementById('avaliadoComparacao').value;
             
             if (!ciclo1Id || !ciclo2Id || !avaliadoId) {
-                alert('Selecione ambos os ciclos e o avaliado');
+                showNotification('Selecione ambos os ciclos e o avaliado', 'warning');
                 return;
             }
             
             if (ciclo1Id === ciclo2Id) {
-                alert('Selecione ciclos diferentes para comparar');
+                showNotification('Selecione ciclos diferentes para comparar', 'warning');
                 return;
             }
             
@@ -5730,7 +6259,7 @@
             ]);
             
             if (avaliacao1.error || avaliacao2.error) {
-                alert('Erro ao carregar dados para comparação');
+                showNotification('Erro ao carregar dados para comparação', 'error');
                 return;
             }
             
@@ -5934,7 +6463,7 @@
             const avaliadoId = document.getElementById('relatorioAvaliado').value;
             
             if (!cicloId || !avaliadoId) {
-                alert('Selecione o ciclo e o avaliado');
+                showNotification('Selecione o ciclo e o avaliado', 'warning');
                 return;
             }
             
@@ -5949,7 +6478,7 @@
             if (avaliacao) {
                 await exportarResultados(avaliacao.id);
             } else {
-                alert('Avaliação não encontrada');
+                showNotification('Avaliação não encontrada', 'error');
             }
         }
 
@@ -5958,7 +6487,7 @@
             const departamento = document.getElementById('relatorioDepartamento').value;
             
             if (!cicloId || !departamento) {
-                alert('Selecione o ciclo e o departamento');
+                showNotification('Selecione o ciclo e o departamento', 'warning');
                 return;
             }
             
@@ -5979,7 +6508,7 @@
                 .eq('ciclo_id', cicloId);
             
             if (error) {
-                alert('Erro ao carregar dados');
+                showNotification('Erro ao carregar dados', 'error');
                 return;
             }
             
@@ -5988,7 +6517,7 @@
             const avaliacoesDept = avaliacoes.filter(a => a.avaliado?.departamento === departamento);
             
             if (avaliacoesDept.length === 0) {
-                alert('Nenhuma avaliação encontrada para este departamento');
+                showNotification('Nenhuma avaliação encontrada para este departamento', 'info');
                 return;
             }
             
@@ -6025,14 +6554,14 @@
             const fileName = `Relatorio_Departamento_${departamento.replace(/\s/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;
             doc.save(fileName);
             
-            alert('Relatório gerado com sucesso!');
+            showNotification('Relatório gerado com sucesso!', 'success');
         }
 
         async function gerarRelatorioGeral() {
             const cicloId = document.getElementById('relatorioGeralCiclo').value;
             
             if (!cicloId) {
-                alert('Selecione o ciclo');
+                showNotification('Selecione o ciclo', 'warning');
                 return;
             }
             
@@ -6053,7 +6582,7 @@
                 .eq('ciclo_id', cicloId);
             
             if (error) {
-                alert('Erro ao carregar dados');
+                showNotification('Erro ao carregar dados', 'error');
                 return;
             }
             
@@ -6117,7 +6646,7 @@
             const fileName = `Relatorio_Geral_${avaliacoes[0]?.ciclo?.nome?.replace(/\s/g, '_') || 'Ciclo'}_${new Date().toISOString().split('T')[0]}.pdf`;
             doc.save(fileName);
             
-            alert('Relatório geral gerado com sucesso!');
+            showNotification('Relatório geral gerado com sucesso!', 'success');
         }
 
         // ========== NOTIFICAÇÕES ==========
