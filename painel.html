@@ -347,21 +347,63 @@
             background: white;
             border-radius: 15px;
             box-shadow: var(--card-shadow);
-      overflow: hidden;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            height: calc(100vh - 400px);
+            min-height: 500px;
+            max-height: 800px;
+        }
+        
+        @media (max-height: 900px) {
+            .motoristas-container {
+                height: calc(100vh - 350px);
+                min-height: 400px;
+                max-height: 600px;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .motoristas-container {
+                height: calc(100vh - 300px);
+                min-height: 300px;
+                max-height: 500px;
+            }
         }
 
         .motoristas-header {
             background: linear-gradient(135deg, var(--primary), var(--secondary));
-      color: white;
+            color: white;
             padding: 1.5rem;
             display: flex;
             justify-content: space-between;
             align-items: center;
+            flex-shrink: 0;
         }
 
         .motoristas-list {
-            max-height: 600px;
+            flex: 1;
             overflow-y: auto;
+            overflow-x: hidden;
+            min-height: 0;
+        }
+        
+        .motoristas-list::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        .motoristas-list::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+        
+        .motoristas-list::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 10px;
+        }
+        
+        .motoristas-list::-webkit-scrollbar-thumb:hover {
+            background: #555;
         }
 
         .motorista-item {
@@ -462,26 +504,110 @@
 
         /* Pagination */
         .pagination-container {
-      background: white;
-            padding: 1.5rem;
+            background: #f8f9fa;
+            padding: 1rem 1.5rem;
             border-top: 1px solid #e9ecef;
+            flex-shrink: 0;
+        }
+        
+        @media (max-width: 768px) {
+            .pagination-container {
+                padding: 0.75rem 1rem;
+            }
+            
+            .pagination-container .row {
+                text-align: center;
+            }
+            
+            .pagination-container .col-12 {
+                margin-bottom: 0.5rem;
+            }
+            
+            .pagination-modern {
+                justify-content: center !important;
+                max-width: 100%;
+            }
+            
+            .page-btn {
+                padding: 0.4rem 0.8rem;
+                font-size: 0.85rem;
+            }
+        }
+        
+        /* Garantir que a paginação não ultrapasse o container */
+        nav[aria-label="Paginação"] {
+            overflow-x: auto;
+            overflow-y: hidden;
+            -webkit-overflow-scrolling: touch;
+            max-width: 100%;
+            width: 100%;
+        }
+        
+        nav[aria-label="Paginação"]::-webkit-scrollbar {
+            height: 4px;
+        }
+        
+        nav[aria-label="Paginação"]::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        
+        nav[aria-label="Paginação"]::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 2px;
+        }
+        
+        /* Garantir que os botões não quebrem o layout */
+        .pagination-container .col-md-4 {
+            min-width: 0;
+            overflow: hidden;
         }
 
         .pagination-modern {
-      display: flex;
-      justify-content: center;
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
             gap: 0.5rem;
+            flex-wrap: wrap;
+            list-style: none;
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            max-width: 100%;
+            box-sizing: border-box;
+        }
+        
+        @media (max-width: 768px) {
+            .pagination-modern {
+                justify-content: center;
+            }
+        }
+        
+        .pagination-modern li {
+            display: inline-flex;
+            align-items: center;
         }
 
         .page-btn {
             padding: 0.5rem 1rem;
             border: 1px solid #dee2e6;
             background: white;
-      color: var(--dark);
+            color: var(--dark);
             text-decoration: none;
-      border-radius: 8px;
+            border-radius: 8px;
             transition: var(--transition);
-    }
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            white-space: nowrap;
+            font-size: 0.9rem;
+            min-width: auto;
+            cursor: pointer;
+        }
+        
+        .page-btn span {
+            display: inline-flex;
+            align-items: center;
+        }
     
         .page-btn:hover {
       background: var(--primary);
@@ -495,9 +621,17 @@
             border-color: var(--primary);
         }
 
+        .page-btn.disabled,
         .page-btn:disabled {
             opacity: 0.5;
             cursor: not-allowed;
+            pointer-events: none;
+        }
+        
+        .page-btn.disabled:hover {
+            background: white;
+            color: var(--dark);
+            border-color: #dee2e6;
         }
 
         /* Buttons */
@@ -1165,27 +1299,42 @@
                     <div class="text-center py-5">
                         <i class="fas fa-truck fs-1 text-muted mb-3"></i>
                         <p class="text-muted">Selecione uma categoria para carregar os motoristas</p>
-              </div>
-            </div>
+                    </div>
+                </div>
 
                 <!-- Pagination -->
                 <div class="pagination-container">
-                    <div class="row align-items-center">
-                        <div class="col-md-6">
+                    <div class="row align-items-center g-2">
+                        <div class="col-12 col-md-4">
                             <small class="text-muted" id="infoPagina">
                                 Página 1 de 1 - Total: 0 motoristas
                             </small>
-              </div>
-                        <div class="col-md-6">
-                            <nav aria-label="Paginação">
-                                <ul class="pagination-modern justify-content-end mb-0" id="paginacao">
-                                    <!-- Paginação será gerada via JavaScript -->
-                </ul>
-              </nav>
                         </div>
+                        <div class="col-12 col-md-4">
+                            <div class="d-flex align-items-center justify-content-center gap-2 flex-wrap">
+                                <label for="inputPagina" class="mb-0 small text-muted">Ir para:</label>
+                                <input type="number" 
+                                       id="inputPagina" 
+                                       class="form-control form-control-sm" 
+                                       style="width: 70px;" 
+                                       min="1" 
+                                       placeholder="1"
+                                       onkeypress="if(event.key === 'Enter') navegarParaPagina()">
+                                <button class="btn btn-sm btn-primary" onclick="navegarParaPagina()" title="Ir para página">
+                                    <i class="fas fa-arrow-right"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="col-12 col-md-4">
+                            <nav aria-label="Paginação" class="d-flex justify-content-center justify-content-md-end w-100">
+                                <ul class="pagination-modern mb-0 w-100" id="paginacao" style="justify-content: center;">
+                                    <!-- Paginação será gerada via JavaScript -->
+                                </ul>
+                            </nav>
+                        </div>
+                    </div>
+                </div>
             </div>
-          </div>
-        </div>
 
             <!-- Message and Send -->
             <div class="modern-card">
@@ -2941,9 +3090,22 @@ const estados = [
 
             // Calcular paginação
             totalPages = Math.ceil(motoristas.length / itemsPerPage);
+            
+            // Garantir que currentPage não exceda totalPages
+            if (currentPage > totalPages && totalPages > 0) {
+                currentPage = totalPages;
+            }
+            
             const startIndex = (currentPage - 1) * itemsPerPage;
             const endIndex = startIndex + itemsPerPage;
             const motoristasPagina = motoristas.slice(startIndex, endIndex);
+            
+            // Atualizar o input de página
+            const inputPagina = document.getElementById('inputPagina');
+            if (inputPagina) {
+                inputPagina.value = currentPage;
+                inputPagina.max = totalPages;
+            }
 
             motoristasList.innerHTML = motoristasPagina.map(motorista => {
                 const temErroTelefone1 = motorista.telefone1_erro === true;
@@ -3536,8 +3698,26 @@ const estados = [
             // Limpar paginação anterior
             paginacao.innerHTML = '';
             
+            // Garantir que a paginação está centralizada em telas menores
+            if (window.innerWidth <= 768) {
+                paginacao.style.justifyContent = 'center';
+            } else {
+                paginacao.style.justifyContent = 'flex-end';
+            }
+            
+            // Atualizar o input de página
+            const inputPagina = document.getElementById('inputPagina');
+            if (inputPagina) {
+                inputPagina.value = currentPage;
+                inputPagina.max = totalPages || 1;
+            }
+            
             if (totalItens === 0) {
                 infoPagina.textContent = 'Página 1 de 1 - Total: 0 motoristas';
+                if (inputPagina) {
+                    inputPagina.value = 1;
+                    inputPagina.max = 1;
+                }
                 return;
             }
 
@@ -3557,7 +3737,7 @@ const estados = [
             // Botão Anterior
             const btnAnterior = document.createElement('li');
             const isAnteriorDisabled = currentPage === 1;
-            btnAnterior.innerHTML = `<a class="page-btn ${isAnteriorDisabled ? 'disabled' : ''}" href="#" onclick="return ${isAnteriorDisabled ? 'false' : `mudarPagina(${currentPage - 1})`};"><i class="fas fa-chevron-left me-1"></i>Anterior</a>`;
+            btnAnterior.innerHTML = `<a class="page-btn ${isAnteriorDisabled ? 'disabled' : ''}" href="#" onclick="event.preventDefault(); return ${isAnteriorDisabled ? 'false' : `mudarPagina(${currentPage - 1})`};"><i class="fas fa-chevron-left me-1"></i>Anterior</a>`;
             paginacao.appendChild(btnAnterior);
 
             // Páginas numeradas (otimizado para muitas páginas)
@@ -3567,7 +3747,7 @@ const estados = [
             // Primeira página
             if (inicioPagina > 1) {
                 const li = document.createElement('li');
-                li.innerHTML = `<a class="page-btn" href="#" onclick="mudarPagina(1)">1</a>`;
+                li.innerHTML = `<a class="page-btn" href="#" onclick="event.preventDefault(); mudarPagina(1); return false;">1</a>`;
                 paginacao.appendChild(li);
                 
                 if (inicioPagina > 2) {
@@ -3580,7 +3760,7 @@ const estados = [
             // Páginas do meio
             for (let i = inicioPagina; i <= fimPagina; i++) {
                 const li = document.createElement('li');
-                li.innerHTML = `<a class="page-btn ${i === currentPage ? 'active' : ''}" href="#" onclick="mudarPagina(${i})">${i}</a>`;
+                li.innerHTML = `<a class="page-btn ${i === currentPage ? 'active' : ''}" href="#" onclick="event.preventDefault(); mudarPagina(${i}); return false;">${i}</a>`;
                 paginacao.appendChild(li);
             }
 
@@ -3593,27 +3773,38 @@ const estados = [
                 }
                 
                 const li = document.createElement('li');
-                li.innerHTML = `<a class="page-btn" href="#" onclick="mudarPagina(${totalPages})">${totalPages}</a>`;
+                li.innerHTML = `<a class="page-btn" href="#" onclick="event.preventDefault(); mudarPagina(${totalPages}); return false;">${totalPages}</a>`;
                 paginacao.appendChild(li);
             }
 
             // Botão Próximo
             const btnProximo = document.createElement('li');
             const isProximoDisabled = currentPage === totalPages;
-            btnProximo.innerHTML = `<a class="page-btn ${isProximoDisabled ? 'disabled' : ''}" href="#" onclick="return ${isProximoDisabled ? 'false' : `mudarPagina(${currentPage + 1})`};"><i class="fas fa-chevron-right ms-1"></i>Próximo</a>`;
+            btnProximo.innerHTML = `<a class="page-btn ${isProximoDisabled ? 'disabled' : ''}" href="#" onclick="event.preventDefault(); return ${isProximoDisabled ? 'false' : `mudarPagina(${currentPage + 1})`};"><i class="fas fa-chevron-right ms-1"></i>Próximo</a>`;
             paginacao.appendChild(btnProximo);
 
-            // Adicionar informações extras se houver muitos resultados
+            // Adicionar informações extras se houver muitos resultados (apenas uma vez)
+            const paginacaoContainer = paginacao.parentNode;
+            let infoExtra = paginacaoContainer.querySelector('.info-extra-motoristas');
+            
             if (totalItens > 10000) {
-                const infoExtra = document.createElement('div');
-                infoExtra.className = 'mt-2 text-center';
-                infoExtra.innerHTML = `
-                    <small class="text-muted">
-                        <i class="fas fa-info-circle me-1"></i>
-                        Sistema otimizado para ${totalItens.toLocaleString('pt-BR')} motoristas
-                    </small>
-                `;
-                paginacao.parentNode.appendChild(infoExtra);
+                if (!infoExtra) {
+                    // Criar apenas se não existir
+                    infoExtra = document.createElement('div');
+                    infoExtra.className = 'info-extra-motoristas mt-2 text-center';
+                    infoExtra.innerHTML = `
+                        <small class="text-muted">
+                            <i class="fas fa-info-circle me-1"></i>
+                            Sistema otimizado para ${totalItens.toLocaleString('pt-BR')} motoristas
+                        </small>
+                    `;
+                    paginacaoContainer.appendChild(infoExtra);
+                }
+            } else {
+                // Remover se não precisar mais
+                if (infoExtra) {
+                    infoExtra.remove();
+                }
             }
         }
 
@@ -3622,6 +3813,30 @@ const estados = [
             
             currentPage = pagina;
             atualizarListaMotoristas(motoristasFiltrados);
+            // Atualizar o input de página
+            const inputPagina = document.getElementById('inputPagina');
+            if (inputPagina) {
+                inputPagina.value = pagina;
+            }
+        }
+        
+        function navegarParaPagina() {
+            const inputPagina = document.getElementById('inputPagina');
+            if (!inputPagina) return;
+            
+            const pagina = parseInt(inputPagina.value);
+            if (isNaN(pagina) || pagina < 1) {
+                inputPagina.value = currentPage;
+                return;
+            }
+            
+            if (pagina > totalPages) {
+                inputPagina.value = totalPages;
+                mudarPagina(totalPages);
+                return;
+            }
+            
+            mudarPagina(pagina);
         }
 
         let imagemSelecionada = null;
