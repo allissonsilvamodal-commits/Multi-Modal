@@ -1,0 +1,875 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Realizar Avaliação - Multimodal</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <style>
+        :root {
+            --primary: #667eea;
+            --secondary: #764ba2;
+            --accent: #f093fb;
+            --success: #11998e;
+            --warning: #ffc107;
+            --danger: #dc3545;
+            --info: #17a2b8;
+            --dark: #0f0f23;
+            --light: #f8f9fa;
+            --white: #ffffff;
+            --glass: rgba(255, 255, 255, 0.1);
+            --glass-border: rgba(255, 255, 255, 0.2);
+            --text-primary: #ffffff;
+            --text-secondary: rgba(255, 255, 255, 0.95);
+            --text-muted: rgba(255, 255, 255, 0.85);
+            --border-radius: 20px;
+            --box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            --transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 50%, #16213e 100%);
+            min-height: 100vh;
+            color: var(--text-primary);
+            padding-top: 80px;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: 
+                radial-gradient(circle at 20% 30%, rgba(102, 126, 234, 0.15) 0%, transparent 50%),
+                radial-gradient(circle at 80% 70%, rgba(118, 75, 162, 0.15) 0%, transparent 50%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .navbar {
+            background: rgba(15, 15, 35, 0.95);
+            backdrop-filter: blur(20px) saturate(180%);
+            border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.4), 0 0 20px rgba(102, 126, 234, 0.1);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            padding: 1rem 0;
+        }
+
+        .navbar .btn-outline-light {
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            transition: var(--transition);
+        }
+
+        .navbar .btn-outline-light:hover {
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.3), rgba(118, 75, 162, 0.3));
+            border-color: rgba(255, 255, 255, 0.4);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        }
+
+        .navbar-brand {
+            font-weight: 700;
+            font-size: 1.5rem;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-shadow: 0 0 30px rgba(102, 126, 234, 0.5);
+            transition: var(--transition);
+        }
+
+        .navbar-brand:hover {
+            transform: scale(1.05);
+        }
+
+        .card-modern {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.06) 100%);
+            backdrop-filter: blur(30px) saturate(180%);
+            border: 2px solid rgba(255, 255, 255, 0.15);
+            border-radius: 24px;
+            padding: 2.5rem;
+            margin-bottom: 2rem;
+            box-shadow: 
+                0 8px 32px rgba(0, 0, 0, 0.4),
+                0 0 0 1px rgba(255, 255, 255, 0.05) inset,
+                0 0 40px rgba(102, 126, 234, 0.1);
+            transition: var(--transition);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card-modern:hover {
+            transform: translateY(-8px) scale(1.01);
+            box-shadow: 
+                0 16px 48px rgba(0, 0, 0, 0.5),
+                0 0 0 1px rgba(255, 255, 255, 0.1) inset,
+                0 0 60px rgba(102, 126, 234, 0.3);
+            border-color: rgba(255, 255, 255, 0.25);
+        }
+
+        .btn-primary-modern {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            border-radius: 12px;
+            padding: 0.875rem 2rem;
+            font-weight: 600;
+            font-size: 0.95rem;
+            color: white;
+            position: relative;
+            overflow: hidden;
+            transition: var(--transition);
+            box-shadow: 
+                0 4px 15px rgba(102, 126, 234, 0.4),
+                0 0 20px rgba(102, 126, 234, 0.2) inset;
+        }
+
+        .btn-primary-modern:hover {
+            transform: translateY(-3px) scale(1.05);
+            box-shadow: 
+                0 8px 25px rgba(102, 126, 234, 0.6),
+                0 0 30px rgba(102, 126, 234, 0.3) inset;
+        }
+
+        .status-pendente {
+            background: linear-gradient(135deg, rgba(255, 193, 7, 0.3), rgba(255, 193, 7, 0.2));
+            color: #ffd700;
+            border: 1px solid rgba(255, 193, 7, 0.4);
+            text-shadow: 0 0 10px rgba(255, 193, 7, 0.5);
+            font-weight: 600;
+            padding: 0.5rem 1.25rem;
+            border-radius: 25px;
+            font-size: 0.85rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .status-em-andamento {
+            background: linear-gradient(135deg, rgba(23, 162, 184, 0.3), rgba(23, 162, 184, 0.2));
+            color: #4dd0e1;
+            border: 1px solid rgba(23, 162, 184, 0.4);
+            text-shadow: 0 0 10px rgba(23, 162, 184, 0.5);
+            font-weight: 600;
+            padding: 0.5rem 1.25rem;
+            border-radius: 25px;
+            font-size: 0.85rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .form-control, .form-select {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.08) 100%);
+            border: 2px solid rgba(255, 255, 255, 0.15);
+            color: var(--text-primary) !important;
+            border-radius: 12px;
+            padding: 0.75rem 1.25rem;
+            transition: var(--transition);
+            backdrop-filter: blur(10px);
+        }
+
+        .form-select option {
+            background: rgba(15, 15, 35, 0.98) !important;
+            color: #ffffff !important;
+            padding: 0.5rem;
+        }
+
+        .form-control:focus, .form-select:focus {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.18) 0%, rgba(255, 255, 255, 0.12) 100%);
+            border-color: #667eea;
+            color: var(--text-primary) !important;
+            box-shadow: 
+                0 0 0 0.25rem rgba(102, 126, 234, 0.3),
+                0 0 20px rgba(102, 126, 234, 0.2);
+            transform: translateY(-2px);
+        }
+
+        .form-label {
+            color: var(--text-secondary);
+            font-weight: 500;
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+        }
+
+        .competencia-item {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.04) 100%);
+            border: 2px solid rgba(255, 255, 255, 0.12);
+            border-radius: 18px;
+            padding: 1.75rem;
+            margin-bottom: 1.25rem;
+            transition: var(--transition);
+            backdrop-filter: blur(10px);
+        }
+
+        .competencia-item:hover {
+            transform: translateX(5px);
+            border-color: rgba(102, 126, 234, 0.4);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.2);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 5rem 2rem;
+            color: rgba(255, 255, 255, 0.9);
+        }
+
+        .empty-state i {
+            font-size: 5rem;
+            margin-bottom: 1.5rem;
+            opacity: 0.5;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .notification-toast {
+            position: fixed;
+            top: 100px;
+            right: 20px;
+            z-index: 9999;
+            min-width: 300px;
+            background: rgba(15, 15, 35, 0.98);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 1rem;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+            animation: slideInRight 0.3s ease;
+        }
+
+        @keyframes slideInRight {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        .notification-toast.success {
+            border-left: 4px solid var(--success);
+        }
+
+        .notification-toast.error {
+            border-left: 4px solid var(--danger);
+        }
+
+        .notification-toast.warning {
+            border-left: 4px solid var(--warning);
+        }
+
+        .text-muted {
+            color: var(--text-muted) !important;
+        }
+
+        .text-white {
+            color: var(--text-primary) !important;
+        }
+
+        h2, h3, h4, h5 {
+            color: var(--text-primary);
+            font-weight: 700;
+        }
+
+        h2 {
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        ::-webkit-scrollbar {
+            width: 10px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            border-radius: 10px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: linear-gradient(135deg, var(--accent), var(--primary));
+        }
+    </style>
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark fixed-top">
+        <div class="container-fluid px-4">
+            <a class="navbar-brand d-flex align-items-center" href="portal.html">
+                <i class="fas fa-arrow-left me-2" style="font-size: 1.2rem;"></i>
+                <span>Realizar Avaliação</span>
+            </a>
+            <div class="ms-auto d-flex align-items-center gap-3">
+                <span class="text-white fw-medium" id="currentUser"></span>
+                <button class="btn btn-outline-light btn-sm" onclick="window.location.href='portal.html'" style="border-radius: 12px; padding: 0.5rem 1rem; backdrop-filter: blur(10px);">
+                    <i class="fas fa-home me-1"></i> Portal
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid py-4">
+        <div id="avaliacoesList" class="row">
+            <!-- Lista de avaliações será carregada aqui -->
+        </div>
+
+        <div id="formularioAvaliacao" style="display: none;">
+            <!-- Formulário de resposta será carregado aqui -->
+        </div>
+    </div>
+
+    <script>
+        let supabaseClient;
+        let currentUserId;
+        let avaliacaoAtualId = null;
+        let avaliadorAtualId = null;
+
+        // Função para exibir notificações
+        function showNotification(message, type = 'info') {
+            const toast = document.createElement('div');
+            toast.className = `notification-toast ${type}`;
+            toast.innerHTML = `
+                <div class="d-flex align-items-center">
+                    <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : type === 'warning' ? 'exclamation-triangle' : 'info-circle'} me-2"></i>
+                    <span>${message}</span>
+                </div>
+            `;
+            document.body.appendChild(toast);
+            setTimeout(() => {
+                toast.style.animation = 'slideInRight 0.3s ease reverse';
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        // Função auxiliar para buscar dados dos avaliados
+        async function buscarDadosAvaliados(avaliadoIds) {
+            if (!avaliadoIds || avaliadoIds.length === 0) return new Map();
+            
+            const { data: avaliadosData } = await supabaseClient
+                .from('user_profiles')
+                .select('id, nome, email, departamento, cargo')
+                .in('id', avaliadoIds);
+            
+            if (!avaliadosData) return new Map();
+            
+            return new Map(avaliadosData.map(a => [a.id, a]));
+        }
+
+        // Carregar avaliações pendentes
+        async function loadAvaliacoesPendentes() {
+            try {
+                if (!currentUserId) return;
+
+                // Buscar avaliações onde sou avaliador
+                const { data: avaliadores, error: err2 } = await supabaseClient
+                    .from('avaliacao_360_avaliadores')
+                    .select('*')
+                    .eq('avaliador_id', currentUserId)
+                    .in('status', ['pendente', 'em_andamento'])
+                    .order('convidado_em', { ascending: false });
+                
+                console.log('🔍 Avaliadores encontrados:', avaliadores?.length || 0);
+                
+                if (err2) {
+                    console.error('❌ Erro ao buscar avaliadores:', err2);
+                    showNotification('Erro ao carregar avaliações', 'error');
+                    return;
+                }
+
+                if (!avaliadores || avaliadores.length === 0) {
+                    document.getElementById('avaliacoesList').innerHTML = `
+                        <div class="col-12">
+                            <div class="card-modern">
+                                <div class="empty-state">
+                                    <i class="fas fa-clipboard-check"></i>
+                                    <h4>Nenhuma Avaliação Pendente</h4>
+                                    <p>Você não foi designado como avaliador em nenhum ciclo de avaliação ativo.</p>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                // Buscar dados das avaliações
+                const avaliacaoIds = [...new Set(avaliadores.map(a => a.avaliacao_id).filter(Boolean))];
+                
+                if (avaliacaoIds.length > 0) {
+                    // Buscar avaliações
+                    const { data: avaliacoesData } = await supabaseClient
+                        .from('avaliacao_360_avaliacoes')
+                        .select('*')
+                        .in('id', avaliacaoIds);
+                    
+                    // Buscar ciclos
+                    const cicloIds = [...new Set((avaliacoesData || []).map(a => a.ciclo_id).filter(Boolean))];
+                    const { data: ciclosData } = await supabaseClient
+                        .from('avaliacao_360_ciclos')
+                        .select('*')
+                        .in('id', cicloIds);
+                    
+                    // Criar mapas para facilitar acesso
+                    const avaliacoesMap = new Map((avaliacoesData || []).map(a => [a.id, a]));
+                    const ciclosMap = new Map((ciclosData || []).map(c => [c.id, c]));
+                    
+                    // Buscar dados dos avaliados
+                    const avaliadoIds = [...new Set((avaliacoesData || []).map(a => a.avaliado_id).filter(Boolean))];
+                    const avaliadosMap = avaliadoIds.length > 0 ? await buscarDadosAvaliados(avaliadoIds) : new Map();
+                    
+                    // Enriquecer avaliadores com dados das avaliações e ciclos
+                    avaliadores.forEach(avaliador => {
+                        const avaliacao = avaliacoesMap.get(avaliador.avaliacao_id);
+                        if (avaliacao) {
+                            avaliador.avaliacao = avaliacao;
+                            avaliador.avaliacao.ciclo = ciclosMap.get(avaliacao.ciclo_id);
+                            avaliador.avaliacao.avaliado = avaliadosMap.get(avaliacao.avaliado_id) || {
+                                nome: 'Usuário não encontrado',
+                                email: '',
+                                departamento: null,
+                                cargo: null
+                            };
+                        }
+                    });
+                }
+                
+                const container = document.getElementById('avaliacoesList');
+                let html = '';
+                
+                avaliadores.forEach(a => {
+                    const tipoLabel = {
+                        'auto': 'Auto-avaliação',
+                        'gestor': 'Avaliação do Gestor',
+                        'par': 'Avaliação de Par',
+                        'subordinado': 'Avaliação de Subordinado'
+                    }[a.tipo_avaliador] || a.tipo_avaliador;
+                    
+                    const avaliado = a.avaliacao?.avaliado || {};
+                    const statusClass = a.status === 'pendente' ? 'status-pendente' : 'status-em-andamento';
+                    
+                    html += `
+                        <div class="col-md-6 col-lg-4 mb-4">
+                            <div class="card-modern">
+                                <div class="d-flex justify-content-between align-items-start mb-3">
+                                    <h5 style="color: rgba(255, 255, 255, 0.95);">${a.avaliacao?.ciclo?.nome || 'Ciclo não encontrado'}</h5>
+                                    <span class="${statusClass}">
+                                        ${a.status === 'pendente' ? 'Pendente' : 'Em Andamento'}
+                                    </span>
+                                </div>
+                                <div class="mb-3" style="padding: 1rem; background: rgba(102, 126, 234, 0.1); border-radius: 8px; border-left: 3px solid var(--primary);">
+                                    <div style="color: rgba(255, 255, 255, 0.95); font-weight: 600; font-size: 1.1rem; margin-bottom: 0.5rem;">
+                                        <i class="fas fa-user me-2"></i>${avaliado.nome || avaliado.email || 'Usuário'}
+                                    </div>
+                                    ${avaliado.cargo ? `<div style="color: rgba(255, 255, 255, 0.8); font-size: 0.9rem; margin-bottom: 0.25rem;"><i class="fas fa-briefcase me-2"></i>${avaliado.cargo}</div>` : ''}
+                                    ${avaliado.departamento ? `<div style="color: rgba(255, 255, 255, 0.8); font-size: 0.9rem;"><i class="fas fa-building me-2"></i>${avaliado.departamento}</div>` : ''}
+                                </div>
+                                <p style="color: rgba(255, 255, 255, 0.7); font-size: 0.85rem; margin-bottom: 1rem;">
+                                    <i class="fas fa-tag me-2"></i><strong>Tipo:</strong> ${tipoLabel}
+                                </p>
+                                ${a.avaliacao_id && a.id ? `
+                                <button class="btn btn-primary-modern w-100" onclick="responderAvaliacao('${a.avaliacao_id}', '${a.id}')">
+                                    <i class="fas fa-edit me-2"></i> Responder Avaliação
+                                </button>
+                                ` : `
+                                <button class="btn btn-secondary w-100" disabled title="Dados incompletos - entre em contato com o RH">
+                                    <i class="fas fa-exclamation-triangle me-2"></i> Dados Incompletos
+                                </button>
+                                `}
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                container.innerHTML = html;
+            } catch (error) {
+                console.error('❌ Erro ao carregar avaliações:', error);
+                showNotification('Erro ao carregar avaliações pendentes', 'error');
+            }
+        }
+
+        // Responder avaliação
+        async function responderAvaliacao(avaliacaoId, avaliadorId) {
+            try {
+                if (!avaliacaoId || !avaliadorId) {
+                    showNotification('Erro: IDs não fornecidos', 'error');
+                    return;
+                }
+                
+                avaliacaoAtualId = avaliacaoId;
+                avaliadorAtualId = avaliadorId;
+                
+                // Carregar dados da avaliação
+                const { data: avaliacao, error: err1 } = await supabaseClient
+                    .from('avaliacao_360_avaliacoes')
+                    .select('*')
+                    .eq('id', avaliacaoId)
+                    .single();
+                
+                if (err1 || !avaliacao) {
+                    showNotification('Erro ao carregar avaliação', 'error');
+                    return;
+                }
+                
+                // Buscar dados do ciclo
+                const { data: cicloData } = await supabaseClient
+                    .from('avaliacao_360_ciclos')
+                    .select('nome, descricao')
+                    .eq('id', avaliacao.ciclo_id)
+                    .single();
+                
+                avaliacao.ciclo = cicloData || { nome: 'Ciclo não encontrado', descricao: '' };
+                
+                // Buscar dados do avaliado
+                const avaliadosMap = await buscarDadosAvaliados([avaliacao.avaliado_id]);
+                avaliacao.avaliado = avaliadosMap.get(avaliacao.avaliado_id) || {
+                    nome: 'Usuário não encontrado',
+                    email: ''
+                };
+                
+                // Carregar competências
+                const { data: competencias, error: err2 } = await supabaseClient
+                    .from('avaliacao_360_competencias')
+                    .select('*')
+                    .eq('ciclo_id', avaliacao.ciclo_id)
+                    .order('ordem', { ascending: true });
+                
+                if (err2) {
+                    showNotification('Erro ao carregar competências', 'error');
+                    return;
+                }
+                
+                if (!competencias || competencias.length === 0) {
+                    showNotification('Nenhuma competência cadastrada para este ciclo', 'warning');
+                    return;
+                }
+                
+                // Carregar respostas existentes
+                const { data: respostas } = await supabaseClient
+                    .from('avaliacao_360_respostas')
+                    .select('*')
+                    .eq('avaliacao_id', avaliacaoId)
+                    .eq('avaliador_id', avaliadorId);
+                
+                const respostasMap = {};
+                if (respostas) {
+                    respostas.forEach(r => {
+                        respostasMap[r.competencia_id] = r;
+                    });
+                }
+                
+                // Buscar tipo de avaliador
+                const { data: avaliadorData } = await supabaseClient
+                    .from('avaliacao_360_avaliadores')
+                    .select('tipo_avaliador')
+                    .eq('id', avaliadorId)
+                    .single();
+                
+                const tipoAvaliador = avaliadorData?.tipo_avaliador || 'par';
+                const tipoLabel = {
+                    'auto': 'Auto-avaliação',
+                    'gestor': 'Avaliação do Gestor',
+                    'par': 'Avaliação de Par (Colega)',
+                    'subordinado': 'Avaliação de Subordinado'
+                }[tipoAvaliador] || 'Avaliação';
+                
+                // Renderizar formulário
+                const container = document.getElementById('formularioAvaliacao');
+                const listaContainer = document.getElementById('avaliacoesList');
+                
+                listaContainer.style.display = 'none';
+                container.style.display = 'block';
+                
+                container.innerHTML = `
+                    <div class="card-modern">
+                        <div class="mb-4">
+                            <button class="btn btn-secondary mb-3" onclick="voltarParaLista()">
+                                <i class="fas fa-arrow-left me-2"></i> Voltar para Lista
+                            </button>
+                            <div style="padding: 1.5rem; background: linear-gradient(135deg, rgba(102, 126, 234, 0.15) 0%, rgba(102, 126, 234, 0.05) 100%); border-radius: 12px; border-left: 4px solid var(--primary);">
+                                <h3 class="mb-2" style="color: rgba(255, 255, 255, 0.95);">
+                                    <i class="fas fa-clipboard-list me-2"></i>${avaliacao.ciclo?.nome}
+                                </h3>
+                                <p style="color: rgba(255, 255, 255, 0.8); margin-bottom: 1rem;">
+                                    <i class="fas fa-tag me-2"></i><strong>Tipo de Avaliação:</strong> ${tipoLabel}
+                                </p>
+                                <div style="padding: 1rem; background: rgba(255, 255, 255, 0.05); border-radius: 8px;">
+                                    <div style="color: rgba(255, 255, 255, 0.95); font-size: 1.1rem; font-weight: 600; margin-bottom: 0.5rem;">
+                                        <i class="fas fa-user me-2"></i>Você está avaliando:
+                                    </div>
+                                    <div style="color: rgba(255, 255, 255, 0.95); font-size: 1.3rem; font-weight: 700; margin-bottom: 0.25rem;">
+                                        ${avaliacao.avaliado?.nome || avaliacao.avaliado?.email || 'Usuário'}
+                                    </div>
+                                    ${avaliacao.avaliado?.cargo ? `<div style="color: rgba(255, 255, 255, 0.85); font-size: 1rem; margin-bottom: 0.25rem;"><i class="fas fa-briefcase me-2"></i>${avaliacao.avaliado.cargo}</div>` : ''}
+                                    ${avaliacao.avaliado?.departamento ? `<div style="color: rgba(255, 255, 255, 0.85); font-size: 1rem;"><i class="fas fa-building me-2"></i>${avaliacao.avaliado.departamento}</div>` : ''}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <form id="formAvaliacao">
+                            ${competencias.map((c, index) => {
+                                const resposta = respostasMap[c.id];
+                                return `
+                                    <div class="competencia-item">
+                                        <h6 style="color: rgba(255, 255, 255, 0.95); margin-bottom: 0.5rem;">${c.categoria} - ${c.competencia}</h6>
+                                        ${c.descricao ? `<p class="text-muted mb-3">${c.descricao}</p>` : ''}
+                                        
+                                        ${c.tipo_avaliacao === 'numerica' ? `
+                                            <div class="mb-3">
+                                                <label class="form-label">Nota (${c.escala_min} a ${c.escala_max})</label>
+                                                <input type="number" 
+                                                       class="form-control" 
+                                                       id="resposta_${c.id}" 
+                                                       min="${c.escala_min}" 
+                                                       max="${c.escala_max}" 
+                                                       value="${resposta?.valor_numerico || ''}"
+                                                       ${c.obrigatoria ? 'required' : ''}>
+                                            </div>
+                                        ` : ''}
+                                        
+                                        ${c.tipo_avaliacao === 'texto' ? `
+                                            <div class="mb-3">
+                                                <label class="form-label">Comentário</label>
+                                                <textarea class="form-control" 
+                                                          id="resposta_${c.id}" 
+                                                          rows="3"
+                                                          ${c.obrigatoria ? 'required' : ''}>${resposta?.valor_texto || ''}</textarea>
+                                            </div>
+                                        ` : ''}
+                                        
+                                        ${c.tipo_avaliacao === 'escala_likert' ? `
+                                            <div class="mb-3">
+                                                <label class="form-label">Escala Likert</label>
+                                                <select class="form-select" id="resposta_${c.id}" ${c.obrigatoria ? 'required' : ''}>
+                                                    <option value="">Selecione...</option>
+                                                    <option value="discordo_totalmente" ${resposta?.valor_texto === 'discordo_totalmente' ? 'selected' : ''}>Discordo Totalmente</option>
+                                                    <option value="discordo" ${resposta?.valor_texto === 'discordo' ? 'selected' : ''}>Discordo</option>
+                                                    <option value="neutro" ${resposta?.valor_texto === 'neutro' ? 'selected' : ''}>Neutro</option>
+                                                    <option value="concordo" ${resposta?.valor_texto === 'concordo' ? 'selected' : ''}>Concordo</option>
+                                                    <option value="concordo_totalmente" ${resposta?.valor_texto === 'concordo_totalmente' ? 'selected' : ''}>Concordo Totalmente</option>
+                                                </select>
+                                            </div>
+                                        ` : ''}
+                                    </div>
+                                `;
+                            }).join('')}
+                            
+                            <div class="mt-4">
+                                <button type="button" class="btn btn-primary-modern" onclick="salvarRespostas()">
+                                    <i class="fas fa-save me-2"></i> Salvar Respostas
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                `;
+            } catch (error) {
+                console.error('❌ Erro ao carregar formulário:', error);
+                showNotification('Erro ao carregar formulário de avaliação', 'error');
+            }
+        }
+
+        // Voltar para lista
+        function voltarParaLista() {
+            document.getElementById('avaliacoesList').style.display = 'block';
+            document.getElementById('formularioAvaliacao').style.display = 'none';
+            avaliacaoAtualId = null;
+            avaliadorAtualId = null;
+        }
+
+        // Salvar respostas
+        async function salvarRespostas() {
+            try {
+                // Carregar competências novamente
+                const { data: avaliacao } = await supabaseClient
+                    .from('avaliacao_360_avaliacoes')
+                    .select('ciclo_id')
+                    .eq('id', avaliacaoAtualId)
+                    .single();
+                
+                const { data: competencias } = await supabaseClient
+                    .from('avaliacao_360_competencias')
+                    .select('*')
+                    .eq('ciclo_id', avaliacao.ciclo_id);
+                
+                // Coletar respostas
+                const respostas = [];
+                for (const competencia of competencias) {
+                    const input = document.getElementById(`resposta_${competencia.id}`);
+                    if (!input) continue;
+                    
+                    const valor = input.value;
+                    if (!valor && competencia.obrigatoria) {
+                        showNotification(`A competência "${competencia.competencia}" é obrigatória`, 'warning');
+                        return;
+                    }
+                    
+                    if (valor) {
+                        respostas.push({
+                            avaliacao_id: avaliacaoAtualId,
+                            avaliador_id: avaliadorAtualId,
+                            competencia_id: competencia.id,
+                            valor_numerico: competencia.tipo_avaliacao === 'numerica' ? parseFloat(valor) : null,
+                            valor_texto: competencia.tipo_avaliacao !== 'numerica' ? valor : null
+                        });
+                    }
+                }
+                
+                // Salvar respostas (verificar se existe antes de inserir/atualizar)
+                for (const resposta of respostas) {
+                    // Verificar se já existe uma resposta
+                    const { data: respostaExistente } = await supabaseClient
+                        .from('avaliacao_360_respostas')
+                        .select('id')
+                        .eq('avaliacao_id', resposta.avaliacao_id)
+                        .eq('avaliador_id', resposta.avaliador_id)
+                        .eq('competencia_id', resposta.competencia_id)
+                        .maybeSingle();
+                    
+                    if (respostaExistente) {
+                        // Atualizar resposta existente
+                        const { error } = await supabaseClient
+                            .from('avaliacao_360_respostas')
+                            .update({
+                                valor_numerico: resposta.valor_numerico,
+                                valor_texto: resposta.valor_texto,
+                                respondido_em: new Date().toISOString()
+                            })
+                            .eq('id', respostaExistente.id);
+                        
+                        if (error) {
+                            console.error('Erro ao atualizar resposta:', error);
+                            showNotification('Erro ao atualizar resposta', 'error');
+                            return;
+                        }
+                    } else {
+                        // Inserir nova resposta
+                        const { error } = await supabaseClient
+                            .from('avaliacao_360_respostas')
+                            .insert(resposta);
+                        
+                        if (error) {
+                            console.error('Erro ao inserir resposta:', error);
+                            showNotification('Erro ao salvar resposta', 'error');
+                            return;
+                        }
+                    }
+                }
+                
+                // Atualizar status do avaliador
+                await supabaseClient
+                    .from('avaliacao_360_avaliadores')
+                    .update({ 
+                        status: 'concluida',
+                        respondido_em: new Date().toISOString()
+                    })
+                    .eq('id', avaliadorAtualId);
+                
+                showNotification('Avaliação salva com sucesso!', 'success');
+                
+                // Recarregar lista
+                await loadAvaliacoesPendentes();
+                voltarParaLista();
+            } catch (error) {
+                console.error('❌ Erro ao salvar respostas:', error);
+                showNotification('Erro ao salvar avaliação', 'error');
+            }
+        }
+
+        // Inicialização
+        async function init() {
+            try {
+                if (!window.supabase) {
+                    console.error('❌ window.supabase não está disponível');
+                    showNotification('Erro ao carregar Supabase. Recarregue a página.', 'error');
+                    return;
+                }
+                
+                // Obter configuração do Supabase do servidor
+                let supabaseUrl;
+                let supabaseAnonKey;
+                
+                try {
+                    const configResponse = await fetch('/api/supabase-config');
+                    if (configResponse.ok) {
+                        const config = await configResponse.json();
+                        if (config.supabaseUrl && config.supabaseAnonKey) {
+                            supabaseUrl = config.supabaseUrl;
+                            supabaseAnonKey = config.supabaseAnonKey;
+                            console.log('✅ Configuração do Supabase obtida da API');
+                        }
+                    }
+                } catch (apiError) {
+                    console.warn('⚠️ Não foi possível obter configuração da API, usando valores padrão:', apiError);
+                    // Fallback para valores padrão (se necessário)
+                    supabaseUrl = 'https://ssicipijonlducmcjgty.supabase.co';
+                    supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNzaWNpcGlqb25sZHVjbWNqZ3R5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MjQ2MjA0NDUsImV4cCI6MjA0MDE5NjQ0NX0.KOa5ZTwKCiDIDIvsnC_pb_4oHlNGCgByzHi0_xBT-Gc';
+                }
+                
+                if (!supabaseUrl || !supabaseAnonKey) {
+                    showNotification('Erro ao obter configuração do Supabase', 'error');
+                    return;
+                }
+                
+                supabaseClient = window.supabase.createClient(supabaseUrl, supabaseAnonKey);
+                
+                const { data: { session }, error: sessionError } = await supabaseClient.auth.getSession();
+                
+                if (sessionError || !session) {
+                    window.location.href = 'login.html';
+                    return;
+                }
+                
+                currentUserId = session.user.id;
+                
+                // Carregar nome do usuário
+                const { data: profile } = await supabaseClient
+                    .from('user_profiles')
+                    .select('nome')
+                    .eq('id', currentUserId)
+                    .maybeSingle();
+                
+                if (profile?.nome) {
+                    document.getElementById('currentUser').textContent = profile.nome;
+                }
+                
+                // Carregar avaliações pendentes
+                await loadAvaliacoesPendentes();
+            } catch (error) {
+                console.error('❌ Erro na inicialização:', error);
+                showNotification('Erro ao inicializar página', 'error');
+            }
+        }
+
+        // Inicializar quando o DOM estiver pronto
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', init);
+        } else {
+            init();
+        }
+    </script>
+</body>
+</html>
+

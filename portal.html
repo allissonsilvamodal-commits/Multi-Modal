@@ -1251,9 +1251,9 @@
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="avaliacao-360.html">
-                            <i class="fas fa-chart-pie me-1"></i>Avaliação 360º
-                            <span class="badge-notification" id="badgeAvaliacao360" style="display: none; background: #ef4444; color: white; border-radius: 10px; padding: 0.15rem 0.4rem; font-size: 0.7rem; font-weight: 700; margin-left: 0.5rem;">0</span>
+                        <a class="nav-link" href="realizar-avaliacao.html">
+                            <i class="fas fa-clipboard-check me-1"></i>Realizar Avaliação
+                            <span class="badge-notification" id="badgeRealizarAvaliacao" style="display: none; background: #ef4444; color: white; border-radius: 10px; padding: 0.15rem 0.4rem; font-size: 0.7rem; font-weight: 700; margin-left: 0.5rem;">0</span>
                         </a>
                     </li>
                 </ul>
@@ -1691,8 +1691,15 @@
                     throw error;
                 }
 
-                const unreadCount = notificacoes ? notificacoes.length : 0;
-                const badgeElement = document.getElementById('badgeAvaliacao360');
+                // Contar avaliações pendentes onde o usuário é avaliador
+                const { data: avaliadores, error: errAvaliadores } = await supabase
+                    .from('avaliacao_360_avaliadores')
+                    .select('id')
+                    .eq('avaliador_id', currentUser.id)
+                    .in('status', ['pendente', 'em_andamento']);
+
+                const unreadCount = avaliadores ? avaliadores.length : 0;
+                const badgeElement = document.getElementById('badgeRealizarAvaliacao');
                 
                 if (badgeElement) {
                     if (unreadCount > 0) {

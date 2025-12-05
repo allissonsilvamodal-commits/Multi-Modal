@@ -2264,9 +2264,12 @@
                 if (profile) {
                     currentUserData = profile;
                     // Verificar e tentar executar migration das colunas de vistos se necessário
-                    // Usar silent=true para evitar logs desnecessários na primeira verificação
-                    await checkColumnsAvailability(true);
-                    await tryExecuteMigration();
+                    await checkColumnsAvailability(false);
+                    if (!columnsAvailable.entregue || !columnsAvailable.visualizada) {
+                        await tryExecuteMigration();
+                        // Verificar novamente após tentar migration
+                        await checkColumnsAvailability(false, true);
+                    }
                     await loadUsers();
                 }
             } catch (error) {
@@ -2275,21 +2278,41 @@
         }
 
         // Verificar se as colunas entregue e visualizada existem
-        // Em vez de fazer SELECT (que gera erro 400), vamos tentar usar as colunas em operações reais
-        // e tratar os erros quando ocorrerem
         async function checkColumnsAvailability(silent = false, force = false) {
             // Se já foi verificado e não é forçado, retornar cache
             if (columnsChecked && !force) {
                 return columnsAvailable;
             }
             
-            // Por padrão, assumir que as colunas não existem
-            // Elas serão marcadas como existentes quando forem usadas com sucesso
+            try {
+                // Verificar via endpoint do servidor
+                const response = await fetch('/api/chat-interno/verificar-colunas');
+                if (response.ok) {
+                    const result = await response.json();
+                    columnsAvailable = {
+                        entregue: result.entregue || false,
+                        visualizada: result.visualizada || false
+                    };
+                    columnsChecked = true;
+                    
+                    if (!silent) {
+                        console.log('📊 Status das colunas:', columnsAvailable);
+                    }
+                    
+                    return columnsAvailable;
+                }
+            } catch (error) {
+                if (!silent) {
+                    console.warn('⚠️ Erro ao verificar colunas via endpoint:', error);
+                }
+            }
+            
+            // Se falhar, assumir que não existem
             columnsAvailable = { entregue: false, visualizada: false };
             columnsChecked = true;
             
             if (!silent) {
-                console.log('📊 Status das colunas (assumindo que não existem até serem usadas):', columnsAvailable);
+                console.log('📊 Status das colunas (assumindo que não existem):', columnsAvailable);
             }
             
             return columnsAvailable;
@@ -3816,6 +3839,11 @@ ALTER TABLE chat_mensagens ADD COLUMN IF NOT EXISTS visualizada BOOLEAN DEFAULT 
 
                 scrollToBottom();
                 lastMessageId = messages[messages.length - 1]?.id || null;
+                
+                // Atualizar status dos vistos das mensagens enviadas
+                if (!isGrupoMode) {
+                    await updateMessageStatuses();
+                }
 
             } catch (error) {
                 // Verificar se é erro de coluna não existente
@@ -5122,8 +5150,8 @@ ALTER TABLE chat_mensagens ADD COLUMN IF NOT EXISTS visualizada BOOLEAN DEFAULT 
                 // Marcar como entregue imediatamente após envio (simula entrega instantânea)
                 // Em um sistema real, isso seria feito quando o destinatário recebe a mensagem
                 if (data && !isGrupoMode) {
-                    // Se já sabemos que entregue não existe, não tentar atualizar
-                    if (!columnsChecked || columnsAvailable.entregue) {
+                    // Verificar se a coluna entregue existe antes de tentar atualizar
+                    if (columnsAvailable.entregue) {
                         try {
                             const { data: updatedData, error: updateError } = await supabaseClient
                                 .from('chat_mensagens')
@@ -5133,8 +5161,6 @@ ALTER TABLE chat_mensagens ADD COLUMN IF NOT EXISTS visualizada BOOLEAN DEFAULT 
                                 .single();
                             
                             if (!updateError && updatedData) {
-                                // Coluna existe e foi atualizada com sucesso
-                                markColumnAsAvailable('entregue');
                                 // Atualizar no cache e na UI
                                 data.entregue = true;
                                 messagesCache.set(data.id, data);
@@ -5143,19 +5169,54 @@ ALTER TABLE chat_mensagens ADD COLUMN IF NOT EXISTS visualizada BOOLEAN DEFAULT 
                                     updateMessageStatus(data.id, true, false);
                                 }, 100);
                             } else if (updateError) {
-                                // Se a coluna entregue não existir, marcar como indisponível
-                                if (updateError.code === 'PGRST204' || (updateError.message && updateError.message.includes('entregue'))) {
+                                // Se der erro, verificar se a coluna realmente não existe
+                                const isColumnError = updateError.code === 'PGRST204' || 
+                                                     (updateError.message && (
+                                                         updateError.message.includes('entregue') ||
+                                                         updateError.message.includes('does not exist') ||
+                                                         updateError.message.includes('column') ||
+                                                         updateError.message.includes('Could not find')
+                                                     ));
+                                if (isColumnError) {
                                     markColumnAsUnavailable('entregue');
+                                    // Verificar novamente via endpoint
+                                    await checkColumnsAvailability(true, true);
                                 }
                             }
                         } catch (updateError) {
-                            // Se a coluna entregue não existir, marcar como indisponível
-                            if (updateError.code === 'PGRST204' || (updateError.message && updateError.message.includes('entregue'))) {
+                            const isColumnError = updateError.code === 'PGRST204' || 
+                                                 (updateError.message && (
+                                                     updateError.message.includes('entregue') ||
+                                                     updateError.message.includes('does not exist') ||
+                                                     updateError.message.includes('column') ||
+                                                     updateError.message.includes('Could not find')
+                                                 ));
+                            if (isColumnError) {
                                 markColumnAsUnavailable('entregue');
+                                await checkColumnsAvailability(true, true);
+                            }
+                        }
+                    } else {
+                        // Se não sabemos se existe, verificar primeiro
+                        await checkColumnsAvailability(true);
+                        if (columnsAvailable.entregue) {
+                            // Tentar novamente agora que sabemos que existe
+                            const { data: updatedData, error: updateError } = await supabaseClient
+                                .from('chat_mensagens')
+                                .update({ entregue: true })
+                                .eq('id', data.id)
+                                .select()
+                                .single();
+                            
+                            if (!updateError && updatedData) {
+                                data.entregue = true;
+                                messagesCache.set(data.id, data);
+                                setTimeout(() => {
+                                    updateMessageStatus(data.id, true, false);
+                                }, 100);
                             }
                         }
                     }
-                    // Se a coluna não existe, apenas continuar sem atualizar (mensagem já foi enviada)
                 }
 
                 // Debug: verificar dados do áudio
@@ -5255,64 +5316,60 @@ ALTER TABLE chat_mensagens ADD COLUMN IF NOT EXISTS visualizada BOOLEAN DEFAULT 
             if (!selectedUserId) return;
 
             try {
-                // Se já sabemos que visualizada não existe, usar apenas lida
-                if (columnsChecked && !columnsAvailable.visualizada) {
+                // Verificar se a coluna visualizada existe antes de tentar atualizar
+                if (!columnsChecked) {
+                    await checkColumnsAvailability(true);
+                }
+                
+                // Se a coluna visualizada existe, usar ela junto com lida
+                if (columnsAvailable.visualizada) {
                     const { data: updatedMessages, error } = await supabaseClient
                         .from('chat_mensagens')
-                        .update({ lida: true })
+                        .update({ 
+                            lida: true,
+                            visualizada: true 
+                        })
                         .eq('destinatario_id', currentUserId)
                         .eq('remetente_id', selectedUserId)
                         .eq('lida', false)
                         .select();
 
-                    if (error) throw error;
-                    return;
+                    if (!error) {
+                        // Sucesso - atualizar status na UI para mensagens do remetente
+                        if (updatedMessages && updatedMessages.length > 0) {
+                            updatedMessages.forEach(msg => {
+                                messagesCache.set(msg.id, msg);
+                                updateMessageStatus(msg.id, msg.entregue || true, msg.visualizada || false);
+                            });
+                        }
+                        return;
+                    }
+                    
+                    // Se der erro de coluna não existente, marcar como indisponível e verificar novamente
+                    const isColumnError = error.code === 'PGRST204' || 
+                                         (error.message && (
+                                             error.message.includes('visualizada') ||
+                                             error.message.includes('does not exist') ||
+                                             error.message.includes('column') ||
+                                             error.message.includes('Could not find')
+                                         ));
+                    
+                    if (isColumnError) {
+                        markColumnAsUnavailable('visualizada');
+                        await checkColumnsAvailability(true, true);
+                    }
                 }
-
-                // Tentar atualizar com visualizada primeiro (se ainda não sabemos se existe)
-                const { data: updatedMessages, error } = await supabaseClient
+                
+                // Se a coluna visualizada não existe, usar apenas lida
+                const { data: updatedMessages2, error: error2 } = await supabaseClient
                     .from('chat_mensagens')
-                    .update({ 
-                        lida: true,
-                        visualizada: true 
-                    })
+                    .update({ lida: true })
                     .eq('destinatario_id', currentUserId)
                     .eq('remetente_id', selectedUserId)
                     .eq('lida', false)
                     .select();
 
-                if (!error) {
-                    // Sucesso - coluna visualizada existe
-                    markColumnAsAvailable('visualizada');
-                    
-                    // Atualizar status na UI para mensagens do remetente
-                    if (updatedMessages && updatedMessages.length > 0) {
-                        updatedMessages.forEach(msg => {
-                            messagesCache.set(msg.id, msg);
-                            updateMessageStatus(msg.id, msg.entregue || true, msg.visualizada || false);
-                        });
-                    }
-                    return;
-                }
-                
-                // Se der erro de coluna não existente, marcar como indisponível e tentar apenas com lida
-                if (error.code === 'PGRST204' || (error.message && error.message.includes('visualizada'))) {
-                    markColumnAsUnavailable('visualizada');
-                    
-                    // Tentar apenas com lida
-                    const { data: updatedMessages2, error: error2 } = await supabaseClient
-                        .from('chat_mensagens')
-                        .update({ lida: true })
-                        .eq('destinatario_id', currentUserId)
-                        .eq('remetente_id', selectedUserId)
-                        .eq('lida', false)
-                        .select();
-
-                    if (error2) throw error2;
-                    return;
-                }
-                
-                throw error;
+                if (error2) throw error2;
             } catch (error) {
                 // Ignorar erros de coluna não existente silenciosamente
                 if (error.code === 'PGRST204' || (error.message && error.message.includes('visualizada'))) {
@@ -5341,18 +5398,32 @@ ALTER TABLE chat_mensagens ADD COLUMN IF NOT EXISTS visualizada BOOLEAN DEFAULT 
         // Atualizar status dos vistos na UI
         function updateMessageStatus(messageId, entregue, visualizada) {
             const messageDiv = document.querySelector(`[data-message-id="${messageId}"]`);
-            if (!messageDiv) return;
+            if (!messageDiv) {
+                // Mensagem ainda não está no DOM, tentar novamente em breve
+                return;
+            }
 
             const statusDiv = messageDiv.querySelector('.message-status');
-            if (!statusDiv) return;
+            if (!statusDiv) {
+                // Status div ainda não existe, criar se necessário
+                const messageFooter = messageDiv.querySelector('.message-footer');
+                if (messageFooter) {
+                    const newStatusDiv = document.createElement('div');
+                    newStatusDiv.className = 'message-status';
+                    newStatusDiv.setAttribute('data-message-id', messageId);
+                    messageFooter.appendChild(newStatusDiv);
+                    updateMessageStatus(messageId, entregue, visualizada);
+                }
+                return;
+            }
 
             // Atualizar HTML do status
-            if (visualizada) {
+            if (visualizada === true) {
                 statusDiv.innerHTML = `
                     <i class="fas fa-check-double message-status-icon message-status-read"></i>
                     <i class="fas fa-check-double message-status-icon message-status-read"></i>
                 `;
-            } else if (entregue) {
+            } else if (entregue === true) {
                 statusDiv.innerHTML = `
                     <i class="fas fa-check-double message-status-icon message-status-delivered"></i>
                     <i class="fas fa-check-double message-status-icon message-status-delivered"></i>
@@ -5368,32 +5439,52 @@ ALTER TABLE chat_mensagens ADD COLUMN IF NOT EXISTS visualizada BOOLEAN DEFAULT 
         async function updateMessageStatuses() {
             // Apenas para conversas individuais (grupos não têm vistos)
             if (!selectedUserId || isGrupoMode) return;
-            
-            // Se as colunas não existem, não fazer nada
-            if (!columnsAvailable.entregue && !columnsAvailable.visualizada) return;
 
             try {
-                // Montar campos de select baseado nas colunas disponíveis
-                let selectFields = 'id';
-                if (columnsAvailable.entregue) selectFields += ', entregue';
-                if (columnsAvailable.visualizada) selectFields += ', visualizada';
-
-                // Buscar mensagens enviadas para o destinatário atual
+                // Sempre tentar buscar entregue e visualizada (mesmo que não estejam marcadas como disponíveis)
+                // Se der erro, será tratado abaixo
                 const { data: sentMessages, error } = await supabaseClient
                     .from('chat_mensagens')
-                    .select(selectFields)
+                    .select('id, entregue, visualizada')
                     .eq('remetente_id', currentUserId)
                     .eq('destinatario_id', selectedUserId)
                     .is('grupo_id', null)
                     .limit(50);
 
-                if (error) throw error;
+                if (error) {
+                    // Verificar se é erro de coluna não existente
+                    const isColumnError = error.code === 'PGRST204' || 
+                                         (error.message && (
+                                             error.message.includes('entregue') ||
+                                             error.message.includes('visualizada') ||
+                                             error.message.includes('does not exist') ||
+                                             error.message.includes('column') ||
+                                             error.message.includes('Could not find')
+                                         ));
+                    
+                    if (isColumnError) {
+                        // Colunas não existem, marcar como indisponíveis e retornar
+                        if (error.message && error.message.includes('entregue')) {
+                            markColumnAsUnavailable('entregue');
+                        }
+                        if (error.message && error.message.includes('visualizada')) {
+                            markColumnAsUnavailable('visualizada');
+                        }
+                        return;
+                    }
+                    throw error;
+                }
+                
+                // Se chegou aqui, as colunas existem - marcar como disponíveis
+                markColumnAsAvailable('entregue');
+                markColumnAsAvailable('visualizada');
 
                 if (sentMessages && sentMessages.length > 0) {
                     sentMessages.forEach(msg => {
                         const cachedMsg = messagesCache.get(msg.id);
-                        const entregue = (columnsAvailable.entregue && msg.entregue !== undefined) ? msg.entregue : false;
-                        const visualizada = (columnsAvailable.visualizada && msg.visualizada !== undefined) ? msg.visualizada : false;
+                        // Usar os valores diretamente (já sabemos que as colunas existem se chegou aqui)
+                        const entregue = msg.entregue === true;
+                        const visualizada = msg.visualizada === true;
                         
                         if (cachedMsg) {
                             // Atualizar cache se o status mudou

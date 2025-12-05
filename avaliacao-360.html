@@ -2132,6 +2132,16 @@
             // Aguardar um pouco para garantir que o perfil foi carregado
             await new Promise(resolve => setTimeout(resolve, 100));
             
+            // Verificar se o usuário tem permissão para acessar a avaliação 360
+            const temPermissao = await verificarPermissaoAvaliacao360();
+            if (!temPermissao) {
+                showNotification('Você não tem permissão para acessar a Avaliação 360º. Entre em contato com o administrador.', 'error');
+                setTimeout(() => {
+                    window.location.href = 'portal.html';
+                }, 3000);
+                return;
+            }
+            
             // Carregar notificações imediatamente após definir currentUserId
             console.log('🔔 Carregando notificações após login...');
             await loadNotificacoes();
@@ -2187,6 +2197,46 @@
                 }
             } catch (error) {
                 console.error('❌ Erro inesperado ao carregar perfil:', error);
+            }
+        }
+
+        // Verificar se o usuário tem permissão para acessar a Avaliação 360
+        async function verificarPermissaoAvaliacao360() {
+            try {
+                // Se o usuário é admin, tem acesso total
+                const roleLower = currentUserProfile?.role?.toLowerCase() || '';
+                if (roleLower === 'admin') {
+                    console.log('✅ Usuário é admin, acesso liberado para Avaliação 360');
+                    return true;
+                }
+                
+                // Buscar permissões no banco
+                const { data: permissoes, error } = await supabaseClient
+                    .from('permissoes_portal')
+                    .select('permissao_id')
+                    .eq('usuario_id', currentUserId);
+                
+                if (error) {
+                    console.error('❌ Erro ao buscar permissões:', error);
+                    // Por segurança, negar acesso em caso de erro
+                    return false;
+                }
+                
+                // Verificar se tem permissão 'avaliacao-360'
+                const temPermissao = permissoes && permissoes.some(p => p.permissao_id === 'avaliacao-360');
+                console.log('🔐 Usuário tem permissão de avaliação-360:', temPermissao);
+                
+                if (!temPermissao) {
+                    console.log('❌ Usuário não tem permissão de avaliação-360');
+                    return false;
+                }
+                
+                return true;
+                
+            } catch (error) {
+                console.error('❌ Erro ao verificar permissão:', error);
+                // Por segurança, negar acesso em caso de erro
+                return false;
             }
         }
 
@@ -3210,34 +3260,73 @@
                     return;
                 }
                 
-                // Criar uma avaliação única para "organização"
-                // Usaremos um ID especial ou criaremos uma avaliação por usuário
-                // Para avaliação organizacional, cada funcionário pode avaliar
                 // Para avaliação organizacional, criar uma avaliação única para a organização
-                // Usaremos um ID especial (00000000-0000-0000-0000-000000000000) para representar a organização
-                const organizacaoId = '00000000-0000-0000-0000-000000000000';
-                
-                // Criar uma avaliação para a organização
-                const { data: avaliacaoOrg, error: insertError } = await supabaseClient
+                // Verificar se já existe uma avaliação organizacional para este ciclo
+                // Nota: tipo_avaliacao só aceita 'individual' ou 'equipe', então usamos 'individual' como padrão
+                // Para identificar avaliações organizacionais, vamos usar um campo adicional ou verificar pelo ciclo
+                const { data: avaliacaoExistente } = await supabaseClient
                     .from('avaliacao_360_avaliacoes')
-                    .insert([{
-                        ciclo_id: cicloId,
-                        avaliado_id: organizacaoId, // ID especial para organização
-                        status: 'pendente'
-                    }])
-                    .select()
-                    .single();
+                    .select('id')
+                    .eq('ciclo_id', cicloId)
+                    .eq('tipo_avaliacao', 'individual')
+                    .limit(1)
+                    .maybeSingle();
                 
-                if (insertError) {
-                    console.error('❌ Erro ao criar avaliação organizacional:', insertError);
-                    showNotification('Erro ao criar avaliação organizacional', 'warning');
-                    return;
+                let avaliacaoOrg;
+                
+                if (avaliacaoExistente) {
+                    // Usar avaliação existente
+                    avaliacaoOrg = { id: avaliacaoExistente.id };
+                    console.log('✅ Usando avaliação organizacional existente');
+                } else {
+                    // Criar nova avaliação organizacional
+                    // Usar o primeiro usuário como avaliado (será ignorado, pois é avaliação da organização)
+                    const primeiroUsuario = usuarios[0];
+                    if (!primeiroUsuario) {
+                        console.error('❌ Nenhum usuário encontrado para criar avaliação organizacional');
+                        return;
+                    }
+                    
+                    const { data: novaAvaliacao, error: insertError } = await supabaseClient
+                        .from('avaliacao_360_avaliacoes')
+                        .insert([{
+                            ciclo_id: cicloId,
+                            avaliado_id: primeiroUsuario.id, // Usar primeiro usuário como placeholder
+                            status: 'pendente',
+                            tipo_avaliacao: 'individual' // tipo_avaliacao só aceita 'individual' ou 'equipe'
+                        }])
+                        .select()
+                        .single();
+                    
+                    if (insertError) {
+                        console.error('❌ Erro ao criar avaliação organizacional:', insertError);
+                        showNotification('Erro ao criar avaliação organizacional', 'warning');
+                        return;
+                    }
+                    
+                    avaliacaoOrg = novaAvaliacao;
+                    console.log('✅ Nova avaliação organizacional criada');
                 }
                 
                 console.log(`✅ Avaliação organizacional criada`);
                 
-                // Adicionar todos os funcionários como avaliadores da organização
-                const avaliadoresParaInserir = usuarios.map(usuario => ({
+                // Verificar quais avaliadores já existem para evitar duplicação
+                const { data: avaliadoresExistentes } = await supabaseClient
+                    .from('avaliacao_360_avaliadores')
+                    .select('avaliador_id')
+                    .eq('avaliacao_id', avaliacaoOrg.id)
+                    .eq('tipo_avaliador', 'auto');
+                
+                const idsExistentes = new Set((avaliadoresExistentes || []).map(a => a.avaliador_id));
+                const avaliadoresNovos = usuarios.filter(usuario => !idsExistentes.has(usuario.id));
+                
+                if (avaliadoresNovos.length === 0) {
+                    console.log('ℹ️ Todos os avaliadores já foram adicionados para avaliação organizacional');
+                    return;
+                }
+                
+                // Adicionar apenas os novos avaliadores
+                const avaliadoresParaInserir = avaliadoresNovos.map(usuario => ({
                     avaliacao_id: avaliacaoOrg.id,
                     avaliador_id: usuario.id,
                     tipo_avaliador: 'auto',
@@ -3250,6 +3339,7 @@
                 
                 if (errAvaliadores) {
                     console.error('❌ Erro ao adicionar avaliadores:', errAvaliadores);
+                    showNotification('Erro ao adicionar alguns avaliadores (podem já existir)', 'warning');
                 } else {
                     console.log(`✅ ${avaliadoresParaInserir.length} avaliadores adicionados para avaliação organizacional`);
                 }
@@ -4799,11 +4889,13 @@
             }
             
             // Verificar quais avaliadores já existem para evitar duplicação
+            // A constraint única é em avaliacao_id, avaliador_id, tipo_avaliador
             const { data: avaliadoresExistentes } = await supabaseClient
                 .from('avaliacao_360_avaliadores')
-                .select('avaliador_id')
+                .select('avaliador_id, tipo_avaliador')
                 .eq('avaliacao_id', avaliacaoId)
-                .in('avaliador_id', avaliadores);
+                .in('avaliador_id', avaliadores)
+                .eq('tipo_avaliador', tipoAvaliador);
             
             const idsExistentes = new Set((avaliadoresExistentes || []).map(a => a.avaliador_id));
             const avaliadoresNovos = avaliadores.filter(id => !idsExistentes.has(id));

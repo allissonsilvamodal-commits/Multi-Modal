@@ -11488,25 +11488,24 @@ app.post('/api/chat-interno/adicionar-colunas', async (req, res) => {
 
     console.log('🔧 Tentando adicionar colunas para chat interno na tabela chat_mensagens...');
 
-    // Verificar se as colunas já existem
-    try {
-      const { data: testData, error: testError } = await supabaseAdmin
-        .from('chat_mensagens')
-        .select('remetente_id, destinatario_id, lida')
-        .limit(1);
+    // Verificar se as colunas já existem usando information_schema
+    const { data: existingColumns, error: checkError } = await supabaseAdmin
+      .from('information_schema.columns')
+      .select('column_name')
+      .eq('table_schema', 'public')
+      .eq('table_name', 'chat_mensagens')
+      .in('column_name', ['entregue', 'visualizada']);
 
-      if (!testError) {
-        console.log('✅ Colunas já existem!');
-        return res.json({
-          success: true,
-          message: 'Colunas para chat interno já existem na tabela chat_mensagens',
-          colunasExistem: true
-        });
-      }
-    } catch (checkError) {
-      // Se der erro, significa que as colunas não existem, continuar
-      console.log('📝 Colunas não encontradas. Adicionando...');
+    if (!checkError && existingColumns && existingColumns.length === 2) {
+      console.log('✅ Colunas entregue e visualizada já existem!');
+      return res.json({
+        success: true,
+        message: 'Colunas entregue e visualizada já existem na tabela chat_mensagens',
+        colunasExistem: true
+      });
     }
+
+    console.log('📝 Colunas não encontradas. Adicionando...');
 
     // SQL para adicionar colunas
     const sqlCommands = [
@@ -11615,6 +11614,62 @@ app.post('/api/chat-interno/adicionar-colunas', async (req, res) => {
     return res.status(500).json({
       success: false,
       error: 'Erro ao adicionar colunas: ' + (err.message || 'Erro desconhecido')
+    });
+  }
+});
+
+// GET - Verificar se colunas entregue e visualizada existem
+app.get('/api/chat-interno/verificar-colunas', async (req, res) => {
+  try {
+    // Tentar fazer um SELECT simples nas colunas para verificar se existem
+    // Se der erro, significa que as colunas não existem
+    let entregue = false;
+    let visualizada = false;
+
+    // Verificar coluna entregue
+    try {
+      const { data: testEntregue, error: errorEntregue } = await supabaseAdmin
+        .from('chat_mensagens')
+        .select('entregue')
+        .limit(1);
+
+      if (!errorEntregue) {
+        entregue = true;
+      }
+    } catch (err) {
+      // Coluna não existe ou outro erro
+      entregue = false;
+    }
+
+    // Verificar coluna visualizada
+    try {
+      const { data: testVisualizada, error: errorVisualizada } = await supabaseAdmin
+        .from('chat_mensagens')
+        .select('visualizada')
+        .limit(1);
+
+      if (!errorVisualizada) {
+        visualizada = true;
+      }
+    } catch (err) {
+      // Coluna não existe ou outro erro
+      visualizada = false;
+    }
+
+    return res.json({
+      success: true,
+      entregue,
+      visualizada,
+      todasExistem: entregue && visualizada
+    });
+
+  } catch (err) {
+    console.error('❌ Erro ao verificar colunas:', err);
+    return res.status(500).json({
+      success: false,
+      error: 'Erro ao verificar colunas: ' + (err.message || 'Erro desconhecido'),
+      entregue: false,
+      visualizada: false
     });
   }
 });
