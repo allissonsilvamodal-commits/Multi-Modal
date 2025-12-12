@@ -3,7 +3,7 @@
 
 const CACHE_NAME = 'portal-motorista-v1';
 const ROUTE_API = '/api/rastreamento/enviar-posicao';
-const INTERVAL_TRACKING = 30000; // 30 segundos
+const INTERVAL_TRACKING = 5 * 60 * 1000; // 5 minutos (300000ms)
 
 // Instalar service worker
 self.addEventListener('install', (event) => {
@@ -97,9 +97,9 @@ self.addEventListener('message', (event) => {
   console.log('📨 Mensagem recebida no Service Worker:', event.data);
 
   if (event.data && event.data.type === 'START_TRACKING') {
-    const { coletaId, sessionToken } = event.data;
+    const { coletaId, sessionToken, trackingToken } = event.data;
     console.log('🚀 Iniciando rastreamento em background para coleta:', coletaId);
-    iniciarRastreamentoBackground(coletaId, sessionToken);
+    iniciarRastreamentoBackground(coletaId, sessionToken, trackingToken);
   }
 
   if (event.data && event.data.type === 'STOP_TRACKING') {
@@ -108,15 +108,24 @@ self.addEventListener('message', (event) => {
   }
 
   if (event.data && event.data.type === 'SEND_POSITION') {
-    const { coletaId, position, sessionToken } = event.data;
-    enviarPosicaoBackground(coletaId, position, sessionToken);
+    const { coletaId, position, sessionToken, trackingToken } = event.data;
+    enviarPosicaoBackground(coletaId, position, sessionToken, trackingToken);
   }
 
   if (event.data && event.data.type === 'POSITION_RESPONSE') {
     // Cliente enviou posição em resposta à solicitação
-    const { coletaId, position, sessionToken } = event.data;
-    if (coletaId && position && sessionToken) {
-      enviarPosicaoBackground(coletaId, position, sessionToken);
+    const { coletaId, position, sessionToken, trackingToken } = event.data;
+    if (coletaId && position) {
+      enviarPosicaoBackground(coletaId, position, sessionToken, trackingToken);
+    }
+  }
+
+  if (event.data && event.data.type === 'UPDATE_TRACKING_TOKEN') {
+    // Atualizar token de rastreamento persistente
+    const { coletaId, trackingToken } = event.data;
+    if (coletaId === currentColetaId) {
+      currentTrackingToken = trackingToken;
+      console.log('✅ Token de rastreamento atualizado no Service Worker');
     }
   }
 });
@@ -125,25 +134,34 @@ self.addEventListener('message', (event) => {
 let trackingInterval = null;
 let currentColetaId = null;
 let currentSessionToken = null;
+let currentTrackingToken = null; // Token de rastreamento persistente
+let retryCount = 0;
+const MAX_RETRIES = 3;
 
 // Função para iniciar rastreamento em background
-function iniciarRastreamentoBackground(coletaId, sessionToken) {
+function iniciarRastreamentoBackground(coletaId, sessionToken, trackingToken = null) {
   if (trackingInterval) {
     clearInterval(trackingInterval);
   }
 
   currentColetaId = coletaId;
   currentSessionToken = sessionToken;
+  currentTrackingToken = trackingToken;
+  retryCount = 0;
 
   // Enviar posição imediatamente
-  obterEEnviarPosicao(coletaId, sessionToken);
+  obterEEnviarPosicao(coletaId, sessionToken, trackingToken);
 
   // Configurar intervalo para enviar posição periodicamente
   trackingInterval = setInterval(() => {
-    obterEEnviarPosicao(coletaId, sessionToken);
+    obterEEnviarPosicao(coletaId, sessionToken, currentTrackingToken);
   }, INTERVAL_TRACKING);
 
-  console.log('✅ Rastreamento em background iniciado');
+  console.log('✅ Rastreamento em background iniciado:', {
+    coletaId,
+    temSessionToken: !!sessionToken,
+    temTrackingToken: !!trackingToken
+  });
 }
 
 // Função para parar rastreamento em background
@@ -154,6 +172,8 @@ function pararRastreamentoBackground() {
   }
   currentColetaId = null;
   currentSessionToken = null;
+  currentTrackingToken = null;
+  retryCount = 0;
   console.log('🛑 Rastreamento em background parado');
 }
 
@@ -176,16 +196,36 @@ function solicitarPosicaoDoCliente() {
 }
 
 // Função para obter e enviar posição (solicita do cliente)
-function obterEEnviarPosicao(coletaId, sessionToken) {
+function obterEEnviarPosicao(coletaId, sessionToken, trackingToken = null) {
   // Service Workers não têm acesso direto a navigator.geolocation
   // Precisamos solicitar a posição do cliente (página web)
-  solicitarPosicaoDoCliente();
+  solicitarPosicaoDoCliente().catch((error) => {
+    console.warn('⚠️ Erro ao solicitar posição do cliente:', error);
+    // Se não houver cliente conectado, tentar novamente após um delay
+    if (retryCount < MAX_RETRIES) {
+      retryCount++;
+      setTimeout(() => {
+        obterEEnviarPosicao(coletaId, sessionToken, trackingToken);
+      }, 5000); // Tentar novamente após 5 segundos
+    } else {
+      console.error('❌ Máximo de tentativas atingido para solicitar posição');
+      retryCount = 0; // Resetar contador após máximo de tentativas
+    }
+  });
 }
 
 // Função para enviar posição em background
-async function enviarPosicaoBackground(coletaId, dadosPosicao, sessionToken) {
-  if (!sessionToken) {
-    console.error('❌ Token de sessão não disponível');
+async function enviarPosicaoBackground(coletaId, dadosPosicao, sessionToken, trackingToken = null) {
+  // Usar token de rastreamento persistente se disponível, senão usar token de sessão
+  const authToken = trackingToken || sessionToken;
+  
+  if (!authToken) {
+    console.error('❌ Nenhum token disponível para enviar posição');
+    // Tentar usar token de rastreamento armazenado se disponível
+    if (currentTrackingToken) {
+      console.log('🔄 Tentando usar token de rastreamento armazenado...');
+      return enviarPosicaoBackground(coletaId, dadosPosicao, null, currentTrackingToken);
+    }
     return;
   }
 
@@ -194,24 +234,48 @@ async function enviarPosicaoBackground(coletaId, dadosPosicao, sessionToken) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${sessionToken}`
+        'Authorization': `Bearer ${authToken}`
       },
       body: JSON.stringify(dadosPosicao)
     });
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
+      
+      // Se for erro 401 e tivermos token de rastreamento, tentar usar ele
+      if (response.status === 401 && trackingToken && sessionToken) {
+        console.warn('⚠️ Sessão expirada, tentando usar token de rastreamento persistente...');
+        return enviarPosicaoBackground(coletaId, dadosPosicao, null, trackingToken);
+      }
+      
+      // Se for erro 401 e não tivermos token de rastreamento, tentar obter do cliente
+      if (response.status === 401 && !trackingToken) {
+        console.warn('⚠️ Sessão expirada, solicitando token de rastreamento do cliente...');
+        self.clients.matchAll().then((clients) => {
+          clients.forEach((client) => {
+            client.postMessage({
+              type: 'REQUEST_TRACKING_TOKEN',
+              coletaId: coletaId
+            });
+          });
+        });
+      }
+      
       console.error('❌ Erro ao enviar posição:', {
         status: response.status,
-        error: errorData.error || 'Erro desconhecido'
+        error: errorData.error || 'Erro desconhecido',
+        usandoTrackingToken: !!trackingToken
       });
       return;
     }
 
     const result = await response.json();
+    retryCount = 0; // Resetar contador em caso de sucesso
+    
     console.log('✅ Posição enviada com sucesso em background:', {
       coletaId: coletaId,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      usandoTrackingToken: !!trackingToken
     });
 
     // Notificar cliente sobre sucesso
@@ -226,16 +290,37 @@ async function enviarPosicaoBackground(coletaId, dadosPosicao, sessionToken) {
     });
   } catch (error) {
     console.error('❌ Erro ao enviar posição em background:', error);
+    
+    // Em caso de erro de rede, tentar novamente após um delay
+    if (retryCount < MAX_RETRIES) {
+      retryCount++;
+      setTimeout(() => {
+        enviarPosicaoBackground(coletaId, dadosPosicao, sessionToken, trackingToken);
+      }, 10000); // Tentar novamente após 10 segundos
+    } else {
+      console.error('❌ Máximo de tentativas atingido para enviar posição');
+      retryCount = 0;
+    }
   }
 }
 
 // Notificar quando o service worker está pronto
 self.addEventListener('sync', (event) => {
   console.log('🔄 Background sync:', event.tag);
-  if (event.tag === 'send-position' && currentColetaId && currentSessionToken) {
-    event.waitUntil(obterEEnviarPosicao(currentColetaId, currentSessionToken));
+  if (event.tag === 'send-position' && currentColetaId) {
+    event.waitUntil(obterEEnviarPosicao(currentColetaId, currentSessionToken, currentTrackingToken));
   }
 });
+
+// Registrar periodic background sync (se suportado)
+if ('periodicSync' in self.registration) {
+  self.addEventListener('periodicsync', (event) => {
+    if (event.tag === 'tracking-sync' && currentColetaId) {
+      console.log('🔄 Periodic sync para rastreamento');
+      event.waitUntil(obterEEnviarPosicao(currentColetaId, currentSessionToken, currentTrackingToken));
+    }
+  });
+}
 
 // Lidar com notificações push (futuro)
 self.addEventListener('push', (event) => {

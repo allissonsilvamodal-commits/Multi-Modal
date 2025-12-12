@@ -216,6 +216,17 @@
       border-color: rgba(148, 163, 184, 0.55);
     }
 
+    .btn-outline.danger {
+      border-color: rgba(239, 68, 68, 0.5);
+      color: #fca5a5;
+    }
+
+    .btn-outline.danger:hover {
+      background: rgba(239, 68, 68, 0.15);
+      border-color: rgba(239, 68, 68, 0.7);
+      color: #ef4444;
+    }
+
     .btn-warning {
       background: linear-gradient(135deg, #f97316, #facc15);
       color: #1f2937;
@@ -1941,7 +1952,7 @@
           <h1>Bem-vindo, <span id="driverName">Motorista</span></h1>
           <p id="driverMessage">Carregando seus dados...</p>
           <div class="badge-row">
-            <span class="status-badge" id="badgeCadastro">Cadastro em validação</span>
+            <span class="status-badge" id="badgeCadastro">Cadastro pendente</span>
             <span class="status-badge" id="badgeEmail"><i class="fas fa-at"></i><span id="badgeEmailText">—</span></span>
           </div>
         </div>
@@ -1993,7 +2004,7 @@
       <section class="card" id="painelResumo">
         <div class="inline-actions">
           <h2><span class="icon"><i class="fas fa-gauge-high"></i></span> Seu painel</h2>
-          <span class="chip success" id="chipStatusMotorista" style="display:none;"><i class="fas fa-check-circle"></i> Cadastro aprovado</span>
+          <span class="chip success" id="chipStatusMotorista" style="display:none;"><i class="fas fa-check-circle"></i> Cadastro completo</span>
           <span class="chip warning" id="chipCadastroPendente" style="display:none;"><i class="fas fa-hourglass-half"></i> Cadastro pendente</span>
         </div>
         <div class="quick-actions">
@@ -2314,6 +2325,37 @@
     </div>
   </div>
 
+  <!-- Modal de Permissão de Localização -->
+  <div class="modal-overlay" id="permissaoLocalizacaoModal" style="display: none;">
+    <div class="modal-card">
+      <button class="modal-close" id="btnFecharPermissaoLocalizacao" aria-label="Fechar"><i class="fas fa-xmark"></i></button>
+      <h3><i class="fas fa-location-dot me-2"></i> Permissão de Localização Necessária</h3>
+      <div class="termo-content" style="max-height: 60vh; overflow-y: auto; padding: 1rem 0; margin: 1rem 0; border-top: 1px solid var(--glass-border); border-bottom: 1px solid var(--glass-border);">
+        <p style="margin-bottom: 1rem; color: var(--text-secondary); line-height: 1.6;">
+          <strong style="color: var(--text-primary);">Para iniciar o rastreamento GPS, é necessário permitir o acesso à sua localização.</strong>
+        </p>
+        <div style="background: rgba(96, 165, 250, 0.1); border-left: 3px solid var(--primary); padding: 1rem; border-radius: 8px; margin: 1rem 0;">
+          <h4 style="color: var(--primary); margin-bottom: 0.5rem; font-size: 1rem;"><i class="fas fa-info-circle me-2"></i>Como permitir:</h4>
+          <div id="instrucoesPermissao" style="color: var(--text-secondary); line-height: 1.8;">
+            <!-- Instruções serão inseridas dinamicamente baseadas no navegador -->
+          </div>
+        </div>
+        <div style="background: rgba(251, 191, 36, 0.1); border-left: 3px solid #fbbf24; padding: 1rem; border-radius: 8px; margin: 1rem 0;">
+          <h4 style="color: #fbbf24; margin-bottom: 0.5rem; font-size: 1rem;"><i class="fas fa-exclamation-triangle me-2"></i>Importante:</h4>
+          <ul style="list-style: none; padding: 0; margin: 0; color: var(--text-secondary); line-height: 1.8;">
+            <li><i class="fas fa-check-circle me-2" style="color: #fbbf24;"></i>O rastreamento só funciona com a permissão de localização ativa</li>
+            <li><i class="fas fa-check-circle me-2" style="color: #fbbf24;"></i>Você pode revogar a permissão a qualquer momento nas configurações do navegador</li>
+            <li><i class="fas fa-check-circle me-2" style="color: #fbbf24;"></i>Após permitir, o rastreamento será iniciado automaticamente</li>
+          </ul>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" id="btnCancelarPermissao">Cancelar</button>
+        <button type="button" class="btn btn-primary" id="btnTentarNovamentePermissao">Tentar Novamente</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Modal de Termo de Rastreamento -->
   <div class="modal-overlay" id="rastreamentoTermoModal">
     <div class="modal-card">
@@ -2416,6 +2458,7 @@
   <meta name="apple-mobile-web-app-title" content="Portal Motorista">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
+    // ========== CONSTANTES E CONFIGURAÇÕES ==========
     const DOCUMENT_CATEGORY_LABELS = {
       proprietario: 'Documentos - Proprietário',
       veiculo: 'Documentos - Veículo',
@@ -2423,6 +2466,159 @@
       outro: 'Documentos'
     };
     const REQUIRED_DOC_CATEGORIES = ['proprietario', 'veiculo', 'motorista'];
+    
+    // Modo de desenvolvimento (desativar logs em produção)
+    const IS_DEV = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    
+    // ========== UTILITÁRIOS ==========
+    /**
+     * Logger condicional - só loga em desenvolvimento
+     */
+    const logger = {
+      log: (...args) => IS_DEV && console.log(...args),
+      error: (...args) => console.error(...args), // Erros sempre logam
+      warn: (...args) => IS_DEV && console.warn(...args),
+      info: (...args) => IS_DEV && console.info(...args)
+    };
+    
+    /**
+     * Debounce - executa função após delay, cancelando execuções anteriores
+     */
+    function debounce(func, wait) {
+      let timeout;
+      return function executedFunction(...args) {
+        const later = () => {
+          clearTimeout(timeout);
+          func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+      };
+    }
+    
+    /**
+     * Throttle - executa função no máximo uma vez por período
+     */
+    function throttle(func, limit) {
+      let inThrottle;
+      return function(...args) {
+        if (!inThrottle) {
+          func.apply(this, args);
+          inThrottle = true;
+          setTimeout(() => inThrottle = false, limit);
+        }
+      };
+    }
+    
+    /**
+     * Safe query selector - retorna null se elemento não existir
+     */
+    function safeQuery(selector, context = document) {
+      try {
+        return context.querySelector(selector);
+      } catch (e) {
+        logger.error('Erro ao buscar elemento:', selector, e);
+        return null;
+      }
+    }
+    
+    /**
+     * Safe getElementById
+     */
+    function safeGetElementById(id) {
+      try {
+        return document.getElementById(id);
+      } catch (e) {
+        logger.error('Erro ao buscar elemento por ID:', id, e);
+        return null;
+      }
+    }
+    
+    /**
+     * Tratamento seguro de erros em promises
+     */
+    async function safeAsync(fn, errorMessage = 'Erro inesperado') {
+      try {
+        return await fn();
+      } catch (error) {
+        logger.error(errorMessage, error);
+        showToast(error.message || errorMessage, 'error');
+        return null;
+      }
+    }
+    
+    /**
+     * Validação de sessão
+     */
+    function isValidSession() {
+      return state.session && state.session.access_token;
+    }
+    
+    /**
+     * Headers de autenticação
+     */
+    function getAuthHeaders(additionalHeaders = {}) {
+      if (!isValidSession()) {
+        throw new Error('Sessão inválida');
+      }
+      return {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${state.session.access_token}`,
+        ...additionalHeaders
+      };
+    }
+    
+    /**
+     * Fetch com tratamento de erro padronizado
+     */
+    async function safeFetch(url, options = {}) {
+      try {
+        if (!isValidSession() && url.includes('/api/motoristas/')) {
+          // Adicionar auth header se não estiver presente
+          if (!options.headers || !options.headers.Authorization) {
+            options.headers = getAuthHeaders(options.headers || {});
+          }
+        }
+        
+        const response = await fetch(url, options);
+        
+        // Tratar 401 (não autorizado)
+        if (response.status === 401) {
+          if (state.supabase) {
+            await state.supabase.auth.signOut();
+          }
+          window.location.href = 'login-motorista.html';
+          return null;
+        }
+        
+        return response;
+      } catch (error) {
+        logger.error('Erro na requisição:', url, error);
+        throw error;
+      }
+    }
+    
+    /**
+     * Fetch JSON com tratamento de erro
+     */
+    async function fetchJSON(url, options = {}) {
+      const response = await safeFetch(url, options);
+      if (!response) return null;
+      
+      try {
+        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(data.error || `Erro na requisição (${response.status})`);
+        }
+        return data;
+      } catch (error) {
+        if (error instanceof SyntaxError) {
+          logger.error('Resposta não é JSON válido:', url);
+          throw new Error('Resposta inválida do servidor');
+        }
+        throw error;
+      }
+    }
 
     const state = {
       supabase: null,
@@ -2439,88 +2635,145 @@
       solicitacaoIdParaAtender: null
     };
 
+    // ========== FUNÇÕES AUXILIARES PARA TOKEN DE RASTREAMENTO PERSISTENTE ==========
+    
+    // Armazenar token de rastreamento no localStorage
+    function salvarTokenRastreamento(coletaId, token) {
+      try {
+        if (!coletaId || !token) {
+          logger.warn('⚠️ Tentativa de salvar token inválido:', { coletaId, hasToken: !!token });
+          return;
+        }
+        const key = `rastreamento_token_${coletaId}`;
+        localStorage.setItem(key, token);
+        logger.log('✅ Token de rastreamento salvo:', { coletaId, key });
+      } catch (error) {
+        logger.error('❌ Erro ao salvar token de rastreamento:', error);
+      }
+    }
+
+    // Recuperar token de rastreamento do localStorage
+    function obterTokenRastreamento(coletaId) {
+      try {
+        if (!coletaId) return null;
+        const key = `rastreamento_token_${coletaId}`;
+        const token = localStorage.getItem(key);
+        return token || null;
+      } catch (error) {
+        logger.error('❌ Erro ao obter token de rastreamento:', error);
+        return null;
+      }
+    }
+
+    // Remover token de rastreamento do localStorage
+    function removerTokenRastreamento(coletaId) {
+      try {
+        if (!coletaId) return;
+        const key = `rastreamento_token_${coletaId}`;
+        localStorage.removeItem(key);
+        logger.log('✅ Token de rastreamento removido:', { coletaId, key });
+      } catch (error) {
+        logger.error('❌ Erro ao remover token de rastreamento:', error);
+      }
+    }
+
+    // Limpar todos os tokens de rastreamento (útil para logout)
+    function limparTodosTokensRastreamento() {
+      try {
+        const keys = Object.keys(localStorage);
+        keys.forEach(key => {
+          if (key.startsWith('rastreamento_token_')) {
+            localStorage.removeItem(key);
+          }
+        });
+        logger.log('✅ Todos os tokens de rastreamento foram limpos');
+      } catch (error) {
+        logger.error('❌ Erro ao limpar tokens de rastreamento:', error);
+      }
+    }
+
+    // Cache de elementos DOM (otimização de performance)
     const elements = {
-      driverAvatar: document.getElementById('driverAvatar'),
-      driverName: document.getElementById('driverName'),
-      driverMessage: document.getElementById('driverMessage'),
-      badgeCadastro: document.getElementById('badgeCadastro'),
-      badgeEmail: document.getElementById('badgeEmail'),
-      badgeEmailText: document.getElementById('badgeEmailText'),
-      chipStatusMotorista: document.getElementById('chipStatusMotorista'),
-      chipCadastroPendente: document.getElementById('chipCadastroPendente'),
-      infoTelefone: document.getElementById('infoTelefone'),
-      infoVeiculo: document.getElementById('infoVeiculo'),
-      infoSituacao: document.getElementById('infoSituacao'),
-      alertCadastro: document.getElementById('alertCadastro'),
-      viagensResumo: document.getElementById('viagensResumo'),
-      minhasViagensLista: document.getElementById('minhasViagensLista'),
-      minhasViagensEmpty: document.getElementById('minhasViagensEmpty'),
-      oportunidadesLista: document.getElementById('oportunidadesLista'),
-      oportunidadesEmpty: document.getElementById('oportunidadesEmpty'),
-      oportunidadesLoader: document.getElementById('oportunidadesLoader'),
-      contadorOportunidades: document.getElementById('contadorOportunidades'),
-      btnToggleFiltros: document.getElementById('btnToggleFiltros'),
-      btnFecharFiltros: document.getElementById('btnFecharFiltros'),
-      painelFiltros: document.getElementById('painelFiltros'),
-      filtroBusca: document.getElementById('filtroBusca'),
-      filtroFilial: document.getElementById('filtroFilial'),
-      filtroPrioridade: document.getElementById('filtroPrioridade'),
-      filtroValorMin: document.getElementById('filtroValorMin'),
-      filtroValorMax: document.getElementById('filtroValorMax'),
-      filtroKmMin: document.getElementById('filtroKmMin'),
-      filtroKmMax: document.getElementById('filtroKmMax'),
-      filtroTiposVeiculo: document.getElementById('filtroTiposVeiculo'),
-      filtroTiposCarroceria: document.getElementById('filtroTiposCarroceria'),
-      btnLimparFiltros: document.getElementById('btnLimparFiltros'),
-      btnAplicarFiltros: document.getElementById('btnAplicarFiltros'),
-      contadorOportunidades: document.getElementById('contadorOportunidades'),
-      btnInstalarApp: document.getElementById('btnInstalarApp'),
-      btnIrOportunidades: document.getElementById('btnIrOportunidades'),
-      btnSairPortal: document.getElementById('btnSairPortal'),
-      btnCompletarCadastro: document.getElementById('btnCompletarCadastro'),
-      btnAtualizarOportunidades: document.getElementById('btnAtualizarOportunidades'),
-      btnAtualizarViagens: document.getElementById('btnAtualizarViagens'),
-      btnAtualizarNotificacoes: document.getElementById('btnAtualizarNotificacoes'),
-      notificacoesCard: document.getElementById('notificacoesCard'),
-      notificacoesLista: document.getElementById('notificacoesLista'),
-      notificacoesEmpty: document.getElementById('notificacoesEmpty'),
-      contadorNotificacoes: document.getElementById('contadorNotificacoes'),
-      modal: document.getElementById('cadastroModal'),
-      btnFecharModal: document.getElementById('btnFecharModal'),
-      btnCancelarCadastro: document.getElementById('btnCancelarCadastro'),
-      formCadastro: document.getElementById('formCadastroMotorista'),
-      campoNome: document.getElementById('campoNome'),
-      campoCnh: document.getElementById('campoCnh'),
-      campoCategoriaCnh: document.getElementById('campoCategoriaCnh'),
-      campoTelefone1: document.getElementById('campoTelefone1'),
-      campoTelefone2: document.getElementById('campoTelefone2'),
-      campoEstado: document.getElementById('campoEstado'),
-      campoTipoVeiculo: document.getElementById('campoTipoVeiculo'),
-      campoTipoCarroceria: document.getElementById('campoTipoCarroceria'),
-      campoPlacaCavalo: document.getElementById('campoPlacaCavalo'),
-      campoPlacaCarreta1: document.getElementById('campoPlacaCarreta1'),
-      campoPlacaCarreta2: document.getElementById('campoPlacaCarreta2'),
-      campoPlacaCarreta3: document.getElementById('campoPlacaCarreta3'),
-      btnSalvarCadastro: document.getElementById('btnSalvarCadastro'),
-      documentosModal: document.getElementById('documentosModal'),
-      formDocumentos: document.getElementById('formDocumentos'),
-      btnFecharDocumentos: document.getElementById('btnFecharDocumentos'),
-      btnCancelarDocumentos: document.getElementById('btnCancelarDocumentos'),
-      rastreamentoTermoModal: document.getElementById('rastreamentoTermoModal'),
-      btnFecharRastreamentoTermo: document.getElementById('btnFecharRastreamentoTermo'),
-      btnAceitarTermo: document.getElementById('btnAceitarTermo'),
-      btnRecusarTermo: document.getElementById('btnRecusarTermo'),
-      aceitarTermoRastreamento: document.getElementById('aceitarTermoRastreamento'),
-      btnEnviarDocumentos: document.getElementById('btnEnviarDocumentos'),
-      docsResumo: document.getElementById('docsResumo'),
-      docsProprietario: document.getElementById('docsProprietario'),
-      docsVeiculo: document.getElementById('docsVeiculo'),
-      docsMotorista: document.getElementById('docsMotorista'),
-      refPessoal1: document.getElementById('refPessoal1'),
-      refPessoal2: document.getElementById('refPessoal2'),
-      refComercial1: document.getElementById('refComercial1'),
-      refComercial2: document.getElementById('refComercial2'),
-      toastContainer: document.getElementById('toastContainer')
+      driverAvatar: safeGetElementById('driverAvatar'),
+      driverName: safeGetElementById('driverName'),
+      driverMessage: safeGetElementById('driverMessage'),
+      badgeCadastro: safeGetElementById('badgeCadastro'),
+      badgeEmail: safeGetElementById('badgeEmail'),
+      badgeEmailText: safeGetElementById('badgeEmailText'),
+      chipStatusMotorista: safeGetElementById('chipStatusMotorista'),
+      chipCadastroPendente: safeGetElementById('chipCadastroPendente'),
+      infoTelefone: safeGetElementById('infoTelefone'),
+      infoVeiculo: safeGetElementById('infoVeiculo'),
+      infoSituacao: safeGetElementById('infoSituacao'),
+      alertCadastro: safeGetElementById('alertCadastro'),
+      viagensResumo: safeGetElementById('viagensResumo'),
+      minhasViagensLista: safeGetElementById('minhasViagensLista'),
+      minhasViagensEmpty: safeGetElementById('minhasViagensEmpty'),
+      oportunidadesLista: safeGetElementById('oportunidadesLista'),
+      oportunidadesEmpty: safeGetElementById('oportunidadesEmpty'),
+      oportunidadesLoader: safeGetElementById('oportunidadesLoader'),
+      contadorOportunidades: safeGetElementById('contadorOportunidades'),
+      btnToggleFiltros: safeGetElementById('btnToggleFiltros'),
+      btnFecharFiltros: safeGetElementById('btnFecharFiltros'),
+      painelFiltros: safeGetElementById('painelFiltros'),
+      filtroBusca: safeGetElementById('filtroBusca'),
+      filtroFilial: safeGetElementById('filtroFilial'),
+      filtroPrioridade: safeGetElementById('filtroPrioridade'),
+      filtroValorMin: safeGetElementById('filtroValorMin'),
+      filtroValorMax: safeGetElementById('filtroValorMax'),
+      filtroKmMin: safeGetElementById('filtroKmMin'),
+      filtroKmMax: safeGetElementById('filtroKmMax'),
+      filtroTiposVeiculo: safeGetElementById('filtroTiposVeiculo'),
+      filtroTiposCarroceria: safeGetElementById('filtroTiposCarroceria'),
+      btnLimparFiltros: safeGetElementById('btnLimparFiltros'),
+      btnAplicarFiltros: safeGetElementById('btnAplicarFiltros'),
+      btnInstalarApp: safeGetElementById('btnInstalarApp'),
+      btnIrOportunidades: safeGetElementById('btnIrOportunidades'),
+      btnSairPortal: safeGetElementById('btnSairPortal'),
+      btnCompletarCadastro: safeGetElementById('btnCompletarCadastro'),
+      btnAtualizarOportunidades: safeGetElementById('btnAtualizarOportunidades'),
+      btnAtualizarViagens: safeGetElementById('btnAtualizarViagens'),
+      btnAtualizarNotificacoes: safeGetElementById('btnAtualizarNotificacoes'),
+      notificacoesCard: safeGetElementById('notificacoesCard'),
+      notificacoesLista: safeGetElementById('notificacoesLista'),
+      notificacoesEmpty: safeGetElementById('notificacoesEmpty'),
+      contadorNotificacoes: safeGetElementById('contadorNotificacoes'),
+      modal: safeGetElementById('cadastroModal'),
+      btnFecharModal: safeGetElementById('btnFecharModal'),
+      btnCancelarCadastro: safeGetElementById('btnCancelarCadastro'),
+      formCadastro: safeGetElementById('formCadastroMotorista'),
+      campoNome: safeGetElementById('campoNome'),
+      campoCnh: safeGetElementById('campoCnh'),
+      campoCategoriaCnh: safeGetElementById('campoCategoriaCnh'),
+      campoTelefone1: safeGetElementById('campoTelefone1'),
+      campoTelefone2: safeGetElementById('campoTelefone2'),
+      campoEstado: safeGetElementById('campoEstado'),
+      campoTipoVeiculo: safeGetElementById('campoTipoVeiculo'),
+      campoTipoCarroceria: safeGetElementById('campoTipoCarroceria'),
+      campoPlacaCavalo: safeGetElementById('campoPlacaCavalo'),
+      campoPlacaCarreta1: safeGetElementById('campoPlacaCarreta1'),
+      campoPlacaCarreta2: safeGetElementById('campoPlacaCarreta2'),
+      campoPlacaCarreta3: safeGetElementById('campoPlacaCarreta3'),
+      btnSalvarCadastro: safeGetElementById('btnSalvarCadastro'),
+      documentosModal: safeGetElementById('documentosModal'),
+      formDocumentos: safeGetElementById('formDocumentos'),
+      btnFecharDocumentos: safeGetElementById('btnFecharDocumentos'),
+      btnCancelarDocumentos: safeGetElementById('btnCancelarDocumentos'),
+      rastreamentoTermoModal: safeGetElementById('rastreamentoTermoModal'),
+      btnFecharRastreamentoTermo: safeGetElementById('btnFecharRastreamentoTermo'),
+      btnAceitarTermo: safeGetElementById('btnAceitarTermo'),
+      btnRecusarTermo: safeGetElementById('btnRecusarTermo'),
+      aceitarTermoRastreamento: safeGetElementById('aceitarTermoRastreamento'),
+      btnEnviarDocumentos: safeGetElementById('btnEnviarDocumentos'),
+      docsResumo: safeGetElementById('docsResumo'),
+      docsProprietario: safeGetElementById('docsProprietario'),
+      docsVeiculo: safeGetElementById('docsVeiculo'),
+      docsMotorista: safeGetElementById('docsMotorista'),
+      refPessoal1: safeGetElementById('refPessoal1'),
+      refPessoal2: safeGetElementById('refPessoal2'),
+      refComercial1: safeGetElementById('refComercial1'),
+      refComercial2: safeGetElementById('refComercial2'),
+      toastContainer: safeGetElementById('toastContainer')
     };
 
     const referenciaInputsPessoais = [elements.refPessoal1, elements.refPessoal2].filter(Boolean);
@@ -2802,47 +3055,46 @@
       const user = state.user;
 
       const nome = motorista?.nome || user?.nome || user?.email || 'Motorista';
-      elements.driverName.textContent = nome;
+      if (elements.driverName) elements.driverName.textContent = nome;
+      if (elements.driverMessage) {
       elements.driverMessage.textContent = motorista
         ? 'Você está pronto para acompanhar suas viagens e assumir novas oportunidades.'
         : 'Complete seu cadastro para poder assumir viagens. Você ainda pode visualizar oportunidades.';
+      }
 
       const email = user?.email || '—';
-      elements.badgeEmailText.textContent = email;
+      if (elements.badgeEmailText) elements.badgeEmailText.textContent = email;
+      if (elements.driverAvatar) {
       elements.driverAvatar.textContent = nome.split(' ').slice(0, 2).map(part => part[0] || '').join('').toUpperCase() || 'MM';
+      }
 
       if (motorista) {
         // Verificar se o cadastro está completo
         const cadastroCompleto = isCadastroCompleto();
         const motoristaStatus = (motorista.status || '').toLowerCase();
         
-        // Se o cadastro não está completo OU status é cadastro_pendente, mostrar como pendente
-        if (!cadastroCompleto || motoristaStatus === 'cadastro_pendente') {
+        // Se o cadastro não está completo, mostrar como pendente
+        if (!cadastroCompleto) {
+          if (elements.badgeCadastro) {
           elements.badgeCadastro.textContent = 'Cadastro pendente';
           elements.badgeCadastro.classList.remove('success');
           elements.badgeCadastro.classList.add('warning');
           elements.badgeCadastro.innerHTML = '<i class="fas fa-hourglass-half"></i> Cadastro pendente';
-          elements.chipStatusMotorista.style.display = 'none';
-          elements.chipCadastroPendente.style.display = 'inline-flex';
-          elements.alertCadastro.classList.add('active');
-        } else if (motoristaStatus === 'ativo') {
-          // Cadastro completo e status ativo
-          elements.badgeCadastro.textContent = 'Cadastro aprovado';
+          }
+          if (elements.chipStatusMotorista) elements.chipStatusMotorista.style.display = 'none';
+          if (elements.chipCadastroPendente) elements.chipCadastroPendente.style.display = 'inline-flex';
+          if (elements.alertCadastro) elements.alertCadastro.classList.add('active');
+        } else {
+          // Cadastro completo - pode assumir viagens
+          if (elements.badgeCadastro) {
+          elements.badgeCadastro.textContent = 'Cadastro completo';
         elements.badgeCadastro.classList.remove('warning');
         elements.badgeCadastro.classList.add('success');
-        elements.badgeCadastro.innerHTML = `<i class="fas fa-shield-check"></i> ${escapeHtml(elements.badgeCadastro.textContent)}`;
-        elements.chipStatusMotorista.style.display = 'inline-flex';
-        elements.chipCadastroPendente.style.display = 'none';
-        elements.alertCadastro.classList.remove('active');
-        } else {
-          // Cadastro completo mas status não é ativo
-          elements.badgeCadastro.textContent = `Status: ${motorista.status || 'pendente'}`;
-          elements.badgeCadastro.classList.remove('success');
-          elements.badgeCadastro.classList.add('warning');
-          elements.badgeCadastro.innerHTML = `<i class="fas fa-hourglass-half"></i> ${escapeHtml(elements.badgeCadastro.textContent)}`;
-          elements.chipStatusMotorista.style.display = 'none';
-          elements.chipCadastroPendente.style.display = 'inline-flex';
-          elements.alertCadastro.classList.add('active');
+        elements.badgeCadastro.innerHTML = `<i class="fas fa-check-circle"></i> ${escapeHtml(elements.badgeCadastro.textContent)}`;
+          }
+          if (elements.chipStatusMotorista) elements.chipStatusMotorista.style.display = 'inline-flex';
+          if (elements.chipCadastroPendente) elements.chipCadastroPendente.style.display = 'none';
+          if (elements.alertCadastro) elements.alertCadastro.classList.remove('active');
         }
       } else {
         elements.badgeCadastro.textContent = 'Cadastro pendente';
@@ -2867,16 +3119,11 @@
       // Atualizar mensagem de situação baseada no estado real do cadastro
       if (motorista) {
         const cadastroCompleto = isCadastroCompleto();
-        const motoristaStatus = (motorista.status || '').toLowerCase();
         
         if (!cadastroCompleto) {
           elements.infoSituacao.textContent = 'Complete seu cadastro para poder assumir viagens.';
-        } else if (motoristaStatus === 'cadastro_pendente') {
-          elements.infoSituacao.textContent = 'Cadastro completo. Aguardando aprovação da central.';
-        } else if (motoristaStatus === 'ativo') {
-          elements.infoSituacao.textContent = 'Cadastro validado. Você pode assumir novas viagens.';
         } else {
-          elements.infoSituacao.textContent = 'Cadastro completo. Aguardando validação.';
+          elements.infoSituacao.textContent = 'Cadastro completo. Você pode assumir viagens.';
         }
       } else {
         elements.infoSituacao.textContent = 'Complete o cadastro para liberar o aceite de viagens.';
@@ -2890,58 +3137,42 @@
     }
 
     async function carregarPerfil() {
-      const response = await fetch('/api/motoristas/auth/me', {
-        headers: {
-          Authorization: `Bearer ${state.session.access_token}`
-        }
-      });
-
-      if (response.status === 401) {
-        await state.supabase.auth.signOut();
-        window.location.href = 'login-motorista.html';
-        return;
-      }
-
-      const result = await response.json();
-      if (!response.ok) {
-        throw new Error(result.error || 'Falha ao carregar perfil');
-      }
+      return await safeAsync(async () => {
+        const result = await fetchJSON('/api/motoristas/auth/me', {
+          headers: getAuthHeaders()
+        });
+        
+        if (!result) return;
 
       state.user = result.user;
       state.motorista = result.motorista;
       atualizarCabecalho();
     await carregarStatusDocumentos(true);
+      }, 'Erro ao carregar perfil');
     }
 
     async function carregarOportunidades() {
       state.carregandoOportunidades = true;
-      elements.oportunidadesLoader.style.display = 'inline-flex';
-      elements.oportunidadesEmpty.style.display = 'none';
-      elements.oportunidadesLista.innerHTML = '';
+      if (elements.oportunidadesLoader) elements.oportunidadesLoader.style.display = 'inline-flex';
+      if (elements.oportunidadesEmpty) elements.oportunidadesEmpty.style.display = 'none';
+      if (elements.oportunidadesLista) elements.oportunidadesLista.innerHTML = '';
 
       try {
-        const response = await fetch('/api/motoristas/oportunidades', {
-          headers: {
-            Authorization: `Bearer ${state.session.access_token}`
-          }
+        const result = await fetchJSON('/api/motoristas/oportunidades', {
+          headers: getAuthHeaders()
         });
 
-        if (response.status === 401) {
-          await state.supabase.auth.signOut();
-          window.location.href = 'login-motorista.html';
+        if (!result) {
+          state.carregandoOportunidades = false;
+          if (elements.oportunidadesLoader) elements.oportunidadesLoader.style.display = 'none';
           return;
-        }
-
-        const result = await response.json();
-        if (!response.ok) {
-          throw new Error(result.error || 'Não foi possível carregar oportunidades');
         }
 
         state.oportunidades = result.oportunidades || [];
         state.oportunidadesOriginal = [...state.oportunidades]; // Backup para filtros
         aplicarFiltros();
       } catch (error) {
-        console.error('Erro ao carregar oportunidades:', error);
+        logger.error('Erro ao carregar oportunidades:', error);
         showToast(error.message || 'Erro ao carregar oportunidades', 'error');
         elements.oportunidadesEmpty.style.display = 'flex';
       } finally {
@@ -3190,16 +3421,14 @@
         elements.btnLimparFiltros.addEventListener('click', limparFiltros);
       }
 
-      // Aplicar filtros ao digitar na busca (debounce)
+      // Aplicar filtros ao digitar na busca (debounce otimizado)
       if (elements.filtroBusca) {
-        let buscaTimeout;
-        elements.filtroBusca.addEventListener('input', () => {
-          clearTimeout(buscaTimeout);
-          buscaTimeout = setTimeout(aplicarFiltros, 300);
-        });
+        const debouncedBusca = debounce(aplicarFiltros, 300);
+        elements.filtroBusca.addEventListener('input', debouncedBusca);
       }
 
-      // Aplicar filtros ao mudar outros campos
+      // Aplicar filtros ao mudar outros campos (debounce otimizado)
+      const debouncedFiltros = debounce(aplicarFiltros, 500);
       const filtrosInputs = [
         elements.filtroFilial,
         elements.filtroPrioridade,
@@ -3211,10 +3440,7 @@
       filtrosInputs.forEach(input => {
         if (input) {
           input.addEventListener('change', aplicarFiltros);
-          input.addEventListener('input', () => {
-            clearTimeout(buscaTimeout);
-            buscaTimeout = setTimeout(aplicarFiltros, 500);
-          });
+          input.addEventListener('input', debouncedFiltros);
         }
       });
 
@@ -3345,6 +3571,7 @@
     }
 
     async function carregarViagens() {
+      logger.log('📋 carregarViagens() chamada');
       state.carregandoViagens = true;
       elements.minhasViagensEmpty.style.display = 'none';
       elements.minhasViagensLista.innerHTML = '<div class="loader">Carregando suas viagens...</div>';
@@ -3367,19 +3594,41 @@
           throw new Error(result.error || 'Não foi possível carregar suas viagens');
         }
 
+        logger.log('📋 Resultado de carregarViagens:', {
+          temMotorista: !!result.motorista,
+          totalViagens: result.viagens?.length || 0,
+          viagens: result.viagens?.map(v => ({ id: v.id, cliente: v.cliente })) || []
+        });
+
         if (result.motorista) {
           state.motorista = result.motorista;
           atualizarCabecalho();
         }
 
         state.viagens = result.viagens || [];
+        logger.log('📋 Viagens carregadas:', {
+          total: state.viagens.length,
+          ids: state.viagens.map(v => v.id),
+          clientes: state.viagens.map(v => v.cliente)
+        });
         renderViagens();
+        
+        // Sempre verificar e iniciar rastreamento após carregar viagens
+        // Esta função é centralizada e trata todos os casos
+        // Aguardar um pouco para garantir que tudo está pronto
+        logger.log('⏳ Agendando verificação de rastreamento após carregar viagens...');
+        setTimeout(() => {
+          logger.log('🔍 Executando verificação de rastreamento...');
+          verificarEIniciarRastreamentoAutomatico();
+        }, 1000);
       } catch (error) {
-        console.error('Erro ao carregar viagens:', error);
+        logger.error('❌ Erro ao carregar viagens:', error);
+        logger.error('❌ Stack trace:', error.stack);
         showToast(error.message || 'Erro ao carregar suas viagens', 'error');
         elements.minhasViagensEmpty.style.display = 'flex';
       } finally {
         state.carregandoViagens = false;
+        logger.log('📋 carregarViagens() finalizada');
       }
     }
 
@@ -3402,6 +3651,28 @@
           ? `${escapeHtml(viagem.filial)} #${escapeHtml(viagem.numeroColeta)}`
           : escapeHtml(viagem.cliente || 'Cliente confidencial');
         
+        // Verificar se pode desvincular (etapa GR ou anterior)
+        // Ordem das etapas: comercial < price < cs < contratacao < gr < documentacao < ...
+        // O campo vem como etapaAtual (camelCase) da função mapColetaOpportunity
+        const etapaAtualRaw = viagem.etapaAtual || viagem.etapa_atual || '';
+        const etapaAtual = String(etapaAtualRaw).toLowerCase().trim();
+        
+        // Etapas que permitem desvincular (GR ou anteriores)
+        // Ordem: comercial < price < cs < contratacao < gr < documentacao < ...
+        // Incluindo todas as etapas até GR (incluindo GR)
+        const etapasPermitidas = ['gr', 'contratacao', 'cs', 'price', 'comercial', 'pendente', 'em_andamento', ''];
+        const podeDesvincular = etapasPermitidas.includes(etapaAtual);
+        
+        // Log apenas em desenvolvimento para debug
+        if (IS_DEV && viagem.id) {
+          logger.log('🔍 Verificando desvincular:', {
+            coletaId: viagem.id,
+            etapaAtualRaw,
+            etapaAtual,
+            podeDesvincular
+          });
+        }
+        
         return `
           <article class="trip-card">
             <h3>
@@ -3415,8 +3686,15 @@
               <span><i class="fas fa-calendar"></i> ${formatDate(viagem.dataRecebimento)}</span>
               <span><i class="fas fa-road"></i> ${formatDistance(viagem.km)}</span>
               <span><i class="fas fa-coins"></i> ${formatCurrency(viagem.valor)}</span>
-              <span><i class="fas fa-diagram-project"></i> Etapa: ${escapeHtml((viagem.etapaAtual || '—').toUpperCase())}</span>
+              <span><i class="fas fa-diagram-project"></i> Etapa: ${escapeHtml((viagem.etapaAtual || viagem.etapa_atual || '—').toUpperCase())}</span>
             </div>
+            ${podeDesvincular ? `
+              <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid rgba(148, 163, 184, 0.2); display: block !important;">
+                <button class="btn btn-outline danger" onclick="window.desvincularColeta('${escapeHtml(viagem.id)}', '${escapeHtml(identificador)}')" style="width: 100%; padding: 0.5rem; display: block !important; visibility: visible !important; opacity: 1 !important;">
+                  <i class="fas fa-unlink me-2"></i> Desvincular desta coleta
+                </button>
+              </div>
+            ` : ''}
           </article>
         `;
       }).join('');
@@ -3424,28 +3702,72 @@
       elements.minhasViagensLista.innerHTML = html;
     }
 
-    async function carregarNotificacoes() {
-      if (!state.session || !state.session.access_token) {
+    // Função para desvincular de uma coleta (tornada global para onclick)
+    window.desvincularColeta = async function(coletaId, identificador) {
+      if (!coletaId) {
+        logger.error('❌ ID da coleta não fornecido');
+        mostrarToast('Erro: ID da coleta não fornecido', 'error');
+        return;
+      }
+
+      // Confirmar ação
+      const confirmar = confirm(
+        `⚠️ Tem certeza que deseja se desvincular desta coleta?\n\n` +
+        `Coleta: ${identificador}\n\n` +
+        `Esta ação não pode ser desfeita. Você precisará assumir a coleta novamente se desejar trabalhar nela.`
+      );
+
+      if (!confirmar) {
         return;
       }
 
       try {
-        const response = await fetch('/api/motoristas/notificacoes', {
-          headers: {
-            Authorization: `Bearer ${state.session.access_token}`
-          }
+        logger.log('🔄 Desvinculando da coleta:', coletaId);
+
+        const result = await fetchJSON(`/api/motoristas/coletas/${coletaId}/desvincular`, {
+          method: 'POST',
+          headers: getAuthHeaders()
         });
 
-        if (!response.ok) {
-          throw new Error('Erro ao carregar notificações');
+        if (!result || !result.success) {
+          throw new Error(result?.error || 'Erro ao desvincular da coleta');
         }
 
-        const result = await response.json();
+        // Remover token de rastreamento ao desvincular
+        removerTokenRastreamento(coletaId);
+        logger.log('✅ Token de rastreamento removido ao desvincular');
+
+        logger.log('✅ Desvinculado com sucesso');
+        mostrarToast('Você foi desvinculado da coleta com sucesso', 'success');
+
+        // Recarregar viagens após um pequeno delay
+        setTimeout(() => {
+          carregarViagens();
+        }, 500);
+
+      } catch (error) {
+        logger.error('❌ Erro ao desvincular da coleta:', error);
+        mostrarToast(error.message || 'Erro ao desvincular da coleta. Tente novamente.', 'error');
+      }
+    }
+
+    async function carregarNotificacoes() {
+      if (!isValidSession()) {
+        return;
+      }
+
+      return await safeAsync(async () => {
+        const result = await fetchJSON('/api/motoristas/notificacoes', {
+          headers: getAuthHeaders()
+        });
+
+        if (!result) return;
+
         const notificacoes = result.notificacoes || [];
 
         if (notificacoes.length > 0) {
-          elements.notificacoesCard.style.display = 'block';
-          elements.notificacoesEmpty.style.display = 'none';
+          if (elements.notificacoesCard) elements.notificacoesCard.style.display = 'block';
+          if (elements.notificacoesEmpty) elements.notificacoesEmpty.style.display = 'none';
           elements.contadorNotificacoes.textContent = notificacoes.length;
 
           const html = notificacoes.map(notif => {
@@ -3478,14 +3800,11 @@
             `;
           }).join('');
 
-          elements.notificacoesLista.innerHTML = html;
+          if (elements.notificacoesLista) elements.notificacoesLista.innerHTML = html;
         } else {
-          elements.notificacoesCard.style.display = 'none';
+          if (elements.notificacoesCard) elements.notificacoesCard.style.display = 'none';
         }
-      } catch (error) {
-        console.error('Erro ao carregar notificações:', error);
-        elements.notificacoesCard.style.display = 'none';
-      }
+      }, 'Erro ao carregar notificações');
     }
 
     window.abrirModalAtualizacaoDocumento = async function(coletaId, categoria, solicitacaoId) {
@@ -3540,7 +3859,7 @@
         }
       } else {
         if (elements.infoSituacao) {
-          elements.infoSituacao.textContent = 'Documentação enviada. Aguardando validação da central.';
+          elements.infoSituacao.textContent = 'Cadastro completo. Você pode assumir viagens.';
         }
         if (elements.alertCadastro) {
           elements.alertCadastro.classList.remove('active');
@@ -3549,7 +3868,7 @@
     }
 
     async function carregarStatusDocumentos(force = false) {
-      if (!state.session || !state.session.access_token) {
+      if (!isValidSession()) {
         return null;
       }
 
@@ -3557,32 +3876,17 @@
         return state.documentosStatus;
       }
 
-      try {
-        const response = await fetch('/api/motoristas/documentos/status', {
-          headers: {
-            Authorization: `Bearer ${state.session.access_token}`
-          }
+      return await safeAsync(async () => {
+        const result = await fetchJSON('/api/motoristas/documentos/status', {
+          headers: getAuthHeaders()
         });
 
-        if (response.status === 401) {
-          await state.supabase.auth.signOut();
-          window.location.href = 'login-motorista.html';
-          return null;
-        }
-
-        const result = await response.json();
-        if (!response.ok) {
-          throw new Error(result.error || 'Não foi possível consultar seus documentos.');
-        }
+        if (!result) return null;
 
         state.documentosStatus = result;
         atualizarStatusDocumentosUI();
         return state.documentosStatus;
-      } catch (error) {
-        console.error('Erro ao consultar documentos:', error);
-        showToast(error.message || 'Erro ao consultar documentos.', 'error');
-        return null;
-      }
+      }, 'Erro ao consultar documentos');
     }
 
     function toggleDocumentosModal(open) {
@@ -3617,44 +3921,30 @@
     // Variável para armazenar a coleta pendente após completar cadastro
     let coletaPendenteAposCadastro = null;
 
-    // Função para verificar se o cadastro está completo
-    function isCadastroCompleto() {
-      const motorista = state.motorista;
-      if (!motorista) {
-        console.log('❌ isCadastroCompleto: Sem motorista');
-        return false;
-      }
-      
-      // Verificar se tem nome válido
-      const nome = motorista.nome || '';
-      const isNomeValido = nome.length >= 3 && !nome.includes('@') && !/^\d+$/.test(nome);
-      
-      // Verificar se tem telefone válido
-      const telefone = motorista.telefone1 || motorista.telefone || '';
+    /**
+     * Função auxiliar para verificar se um nome é válido
+     */
+    function isNomeValido(nome) {
+      if (!nome || typeof nome !== 'string') return false;
+      const nomeLimpo = nome.trim();
+      return nomeLimpo.length >= 3 && 
+             !/^\d+$/.test(nomeLimpo) && 
+             !nomeLimpo.includes('@');
+    }
+    
+    /**
+     * Função auxiliar para verificar se um telefone é válido
+     */
+    function isTelefoneValido(telefone) {
+      if (!telefone) return false;
       const telefoneLimpo = telefone.replace(/\D/g, '');
-      const telefoneValido = telefoneLimpo.length >= 12 || (telefoneLimpo.length >= 10 && !telefoneLimpo.startsWith('55'));
-      
-      // Verificar campos obrigatórios
-      // Normalizar estado - pode vir como string, null, undefined ou objeto vazio
-      let estadoValue = motorista.estado;
-      
-      // Se estado vier como objeto, tentar extrair o valor
-      if (estadoValue && typeof estadoValue === 'object' && estadoValue !== null) {
-        // Tentar extrair valor de objeto
-        estadoValue = estadoValue.value || estadoValue.estado || String(estadoValue);
-        console.warn('⚠️ Estado veio como objeto, tentando extrair:', {
-          estadoOriginal: motorista.estado,
-          estadoExtraido: estadoValue
-        });
-      }
-      
-      // Normalizar para string
-      const estadoNormalizado = (estadoValue && (typeof estadoValue === 'string' || typeof estadoValue === 'number')) 
-        ? String(estadoValue).trim().toUpperCase() 
-        : null;
-      
-      const temEstado = !!estadoNormalizado && estadoNormalizado.length === 2 && estadoNormalizado !== 'NULL' && estadoNormalizado !== 'UNDEFINED';
-      const isValorInformado = (valor) => {
+      return telefoneLimpo.length >= 12 || (telefoneLimpo.length >= 10 && !telefoneLimpo.startsWith('55'));
+    }
+    
+    /**
+     * Função auxiliar para verificar se um valor está informado
+     */
+    function isValorInformado(valor) {
         if (!valor) return false;
         const texto = String(valor).trim().toLowerCase();
         const textoAscii = texto
@@ -3667,28 +3957,150 @@
                textoAscii !== 'sem informacao' &&
                textoAscii !== 'null' &&
                textoAscii !== 'undefined';
+    }
+    
+    /**
+     * Normalizar estado para string de 2 caracteres
+     */
+    function normalizarEstado(estado) {
+      if (!estado) return null;
+      
+      // Se estado vier como objeto, tentar extrair o valor
+      let estadoValue = estado;
+      if (estadoValue && typeof estadoValue === 'object' && estadoValue !== null) {
+        estadoValue = estadoValue.value || estadoValue.estado || String(estadoValue);
+        logger.warn('⚠️ Estado veio como objeto, tentando extrair:', {
+          estadoOriginal: estado,
+          estadoExtraido: estadoValue
+        });
+      }
+      
+      // Normalizar para string
+      const estadoNormalizado = (estadoValue && (typeof estadoValue === 'string' || typeof estadoValue === 'number')) 
+        ? String(estadoValue).trim().toUpperCase() 
+        : null;
+      
+      // Validar se é um estado válido (2 caracteres e não é NULL/UNDEFINED)
+      if (estadoNormalizado && estadoNormalizado.length === 2 && 
+          estadoNormalizado !== 'NULL' && estadoNormalizado !== 'UNDEFINED') {
+        return estadoNormalizado;
+      }
+      
+      return null;
+    }
+    
+    /**
+     * Verifica quais dados estão faltando no cadastro
+     * Retorna um objeto detalhado com os dados faltantes e completos
+     */
+    function verificarDadosFaltantes() {
+      const motorista = state.motorista || {};
+      const user = state.user || {};
+      
+      const dadosFaltantes = {
+        nome: false,
+        telefone: false,
+        estado: false,
+        classeVeiculo: false,
+        tipoVeiculo: false,
+        tipoCarroceria: false,
+        placaCavalo: false
       };
-
-      const temClasseVeiculo = isValorInformado(motorista.classeVeiculo || motorista.classe_veiculo);
-      const temTipoVeiculo = isValorInformado(motorista.tipoVeiculo || motorista.tipo_veiculo);
-      const temTipoCarroceria = isValorInformado(motorista.tipoCarroceria || motorista.tipo_carroceria);
       
-      const resultado = isNomeValido && telefoneValido && temEstado && temClasseVeiculo && temTipoVeiculo && temTipoCarroceria;
+      const dadosCompletos = {
+        nome: false,
+        telefone: false,
+        estado: false,
+        classeVeiculo: false,
+        tipoVeiculo: false,
+        tipoCarroceria: false,
+        placaCavalo: false
+      };
       
-      console.log('🔍 isCadastroCompleto:', {
-        isNomeValido,
-        telefoneValido,
-        temEstado,
-        estado: motorista.estado,
-        estadoNormalizado: estadoNormalizado,
-        estadoType: typeof motorista.estado,
-        temClasseVeiculo,
-        temTipoVeiculo,
-        temTipoCarroceria,
-        resultado
-      });
+      // Verificar nome
+      const nome = motorista.nome || user.nome || '';
+      if (isNomeValido(nome)) {
+        dadosCompletos.nome = true;
+      } else {
+        dadosFaltantes.nome = true;
+      }
       
-      return resultado;
+      // Verificar telefone
+      const telefone = motorista.telefone1 || motorista.telefone || '';
+      if (isTelefoneValido(telefone)) {
+        dadosCompletos.telefone = true;
+      } else {
+        dadosFaltantes.telefone = true;
+      }
+      
+      // Verificar estado
+      const estadoNormalizado = normalizarEstado(motorista.estado);
+      if (estadoNormalizado) {
+        dadosCompletos.estado = true;
+      } else {
+        dadosFaltantes.estado = true;
+      }
+      
+      // Verificar classe do veículo
+      const classeVeiculo = motorista.classeVeiculo || motorista.classe_veiculo || '';
+      if (isValorInformado(classeVeiculo)) {
+        dadosCompletos.classeVeiculo = true;
+      } else {
+        dadosFaltantes.classeVeiculo = true;
+      }
+      
+      // Verificar tipo de veículo
+      const tipoVeiculo = motorista.tipoVeiculo || motorista.tipo_veiculo || '';
+      if (isValorInformado(tipoVeiculo)) {
+        dadosCompletos.tipoVeiculo = true;
+      } else {
+        dadosFaltantes.tipoVeiculo = true;
+      }
+      
+      // Verificar tipo de carroceria
+      const tipoCarroceria = motorista.tipoCarroceria || motorista.tipo_carroceria || '';
+      if (isValorInformado(tipoCarroceria)) {
+        dadosCompletos.tipoCarroceria = true;
+      } else {
+        dadosFaltantes.tipoCarroceria = true;
+      }
+      
+      // Verificar placa do cavalo (obrigatória)
+      const placas = motorista.placas || {};
+      const placaCavalo = placas.cavalo || motorista.placa_cavalo || '';
+      if (isValorInformado(placaCavalo)) {
+        dadosCompletos.placaCavalo = true;
+      } else {
+        dadosFaltantes.placaCavalo = true;
+      }
+      
+      // Calcular total de dados faltantes
+      const totalFaltantes = Object.values(dadosFaltantes).filter(falta => falta).length;
+      const totalCompletos = Object.values(dadosCompletos).filter(completo => completo).length;
+      
+      return {
+        faltantes: dadosFaltantes,
+        completos: dadosCompletos,
+        totalFaltantes,
+        totalCompletos,
+        estaCompleto: totalFaltantes === 0
+      };
+    }
+    
+    /**
+     * Função para verificar se o cadastro está completo
+     */
+    function isCadastroCompleto() {
+      const motorista = state.motorista;
+      if (!motorista) {
+        logger.log('❌ isCadastroCompleto: Sem motorista');
+        return false;
+      }
+      
+      const verificacao = verificarDadosFaltantes();
+      logger.log('🔍 isCadastroCompleto:', verificacao);
+      
+      return verificacao.estaCompleto;
     }
 
     async function prepararAssumirOportunidade(coletaId) {
@@ -3696,54 +4108,57 @@
 
       // Recarregar dados do motorista do servidor antes de verificar
       try {
-        const viagensResponse = await fetch('/api/motoristas/viagens', {
-          headers: {
-            Authorization: `Bearer ${state.session.access_token}`
-          }
+        const result = await fetchJSON('/api/motoristas/viagens', {
+          headers: getAuthHeaders()
         });
-        if (viagensResponse.ok) {
-          const viagensResult = await viagensResponse.json();
-          if (viagensResult.motorista) {
-            state.motorista = viagensResult.motorista;
+        if (result && result.motorista) {
+          state.motorista = result.motorista;
             atualizarCabecalho();
-            console.log('✅ Dados do motorista recarregados antes de verificar cadastro:', {
+          logger.log('✅ Dados do motorista recarregados antes de verificar cadastro:', {
               ...state.motorista,
               estado: state.motorista.estado,
               temEstado: !!state.motorista.estado,
               estadoType: typeof state.motorista.estado
             });
-          }
         }
       } catch (reloadError) {
-        console.warn('⚠️ Erro ao recarregar dados do motorista:', reloadError);
+        logger.warn('⚠️ Erro ao recarregar dados do motorista:', reloadError);
       }
 
       // Verificar se o status do motorista está ativo
-      const motoristaStatus = (state.motorista?.status || '').toLowerCase();
+      // Normalizar status para comparação (remover espaços, converter para minúsculas)
+      const motoristaStatus = (state.motorista?.status || '').toString().trim().toLowerCase();
       
-      console.log('🔍 Iniciando verificação para assumir coleta:', {
+      logger.log('🔍 Iniciando verificação para assumir coleta:', {
         coletaId: coletaId,
         temMotorista: !!state.motorista,
         status: motoristaStatus,
+        statusOriginal: state.motorista?.status,
         motorista: state.motorista
       });
       
       // PRIMEIRO: Verificar se o cadastro está completo (independente do status)
-      const cadastroCompleto = isCadastroCompleto();
-      console.log('🔍 Resultado da verificação de cadastro:', {
+      const verificacaoCadastro = verificarDadosFaltantes();
+      const cadastroCompleto = verificacaoCadastro.estaCompleto;
+      
+      logger.log('🔍 Resultado da verificação de cadastro:', {
         temMotorista: !!state.motorista,
         status: motoristaStatus,
         cadastroCompleto,
+        dadosFaltantes: verificacaoCadastro.faltantes,
+        totalFaltantes: verificacaoCadastro.totalFaltantes,
         motorista: state.motorista
       });
 
       // Se o cadastro NÃO está completo, SEMPRE abrir o chat para completar
       // Isso é independente do status - se faltam dados, precisa completar
       if (!cadastroCompleto) {
-        console.log('📝 Cadastro incompleto detectado, abrindo chat para completar cadastro...', {
+        logger.log('📝 Cadastro incompleto detectado, abrindo chat para completar cadastro...', {
           coletaId: coletaId,
           status: motoristaStatus,
           cadastroCompleto: false,
+          dadosFaltantes: verificacaoCadastro.faltantes,
+          totalFaltantes: verificacaoCadastro.totalFaltantes,
           motorista: {
             nome: state.motorista?.nome,
             telefone: state.motorista?.telefone1,
@@ -3754,81 +4169,151 @@
           }
         });
         
+        // Mostrar toast informativo sobre dados faltantes
+        const dadosFaltantesNomes = [];
+        if (verificacaoCadastro.faltantes.nome) dadosFaltantesNomes.push('nome');
+        if (verificacaoCadastro.faltantes.telefone) dadosFaltantesNomes.push('telefone');
+        if (verificacaoCadastro.faltantes.estado) dadosFaltantesNomes.push('estado');
+        if (verificacaoCadastro.faltantes.classeVeiculo) dadosFaltantesNomes.push('classe do veículo');
+        if (verificacaoCadastro.faltantes.tipoVeiculo) dadosFaltantesNomes.push('tipo de veículo');
+        if (verificacaoCadastro.faltantes.tipoCarroceria) dadosFaltantesNomes.push('tipo de carroceria');
+        if (verificacaoCadastro.faltantes.placaCavalo) dadosFaltantesNomes.push('placa do cavalo');
+        
+        const mensagemToast = verificacaoCadastro.totalFaltantes === 1
+          ? `Complete seu cadastro: falta apenas ${dadosFaltantesNomes[0]}.`
+          : `Complete seu cadastro: faltam ${verificacaoCadastro.totalFaltantes} informações.`;
+        
+        showToast(mensagemToast, 'info');
+        
         // Configurar estado do chat
         coletaPendenteAposCadastro = coletaId;
         chatCadastroState.coletaId = coletaId;
         
         // Garantir que os elementos estejam inicializados antes de abrir
         if (!chatCadastroElements || !chatCadastroElements.overlay) {
-          console.log('⚠️ Elementos do chat não inicializados, inicializando...');
+          logger.log('⚠️ Elementos do chat não inicializados, inicializando...');
           inicializarElementosChatCadastro();
         }
         
         // Verificar se o overlay existe no DOM
-        const overlayNoDOM = document.getElementById('chatCadastroOverlay');
+        const overlayNoDOM = safeGetElementById('chatCadastroOverlay');
         if (!overlayNoDOM) {
-          console.error('❌ ERRO CRÍTICO: chatCadastroOverlay não encontrado no DOM!');
+          logger.error('❌ ERRO CRÍTICO: chatCadastroOverlay não encontrado no DOM!');
           showToast('Erro: Chat de cadastro não encontrado. Recarregue a página.', 'error');
           return;
         }
         
+        // Garantir que os elementos estejam inicializados ANTES de tentar abrir
+        // Forçar inicialização se necessário
+        if (!chatCadastroElements || !chatCadastroElements.overlay) {
+          logger.log('⚠️ Elementos não inicializados, forçando inicialização...');
+          inicializarElementosChatCadastro();
+        }
+        
+        // Buscar overlay diretamente do DOM para garantir que existe
+        let overlay = safeGetElementById('chatCadastroOverlay');
+        if (!overlay) {
+          logger.error('❌ ERRO CRÍTICO: chatCadastroOverlay não encontrado no DOM após inicialização!');
+          showToast('Erro: Chat de cadastro não encontrado. Recarregue a página.', 'error');
+          return;
+        }
+        
+        // Atualizar referência nos elementos
+        if (!chatCadastroElements.overlay) {
+          chatCadastroElements.overlay = overlay;
+        }
+        
         // Tentar abrir o chat imediatamente
         try {
-          console.log('🚀 Chamando iniciarChatCadastro()...');
+          logger.log('🚀 Chamando iniciarChatCadastro()...');
         iniciarChatCadastro();
-          console.log('✅ Função iniciarChatCadastro() chamada com sucesso');
+          logger.log('✅ Função iniciarChatCadastro() chamada com sucesso');
           
           // Verificação imediata (síncrona) se possível
-          const overlayImediato = document.getElementById('chatCadastroOverlay');
-          if (overlayImediato) {
-            const computedImediato = window.getComputedStyle(overlayImediato);
+          overlay = safeGetElementById('chatCadastroOverlay');
+          if (overlay) {
+            // Remover display: none inline se existir
+            overlay.removeAttribute('style');
+            
+            const computedImediato = window.getComputedStyle(overlay);
             if (computedImediato.display === 'none' || computedImediato.visibility === 'hidden') {
-              console.warn('⚠️ Overlay oculto imediatamente após iniciarChatCadastro, forçando exibição...');
-              overlayImediato.style.display = 'flex';
-              overlayImediato.style.visibility = 'visible';
-              overlayImediato.style.opacity = '1';
-              overlayImediato.style.zIndex = '9999';
+              logger.warn('⚠️ Overlay oculto imediatamente após iniciarChatCadastro, forçando exibição...');
+              overlay.style.display = 'flex';
+              overlay.style.visibility = 'visible';
+              overlay.style.opacity = '1';
+              overlay.style.zIndex = '10000'; // Usar o mesmo z-index do CSS
               document.body.style.overflow = 'hidden';
             }
           }
           
           // Verificar novamente após um pequeno delay para garantir
           setTimeout(() => {
-            const overlay = document.getElementById('chatCadastroOverlay');
+            overlay = safeGetElementById('chatCadastroOverlay');
             const computedStyle = overlay ? window.getComputedStyle(overlay) : null;
             
             if (!overlay) {
-              console.error('❌ Overlay não encontrado após iniciarChatCadastro!');
+              logger.error('❌ Overlay não encontrado após iniciarChatCadastro!');
               showToast('Erro: Chat não encontrado. Recarregue a página.', 'error');
-            } else if (computedStyle && (computedStyle.display === 'none' || computedStyle.visibility === 'hidden')) {
-              console.warn('⚠️ Overlay ainda oculto após delay, forçando exibição novamente...');
+            } else {
+              // Remover qualquer style inline que possa estar ocultando
+              const currentDisplay = computedStyle?.display;
+              const currentVisibility = computedStyle?.visibility;
+              
+              if (currentDisplay === 'none' || currentVisibility === 'hidden') {
+                logger.warn('⚠️ Overlay ainda oculto após delay, forçando exibição novamente...');
               overlay.style.display = 'flex';
               overlay.style.visibility = 'visible';
               overlay.style.opacity = '1';
-              overlay.style.zIndex = '9999';
+                overlay.style.zIndex = '10000'; // Usar o mesmo z-index do CSS
               document.body.style.overflow = 'hidden';
-              console.log('✅ Overlay forçado a exibir após delay');
+                logger.log('✅ Overlay forçado a exibir após delay');
             } else {
-              console.log('✅ Overlay exibido corretamente:', {
-                display: computedStyle?.display,
-                visibility: computedStyle?.visibility,
+                logger.log('✅ Overlay exibido corretamente:', {
+                  display: currentDisplay,
+                  visibility: currentVisibility,
                 zIndex: computedStyle?.zIndex
               });
             }
-          }, 300);
+            }
+          }, 100);
+          
+          // Verificação adicional após mais um delay
+          setTimeout(() => {
+            overlay = safeGetElementById('chatCadastroOverlay');
+            if (overlay) {
+              const finalStyle = window.getComputedStyle(overlay);
+              if (finalStyle.display === 'none' || finalStyle.visibility === 'hidden') {
+                logger.warn('⚠️ Overlay ainda oculto na verificação final, forçando exibição...');
+                overlay.style.display = 'flex';
+                overlay.style.visibility = 'visible';
+                overlay.style.opacity = '1';
+                overlay.style.zIndex = '10000';
+                document.body.style.overflow = 'hidden';
+              }
+            }
+          }, 500);
         } catch (error) {
-          console.error('❌ Erro ao iniciar chat de cadastro:', error);
-          console.error('❌ Stack trace:', error.stack);
+          logger.error('❌ Erro ao iniciar chat de cadastro:', error);
+          logger.error('❌ Stack trace:', error.stack);
           
           // Última tentativa: forçar exibição do overlay diretamente
-          const overlay = document.getElementById('chatCadastroOverlay');
+          overlay = safeGetElementById('chatCadastroOverlay');
           if (overlay) {
-            console.log('🔄 Tentando forçar exibição do overlay como último recurso...');
+            logger.log('🔄 Tentando forçar exibição do overlay como último recurso...');
+            overlay.removeAttribute('style');
             overlay.style.display = 'flex';
             overlay.style.visibility = 'visible';
             overlay.style.opacity = '1';
-            overlay.style.zIndex = '9999';
+            overlay.style.zIndex = '10000'; // Usar o mesmo z-index do CSS
             document.body.style.overflow = 'hidden';
+            
+            // Tentar chamar iniciarChatCadastro novamente
+            try {
+              iniciarChatCadastro();
+            } catch (retryError) {
+              logger.error('❌ Erro ao tentar iniciar chat novamente:', retryError);
+            }
+            
             showToast('Chat de cadastro aberto. Complete seu cadastro para continuar.', 'info');
           } else {
             showToast('Erro ao abrir chat de cadastro. Tente recarregar a página.', 'error');
@@ -3837,32 +4322,52 @@
         return;
       }
 
-      // Se o cadastro está completo, verificar o status
-      // Se o status não é ativo, bloquear (exceto se for cadastro_pendente que já foi tratado acima)
-      if (motoristaStatus !== 'ativo') {
-        if (motoristaStatus === 'cadastro_pendente') {
-          // Cadastro completo mas ainda pendente de aprovação
-          console.log('⚠️ Cadastro completo mas ainda pendente de aprovação:', {
-            status: state.motorista?.status,
-            motorista: state.motorista
+      // Se o cadastro está completo, atualizar status para 'ativo' se necessário e continuar
+      logger.log('✅ Cadastro completo, verificando status e documentos...');
+      
+      // SEMPRE atualizar status para 'ativo' se o cadastro está completo (independente do status atual)
+      const statusNormalizado = (motoristaStatus || '').toLowerCase().trim();
+      if (statusNormalizado === 'cadastro_pendente' || statusNormalizado !== 'ativo') {
+        logger.log('🔄 Status é cadastro_pendente, atualizando para ativo automaticamente...');
+        try {
+          const motorista = state.motorista || {};
+          const payload = {
+            nome: motorista.nome,
+            telefone1: motorista.telefone1 || motorista.telefone,
+            estado: motorista.estado,
+            classeVeiculo: motorista.classeVeiculo || motorista.classe_veiculo,
+            tipoVeiculo: motorista.tipoVeiculo || motorista.tipo_veiculo,
+            tipoCarroceria: motorista.tipoCarroceria || motorista.tipo_carroceria,
+            placaCavalo: motorista.placas?.cavalo || motorista.placa_cavalo,
+            placaCarreta1: motorista.placas?.carreta1 || motorista.placa_carreta1,
+            placaCarreta2: motorista.placas?.carreta2 || motorista.placa_carreta2,
+            placaCarreta3: motorista.placas?.carreta3 || motorista.placa_carreta3
+          };
+          
+          const response = await fetch('/api/motoristas/auth/profile', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${state.session.access_token}`
+            },
+            body: JSON.stringify(payload)
           });
-          showToast('Seu cadastro está completo, mas ainda está pendente de aprovação. Aguarde a aprovação antes de assumir coletas.', 'warning');
-          return;
+          
+          if (response.ok) {
+            const result = await response.json();
+            state.motorista = result.motorista;
+            atualizarCabecalho();
+            logger.log('✅ Status atualizado para ativo automaticamente');
         } else {
-          // Outro status (inativo, etc)
-          console.log('❌ Tentativa de assumir coleta com status inválido:', {
-            status: state.motorista?.status,
-            motorista: state.motorista
-          });
-          showToast('Seu cadastro não está ativo. Entre em contato com o suporte.', 'error');
-          return;
+            const errorResult = await response.json();
+            logger.warn('⚠️ Erro ao atualizar status:', errorResult);
+          }
+        } catch (error) {
+          logger.warn('⚠️ Erro ao atualizar status:', error);
         }
       }
       
-      // Se chegou aqui: cadastro completo E status ativo
-      console.log('✅ Cadastro completo e status ativo, continuando com verificação de documentos...');
-      
-      // Se cadastro completo, verificar documentos
+      // Verificar documentos
       const oportunidade = state.oportunidades.find(op => op.id === coletaId) || null;
       state.selectedOpportunity = oportunidade;
       
@@ -3873,18 +4378,20 @@
       const pendentes = REQUIRED_DOC_CATEGORIES.filter(cat => !(status?.categorias?.[cat]?.possui));
 
       if (!pendentes.length) {
+        // Tudo completo: cadastro, status e documentos - assumir viagem diretamente
         try {
-          showToast('Documentação já enviada. Reservando viagem...', 'success');
+          showToast('Tudo pronto! Assumindo viagem...', 'success');
           await confirmarAssumirColeta(coletaId);
           await Promise.all([carregarOportunidades(), carregarViagens()]);
+          showToast('✅ Viagem assumida com sucesso!', 'success');
         } catch (error) {
-          console.error('Erro ao assumir viagem:', error);
+          logger.error('Erro ao assumir viagem:', error);
           showToast(error.message || 'Não foi possível assumir esta viagem agora.', 'error');
         }
         return;
       }
 
-      // Abrir chat para solicitar documentos
+      // Há documentos pendentes - abrir chat para solicitar
       chatCadastroState.coletaId = coletaId;
       chatCadastroState.documentosPendentes = pendentes;
       iniciarChatDocumentos();
@@ -3982,11 +4489,11 @@
             });
             state.solicitacaoIdParaAtender = null;
           } catch (error) {
-            console.warn('Não foi possível marcar solicitação como atendida:', error);
+            logger.warn('Não foi possível marcar solicitação como atendida:', error);
           }
         }
 
-        showToast('Documentos enviados! A equipe recebeu a viagem para etapa GR.', 'success');
+        showToast('Documentos enviados! Viagem assumida com sucesso.', 'success');
         fecharDocumentosModal();
         await Promise.all([carregarOportunidades(), carregarViagens(), carregarStatusDocumentos(true), carregarNotificacoes()]);
       } catch (error) {
@@ -3999,6 +4506,162 @@
 
     // Variável para armazenar a coleta pendente de confirmação após aceitar termo
     let coletaPendenteConfirmacao = null;
+    
+    // Variável para armazenar a coleta pendente de rastreamento após conceder permissão
+    let coletaPendentePermissao = null;
+    
+    // Função para mostrar modal de permissão de localização
+    function mostrarModalPermissaoLocalizacao(coletaId) {
+      coletaPendentePermissao = coletaId;
+      
+      const modal = safeGetElementById('permissaoLocalizacaoModal');
+      const instrucoesEl = safeGetElementById('instrucoesPermissao');
+      
+      if (!modal) {
+        logger.error('❌ Modal de permissão não encontrado');
+        showToast('Erro ao abrir modal de permissão. Recarregue a página.', 'error');
+        return;
+      }
+      
+      // Detectar navegador e sistema operacional
+      const isChrome = /Chrome/.test(navigator.userAgent) && /Google Inc/.test(navigator.vendor);
+      const isFirefox = /Firefox/.test(navigator.userAgent);
+      const isSafari = /Safari/.test(navigator.userAgent) && !/Chrome/.test(navigator.userAgent);
+      const isEdge = /Edg/.test(navigator.userAgent);
+      const isMobile = /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+      const isAndroid = /Android/.test(navigator.userAgent);
+      
+      // Gerar instruções baseadas no navegador
+      let instrucoes = '';
+      
+      if (isMobile) {
+        if (isIOS) {
+          instrucoes = `
+            <ol style="list-style: decimal; padding-left: 1.5rem; margin: 0;">
+              <li>Toque no ícone <strong>AA</strong> na barra de endereços (ou no menu de compartilhar)</li>
+              <li>Role para baixo e selecione <strong>"Configurações do Site"</strong></li>
+              <li>Toque em <strong>"Localização"</strong></li>
+              <li>Selecione <strong>"Permitir"</strong></li>
+              <li>Recarregue a página e tente novamente</li>
+            </ol>
+          `;
+        } else if (isAndroid) {
+          if (isChrome) {
+            instrucoes = `
+              <ol style="list-style: decimal; padding-left: 1.5rem; margin: 0;">
+                <li>Toque no ícone de <strong>cadeado</strong> ou <strong>informação (i)</strong> na barra de endereços</li>
+                <li>Toque em <strong>"Configurações do site"</strong></li>
+                <li>Toque em <strong>"Localização"</strong></li>
+                <li>Selecione <strong>"Permitir"</strong></li>
+                <li>Recarregue a página e tente novamente</li>
+              </ol>
+            `;
+          } else {
+            instrucoes = `
+              <ol style="list-style: decimal; padding-left: 1.5rem; margin: 0;">
+                <li>Toque no menu do navegador (⋮ ou ⋯)</li>
+                <li>Vá em <strong>"Configurações"</strong> → <strong>"Privacidade"</strong></li>
+                <li>Toque em <strong>"Localização"</strong></li>
+                <li>Permita o acesso para este site</li>
+                <li>Recarregue a página e tente novamente</li>
+              </ol>
+            `;
+          }
+        }
+      } else {
+        // Desktop
+        if (isChrome || isEdge) {
+          instrucoes = `
+            <ol style="list-style: decimal; padding-left: 1.5rem; margin: 0;">
+              <li>Clique no ícone de <strong>cadeado</strong> ou <strong>informação (i)</strong> na barra de endereços (à esquerda da URL)</li>
+              <li>Clique em <strong>"Configurações do site"</strong></li>
+              <li>Role até encontrar <strong>"Localização"</strong></li>
+              <li>Altere de <strong>"Bloquear"</strong> para <strong>"Permitir"</strong></li>
+              <li>Recarregue a página e tente novamente</li>
+            </ol>
+          `;
+        } else if (isFirefox) {
+          instrucoes = `
+            <ol style="list-style: decimal; padding-left: 1.5rem; margin: 0;">
+              <li>Clique no ícone de <strong>cadeado</strong> na barra de endereços</li>
+              <li>Clique em <strong>"Mais informações"</strong></li>
+              <li>Na aba <strong>"Permissões"</strong>, encontre <strong>"Acessar sua localização"</strong></li>
+              <li>Altere de <strong>"Bloquear"</strong> para <strong>"Permitir"</strong></li>
+              <li>Recarregue a página e tente novamente</li>
+            </ol>
+          `;
+        } else if (isSafari) {
+          instrucoes = `
+            <ol style="list-style: decimal; padding-left: 1.5rem; margin: 0;">
+              <li>Vá em <strong>Safari</strong> → <strong>"Preferências"</strong> (ou pressione Cmd + ,)</li>
+              <li>Clique na aba <strong>"Websites"</strong></li>
+              <li>Selecione <strong>"Localização"</strong> no menu lateral</li>
+              <li>Encontre este site e altere para <strong>"Permitir"</strong></li>
+              <li>Recarregue a página e tente novamente</li>
+            </ol>
+          `;
+        } else {
+          instrucoes = `
+            <ol style="list-style: decimal; padding-left: 1.5rem; margin: 0;">
+              <li>Clique no ícone de <strong>cadeado</strong> ou <strong>informação</strong> na barra de endereços</li>
+              <li>Procure por <strong>"Localização"</strong> ou <strong>"Permissões"</strong></li>
+              <li>Altere para <strong>"Permitir"</strong></li>
+              <li>Recarregue a página e tente novamente</li>
+            </ol>
+          `;
+        }
+      }
+      
+      if (instrucoesEl) {
+        instrucoesEl.innerHTML = instrucoes;
+      }
+      
+      // Mostrar modal
+      modal.style.display = 'flex';
+      document.body.style.overflow = 'hidden';
+      
+      logger.log('📱 Modal de permissão de localização exibido');
+    }
+    
+    // Função para fechar modal de permissão
+    function fecharModalPermissaoLocalizacao() {
+      const modal = safeGetElementById('permissaoLocalizacaoModal');
+      if (modal) {
+        modal.style.display = 'none';
+        document.body.style.overflow = '';
+        coletaPendentePermissao = null;
+      }
+    }
+    
+    // Registrar event listeners do modal de permissão
+    document.addEventListener('DOMContentLoaded', () => {
+      const btnFechar = safeGetElementById('btnFecharPermissaoLocalizacao');
+      const btnCancelar = safeGetElementById('btnCancelarPermissao');
+      const btnTentarNovamente = safeGetElementById('btnTentarNovamentePermissao');
+      
+      if (btnFechar) {
+        btnFechar.addEventListener('click', fecharModalPermissaoLocalizacao);
+      }
+      
+      if (btnCancelar) {
+        btnCancelar.addEventListener('click', fecharModalPermissaoLocalizacao);
+      }
+      
+      if (btnTentarNovamente) {
+        btnTentarNovamente.addEventListener('click', async () => {
+          fecharModalPermissaoLocalizacao();
+          
+          if (coletaPendentePermissao) {
+            logger.log('🔄 Tentando iniciar rastreamento novamente após solicitar permissão...');
+            // Aguardar um pouco para o usuário ter tempo de permitir
+            setTimeout(() => {
+              verificarEIniciarRastreamentoAutomatico();
+            }, 2000);
+          }
+        });
+      }
+    });
 
     async function confirmarAssumirColeta(coletaId) {
       // Verificar se já existe termo aceito para esta coleta
@@ -4018,7 +4681,7 @@
           return null; // Retorna null para indicar que está aguardando aceite
         }
       } catch (error) {
-        console.warn('Erro ao verificar termo:', error);
+        logger.warn('Erro ao verificar termo:', error);
         // Continuar com o fluxo normal se houver erro
       }
 
@@ -4035,7 +4698,50 @@
         throw new Error('Sessão não autenticada. Faça login novamente.');
       }
 
-      console.log('📤 Tentando assumir coleta:', coletaId);
+      // GARANTIR que o status está 'ativo' antes de assumir
+      const motoristaStatus = (state.motorista?.status || '').toLowerCase().trim();
+      if (motoristaStatus === 'cadastro_pendente' || motoristaStatus !== 'ativo') {
+        logger.log('🔄 Garantindo que status está ativo antes de assumir coleta...');
+        try {
+          const motorista = state.motorista || {};
+          const payload = {
+            nome: motorista.nome,
+            telefone1: motorista.telefone1 || motorista.telefone,
+            estado: motorista.estado,
+            classeVeiculo: motorista.classeVeiculo || motorista.classe_veiculo,
+            tipoVeiculo: motorista.tipoVeiculo || motorista.tipo_veiculo,
+            tipoCarroceria: motorista.tipoCarroceria || motorista.tipo_carroceria,
+            placaCavalo: motorista.placas?.cavalo || motorista.placa_cavalo,
+            placaCarreta1: motorista.placas?.carreta1 || motorista.placa_carreta1,
+            placaCarreta2: motorista.placas?.carreta2 || motorista.placa_carreta2,
+            placaCarreta3: motorista.placas?.carreta3 || motorista.placa_carreta3
+          };
+          
+          const statusResponse = await fetch('/api/motoristas/auth/profile', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${state.session.access_token}`
+            },
+            body: JSON.stringify(payload)
+          });
+          
+          if (statusResponse.ok) {
+            const statusResult = await statusResponse.json();
+            state.motorista = statusResult.motorista;
+            atualizarCabecalho();
+            logger.log('✅ Status atualizado para ativo antes de assumir coleta');
+            
+            // Aguardar um pouco para garantir que o status foi atualizado no servidor
+            await new Promise(resolve => setTimeout(resolve, 500));
+          }
+        } catch (error) {
+          logger.warn('⚠️ Erro ao atualizar status antes de assumir:', error);
+          // Continuar mesmo com erro - o backend deve atualizar automaticamente
+        }
+      }
+
+      logger.log('📤 Tentando assumir coleta:', coletaId);
 
       try {
       const response = await fetch(`/api/motoristas/oportunidades/${encodeURIComponent(coletaId)}/assumir`, {
@@ -4048,7 +4754,7 @@
 
       const result = await response.json();
         
-        console.log('📥 Resposta da API:', {
+        logger.log('📥 Resposta da API:', {
           status: response.status,
           ok: response.ok,
           error: result.error,
@@ -4065,7 +4771,7 @@
       if (response.status === 409) {
           // Conflito: coleta já assumida ou motorista já tem viagem ativa
           const errorMsg = result.error || 'Essa coleta já foi assumida por outro motorista.';
-          console.error('❌ Conflito ao assumir coleta:', errorMsg);
+          logger.error('❌ Conflito ao assumir coleta:', errorMsg);
           throw new Error(errorMsg);
         }
 
@@ -4075,7 +4781,7 @@
 
       if (!response.ok) {
           const errorMsg = result.error || `Erro ao assumir coleta (status ${response.status}).`;
-          console.error('❌ Erro ao assumir coleta:', {
+          logger.error('❌ Erro ao assumir coleta:', {
             status: response.status,
             error: errorMsg,
             result: result
@@ -4087,26 +4793,32 @@
         throw new Error(result.error || 'Não foi possível assumir esta coleta.');
       }
 
-        console.log('✅ Coleta assumida com sucesso:', result);
+        logger.log('✅ Coleta assumida com sucesso:', result);
 
       state.motorista = result.motorista || state.motorista;
       await carregarStatusDocumentos(true);
       atualizarCabecalho();
       
+      // Armazenar token de rastreamento persistente se fornecido
+      if (result.tokenRastreamento) {
+        salvarTokenRastreamento(coletaId, result.tokenRastreamento);
+        logger.log('✅ Token de rastreamento persistente armazenado:', { coletaId });
+      }
+      
       // Iniciar rastreamento após assumir coleta
       if (coletaId) {
-        console.log('🚀 Coleta assumida, iniciando rastreamento GPS...', coletaId);
+        logger.log('🚀 Coleta assumida, iniciando rastreamento GPS...', coletaId);
         // Aguardar um pouco para garantir que tudo está pronto
         setTimeout(() => {
           iniciarRastreamento(coletaId);
         }, 1000);
       } else {
-        console.warn('⚠️ Coleta assumida mas sem coletaId para rastreamento');
+        logger.warn('⚠️ Coleta assumida mas sem coletaId para rastreamento');
       }
       
       return result;
       } catch (error) {
-        console.error('❌ Erro completo ao executar assumir coleta:', {
+        logger.error('❌ Erro completo ao executar assumir coleta:', {
           coletaId,
           error: error.message,
           stack: error.stack
@@ -4155,7 +4867,7 @@
       const coletaId = coletaPendenteConfirmacao;
 
       try {
-        console.log('📝 Aceitando termo de rastreamento para coleta:', coletaId);
+        logger.log('📝 Aceitando termo de rastreamento para coleta:', coletaId);
         
         // Registrar aceite do termo
         const termoResponse = await fetch('/api/rastreamento/aceitar-termo', {
@@ -4178,7 +4890,13 @@
         }
 
         const termoResult = await termoResponse.json();
-        console.log('✅ Termo aceito com sucesso:', termoResult);
+        logger.log('✅ Termo aceito com sucesso:', termoResult);
+
+        // Armazenar token de rastreamento persistente se fornecido
+        if (termoResult.tokenRastreamento) {
+          salvarTokenRastreamento(coletaId, termoResult.tokenRastreamento);
+          logger.log('✅ Token de rastreamento persistente armazenado ao aceitar termo:', { coletaId });
+        }
 
         fecharModalTermoRastreamento();
         
@@ -4186,11 +4904,11 @@
         await new Promise(resolve => setTimeout(resolve, 500));
         
         // Agora assumir a coleta (isso também iniciará o rastreamento)
-        console.log('🚀 Assumindo coleta após aceitar termo...', coletaId);
+        logger.log('🚀 Assumindo coleta após aceitar termo...', coletaId);
         
         try {
           const resultado = await executarAssumirColeta(coletaId);
-          console.log('✅ Coleta assumida com sucesso após termo:', resultado);
+          logger.log('✅ Coleta assumida com sucesso após termo:', resultado);
         showToast('Termo aceito! Rastreamento ativado. Viagem assumida com sucesso!', 'success');
         
           // Recarregar dados
@@ -4199,7 +4917,7 @@
           // Limpar variável pendente
           coletaPendenteConfirmacao = null;
         } catch (assumirError) {
-          console.error('❌ Erro ao assumir coleta após aceitar termo:', {
+          logger.error('❌ Erro ao assumir coleta após aceitar termo:', {
             coletaId,
             error: assumirError.message,
             stack: assumirError.stack
@@ -4221,7 +4939,7 @@
           await carregarOportunidades();
         }
       } catch (error) {
-        console.error('❌ Erro ao aceitar termo:', error);
+        logger.error('❌ Erro ao aceitar termo:', error);
         showToast(error.message || 'Erro ao processar aceite do termo.', 'error');
       }
     }
@@ -4259,7 +4977,7 @@
     let serviceWorkerRegistration = null;
 
     async function inicializarPWA() {
-      console.log('🚀 Inicializando PWA...');
+      logger.log('🚀 Inicializando PWA...');
       
       // Verificar se o app já está instalado
       const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
@@ -4268,7 +4986,7 @@
       
       if (isStandalone) {
         isAppInstalled = true;
-        console.log('✅ App já está instalado (modo standalone detectado)');
+        logger.log('✅ App já está instalado (modo standalone detectado)');
         if (elements.btnInstalarApp) {
           elements.btnInstalarApp.style.display = 'none';
         }
@@ -4278,7 +4996,7 @@
       // Verificar se o navegador suporta Service Worker (requisito básico para PWA)
       const supportsServiceWorker = 'serviceWorker' in navigator;
       if (!supportsServiceWorker) {
-        console.log('⚠️ Navegador não suporta Service Worker');
+        logger.warn('⚠️ Navegador não suporta Service Worker');
         if (elements.btnInstalarApp) {
           elements.btnInstalarApp.style.display = 'none';
         }
@@ -4287,25 +5005,34 @@
       
       // Detectar se é dispositivo móvel
       const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-      console.log('📱 Dispositivo móvel detectado:', isMobile);
+      logger.log('📱 Dispositivo móvel detectado:', isMobile);
 
       // Registrar service worker
       if ('serviceWorker' in navigator) {
         try {
           const registration = await navigator.serviceWorker.register('/service-worker.js');
           serviceWorkerRegistration = registration;
-          console.log('✅ Service Worker registrado:', registration.scope);
+          logger.log('✅ Service Worker registrado:', registration.scope);
 
           // Escutar mensagens do service worker
           navigator.serviceWorker.addEventListener('message', (event) => {
-            console.log('📨 Mensagem do Service Worker:', event.data);
+            logger.log('📨 Mensagem do Service Worker:', event.data);
             if (event.data.type === 'POSITION_SENT') {
-              console.log('✅ Posição enviada em background:', event.data);
+              logger.log('✅ Posição enviada em background:', event.data);
             }
             
             // Responder a solicitações de posição do service worker
             if (event.data.type === 'REQUEST_POSITION') {
-              if (rastreamentoAtivo && coletaRastreamentoAtiva && state.session?.access_token) {
+              if (rastreamentoAtivo && coletaRastreamentoAtiva) {
+                // Obter token de rastreamento persistente se disponível
+                const trackingToken = obterTokenRastreamento(coletaRastreamentoAtiva);
+                const sessionToken = state.session?.access_token;
+                
+                if (!sessionToken && !trackingToken) {
+                  logger.warn('⚠️ Nenhum token disponível para enviar posição ao service worker');
+                  return;
+                }
+                
                 navigator.geolocation.getCurrentPosition(
                   (position) => {
                     const dadosPosicao = {
@@ -4325,16 +5052,18 @@
                     
                     // Enviar posição de volta para o service worker
                     if (serviceWorkerRegistration && serviceWorkerRegistration.active) {
+                      const trackingToken = obterTokenRastreamento(coletaRastreamentoAtiva);
                       serviceWorkerRegistration.active.postMessage({
                         type: 'POSITION_RESPONSE',
                         coletaId: coletaRastreamentoAtiva,
                         position: dadosPosicao,
-                        sessionToken: state.session.access_token
+                        sessionToken: state.session?.access_token,
+                        trackingToken: trackingToken // Incluir token de rastreamento persistente
                       });
                     }
                   },
                   (error) => {
-                    console.error('❌ Erro ao obter posição para service worker:', error);
+                    logger.error('❌ Erro ao obter posição para service worker:', error);
                   },
                   {
                     enableHighAccuracy: true,
@@ -4346,7 +5075,7 @@
             }
           });
         } catch (error) {
-          console.error('❌ Erro ao registrar Service Worker:', error);
+          logger.error('❌ Erro ao registrar Service Worker:', error);
         }
       }
 
@@ -4356,11 +5085,11 @@
       window.addEventListener('beforeinstallprompt', (e) => {
         e.preventDefault();
         deferredPrompt = e;
-        console.log('📱 Evento beforeinstallprompt capturado');
+        logger.log('📱 Evento beforeinstallprompt capturado');
         
         if (elements.btnInstalarApp) {
           elements.btnInstalarApp.style.display = 'inline-flex';
-          console.log('✅ Botão de instalação exibido');
+          logger.log('✅ Botão de instalação exibido');
         }
         
         // Limpar timeout se o evento foi disparado
@@ -4376,13 +5105,13 @@
       
       installPromptTimeout = setTimeout(() => {
         if (!deferredPrompt && !isAppInstalled && elements.btnInstalarApp) {
-          console.log('⏰ Timeout do fallback atingido, verificando se deve mostrar botão...');
+          logger.log('⏰ Timeout do fallback atingido, verificando se deve mostrar botão...');
           
           // Verificar se o manifest existe e se o app pode ser instalado
           fetch('/manifest.json')
             .then(response => {
               if (response.ok) {
-                console.log('📱 Manifest encontrado, mostrando botão de instalação (fallback)');
+                logger.log('📱 Manifest encontrado, mostrando botão de instalação (fallback)');
                 elements.btnInstalarApp.style.display = 'inline-flex';
                 // Adicionar uma mensagem informativa
                 if (isMobile) {
@@ -4391,7 +5120,7 @@
                   elements.btnInstalarApp.title = 'Clique para instalar o app. Se não aparecer o prompt, use o menu do navegador (⋮ ou ⋯) e selecione "Instalar app"';
                 }
               } else {
-                console.log('⚠️ Manifest não encontrado, mas mostrando botão mesmo assim para dispositivos móveis');
+                logger.warn('⚠️ Manifest não encontrado, mas mostrando botão mesmo assim para dispositivos móveis');
                 // Em dispositivos móveis, mostrar o botão mesmo sem confirmar o manifest
                 if (isMobile) {
                   elements.btnInstalarApp.style.display = 'inline-flex';
@@ -4400,16 +5129,16 @@
               }
             })
             .catch(error => {
-              console.warn('⚠️ Erro ao verificar manifest:', error);
+              logger.warn('⚠️ Erro ao verificar manifest:', error);
               // Em dispositivos móveis, mostrar o botão mesmo com erro
               if (isMobile) {
-                console.log('📱 Erro ao verificar manifest, mas mostrando botão para mobile');
+                logger.log('📱 Erro ao verificar manifest, mas mostrando botão para mobile');
                 elements.btnInstalarApp.style.display = 'inline-flex';
                 elements.btnInstalarApp.title = 'Toque para ver instruções de instalação';
               }
             });
         } else {
-          console.log('⚠️ Não mostrando botão (fallback):', {
+          logger.log('⚠️ Não mostrando botão (fallback):', {
             deferredPrompt: !!deferredPrompt,
             isAppInstalled,
             btnExists: !!elements.btnInstalarApp
@@ -4428,26 +5157,26 @@
           elements.btnInstalarApp.style.display = 'none';
         }
         showToast('App instalado com sucesso! Agora você pode usar o app mesmo offline.', 'success');
-        console.log('✅ App instalado');
+        logger.log('✅ App instalado');
       });
 
       // Event listener para botão de instalar
       if (elements.btnInstalarApp) {
         elements.btnInstalarApp.addEventListener('click', async () => {
-          console.log('🔘 Botão de instalação clicado');
+          logger.log('🔘 Botão de instalação clicado');
           
           if (deferredPrompt) {
             // Mostrar prompt de instalação
             try {
-              console.log('📱 Mostrando prompt de instalação...');
+              logger.log('📱 Mostrando prompt de instalação...');
               deferredPrompt.prompt();
               const { outcome } = await deferredPrompt.userChoice;
               
               if (outcome === 'accepted') {
-                console.log('✅ Usuário aceitou instalar o app');
+                logger.log('✅ Usuário aceitou instalar o app');
                 showToast('Instalando app...', 'success');
               } else {
-                console.log('❌ Usuário recusou instalar o app');
+                logger.log('❌ Usuário recusou instalar o app');
                 showToast('Instalação cancelada. Você pode instalar depois pelo menu do navegador.', 'info');
               }
               
@@ -4492,7 +5221,7 @@
       if (isMobile && elements.btnInstalarApp) {
         setTimeout(() => {
           if (!isAppInstalled && elements.btnInstalarApp) {
-            console.log('📱 Dispositivo móvel detectado, mostrando botão de instalação');
+            logger.log('📱 Dispositivo móvel detectado, mostrando botão de instalação');
             elements.btnInstalarApp.style.display = 'inline-flex';
           }
         }, 1000);
@@ -4502,12 +5231,16 @@
     // Função para iniciar rastreamento em background via service worker
     async function iniciarRastreamentoBackground(coletaId) {
       if (!serviceWorkerRegistration || !serviceWorkerRegistration.active) {
-        console.warn('⚠️ Service Worker não está ativo, usando rastreamento normal');
+        logger.warn('⚠️ Service Worker não está ativo, usando rastreamento normal');
         return false;
       }
 
-      if (!state.session?.access_token) {
-        console.error('❌ Sessão não encontrada para rastreamento em background');
+      // Obter token de rastreamento persistente se disponível
+      const trackingToken = obterTokenRastreamento(coletaId);
+      const sessionToken = state.session?.access_token;
+
+      if (!sessionToken && !trackingToken) {
+        logger.warn('⚠️ Nenhum token disponível para rastreamento em background');
         return false;
       }
 
@@ -4516,9 +5249,14 @@
         serviceWorkerRegistration.active.postMessage({
           type: 'START_TRACKING',
           coletaId: coletaId,
-          sessionToken: state.session.access_token
+          sessionToken: sessionToken,
+          trackingToken: trackingToken // Incluir token de rastreamento persistente
         });
-        console.log('✅ Rastreamento em background iniciado via Service Worker');
+        logger.log('✅ Rastreamento em background iniciado via Service Worker:', {
+          coletaId,
+          temSessionToken: !!sessionToken,
+          temTrackingToken: !!trackingToken
+        });
         return true;
       } catch (error) {
         console.error('❌ Erro ao iniciar rastreamento em background:', error);
@@ -4536,7 +5274,7 @@
         serviceWorkerRegistration.active.postMessage({
           type: 'STOP_TRACKING'
         });
-        console.log('🛑 Rastreamento em background parado');
+        logger.log('🛑 Rastreamento em background parado');
       } catch (error) {
         console.error('❌ Erro ao parar rastreamento em background:', error);
       }
@@ -4548,26 +5286,128 @@
     let coletaRastreamentoAtiva = null;
     let watchId = null;
 
+    // Função centralizada para verificar e iniciar rastreamento automaticamente
+    // Deve ser chamada sempre que as viagens forem carregadas ou após login
+    // Suporta retry automático caso a sessão ainda não esteja pronta
+    function verificarEIniciarRastreamentoAutomatico(retryCount = 0) {
+      const MAX_RETRIES = 3;
+      const RETRY_DELAY = 2000; // 2 segundos
+      
+      try {
+        // Verificar se há viagens ativas primeiro (não depende de sessão)
+        if (!state.viagens || state.viagens.length === 0) {
+          logger.log('ℹ️ Nenhuma viagem ativa - rastreamento não será iniciado');
+          // Se não há viagens mas rastreamento está ativo, parar
+          if (rastreamentoAtivo) {
+            logger.log('🛑 Parando rastreamento - não há mais viagens ativas');
+            pararRastreamento();
+          }
+          return;
+        }
+        
+        // Pegar a primeira viagem (assumindo apenas uma viagem ativa por vez)
+        const viagemAtiva = state.viagens[0];
+        
+        if (!viagemAtiva?.id) {
+          logger.warn('⚠️ Viagem ativa sem ID válido');
+          return;
+        }
+        
+        const coletaId = viagemAtiva.id;
+        
+        // Verificar se já há token de rastreamento armazenado (permite rastreamento sem sessão)
+        const tokenExistente = obterTokenRastreamento(coletaId);
+        const temSessao = !!state.session?.access_token;
+        
+        logger.log('🔍 Verificando necessidade de iniciar rastreamento:', {
+          coletaId: coletaId,
+          cliente: viagemAtiva.cliente,
+          rastreamentoAtivo: rastreamentoAtivo,
+          coletaRastreamentoAtiva: coletaRastreamentoAtiva,
+          temSessao: temSessao,
+          temTokenRastreamento: !!tokenExistente,
+          podeIniciar: temSessao || tokenExistente,
+          precisaIniciar: !rastreamentoAtivo || coletaRastreamentoAtiva !== coletaId
+        });
+        
+        // Se não há sessão nem token, tentar novamente (pode estar carregando)
+        if (!temSessao && !tokenExistente) {
+          if (retryCount < MAX_RETRIES) {
+            logger.log(`⏳ Aguardando sessão/token... (tentativa ${retryCount + 1}/${MAX_RETRIES})`);
+            setTimeout(() => {
+              verificarEIniciarRastreamentoAutomatico(retryCount + 1);
+            }, RETRY_DELAY);
+            return;
+          } else {
+            logger.warn('⚠️ Não foi possível iniciar rastreamento - sem sessão nem token após várias tentativas');
+            return;
+          }
+        }
+        
+        if (tokenExistente) {
+          logger.log('🔑 Token de rastreamento encontrado - rastreamento pode continuar mesmo após logout');
+        }
+        
+        // Se rastreamento não está ativo OU está ativo para outra coleta, iniciar
+        if (!rastreamentoAtivo || coletaRastreamentoAtiva !== coletaId) {
+          logger.log('🚀 Iniciando rastreamento GPS automaticamente:', {
+            coletaId: coletaId,
+            cliente: viagemAtiva.cliente,
+            motivo: !rastreamentoAtivo ? 'rastreamento não estava ativo' : 'coleta diferente',
+            usandoToken: !temSessao && !!tokenExistente
+          });
+          
+          // Log no console para facilitar debug
+          console.log(`🚀 [${new Date().toLocaleTimeString('pt-BR')}] Iniciando rastreamento para coleta ${coletaId}`);
+          
+          // Iniciar imediatamente (sem delay desnecessário)
+          iniciarRastreamento(coletaId);
+        } else {
+          logger.log('✅ Rastreamento já está ativo para esta coleta:', coletaId);
+          console.log(`✅ [${new Date().toLocaleTimeString('pt-BR')}] Rastreamento já está ativo para coleta ${coletaId}`);
+        }
+      } catch (error) {
+        logger.error('❌ Erro ao verificar e iniciar rastreamento automático:', error);
+        
+        // Tentar novamente em caso de erro (pode ser erro temporário)
+        if (retryCount < MAX_RETRIES) {
+          logger.log(`🔄 Tentando novamente após erro... (tentativa ${retryCount + 1}/${MAX_RETRIES})`);
+          setTimeout(() => {
+            verificarEIniciarRastreamentoAutomatico(retryCount + 1);
+          }, RETRY_DELAY);
+        }
+      }
+    }
+
     async function iniciarRastreamento(coletaId) {
       if (!coletaId) {
-        console.error('❌ iniciarRastreamento chamado sem coletaId');
+        logger.error('❌ iniciarRastreamento chamado sem coletaId');
         return;
       }
 
       if (rastreamentoAtivo && coletaRastreamentoAtiva === coletaId) {
-        console.log('📍 Rastreamento já está ativo para esta coleta:', coletaId);
+        logger.log('📍 Rastreamento já está ativo para esta coleta:', coletaId);
         return;
       }
 
-      console.log('🚀 Iniciando rastreamento GPS para coleta:', coletaId);
+      logger.log('🚀 Iniciando rastreamento GPS para coleta:', coletaId);
+      console.log(`🚀 [${new Date().toLocaleTimeString('pt-BR')}] Iniciando rastreamento GPS para coleta ${coletaId}`);
       coletaRastreamentoAtiva = coletaId;
       rastreamentoAtivo = true;
+      
+      // Log detalhado do estado
+      console.log(`📊 Estado do rastreamento:`, {
+        rastreamentoAtivo: rastreamentoAtivo,
+        coletaRastreamentoAtiva: coletaRastreamentoAtiva,
+        temSessao: !!state.session?.access_token,
+        temTokenRastreamento: !!obterTokenRastreamento(coletaId)
+      });
 
       // Se o app está instalado, tentar usar rastreamento em background
       if (isAppInstalled && serviceWorkerRegistration) {
         const backgroundStarted = await iniciarRastreamentoBackground(coletaId);
         if (backgroundStarted) {
-          console.log('✅ Rastreamento em background ativado');
+          logger.log('✅ Rastreamento em background ativado');
           showToast('Rastreamento em background ativado! O app continuará monitorando mesmo fechado.', 'success');
           // Continuar com rastreamento normal também para garantir
         }
@@ -4575,7 +5415,7 @@
 
       // Solicitar permissão de geolocalização
       if (!navigator.geolocation) {
-        console.error('❌ Navegador não suporta geolocalização');
+        logger.error('❌ Navegador não suporta geolocalização');
         showToast('Seu navegador não suporta geolocalização.', 'error');
         rastreamentoAtivo = false;
         return;
@@ -4583,48 +5423,67 @@
 
       // Verificar se está em HTTPS (necessário para geolocalização)
       if (location.protocol !== 'https:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
-        console.warn('⚠️ Geolocalização requer HTTPS em produção');
+        logger.warn('⚠️ Geolocalização requer HTTPS em produção');
         showToast('Atenção: Geolocalização requer conexão segura (HTTPS).', 'warning');
       }
 
-      // Verificar permissões usando Permissions API se disponível
+      // Verificar e solicitar permissão de geolocalização
+      let permissaoConcedida = false;
+      
       if (navigator.permissions && navigator.permissions.query) {
         try {
           const permissionStatus = await navigator.permissions.query({ name: 'geolocation' });
-          console.log('📍 Status da permissão de geolocalização:', permissionStatus.state);
+          logger.log('📍 Status da permissão de geolocalização:', permissionStatus.state);
           
-          if (permissionStatus.state === 'denied') {
-            console.error('❌ Permissão de geolocalização negada pelo usuário');
-            showToast('Permissão de localização negada. Por favor, permita o acesso à localização nas configurações do navegador.', 'error');
+          if (permissionStatus.state === 'granted') {
+            permissaoConcedida = true;
+            logger.log('✅ Permissão de geolocalização já concedida');
+          } else           if (permissionStatus.state === 'denied') {
+            logger.error('❌ Permissão de geolocalização negada pelo usuário');
+            mostrarModalPermissaoLocalizacao(coletaId);
             rastreamentoAtivo = false;
             return;
+          } else if (permissionStatus.state === 'prompt') {
+            logger.log('⏳ Permissão ainda não foi decidida, será solicitada automaticamente');
+            // A permissão será solicitada automaticamente quando chamarmos getCurrentPosition
+            // Não precisamos fazer nada aqui, apenas continuar
+          } else if (permissionStatus.state === 'granted') {
+            logger.log('✅ Permissão de geolocalização já concedida');
+            permissaoConcedida = true;
           }
 
           // Monitorar mudanças na permissão
           permissionStatus.onchange = () => {
-            console.log('📍 Status da permissão mudou para:', permissionStatus.state);
+            logger.log('📍 Status da permissão mudou para:', permissionStatus.state);
             if (permissionStatus.state === 'denied') {
               showToast('Permissão de localização foi negada. O rastreamento foi interrompido.', 'error');
               pararRastreamento();
+            } else if (permissionStatus.state === 'granted' && !rastreamentoAtivo) {
+              // Se a permissão foi concedida e o rastreamento não está ativo, reiniciar
+              logger.log('✅ Permissão concedida, reiniciando rastreamento...');
+              verificarEIniciarRastreamentoAutomatico();
             }
           };
         } catch (error) {
-          console.warn('⚠️ Não foi possível verificar permissões:', error);
-          // Continuar mesmo se não conseguir verificar
+          logger.warn('⚠️ Não foi possível verificar permissões:', error);
+          // Continuar mesmo se não conseguir verificar - tentará solicitar ao usar
         }
+      } else {
+        // Se Permissions API não estiver disponível, tentar solicitar diretamente
+        logger.log('ℹ️ Permissions API não disponível, solicitando permissão diretamente');
       }
 
       const options = {
         enableHighAccuracy: true,
-        timeout: 15000, // Aumentado para 15 segundos
-        maximumAge: 0
+        timeout: 30000, // Aumentado para 30 segundos para dar mais tempo
+        maximumAge: 60000 // Aceitar posição com até 1 minuto de idade para evitar timeouts
       };
 
       // Capturar posição inicial
-      console.log('📍 Solicitando posição inicial...');
+      logger.log('📍 Solicitando posição inicial...');
       navigator.geolocation.getCurrentPosition(
         (position) => {
-          console.log('✅ Posição inicial obtida:', {
+          logger.log('✅ Posição inicial obtida:', {
             lat: position.coords.latitude,
             lng: position.coords.longitude,
             accuracy: position.coords.accuracy
@@ -4632,32 +5491,63 @@
           enviarPosicao(position, coletaId);
         },
         (error) => {
-          console.error('❌ Erro ao obter localização inicial:', error);
           let mensagemErro = 'Erro ao acessar sua localização.';
+          let deveParar = false;
+          let logLevel = 'error';
           
           switch(error.code) {
             case error.PERMISSION_DENIED:
-              mensagemErro = 'Permissão de localização negada. Por favor, permita o acesso à localização nas configurações do navegador.';
+              mensagemErro = 'Permissão de localização negada.';
+              deveParar = true;
+              logLevel = 'error';
+              // Mostrar modal com instruções
+              mostrarModalPermissaoLocalizacao(coletaId);
               break;
             case error.POSITION_UNAVAILABLE:
-              mensagemErro = 'Localização indisponível. Verifique se o GPS está ativado.';
+              mensagemErro = 'Localização indisponível. Verifique se o GPS está ativado. O sistema continuará tentando...';
+              deveParar = false; // Continuar tentando
+              logLevel = 'warn';
               break;
             case error.TIMEOUT:
-              mensagemErro = 'Tempo esgotado ao obter localização. Tente novamente.';
+              mensagemErro = 'Tempo esgotado ao obter localização inicial. O sistema continuará tentando em segundo plano...';
+              deveParar = false; // Continuar tentando - o watchPosition vai funcionar
+              logLevel = 'warn'; // Timeout não é um erro crítico
               break;
+            default:
+              logLevel = 'error';
           }
           
+          // Logar com nível apropriado
+          if (logLevel === 'warn') {
+            logger.warn('⚠️ Aviso ao obter localização inicial:', {
+              code: error.code,
+              message: error.message,
+              tipo: error.code === error.TIMEOUT ? 'timeout' : 'indisponível'
+            });
+          } else {
+            logger.error('❌ Erro ao obter localização inicial:', error);
+          }
+          
+          if (deveParar) {
           showToast(mensagemErro, 'error');
           rastreamentoAtivo = false;
+          } else {
+            // Mostrar mensagem informativa mas não parar o rastreamento
+            // Para timeouts, não mostrar toast para não incomodar
+            if (error.code !== error.TIMEOUT) {
+              showToast(mensagemErro, 'warning');
+            }
+            // O watchPosition continuará tentando obter a localização
+          }
         },
         options
       );
 
       // Monitorar mudanças de posição
-      console.log('📍 Iniciando watchPosition...');
+      logger.log('📍 Iniciando watchPosition...');
       watchId = navigator.geolocation.watchPosition(
         (position) => {
-          console.log('📍 Nova posição detectada:', {
+          logger.log('📍 Nova posição detectada:', {
             lat: position.coords.latitude,
             lng: position.coords.longitude,
             accuracy: position.coords.accuracy,
@@ -4666,23 +5556,40 @@
           enviarPosicao(position, coletaId);
         },
         (error) => {
-          console.error('❌ Erro no watchPosition:', error);
-          
           let mensagemErro = '';
+          let logLevel = 'warn';
+          
           switch(error.code) {
             case error.PERMISSION_DENIED:
               mensagemErro = 'Permissão de localização negada. O rastreamento foi interrompido.';
               rastreamentoAtivo = false;
               pararRastreamento();
+              logLevel = 'error';
               break;
             case error.POSITION_UNAVAILABLE:
-              console.warn('⚠️ Localização indisponível no watchPosition, continuando...');
+              logLevel = 'warn';
               // Não desativar, apenas logar
               break;
             case error.TIMEOUT:
-              console.warn('⚠️ Timeout no watchPosition, continuando...');
-              // Não desativar, apenas logar
+              logLevel = 'warn';
+              // Timeout é esperado em algumas situações (GPS fraco, área coberta, etc)
+              // O watchPosition continuará tentando automaticamente
+              // Não mostrar toast para não incomodar o usuário com timeouts frequentes
               break;
+            default:
+              logLevel = 'error';
+          }
+          
+          // Logar com nível apropriado - timeouts não são erros críticos
+          if (logLevel === 'warn') {
+            logger.warn('⚠️ Aviso no watchPosition:', {
+              code: error.code,
+              message: error.message,
+              tipo: error.code === error.TIMEOUT ? 'timeout (esperado)' : 'indisponível',
+              acao: 'Continuando tentativas...'
+            });
+          } else {
+            logger.error('❌ Erro no watchPosition:', error);
           }
           
           if (mensagemErro) {
@@ -4692,87 +5599,171 @@
         options
       );
 
-      // Enviar posição periodicamente (a cada 30 segundos)
-      console.log('📍 Configurando envio periódico a cada 30 segundos...');
+      // Enviar posição periodicamente (a cada 5 minutos)
+      const INTERVALO_ENVIO_MS = 5 * 60 * 1000; // 5 minutos em milissegundos
+      logger.log(`📍 Configurando envio periódico a cada ${INTERVALO_ENVIO_MS / 1000 / 60} minutos...`);
+      
+      // Enviar primeira posição imediatamente após iniciar
+      setTimeout(() => {
+        if (rastreamentoAtivo && coletaRastreamentoAtiva === coletaId) {
+          logger.log('📍 Enviando primeira posição após iniciar rastreamento...');
+          navigator.geolocation.getCurrentPosition(
+            (position) => {
+              logger.log('📍 Primeira posição obtida:', {
+                lat: position.coords.latitude,
+                lng: position.coords.longitude
+              });
+              enviarPosicao(position, coletaId);
+            },
+            (error) => {
+              logger.warn('⚠️ Erro ao obter primeira posição:', error);
+            },
+            options
+          );
+        }
+      }, 2000); // Aguardar 2 segundos após iniciar
+      
       intervaloRastreamento = setInterval(() => {
         if (!rastreamentoAtivo) {
-          console.warn('⚠️ Rastreamento não está mais ativo, parando intervalo periódico');
+          logger.warn('⚠️ Rastreamento não está mais ativo, parando intervalo periódico');
           clearInterval(intervaloRastreamento);
           intervaloRastreamento = null;
           return;
         }
         
+        if (coletaRastreamentoAtiva !== coletaId) {
+          logger.warn('⚠️ Coleta mudou, parando intervalo periódico');
+          clearInterval(intervaloRastreamento);
+          intervaloRastreamento = null;
+          return;
+        }
+        
+        logger.log('📍 Solicitando posição para envio periódico...');
         navigator.geolocation.getCurrentPosition(
           (position) => {
-            console.log('📍 Enviando posição periódica...', {
+            logger.log('📍 Enviando posição periódica:', {
               lat: position.coords.latitude,
-              lng: position.coords.longitude
+              lng: position.coords.longitude,
+              timestamp: new Date().toISOString()
             });
             enviarPosicao(position, coletaId);
           },
           (error) => {
-            console.error('❌ Erro ao obter posição periódica:', error);
+            logger.warn('⚠️ Erro ao obter posição periódica:', {
+              code: error.code,
+              message: error.message,
+              tipo: error.code === error.TIMEOUT ? 'timeout' : error.code === error.PERMISSION_DENIED ? 'permissão negada' : 'outro'
+            });
             // Não desativar rastreamento por erro periódico, apenas logar
             // O watchPosition continuará tentando
           },
           {
             ...options,
-            timeout: 10000 // Timeout menor para envio periódico
+            timeout: 30000, // Timeout de 30 segundos para envio periódico
+            maximumAge: 300000 // Aceitar posição com até 5 minutos de idade
           }
         );
-      }, 30000); // 30 segundos
+      }, INTERVALO_ENVIO_MS); // 5 minutos
 
-      console.log('✅ Rastreamento GPS iniciado com sucesso para coleta:', coletaId);
-      console.log('📊 Status do rastreamento:', {
+      logger.log('✅ Rastreamento GPS iniciado com sucesso para coleta:', coletaId);
+      logger.log('📊 Status do rastreamento:', {
         rastreamentoAtivo: rastreamentoAtivo,
         coletaRastreamentoAtiva: coletaRastreamentoAtiva,
         watchId: watchId,
-        intervaloRastreamento: intervaloRastreamento !== null
+        intervaloRastreamento: intervaloRastreamento !== null,
+        intervaloMinutos: 5,
+        temSessao: !!state.session?.access_token,
+        temTokenRastreamento: !!obterTokenRastreamento(coletaId)
       });
-      showToast('Rastreamento GPS ativado! Sua localização está sendo monitorada.', 'success');
+      showToast('Rastreamento GPS ativado! Sua localização será enviada a cada 5 minutos.', 'success');
       
-      // Verificar se a primeira posição foi enviada após 5 segundos
+      // Log no console para facilitar debug
+      console.log(`🚀 [${new Date().toLocaleTimeString('pt-BR')}] Rastreamento iniciado para coleta ${coletaId}`);
+      console.log(`⏰ Posições serão enviadas a cada 5 minutos`);
+      console.log(`📊 Status: rastreamentoAtivo=${rastreamentoAtivo}, intervaloAtivo=${intervaloRastreamento !== null}`);
+      
+      // Verificar se a primeira posição foi enviada após 10 segundos
       setTimeout(() => {
         if (rastreamentoAtivo && coletaRastreamentoAtiva === coletaId) {
-          console.log('✅ Rastreamento ainda ativo após 5 segundos');
+          logger.log('✅ Rastreamento ainda ativo após 10 segundos');
+          const posicoesEnviadas = window.contadorPosicoesEnviadas || 0;
+          if (posicoesEnviadas === 0) {
+            logger.warn('⚠️ Rastreamento ativo mas primeira posição ainda não foi enviada (pode estar aguardando GPS)');
         } else {
-          console.warn('⚠️ Rastreamento não está mais ativo após 5 segundos');
+            logger.log(`✅ Primeira posição já foi enviada (total: ${posicoesEnviadas})`);
+          }
+        } else {
+          logger.warn('⚠️ Rastreamento não está mais ativo após 10 segundos');
         }
-      }, 5000);
+      }, 10000);
+      
+      // Verificar novamente após 6 minutos (1 minuto após o primeiro envio esperado)
+      setTimeout(() => {
+        if (rastreamentoAtivo && coletaRastreamentoAtiva === coletaId) {
+          const posicoesEnviadas = window.contadorPosicoesEnviadas || 0;
+          logger.log('📊 Status do rastreamento após 6 minutos:', {
+            rastreamentoAtivo: rastreamentoAtivo,
+            posicoesEnviadas: posicoesEnviadas,
+            watchId: watchId,
+            intervaloAtivo: intervaloRastreamento !== null,
+            esperadoMinimo: 1 // Esperamos pelo menos 1 posição em 6 minutos
+          });
+          
+          if (posicoesEnviadas === 0) {
+            logger.error('❌ Rastreamento ativo mas nenhuma posição foi enviada em 6 minutos!');
+            console.error('❌ [DEBUG] Rastreamento pode não estar funcionando corretamente');
+            showToast('Aviso: Rastreamento ativo mas nenhuma posição foi enviada. Verifique as permissões de localização.', 'warning');
+          } else {
+            logger.log(`✅ Rastreamento funcionando: ${posicoesEnviadas} posição(ões) enviada(s)`);
+            console.log(`✅ [DEBUG] Rastreamento OK: ${posicoesEnviadas} posição(ões) enviada(s)`);
+          }
+        }
+      }, 6 * 60 * 1000); // 6 minutos
     }
 
     async function enviarPosicao(position, coletaId) {
-      console.log('📤 enviarPosicao chamado:', { 
+      logger.log('📤 enviarPosicao chamado:', { 
         hasSession: !!state.session?.access_token,
         coletaId: coletaId || coletaRastreamentoAtiva,
         hasPosition: !!position
       });
 
-      if (!state.session?.access_token) {
-        console.error('❌ Sessão não encontrada para enviar posição');
-        console.error('❌ State session:', state.session);
-        showToast('Erro: Sessão expirada. Faça login novamente.', 'error');
-        return;
-      }
-
+      // Garantir que temos um coletaId válido
       if (!coletaId) {
-        console.warn('⚠️ Enviar posição chamado sem coletaId, usando coleta ativa:', coletaRastreamentoAtiva);
         coletaId = coletaRastreamentoAtiva;
+        logger.warn('⚠️ Enviar posição chamado sem coletaId, usando coleta ativa:', coletaId);
       }
 
       if (!coletaId) {
-        console.error('❌ Não é possível enviar posição: coletaId não disponível');
+        logger.error('❌ Não é possível enviar posição: coletaId não disponível');
         return;
+      }
+
+      // Tentar usar token de rastreamento se não houver sessão
+      let tokenRastreamento = null;
+      if (!state.session?.access_token) {
+        logger.warn('⚠️ Sessão não encontrada, tentando usar token de rastreamento...');
+        tokenRastreamento = obterTokenRastreamento(coletaId);
+        
+        if (!tokenRastreamento) {
+          logger.error('❌ Sessão não encontrada e token de rastreamento não disponível');
+          logger.error('❌ State session:', state.session);
+          logger.error('❌ ColetaId:', coletaId);
+          // Não mostrar toast para não incomodar o usuário - o sistema continuará tentando
+          return;
+        }
+        
+        logger.log('✅ Usando token de rastreamento persistente para enviar posição:', { coletaId });
       }
 
       if (!position || !position.coords) {
-        console.error('❌ Posição inválida recebida');
+        logger.error('❌ Posição inválida recebida');
         return;
       }
 
       const { latitude, longitude, accuracy, altitude, speed, heading } = position.coords;
       
-      console.log('📤 Enviando posição GPS:', {
+      logger.log('📤 Enviando posição GPS:', {
         coletaId: coletaId,
         latitude: latitude,
         longitude: longitude,
@@ -4788,23 +5779,23 @@
           endereco = `${data.address.road || ''} ${data.address.house_number || ''}, ${data.address.city || data.address.town || ''}, ${data.address.state || ''}`.trim();
         }
       } catch (error) {
-        console.warn('Erro ao obter endereço:', error);
+        logger.warn('Erro ao obter endereço:', error);
       }
 
       // Validar coordenadas antes de enviar
       if (isNaN(latitude) || isNaN(longitude)) {
-        console.error('❌ Coordenadas inválidas (NaN):', { latitude, longitude });
+        logger.error('❌ Coordenadas inválidas (NaN):', { latitude, longitude });
         return;
       }
 
       if (latitude === 0 && longitude === 0) {
-        console.warn('⚠️ Coordenadas são zero, pode ser um erro do GPS');
+        logger.warn('⚠️ Coordenadas são zero, pode ser um erro do GPS');
         // Continuar mesmo assim, pode ser válido em alguns casos
       }
 
       // Validar se as coordenadas estão em range válido
       if (latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) {
-        console.error('❌ Coordenadas fora do range válido:', { latitude, longitude });
+        logger.error('❌ Coordenadas fora do range válido:', { latitude, longitude });
         return;
       }
 
@@ -4822,7 +5813,7 @@
         conectadoRedeCelular: navigator.onLine
       };
 
-      console.log('📤 Dados da posição preparados:', {
+      logger.log('📤 Dados da posição preparados:', {
         coletaId: dadosPosicao.coletaId,
         latitude: dadosPosicao.latitude,
         longitude: dadosPosicao.longitude,
@@ -4831,10 +5822,24 @@
       });
 
       try {
+        // Usar token de rastreamento se não houver sessão, senão usar token de sessão
+        let authHeader = null;
+        
+        if (tokenRastreamento) {
+          authHeader = `Bearer ${tokenRastreamento}`;
+          logger.log('🔑 Usando token de rastreamento persistente para autenticação');
+        } else if (state.session?.access_token) {
+          authHeader = `Bearer ${state.session.access_token}`;
+          logger.log('🔑 Usando token de sessão para autenticação');
+        } else {
+          logger.error('❌ Nenhum token disponível para enviar posição');
+          return;
+        }
+        
         const response = await fetch('/api/rastreamento/enviar-posicao', {
           method: 'POST',
           headers: {
-            Authorization: `Bearer ${state.session.access_token}`,
+            Authorization: authHeader,
             'Content-Type': 'application/json'
           },
           body: JSON.stringify(dadosPosicao)
@@ -4842,20 +5847,30 @@
 
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({ error: 'Erro desconhecido' }));
-          console.error('❌ Erro ao enviar posição:', {
+          logger.error('❌ Erro ao enviar posição:', {
             status: response.status,
             statusText: response.statusText,
             error: errorData.error || 'Erro desconhecido',
             coletaId: coletaId
           });
           
-          // Se for erro 401, sessão expirada
+          // Se for erro 401, tentar usar token de rastreamento se disponível
           if (response.status === 401) {
-            console.error('❌ Sessão expirada, redirecionando para login...');
-            showToast('Sessão expirada. Faça login novamente.', 'error');
-            setTimeout(() => {
-              window.location.href = 'login-motorista.html';
-            }, 2000);
+            logger.warn('⚠️ Erro 401 - Sessão pode ter expirado, tentando usar token de rastreamento...');
+            
+            // Se não estava usando token de rastreamento, tentar usar agora
+            if (!tokenRastreamento) {
+              const trackingToken = obterTokenRastreamento(coletaId);
+              if (trackingToken) {
+                logger.log('🔄 Tentando reenviar posição com token de rastreamento...');
+                // Reenviar com token de rastreamento (chamada recursiva)
+                return enviarPosicao(position, coletaId);
+              }
+            }
+            
+            // Se não há token de rastreamento, apenas logar (não redirecionar)
+            // O rastreamento continuará tentando
+            logger.warn('⚠️ Sessão expirada e sem token de rastreamento, mas continuando tentativas...');
             return;
           }
           
@@ -4870,15 +5885,20 @@
         }
         window.contadorPosicoesEnviadas++;
         
-        console.log('✅ Posição GPS enviada com sucesso:', {
+        const timestampEnvio = new Date().toISOString();
+        logger.log('✅ Posição GPS enviada com sucesso:', {
           coletaId: coletaId,
           posicaoId: result.posicao?.id,
-          timestamp: new Date().toISOString(),
+          timestamp: timestampEnvio,
           lat: latitude,
           lng: longitude,
           accuracy: accuracy,
-          totalEnviadas: window.contadorPosicoesEnviadas
+          totalEnviadas: window.contadorPosicoesEnviadas,
+          usandoTokenRastreamento: !!tokenRastreamento
         });
+        
+        // Log adicional no console para facilitar debug
+        console.log(`✅ [${new Date().toLocaleTimeString('pt-BR')}] Posição enviada: Lat ${latitude.toFixed(6)}, Lng ${longitude.toFixed(6)} (Total: ${window.contadorPosicoesEnviadas})`);
         
         // Atualizar indicador visual de que posição foi enviada
         const statusRastreamento = document.getElementById('statusRastreamento');
@@ -4898,8 +5918,10 @@
           });
         }
       } catch (error) {
-        console.error('❌ Erro ao enviar posição GPS:', error);
-        console.error('❌ Stack trace:', error.stack);
+        logger.error('❌ Erro ao enviar posição GPS:', error);
+        if (IS_DEV) {
+          logger.error('❌ Stack trace:', error.stack);
+        }
         
         // Atualizar indicador visual de erro
         const statusRastreamento = document.getElementById('statusRastreamento');
@@ -4936,21 +5958,21 @@
 
     // Função de teste para verificar envio de posição (pode ser chamada do console)
     window.testarEnvioPosicao = async function() {
-      console.log('🧪 Testando envio de posição...');
+      logger.log('🧪 Testando envio de posição...');
       
       if (!state.session?.access_token) {
-        console.error('❌ Sessão não encontrada');
+        logger.error('❌ Sessão não encontrada');
         return { success: false, error: 'Sessão não encontrada' };
       }
 
       if (!coletaRastreamentoAtiva) {
-        console.warn('⚠️ Nenhuma coleta ativa para rastreamento');
-        console.log('💡 Dica: Assuma uma viagem primeiro ou forneça um coletaId');
+        logger.warn('⚠️ Nenhuma coleta ativa para rastreamento');
+        logger.log('💡 Dica: Assuma uma viagem primeiro ou forneça um coletaId');
         return { success: false, error: 'Nenhuma coleta ativa' };
       }
 
       if (!navigator.geolocation) {
-        console.error('❌ Geolocalização não suportada');
+        logger.error('❌ Geolocalização não suportada');
         return { success: false, error: 'Geolocalização não suportada' };
       }
 
@@ -4963,7 +5985,7 @@
           });
         });
 
-        console.log('✅ Posição obtida:', {
+        logger.log('✅ Posição obtida:', {
           lat: position.coords.latitude,
           lng: position.coords.longitude,
           accuracy: position.coords.accuracy
@@ -4981,7 +6003,7 @@
           }
         };
       } catch (error) {
-        console.error('❌ Erro no teste:', error);
+        logger.error('❌ Erro no teste:', error);
         return { success: false, error: error.message };
       }
     };
@@ -5094,7 +6116,7 @@
         placaCarreta3: normalizePlate(elements.campoPlacaCarreta3?.value || '')
       };
       
-      console.log('📤 Enviando payload de cadastro:', { ...payload, telefone: '***', telefoneSecundario: '***' });
+      logger.log('📤 Enviando payload de cadastro:', { ...payload, telefone: '***', telefoneSecundario: '***' });
 
       try {
         elements.btnSalvarCadastro.disabled = true;
@@ -5291,8 +6313,9 @@
         state.supabase.auth.onAuthStateChange(async (event, session) => {
           if (session) {
             state.session = session;
+            logger.log('🔐 Sessão detectada, carregando dados do motorista...');
             await carregarPerfil();
-            await carregarViagens();
+            await carregarViagens(); // Esta função já chama verificarEIniciarRastreamentoAutomatico()
             await carregarOportunidades();
             await carregarNotificacoes();
           } else {
@@ -5305,12 +6328,12 @@
         inicializarPWA();
         await carregarPerfil();
         await Promise.all([
-          carregarViagens(),
+          carregarViagens(), // Esta função já chama verificarEIniciarRastreamentoAutomatico()
           carregarOportunidades(),
           carregarStatusDocumentos(true)
         ]);
       } catch (error) {
-        console.error('Erro ao inicializar portal:', error);
+        logger.error('Erro ao inicializar portal:', error);
         showToast(error.message || 'Não foi possível carregar o portal', 'error');
         setTimeout(() => window.location.href = 'login-motorista.html', 3500);
       }
@@ -5339,183 +6362,192 @@
 
     function inicializarElementosChatCadastro() {
       chatCadastroElements = {
-        overlay: document.getElementById('chatCadastroOverlay'),
-        messages: document.getElementById('chatCadastroMessages'),
-        options: document.getElementById('chatCadastroOptions'),
-        form: document.getElementById('chatCadastroForm'),
-        input: document.getElementById('chatCadastroInput'),
-        sendBtn: document.getElementById('chatCadastroSendBtn'),
-        closeBtn: document.getElementById('btnFecharChatCadastro'),
-        fileUpload: document.getElementById('chatCadastroFileUpload'),
-        fileInput: document.getElementById('chatCadastroFileInput'),
-        fileList: document.getElementById('chatCadastroFileList'),
-        fileBtn: document.getElementById('chatCadastroFileBtn')
+        overlay: safeGetElementById('chatCadastroOverlay'),
+        messages: safeGetElementById('chatCadastroMessages'),
+        options: safeGetElementById('chatCadastroOptions'),
+        form: safeGetElementById('chatCadastroForm'),
+        input: safeGetElementById('chatCadastroInput'),
+        sendBtn: safeGetElementById('chatCadastroSendBtn'),
+        closeBtn: safeGetElementById('btnFecharChatCadastro'),
+        fileUpload: safeGetElementById('chatCadastroFileUpload'),
+        fileInput: safeGetElementById('chatCadastroFileInput'),
+        fileList: safeGetElementById('chatCadastroFileList'),
+        fileBtn: safeGetElementById('chatCadastroFileBtn')
       };
     }
 
     function iniciarChatCadastro() {
-      console.log('🚀 Iniciando chat de cadastro...');
+      logger.log('🚀 Iniciando chat de cadastro...');
       
       // Garantir que os elementos estejam inicializados
       if (!chatCadastroElements || !chatCadastroElements.overlay) {
-        console.log('⚠️ Elementos não inicializados, inicializando...');
+        logger.log('⚠️ Elementos não inicializados, inicializando...');
         inicializarElementosChatCadastro();
       }
       
       // Verificar novamente após inicialização
       if (!chatCadastroElements || !chatCadastroElements.overlay) {
         // Tentar buscar diretamente do DOM
-        const overlay = document.getElementById('chatCadastroOverlay');
+        const overlay = safeGetElementById('chatCadastroOverlay');
         if (overlay) {
-          console.log('✅ Overlay encontrado diretamente no DOM, recriando elementos...');
+          logger.log('✅ Overlay encontrado diretamente no DOM, recriando elementos...');
           chatCadastroElements = {
             overlay: overlay,
-            messages: document.getElementById('chatCadastroMessages'),
-            options: document.getElementById('chatCadastroOptions'),
-            form: document.getElementById('chatCadastroForm'),
-            input: document.getElementById('chatCadastroInput'),
-            sendBtn: document.getElementById('chatCadastroSendBtn'),
-            closeBtn: document.getElementById('btnFecharChatCadastro'),
-            fileUpload: document.getElementById('chatCadastroFileUpload'),
-            fileInput: document.getElementById('chatCadastroFileInput'),
-            fileList: document.getElementById('chatCadastroFileList'),
-            fileBtn: document.getElementById('chatCadastroFileBtn')
+            messages: safeGetElementById('chatCadastroMessages'),
+            options: safeGetElementById('chatCadastroOptions'),
+            form: safeGetElementById('chatCadastroForm'),
+            input: safeGetElementById('chatCadastroInput'),
+            sendBtn: safeGetElementById('chatCadastroSendBtn'),
+            closeBtn: safeGetElementById('btnFecharChatCadastro'),
+            fileUpload: safeGetElementById('chatCadastroFileUpload'),
+            fileInput: safeGetElementById('chatCadastroFileInput'),
+            fileList: safeGetElementById('chatCadastroFileList'),
+            fileBtn: safeGetElementById('chatCadastroFileBtn')
           };
         } else {
-          console.error('❌ Erro: chatCadastroOverlay não encontrado no DOM!');
-          console.error('❌ Elementos disponíveis:', {
-            overlay: !!document.getElementById('chatCadastroOverlay'),
-            messages: !!document.getElementById('chatCadastroMessages'),
-            form: !!document.getElementById('chatCadastroForm')
+          logger.error('❌ Erro: chatCadastroOverlay não encontrado no DOM!');
+          logger.error('❌ Elementos disponíveis:', {
+            overlay: !!safeGetElementById('chatCadastroOverlay'),
+            messages: !!safeGetElementById('chatCadastroMessages'),
+            form: !!safeGetElementById('chatCadastroForm')
           });
           showToast('Erro ao abrir chat de cadastro. O elemento não foi encontrado. Recarregue a página.', 'error');
         return;
         }
       }
       
-      console.log('✅ Elementos do chat encontrados:', {
+      logger.log('✅ Elementos do chat encontrados:', {
         overlay: !!chatCadastroElements.overlay,
         messages: !!chatCadastroElements.messages,
         form: !!chatCadastroElements.form,
         overlayId: chatCadastroElements.overlay?.id
       });
       
-      // Verificar quais dados já existem
-      const user = state.user || {};
+      // Usar a função de verificação de dados faltantes
+      const verificacao = verificarDadosFaltantes();
       const motorista = state.motorista || {};
+      const user = state.user || {};
       
-      // Função auxiliar para verificar se um nome é válido (não é email, tem pelo menos 3 caracteres, tem espaços ou é um nome real)
-      function isNomeValido(nome) {
-        if (!nome || typeof nome !== 'string') return false;
-        const nomeLimpo = nome.trim();
-        // Deve ter pelo menos 3 caracteres, não ser só números, e não conter @ (não é email)
-        return nomeLimpo.length >= 3 && 
-               !/^\d+$/.test(nomeLimpo) && 
-               !nomeLimpo.includes('@') &&
-               nomeLimpo.split(' ').length >= 1; // Pelo menos uma palavra
-      }
-      
-      // Preencher dados existentes (só usar nome se for válido)
+      // Preencher dados existentes no estado do chat
       const nomeExistente = motorista.nome || user.nome || '';
-      
-      // Normalizar telefone (remover caracteres não numéricos)
-      // Se o usuário já tem motorista, o telefone já foi coletado no login/cadastro
       const telefoneBruto = motorista.telefone1 || motorista.telefone || '';
       const telefoneNormalizado = telefoneBruto ? telefoneBruto.replace(/\D/g, '') : '';
-      
-      // Se o usuário já tem um motorista, significa que fez login/cadastro e o telefone já foi coletado
-      // Não precisamos solicitar telefone novamente se já existe
-      const telefoneJaColetado = !!motorista && telefoneNormalizado.length >= 10;
+      const estadoNormalizado = normalizarEstado(motorista.estado);
+      const placas = motorista.placas || {};
       
       chatCadastroState.data = {
-        nome: isNomeValido(nomeExistente) ? nomeExistente.trim() : '',
-        telefone: telefoneNormalizado, // Armazenar apenas dígitos
-        estado: motorista.estado || '',
+        nome: verificacao.completos.nome ? nomeExistente.trim() : '',
+        telefone: verificacao.completos.telefone ? telefoneNormalizado : '',
+        estado: estadoNormalizado || motorista.estado || '',
         classeVeiculo: motorista.classeVeiculo || motorista.classe_veiculo || '',
         tipoVeiculo: motorista.tipoVeiculo || motorista.tipo_veiculo || '',
-        tipoCarroceria: motorista.tipoCarroceria || motorista.tipo_carroceria || ''
+        tipoCarroceria: motorista.tipoCarroceria || motorista.tipo_carroceria || '',
+        placaCavalo: placas.cavalo || motorista.placa_cavalo || ''
       };
       
-      // Determinar qual é o próximo passo necessário
+      // Mapear dados faltantes para nomes amigáveis e determinar ordem de coleta
+      const ordemColeta = ['nome', 'telefone', 'estado', 'classeVeiculo', 'tipoVeiculo', 'tipoCarroceria', 'placaCavalo'];
+      const nomesAmigaveis = {
+        nome: 'nome completo',
+        telefone: 'telefone',
+        estado: 'estado (UF)',
+        classeVeiculo: 'classe do veículo',
+        tipoVeiculo: 'tipo de veículo',
+        tipoCarroceria: 'tipo de carroceria',
+        placaCavalo: 'placa do cavalo'
+      };
+      
+      // Encontrar o primeiro dado faltante na ordem de coleta
       let proximoPasso = null;
+      const dadosFaltantesLista = [];
+      
+      for (const campo of ordemColeta) {
+        if (verificacao.faltantes[campo]) {
+          dadosFaltantesLista.push(nomesAmigaveis[campo]);
+          if (!proximoPasso) {
+            if (campo === 'classeVeiculo') {
+              proximoPasso = 'classe';
+            } else if (campo === 'placaCavalo') {
+              proximoPasso = 'placaCavalo';
+            } else {
+              proximoPasso = campo;
+            }
+          }
+        }
+      }
+      
+      // Construir mensagem personalizada
       let mensagemInicial = 'Olá! Vou te ajudar a completar seu cadastro para que você possa assumir viagens.';
-      const dadosFaltantes = [];
       
-      if (!chatCadastroState.data.nome || !isNomeValido(chatCadastroState.data.nome)) {
-        dadosFaltantes.push('nome completo');
-        if (!proximoPasso) proximoPasso = 'nome';
+      // Listar dados já coletados
+      const dadosColetadosLista = [];
+      if (verificacao.completos.nome) dadosColetadosLista.push('nome');
+      if (verificacao.completos.telefone) dadosColetadosLista.push('telefone');
+      if (verificacao.completos.estado) dadosColetadosLista.push('estado');
+      if (verificacao.completos.classeVeiculo) dadosColetadosLista.push('classe do veículo');
+      if (verificacao.completos.tipoVeiculo) dadosColetadosLista.push('tipo de veículo');
+      if (verificacao.completos.tipoCarroceria) dadosColetadosLista.push('tipo de carroceria');
+      if (verificacao.completos.placaCavalo) dadosColetadosLista.push('placa do cavalo');
+      
+      // Personalizar mensagem baseada nos dados existentes
+      if (dadosColetadosLista.length > 0) {
+        if (dadosColetadosLista.length === verificacao.totalCompletos) {
+          mensagemInicial += ` Já tenho todas as suas informações: ${dadosColetadosLista.join(', ')}.`;
+      } else {
+          mensagemInicial += ` Já tenho seu ${dadosColetadosLista.slice(0, 2).join(' e ')}${dadosColetadosLista.length > 2 ? ' e mais alguns dados' : ''}.`;
+        }
       }
       
-      // Validar telefone (pode ter 55 no início, então precisa de pelo menos 12 dígitos com código ou 10 sem)
-      // MAS: se o usuário já tem motorista, o telefone já foi coletado no login, não solicitar novamente
-      const telefoneLimpo = (chatCadastroState.data.telefone || '').replace(/\D/g, '');
-      const telefoneValido = telefoneLimpo.length >= 12 || (telefoneLimpo.length >= 10 && !telefoneLimpo.startsWith('55'));
-      
-      // Só solicitar telefone se não foi coletado no login (ou seja, se não tem motorista ou telefone inválido)
-      if (!telefoneJaColetado && (!chatCadastroState.data.telefone || !telefoneValido)) {
-        dadosFaltantes.push('telefone');
-        if (!proximoPasso) proximoPasso = 'telefone';
-      }
-      
-      if (!chatCadastroState.data.estado) {
-        dadosFaltantes.push('estado (UF)');
-        if (!proximoPasso) proximoPasso = 'estado';
-      }
-      
-      if (!chatCadastroState.data.classeVeiculo) {
-        dadosFaltantes.push('classe do veículo');
-        if (!proximoPasso) proximoPasso = 'classe';
-      }
-      
-      if (!chatCadastroState.data.tipoVeiculo) {
-        dadosFaltantes.push('tipo de veículo');
-        if (!proximoPasso) proximoPasso = 'tipoVeiculo';
-      }
-      
-      if (!chatCadastroState.data.tipoCarroceria) {
-        dadosFaltantes.push('tipo de carroceria');
-        if (!proximoPasso) proximoPasso = 'tipoCarroceria';
-      }
-      
-      // Se não há dados faltantes, algo está errado
-      if (!proximoPasso) {
+      // Personalizar mensagem sobre dados faltantes
+      // Se não há dados faltantes mas há coletaId, significa que foi chamado para verificar e assumir viagem
+      if (dadosFaltantesLista.length === 0) {
+        if (chatCadastroState.coletaId) {
+          // Foi chamado ao tentar assumir viagem, mas cadastro está completo
+          // Processar automaticamente sem mostrar mensagem de aprovação
+          mensagemInicial = 'Verificando seu cadastro e documentos...';
+          proximoPasso = 'verificando'; // Step especial para quando cadastro está completo
+        } else {
         mensagemInicial = 'Seu cadastro parece estar completo. Vou verificar...';
         proximoPasso = 'finalizar';
-      } else {
-        // Adicionar informações sobre dados já coletados
-        const dadosColetados = [];
-        if (chatCadastroState.data.nome && isNomeValido(chatCadastroState.data.nome)) {
-          dadosColetados.push('nome');
         }
-        if (telefoneJaColetado || telefoneValido) {
-          dadosColetados.push('telefone');
-        }
-        
-        if (dadosColetados.length > 0) {
-          mensagemInicial += ` Já tenho seu ${dadosColetados.join(' e ')}.`;
-        }
-        
-        if (dadosFaltantes.length > 1) {
-          mensagemInicial += ` Preciso de algumas informações: ${dadosFaltantes.join(', ')}. Vamos começar?`;
+      } else if (dadosFaltantesLista.length === 1) {
+        mensagemInicial += ` Preciso apenas de seu ${dadosFaltantesLista[0]}.`;
+      } else if (dadosFaltantesLista.length === 2) {
+        mensagemInicial += ` Preciso de ${dadosFaltantesLista[0]} e ${dadosFaltantesLista[1]}.`;
         } else {
-          mensagemInicial += ` Preciso apenas de ${dadosFaltantes[0]}.`;
-        }
+        mensagemInicial += ` Preciso de ${dadosFaltantesLista.length} informações: ${dadosFaltantesLista.slice(0, -1).join(', ')} e ${dadosFaltantesLista[dadosFaltantesLista.length - 1]}.`;
       }
+      
+      logger.log('📋 Dados do cadastro:', {
+        completos: verificacao.completos,
+        faltantes: verificacao.faltantes,
+        totalCompletos: verificacao.totalCompletos,
+        totalFaltantes: verificacao.totalFaltantes,
+        proximoPasso
+      });
       
       chatCadastroState.step = proximoPasso;
       chatCadastroState.isWaiting = false;
       
       if (chatCadastroElements.overlay) {
-        console.log('✅ Exibindo overlay do chat de cadastro...');
+        logger.log('✅ Exibindo overlay do chat de cadastro...');
+        
+        // Remover style inline que possa estar ocultando o overlay
+        const inlineStyle = chatCadastroElements.overlay.getAttribute('style');
+        if (inlineStyle && inlineStyle.includes('display: none')) {
+          logger.log('⚠️ Removendo style inline que oculta o overlay...');
+          chatCadastroElements.overlay.removeAttribute('style');
+        }
+        
         chatCadastroElements.overlay.style.display = 'flex';
         chatCadastroElements.overlay.style.visibility = 'visible';
         chatCadastroElements.overlay.style.opacity = '1';
         document.body.style.overflow = 'hidden'; // Prevenir scroll do body
         
-        // Forçar exibição com z-index alto
-        chatCadastroElements.overlay.style.zIndex = '9999';
+        // Forçar exibição com z-index alto (usar o mesmo do CSS)
+        chatCadastroElements.overlay.style.zIndex = '10000';
         
-        console.log('✅ Overlay exibido:', {
+        logger.log('✅ Overlay exibido:', {
           display: chatCadastroElements.overlay.style.display,
           visibility: chatCadastroElements.overlay.style.visibility,
           zIndex: chatCadastroElements.overlay.style.zIndex
@@ -5546,19 +6578,26 @@
           }, 100);
         }
       } else {
-        console.error('❌ chatCadastroElements.overlay é null!');
+        logger.error('❌ chatCadastroElements.overlay é null!');
         // Tentar buscar diretamente do DOM como último recurso
-        const overlayDireto = document.getElementById('chatCadastroOverlay');
+        const overlayDireto = safeGetElementById('chatCadastroOverlay');
         if (overlayDireto) {
-          console.log('✅ Overlay encontrado diretamente, exibindo...');
+          logger.log('✅ Overlay encontrado diretamente, exibindo...');
+          
+          // Remover style inline que possa estar ocultando
+          const inlineStyle = overlayDireto.getAttribute('style');
+          if (inlineStyle && inlineStyle.includes('display: none')) {
+            overlayDireto.removeAttribute('style');
+          }
+          
           overlayDireto.style.display = 'flex';
           overlayDireto.style.visibility = 'visible';
           overlayDireto.style.opacity = '1';
-          overlayDireto.style.zIndex = '9999';
+          overlayDireto.style.zIndex = '10000'; // Usar o mesmo z-index do CSS
           document.body.style.overflow = 'hidden';
           chatCadastroElements.overlay = overlayDireto;
         } else {
-          console.error('❌ Overlay não encontrado no DOM!');
+          logger.error('❌ Overlay não encontrado no DOM!');
           showToast('Erro: Chat de cadastro não encontrado. Recarregue a página.', 'error');
           return;
         }
@@ -5568,13 +6607,20 @@
       if (chatCadastroElements.overlay) {
         const computedStyle = window.getComputedStyle(chatCadastroElements.overlay);
         if (computedStyle.display === 'none' || computedStyle.visibility === 'hidden') {
-          console.warn('⚠️ Overlay está oculto, forçando exibição...');
+          logger.warn('⚠️ Overlay está oculto, forçando exibição...');
+          
+          // Remover style inline que possa estar ocultando
+          const inlineStyle = chatCadastroElements.overlay.getAttribute('style');
+          if (inlineStyle && inlineStyle.includes('display: none')) {
+            chatCadastroElements.overlay.removeAttribute('style');
+          }
+          
           chatCadastroElements.overlay.style.display = 'flex';
           chatCadastroElements.overlay.style.visibility = 'visible';
           chatCadastroElements.overlay.style.opacity = '1';
-          chatCadastroElements.overlay.style.zIndex = '9999';
+          chatCadastroElements.overlay.style.zIndex = '10000'; // Usar o mesmo z-index do CSS
         }
-        console.log('✅ Overlay verificado e exibido:', {
+        logger.log('✅ Overlay verificado e exibido:', {
           display: computedStyle.display,
           visibility: computedStyle.visibility,
           zIndex: computedStyle.zIndex
@@ -5585,11 +6631,18 @@
       if (chatCadastroElements.overlay) {
         const overlayComputed = window.getComputedStyle(chatCadastroElements.overlay);
         if (overlayComputed.display === 'none' || overlayComputed.visibility === 'hidden') {
-          console.warn('⚠️ Overlay ainda oculto antes de adicionar mensagem, forçando exibição...');
+          logger.warn('⚠️ Overlay ainda oculto antes de adicionar mensagem, forçando exibição...');
+          
+          // Remover style inline que possa estar ocultando
+          const inlineStyle = chatCadastroElements.overlay.getAttribute('style');
+          if (inlineStyle && inlineStyle.includes('display: none')) {
+            chatCadastroElements.overlay.removeAttribute('style');
+          }
+          
           chatCadastroElements.overlay.style.display = 'flex';
           chatCadastroElements.overlay.style.visibility = 'visible';
           chatCadastroElements.overlay.style.opacity = '1';
-          chatCadastroElements.overlay.style.zIndex = '9999';
+          chatCadastroElements.overlay.style.zIndex = '10000'; // Usar o mesmo z-index do CSS
           document.body.style.overflow = 'hidden';
         }
       }
@@ -5597,11 +6650,61 @@
       adicionarMensagemChat(mensagemInicial, 'bot');
       
       // Iniciar com o primeiro passo necessário
+      // Se o passo é 'verificando', processar automaticamente
+      if (proximoPasso === 'verificando') {
+        setTimeout(async () => {
+          await processarStepVerificando();
+        }, 1000);
+      } else {
       setTimeout(() => {
         iniciarProximoPassoChat(proximoPasso);
       }, 800);
+      }
       
-      console.log('✅ Chat de cadastro iniciado com sucesso');
+      logger.log('✅ Chat de cadastro iniciado com sucesso', {
+        step: proximoPasso,
+        coletaId: chatCadastroState.coletaId
+      });
+    }
+    
+    /**
+     * Determina quantas placas solicitar baseado no tipo de veículo
+     * @param {string} tipoVeiculo - Tipo do veículo (ex: "Fiorino", "Bitruck", "Bitrem")
+     * @returns {number} Quantidade de placas a solicitar (1, 2, 3 ou 4)
+     */
+    function obterQuantidadePlacas(tipoVeiculo) {
+      if (!tipoVeiculo) return 1; // Padrão: 1 placa
+      
+      const tipoNormalizado = tipoVeiculo.toLowerCase().trim();
+      
+      // 1 placa: Fiorino, 3/4, toco, vlc, truck
+      if (tipoNormalizado.includes('fiorino') || 
+          tipoNormalizado.includes('3/4') ||
+          tipoNormalizado === 'toco' ||
+          tipoNormalizado.includes('vlc') ||
+          tipoNormalizado === 'truck') {
+        return 1;
+      }
+      
+      // 2 placas: Bitruck, carreta, carreta ls, vanderleia
+      if (tipoNormalizado.includes('bitruck') ||
+          tipoNormalizado.includes('carreta') ||
+          tipoNormalizado.includes('vanderleia')) {
+        return 2;
+      }
+      
+      // 3 placas: Bitrem
+      if (tipoNormalizado.includes('bitrem')) {
+        return 3;
+      }
+      
+      // 4 placas: Rodotrem
+      if (tipoNormalizado.includes('rodotrem')) {
+        return 4;
+      }
+      
+      // Padrão: 1 placa se não reconhecer
+      return 1;
     }
     
     function iniciarProximoPassoChat(passo) {
@@ -5645,6 +6748,18 @@
             setChatWaiting(false);
           });
           return;
+        case 'placaCavalo':
+          adicionarMensagemChat('Qual é a placa do seu cavalo (caminhão)? Informe no formato ABC1234 ou ABC1D23.', 'bot');
+          break;
+        case 'placaCarreta1':
+          adicionarMensagemChat('Qual é a placa da primeira carreta? Informe no formato ABC1234 ou ABC1D23.', 'bot');
+          break;
+        case 'placaCarreta2':
+          adicionarMensagemChat('Qual é a placa da segunda carreta? Informe no formato ABC1234 ou ABC1D23.', 'bot');
+          break;
+        case 'placaCarreta3':
+          adicionarMensagemChat('Qual é a placa da terceira carreta? Informe no formato ABC1234 ou ABC1D23.', 'bot');
+          break;
         case 'finalizar':
           setTimeout(async () => {
             adicionarMensagemChat('Verificando seus dados...', 'bot');
@@ -5740,7 +6855,7 @@
       try {
         await processarPassoChat(inputRaw);
       } catch (error) {
-        console.error('Erro no chat de cadastro:', error);
+        logger.error('Erro no chat de cadastro:', error);
         adicionarMensagemChat('Desculpe, ocorreu um erro. Tente novamente.', 'bot', true);
         setChatWaiting(false);
       }
@@ -5779,8 +6894,23 @@
           proximoPasso = 'tipoVeiculo';
         } else if (!chatCadastroState.data.tipoCarroceria) {
           proximoPasso = 'tipoCarroceria';
+        } else if (!chatCadastroState.data.placaCavalo) {
+          proximoPasso = 'placaCavalo';
+        } else {
+          // Verificar se precisa solicitar placas adicionais baseado no tipo de veículo
+          const tipoVeiculo = chatCadastroState.data.tipoVeiculo || '';
+          const quantidadePlacas = obterQuantidadePlacas(tipoVeiculo);
+          
+          // Verificar se já coletou todas as placas necessárias
+          if (quantidadePlacas >= 2 && !chatCadastroState.data.placaCarreta1) {
+            proximoPasso = 'placaCarreta1';
+          } else if (quantidadePlacas >= 3 && !chatCadastroState.data.placaCarreta2) {
+            proximoPasso = 'placaCarreta2';
+          } else if (quantidadePlacas >= 4 && !chatCadastroState.data.placaCarreta3) {
+            proximoPasso = 'placaCarreta3';
         } else {
           proximoPasso = 'finalizar';
+          }
         }
       }
       
@@ -5875,6 +7005,37 @@
           }
           
           chatCadastroState.data.tipoCarroceria = inputRaw.trim();
+          avancarParaProximoPasso();
+          break;
+
+        case 'placaCavalo':
+        case 'placaCarreta1':
+        case 'placaCarreta2':
+        case 'placaCarreta3':
+          // Normalizar placa (remover espaços, hífens, converter para maiúsculas)
+          const placaNormalizada = inputRaw.replace(/[\s-]/g, '').toUpperCase();
+          
+          // Validar formato de placa (antiga: ABC1234 ou nova: ABC1D23)
+          const placaAntiga = /^[A-Z]{3}\d{4}$/.test(placaNormalizada);
+          const placaNova = /^[A-Z]{3}\d[A-Z]\d{2}$/.test(placaNormalizada);
+          
+          if (!placaAntiga && !placaNova) {
+            adicionarMensagemChat('Placa inválida. Informe no formato ABC1234 (antiga) ou ABC1D23 (nova).', 'bot', true);
+            setChatWaiting(false);
+            return;
+          }
+          
+          // Salvar placa no campo apropriado
+          if (step === 'placaCavalo') {
+            chatCadastroState.data.placaCavalo = placaNormalizada;
+          } else if (step === 'placaCarreta1') {
+            chatCadastroState.data.placaCarreta1 = placaNormalizada;
+          } else if (step === 'placaCarreta2') {
+            chatCadastroState.data.placaCarreta2 = placaNormalizada;
+          } else if (step === 'placaCarreta3') {
+            chatCadastroState.data.placaCarreta3 = placaNormalizada;
+          }
+          
           avancarParaProximoPasso();
           break;
 
@@ -6088,13 +7249,13 @@
           classeVeiculo: chatCadastroState.data.classeVeiculo,
           tipoVeiculo: chatCadastroState.data.tipoVeiculo,
           tipoCarroceria: chatCadastroState.data.tipoCarroceria,
-          placaCavalo: null,
-          placaCarreta1: null,
-          placaCarreta2: null,
-          placaCarreta3: null
+          placaCavalo: chatCadastroState.data.placaCavalo || null,
+          placaCarreta1: chatCadastroState.data.placaCarreta1 || null,
+          placaCarreta2: chatCadastroState.data.placaCarreta2 || null,
+          placaCarreta3: chatCadastroState.data.placaCarreta3 || null
         };
         
-        console.log('📤 Enviando payload de cadastro via chat:', { ...payload, telefone: '***' });
+        logger.log('📤 Enviando payload de cadastro via chat:', { ...payload, telefone: '***' });
 
         const response = await fetch('/api/motoristas/auth/profile', {
           method: 'POST',
@@ -6133,7 +7294,7 @@
             if (viagensResult.motorista) {
               state.motorista = viagensResult.motorista;
               atualizarCabecalho();
-              console.log('✅ Dados do motorista recarregados após salvamento:', {
+              logger.log('✅ Dados do motorista recarregados após salvamento:', {
                 ...state.motorista,
                 estado: state.motorista.estado,
                 estadoType: typeof state.motorista.estado,
@@ -6143,7 +7304,7 @@
             }
           }
         } catch (reloadError) {
-          console.warn('⚠️ Erro ao recarregar dados do motorista:', reloadError);
+          logger.warn('⚠️ Erro ao recarregar dados do motorista:', reloadError);
         }
         
         adicionarMensagemChat('✅ Cadastro básico concluído com sucesso!', 'bot');
@@ -6172,6 +7333,135 @@
       }
     }
 
+    // ========== Processar step 'verificando' ==========
+    async function processarStepVerificando() {
+      logger.log('🔍 Processando step verificando...');
+      
+      try {
+        setChatWaiting(true);
+        
+        // Verificar se o cadastro está completo
+        const verificacao = verificarDadosFaltantes();
+        
+        if (!verificacao.estaCompleto) {
+          // Cadastro não está completo, voltar para coletar dados faltantes
+          adicionarMensagemChat('Seu cadastro ainda não está completo. Vou te ajudar a completar.', 'bot');
+          
+          // Encontrar o primeiro dado faltante
+          const ordemColeta = ['nome', 'telefone', 'estado', 'classeVeiculo', 'tipoVeiculo', 'tipoCarroceria', 'placaCavalo'];
+          let proximoPasso = null;
+          
+          for (const campo of ordemColeta) {
+            if (verificacao.faltantes[campo]) {
+              if (campo === 'classeVeiculo') {
+                proximoPasso = 'classe';
+              } else if (campo === 'placaCavalo') {
+                proximoPasso = 'placaCavalo';
+              } else {
+                proximoPasso = campo;
+              }
+              break;
+            }
+          }
+          
+          if (proximoPasso) {
+            chatCadastroState.step = proximoPasso;
+            setTimeout(() => {
+              iniciarProximoPassoChat(proximoPasso);
+            }, 800);
+          }
+          setChatWaiting(false);
+          return;
+        }
+        
+        // Cadastro está completo, verificar documentos e status
+        // Não mostrar mensagem no chat - processar silenciosamente
+        
+        // Verificar documentos
+        const coletaId = chatCadastroState.coletaId;
+        if (!coletaId) {
+          adicionarMensagemChat('❌ Erro: ID da coleta não encontrado. Tente novamente.', 'bot', true);
+          setChatWaiting(false);
+          return;
+        }
+        
+        // Atualizar status para 'ativo' se necessário (antes de verificar documentos)
+        const motoristaStatus = (state.motorista?.status || '').toLowerCase();
+        if (motoristaStatus === 'cadastro_pendente') {
+          try {
+            const motorista = state.motorista || {};
+            const payload = {
+              nome: motorista.nome,
+              telefone1: motorista.telefone1 || motorista.telefone,
+              estado: motorista.estado,
+              classeVeiculo: motorista.classeVeiculo || motorista.classe_veiculo,
+              tipoVeiculo: motorista.tipoVeiculo || motorista.tipo_veiculo,
+              tipoCarroceria: motorista.tipoCarroceria || motorista.tipo_carroceria,
+              placaCavalo: motorista.placas?.cavalo || motorista.placa_cavalo,
+              placaCarreta1: motorista.placas?.carreta1 || motorista.placa_carreta1,
+              placaCarreta2: motorista.placas?.carreta2 || motorista.placa_carreta2,
+              placaCarreta3: motorista.placas?.carreta3 || motorista.placa_carreta3
+            };
+            
+            const response = await fetch('/api/motoristas/auth/profile', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${state.session.access_token}`
+              },
+              body: JSON.stringify(payload)
+            });
+            
+            if (response.ok) {
+              const result = await response.json();
+              state.motorista = result.motorista;
+              atualizarCabecalho();
+              logger.log('✅ Status atualizado para ativo automaticamente');
+            }
+          } catch (error) {
+            logger.warn('⚠️ Erro ao atualizar status:', error);
+          }
+        }
+        
+        // Forçar recarregamento do status dos documentos
+        const status = await carregarStatusDocumentos(true);
+        const pendentes = REQUIRED_DOC_CATEGORIES.filter(cat => !(status?.categorias?.[cat]?.possui));
+        
+        if (pendentes.length > 0) {
+          // Há documentos pendentes, solicitar via chat
+          chatCadastroState.documentosPendentes = pendentes;
+          adicionarMensagemChat(`Preciso que você envie os seguintes documentos: ${pendentes.map(cat => DOCUMENT_CATEGORY_LABELS[cat]).join(', ')}.`, 'bot');
+          setTimeout(() => {
+            iniciarChatDocumentos();
+          }, 1000);
+        } else {
+          // Tudo completo: cadastro, status e documentos - assumir viagem diretamente sem mostrar chat
+          logger.log('✅ Tudo completo, assumindo viagem diretamente...');
+          
+          // Fechar chat imediatamente
+          fecharChatCadastro();
+          
+          // Assumir viagem
+          try {
+            showToast('Tudo pronto! Assumindo viagem...', 'success');
+            await confirmarAssumirColeta(coletaId);
+            await Promise.all([carregarOportunidades(), carregarViagens()]);
+            showToast('✅ Viagem assumida com sucesso!', 'success');
+          } catch (error) {
+            logger.error('Erro ao assumir viagem:', error);
+            showToast(error.message || 'Não foi possível assumir esta viagem agora.', 'error');
+          }
+        }
+        
+        setChatWaiting(false);
+        
+      } catch (error) {
+        logger.error('❌ Erro ao processar step verificando:', error);
+        adicionarMensagemChat('Erro ao verificar seu cadastro. Tente novamente.', 'bot', true);
+        setChatWaiting(false);
+      }
+    }
+
     // ========== Funções para Chat de Documentos ==========
     async function verificarESolicitarDocumentos() {
       if (!chatCadastroState.coletaId) {
@@ -6188,7 +7478,7 @@
       
       // Forçar recarregamento do status dos documentos
       const status = await carregarStatusDocumentos(true);
-      console.log('🔍 Verificando documentos pendentes:', {
+      logger.log('🔍 Verificando documentos pendentes:', {
         status,
         categorias: status?.categorias,
         pendentes: REQUIRED_DOC_CATEGORIES.filter(cat => !(status?.categorias?.[cat]?.possui))
@@ -6216,15 +7506,48 @@
 
     function iniciarChatDocumentos() {
       // Garantir que os elementos estejam inicializados
-      if (!chatCadastroElements.overlay) {
+      if (!chatCadastroElements || !chatCadastroElements.overlay) {
         inicializarElementosChatCadastro();
       }
       
+      // Buscar overlay diretamente do DOM se necessário
+      let overlay = chatCadastroElements.overlay || document.getElementById('chatCadastroOverlay');
+      if (!overlay) {
+        logger.error('❌ Erro: chatCadastroOverlay não encontrado no DOM!');
+        showToast('Erro: Chat de cadastro não encontrado. Recarregue a página.', 'error');
+        return;
+      }
+      
+      // Atualizar referência se necessário
+      if (!chatCadastroElements.overlay) {
+        chatCadastroElements.overlay = overlay;
+      }
+      
+      // Remover style inline que possa estar ocultando
+      const inlineStyle = overlay.getAttribute('style');
+      if (inlineStyle && inlineStyle.includes('display: none')) {
+        overlay.removeAttribute('style');
+      }
+      
       // Abrir o chat se não estiver aberto
-      if (chatCadastroElements.overlay) {
-        chatCadastroElements.overlay.style.display = 'flex';
+      overlay.style.display = 'flex';
+      overlay.style.visibility = 'visible';
+      overlay.style.opacity = '1';
+      overlay.style.zIndex = '10000';
+      document.body.style.overflow = 'hidden';
+      
+      // Verificação adicional para garantir que está visível
+      setTimeout(() => {
+        const computedStyle = window.getComputedStyle(overlay);
+        if (computedStyle.display === 'none' || computedStyle.visibility === 'hidden') {
+          logger.warn('⚠️ Overlay ainda oculto, forçando exibição...');
+          overlay.style.display = 'flex';
+          overlay.style.visibility = 'visible';
+          overlay.style.opacity = '1';
+          overlay.style.zIndex = '10000';
         document.body.style.overflow = 'hidden';
       }
+      }, 100);
       
       chatCadastroState.step = 'documentos';
       chatCadastroState.documentos = {
@@ -6434,23 +7757,71 @@
           throw new Error(result.error || 'Não foi possível enviar os documentos agora.');
         }
 
-        adicionarMensagemChat('✅ Documentos enviados com sucesso! A equipe recebeu sua viagem para validação.', 'bot');
+        adicionarMensagemChat('✅ Documentos enviados com sucesso!', 'bot');
         
         // Recarregar status dos documentos para garantir sincronização
         try {
           await carregarStatusDocumentos(true);
-          console.log('✅ Status dos documentos recarregado após envio');
+          logger.log('✅ Status dos documentos recarregado após envio');
         } catch (reloadError) {
-          console.warn('⚠️ Erro ao recarregar status dos documentos:', reloadError);
+          logger.warn('⚠️ Erro ao recarregar status dos documentos:', reloadError);
         }
         
-        setTimeout(() => {
-          fecharChatCadastro();
-          // Tentar assumir a coleta
-          if (coletaId) {
-            prepararAssumirOportunidade(coletaId);
+        // Atualizar status para 'ativo' se necessário
+        const motoristaStatus = (state.motorista?.status || '').toLowerCase();
+        if (motoristaStatus === 'cadastro_pendente') {
+          try {
+            const motorista = state.motorista || {};
+            const payload = {
+              nome: motorista.nome,
+              telefone1: motorista.telefone1 || motorista.telefone,
+              estado: motorista.estado,
+              classeVeiculo: motorista.classeVeiculo || motorista.classe_veiculo,
+              tipoVeiculo: motorista.tipoVeiculo || motorista.tipo_veiculo,
+              tipoCarroceria: motorista.tipoCarroceria || motorista.tipo_carroceria,
+              placaCavalo: motorista.placas?.cavalo || motorista.placa_cavalo,
+              placaCarreta1: motorista.placas?.carreta1 || motorista.placa_carreta1,
+              placaCarreta2: motorista.placas?.carreta2 || motorista.placa_carreta2,
+              placaCarreta3: motorista.placas?.carreta3 || motorista.placa_carreta3
+            };
+            
+            const response = await fetch('/api/motoristas/auth/profile', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${state.session.access_token}`
+              },
+              body: JSON.stringify(payload)
+            });
+            
+            if (response.ok) {
+              const result = await response.json();
+              state.motorista = result.motorista;
+              atualizarCabecalho();
+              logger.log('✅ Status atualizado para ativo automaticamente após envio de documentos');
+            }
+          } catch (error) {
+            logger.warn('⚠️ Erro ao atualizar status:', error);
           }
-        }, 2000);
+        }
+        
+        // Fechar chat e assumir viagem diretamente
+        adicionarMensagemChat('🚀 Assumindo a viagem agora...', 'bot');
+        
+        setTimeout(async () => {
+          fecharChatCadastro();
+          
+          // Assumir a viagem diretamente
+          try {
+            showToast('Assumindo viagem...', 'info');
+            await confirmarAssumirColeta(coletaId);
+            await Promise.all([carregarOportunidades(), carregarViagens()]);
+            showToast('✅ Viagem assumida com sucesso!', 'success');
+          } catch (error) {
+            logger.error('Erro ao assumir viagem:', error);
+            showToast(error.message || 'Não foi possível assumir esta viagem agora.', 'error');
+          }
+        }, 1500);
 
       } catch (error) {
         console.error('Erro ao enviar documentos:', error);

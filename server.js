@@ -2237,7 +2237,7 @@ async function ensureMotoristaRecordForAuthUser({ authUserId, nome, telefone, es
     nome: nome || 'Motorista',
     telefone1: normalizedPhone || null,
     auth_user_id: authUserId,
-    status: 'cadastro_pendente',
+    status: 'ativo', // Status já inicia como ativo - análise final será na etapa GR
     created_by_departamento: 'portal-motorista',
     created_by: authUserId,
     usuario_id: authUserId,
@@ -3232,9 +3232,41 @@ app.post('/api/motoristas/chat-login', express.json(), async (req, res) => {
 
 app.get('/api/motoristas/auth/me', async (req, res) => {
   try {
-    const { user, motorista, error } = await requireMotoristaAuth(req);
-    if (error) {
-      return res.status(error.status || 401).json({ success: false, error: error.message });
+    // Permitir uso com sessão OU com token de rastreamento (para manter monitoramento após logout)
+    let user = null;
+    let motorista = null;
+    let error = null;
+
+    // Primeiro, tente autenticação normal
+    const authResult = await requireMotoristaAuth(req);
+    if (!authResult.error && authResult.motorista) {
+      user = authResult.user;
+      motorista = authResult.motorista;
+    } else {
+      error = authResult.error || null;
+    }
+
+    // Se não autenticou, tente via token de rastreamento no header Authorization: Bearer <token>
+    if (!motorista) {
+      try {
+        const authHeader = req.headers.authorization || '';
+        const token = authHeader.toLowerCase().startsWith('bearer ') ? authHeader.slice(7).trim() : null;
+        if (token) {
+          const payload = verifyRastreamentoToken(token);
+          if (payload && payload.motoristaId && payload.coletaId) {
+            motorista = { id: payload.motoristaId };
+            user = { id: payload.motoristaId, email: payload.email || null };
+            req.rastreamentoTokenPayload = payload;
+          }
+        }
+      } catch (tokenErr) {
+        // ignorar erro de token e seguir com erro padrão
+      }
+    }
+
+    if (!motorista) {
+      // Se não autenticou nem com token, retornar erro
+      return res.status(error?.status || 401).json({ success: false, error: error?.message || 'Sessão expirada. Faça login novamente.' });
     }
 
     const motoristaResponse = motorista ? mapMotoristaResponse(motorista) : null;
@@ -3893,6 +3925,20 @@ app.post('/api/motoristas/auth/profile', express.json(), async (req, res) => {
         }
       }
 
+      // Se o cadastro está sendo completado (tem todos os dados básicos), mudar status para ativo
+      // A análise final será feita na etapa GR
+      const cadastroCompleto = payload.nome && 
+                               payload.telefone1 && 
+                               payload.estado && 
+                               payload.classe_veiculo && 
+                               payload.tipo_veiculo && 
+                               payload.tipo_carroceria;
+      
+      if (cadastroCompleto && motoristaSelecionado.status === 'cadastro_pendente') {
+        payload.status = 'ativo';
+        console.log('✅ Cadastro completo detectado, mudando status para ativo automaticamente');
+      }
+
       const { data, error: updateError } = await supabaseAdmin
         .from('motoristas')
         .update(payload)
@@ -4210,21 +4256,27 @@ app.get('/api/motoristas/viagens', async (req, res) => {
       throw viagensError;
     }
 
+    console.log('📋 Viagens encontradas para motorista:', {
+      motoristaId: motorista.id,
+      totalViagens: viagensData?.length || 0,
+      viagensIds: viagensData?.map(v => v.id) || [],
+      viagensClientes: viagensData?.map(v => v.cliente) || []
+    });
+
     const motoristaMapeado = mapMotoristaResponse(motorista);
+    const viagensMapeadas = (viagensData || []).map(mapColetaOpportunity);
+    
     console.log('📤 Retornando motorista no endpoint viagens:', {
       id: motoristaMapeado?.id,
       estado: motoristaMapeado?.estado,
-      estadoType: typeof motoristaMapeado?.estado,
-      estadoOriginal: motorista?.estado,
-      estadoOriginalType: typeof motorista?.estado,
-      temEstado: !!motoristaMapeado?.estado,
-      motoristaRaw: motorista
+      totalViagensRetornadas: viagensMapeadas.length,
+      viagensIds: viagensMapeadas.map(v => v.id)
     });
 
     res.json({
       success: true,
       motorista: motoristaMapeado,
-      viagens: (viagensData || []).map(mapColetaOpportunity)
+      viagens: viagensMapeadas
     });
   } catch (error) {
     console.error('❌ Erro ao listar viagens do motorista:', error);
@@ -4248,19 +4300,9 @@ app.post('/api/motoristas/oportunidades/:coletaId/assumir', async (req, res) => 
       return res.status(409).json({ success: false, error: 'Complete seu cadastro para assumir uma coleta.' });
     }
 
-    // Verificar se o cadastro do motorista está completo (status deve ser 'ativo')
-    const motoristaStatus = (motorista.status || '').toLowerCase();
-    if (motoristaStatus !== 'ativo') {
-      console.log('❌ Tentativa de assumir coleta com cadastro pendente:', {
-        motoristaId: motorista.id,
-        status: motorista.status,
-        nome: motorista.nome
-      });
-      return res.status(409).json({ 
-        success: false, 
-        error: 'Seu cadastro está pendente. Complete seu cadastro e aguarde a aprovação antes de assumir coletas.' 
-      });
-    }
+    // Verificar se o cadastro está completo (dados básicos)
+    // Não verificar mais o status "ativo" - a análise final será feita na etapa GR
+    // O motorista pode assumir viagens assim que completar o cadastro básico
 
     // Verificar se o motorista já tem uma viagem ativa
     const { data: viagemAtiva, error: viagemAtivaError } = await supabaseAdmin
@@ -4367,10 +4409,21 @@ app.post('/api/motoristas/oportunidades/:coletaId/assumir', async (req, res) => 
       // Não bloquear o fluxo se o chat falhar
     }
 
+    // Gerar token de rastreamento persistente
+    let tokenRastreamento = null;
+    try {
+      tokenRastreamento = await gerarTokenRastreamento(motorista.id, coletaId);
+      console.log('✅ Token de rastreamento gerado ao assumir coleta:', { motoristaId: motorista.id, coletaId });
+    } catch (tokenError) {
+      console.warn('⚠️ Erro ao gerar token de rastreamento (não crítico):', tokenError.message || tokenError);
+      // Não bloquear o fluxo se o token falhar - o sistema pode funcionar sem ele
+    }
+
     res.json({
       success: true,
       coleta: mapColetaOpportunity(coletaAtualizada),
-      motorista: mapMotoristaResponse(motorista)
+      motorista: mapMotoristaResponse(motorista),
+      tokenRastreamento: tokenRastreamento // Token para monitoramento persistente
     });
   } catch (error) {
     console.error('❌ Erro ao assumir oportunidade de coleta:', {
@@ -4404,7 +4457,292 @@ app.post('/api/motoristas/oportunidades/:coletaId/assumir', async (req, res) => 
   }
 });
 
+// Desvincular motorista de uma coleta (apenas se etapa for GR ou anterior)
+app.post('/api/motoristas/coletas/:coletaId/desvincular', async (req, res) => {
+  try {
+    const { user, motorista, error } = await requireMotoristaAuth(req);
+    if (error) {
+      return res.status(error.status || 401).json({ success: false, error: error.message });
+    }
+
+    if (!motorista) {
+      return res.status(409).json({ success: false, error: 'Motorista não encontrado.' });
+    }
+
+    const { coletaId } = req.params;
+
+    // Buscar informações da coleta
+    const { data: coleta, error: coletaError } = await supabaseAdmin
+      .from('coletas')
+      .select('id, motorista_id, etapa_atual, status')
+      .eq('id', coletaId)
+      .maybeSingle();
+
+    if (coletaError && coletaError.code !== 'PGRST116') {
+      throw coletaError;
+    }
+
+    if (!coleta) {
+      return res.status(404).json({ success: false, error: 'Coleta não encontrada.' });
+    }
+
+    // Verificar se o motorista está vinculado a esta coleta
+    if (!coleta.motorista_id || coleta.motorista_id !== motorista.id) {
+      return res.status(403).json({ 
+        success: false, 
+        error: 'Você não está vinculado a esta coleta.' 
+      });
+    }
+
+    // Verificar se a etapa permite desvincular (GR ou anterior)
+    // Etapas permitidas: GR, pendente, em_andamento, ou vazio/null
+    const etapaAtual = (coleta.etapa_atual || '').toLowerCase().trim();
+    const etapasPermitidas = ['gr', 'pendente', 'em_andamento', ''];
+    const podeDesvincular = etapasPermitidas.includes(etapaAtual) || !etapaAtual;
+    
+    if (!podeDesvincular) {
+      return res.status(400).json({ 
+        success: false, 
+        error: `Não é possível desvincular desta coleta. A etapa atual (${coleta.etapa_atual?.toUpperCase() || 'N/A'}) não permite desvinculação. Apenas coletas na etapa GR ou anterior podem ser desvinculadas.` 
+      });
+    }
+
+    // Desvincular motorista (remover motorista_id e resetar etapa se necessário)
+    const updatePayload = {
+      motorista_id: null
+    };
+
+    // Se a etapa era GR, resetar para pendente
+    if (etapaAtual === 'gr') {
+      updatePayload.etapa_atual = null;
+      // Se o status era em_andamento, voltar para pendente
+      if (coleta.status && coleta.status.toLowerCase() === 'em_andamento') {
+        updatePayload.status = 'pendente';
+      }
+    }
+
+    const { data: coletaAtualizada, error: updateError } = await supabaseAdmin
+      .from('coletas')
+      .update(updatePayload)
+      .eq('id', coletaId)
+      .select('id, cliente, origem, destino')
+      .single();
+
+    if (updateError) {
+      console.error('❌ Erro ao desvincular motorista:', updateError);
+      throw updateError;
+    }
+
+    // Invalidar tokens de rastreamento para esta combinação
+    try {
+      await supabaseAdmin
+        .from('rastreamento_tokens')
+        .update({ ativo: false, invalidado_em: new Date().toISOString() })
+        .eq('motorista_id', motorista.id)
+        .eq('coleta_id', coletaId)
+        .eq('ativo', true);
+      console.log('✅ Tokens de rastreamento invalidados ao desvincular');
+    } catch (tokenError) {
+      console.warn('⚠️ Erro ao invalidar tokens (não crítico):', tokenError.message || tokenError);
+    }
+
+    console.log('✅ Motorista desvinculado da coleta:', {
+      motoristaId: motorista.id,
+      coletaId: coletaId,
+      etapaAnterior: coleta.etapa_atual
+    });
+
+    res.json({
+      success: true,
+      message: 'Você foi desvinculado da coleta com sucesso.',
+      coleta: coletaAtualizada
+    });
+
+  } catch (error) {
+    console.error('❌ Erro ao desvincular motorista:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: error.message || 'Erro ao desvincular da coleta.' 
+    });
+  }
+});
+
 // ========== ROTAS DE RASTREAMENTO E MONITORAMENTO ==========
+
+// Função para gerar token de rastreamento persistente
+async function gerarTokenRastreamento(motoristaId, coletaId) {
+  try {
+    // Gerar token único e seguro
+    const token = crypto.randomBytes(32).toString('hex');
+    const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+    
+    // Buscar se já existe token ativo para esta combinação
+    const { data: tokenExistente, error: buscaError } = await supabaseAdmin
+      .from('rastreamento_tokens')
+      .select('id, token_hash, ativo, expira_em')
+      .eq('motorista_id', motoristaId)
+      .eq('coleta_id', coletaId)
+      .eq('ativo', true)
+      .maybeSingle();
+    
+    if (buscaError && buscaError.code !== 'PGRST116') {
+      console.error('❌ Erro ao buscar token existente:', buscaError);
+      throw buscaError;
+    }
+    
+    // Se já existe token ativo e não expirado, retornar o existente
+    if (tokenExistente && tokenExistente.expira_em) {
+      const expiraEm = new Date(tokenExistente.expira_em);
+      if (expiraEm > new Date()) {
+        console.log('✅ Token de rastreamento já existe e está ativo:', { motoristaId, coletaId });
+        // Não podemos retornar o hash, então geramos um novo token mas mantemos o mesmo registro
+        // Na prática, vamos gerar um novo token sempre, mas invalidar os antigos
+      }
+    }
+    
+    // Invalidar tokens anteriores para esta combinação
+    if (tokenExistente) {
+      await supabaseAdmin
+        .from('rastreamento_tokens')
+        .update({ ativo: false, invalidado_em: new Date().toISOString() })
+        .eq('motorista_id', motoristaId)
+        .eq('coleta_id', coletaId)
+        .eq('ativo', true);
+    }
+    
+    // Calcular data de expiração (30 dias a partir de agora)
+    const expiraEm = new Date();
+    expiraEm.setDate(expiraEm.getDate() + 30);
+    
+    // Inserir novo token
+    const { data: novoToken, error: insertError } = await supabaseAdmin
+      .from('rastreamento_tokens')
+      .insert({
+        motorista_id: motoristaId,
+        coleta_id: coletaId,
+        token_hash: tokenHash,
+        expira_em: expiraEm.toISOString(),
+        ativo: true,
+        criado_em: new Date().toISOString()
+      })
+      .select('id, expira_em, criado_em')
+      .single();
+    
+    if (insertError) {
+      console.error('❌ Erro ao inserir token de rastreamento:', insertError);
+      throw insertError;
+    }
+    
+    console.log('✅ Token de rastreamento gerado:', { motoristaId, coletaId, tokenId: novoToken.id });
+    
+    // Retornar o token em texto claro (será armazenado no frontend)
+    return token;
+  } catch (error) {
+    console.error('❌ Erro ao gerar token de rastreamento:', error);
+    throw error;
+  }
+}
+
+// Função para validar token de rastreamento
+async function validarTokenRastreamento(token) {
+  try {
+    if (!token || typeof token !== 'string') {
+      return { valido: false, error: 'Token inválido ou ausente' };
+    }
+    
+    // Calcular hash do token recebido
+    const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+    
+    // Buscar token no banco
+    const { data: tokenData, error: buscaError } = await supabaseAdmin
+      .from('rastreamento_tokens')
+      .select('id, motorista_id, coleta_id, ativo, expira_em, invalidado_em')
+      .eq('token_hash', tokenHash)
+      .eq('ativo', true)
+      .maybeSingle();
+    
+    if (buscaError && buscaError.code !== 'PGRST116') {
+      console.error('❌ Erro ao buscar token:', buscaError);
+      return { valido: false, error: 'Erro ao validar token' };
+    }
+    
+    if (!tokenData) {
+      return { valido: false, error: 'Token não encontrado ou inválido' };
+    }
+    
+    // Verificar se token expirou
+    if (tokenData.expira_em) {
+      const expiraEm = new Date(tokenData.expira_em);
+      if (expiraEm <= new Date()) {
+        // Marcar como inativo
+        await supabaseAdmin
+          .from('rastreamento_tokens')
+          .update({ ativo: false, invalidado_em: new Date().toISOString() })
+          .eq('id', tokenData.id);
+        return { valido: false, error: 'Token expirado' };
+      }
+    }
+    
+    // Verificar se foi invalidado
+    if (tokenData.invalidado_em) {
+      return { valido: false, error: 'Token foi invalidado' };
+    }
+    
+    // Verificar se a coleta ainda está vinculada ao motorista
+    const { data: coleta, error: coletaError } = await supabaseAdmin
+      .from('coletas')
+      .select('id, motorista_id, status, etapa_atual')
+      .eq('id', tokenData.coleta_id)
+      .maybeSingle();
+    
+    if (coletaError && coletaError.code !== 'PGRST116') {
+      console.error('❌ Erro ao verificar coleta:', coletaError);
+      return { valido: false, error: 'Erro ao verificar vínculo da coleta' };
+    }
+    
+    if (!coleta) {
+      // Coleta não existe mais, invalidar token
+      await supabaseAdmin
+        .from('rastreamento_tokens')
+        .update({ ativo: false, invalidado_em: new Date().toISOString() })
+        .eq('id', tokenData.id);
+      return { valido: false, error: 'Coleta não encontrada' };
+    }
+    
+    // Verificar se motorista ainda está vinculado à coleta
+    if (coleta.motorista_id !== tokenData.motorista_id) {
+      // Motorista foi desvinculado, invalidar token
+      await supabaseAdmin
+        .from('rastreamento_tokens')
+        .update({ ativo: false, invalidado_em: new Date().toISOString() })
+        .eq('id', tokenData.id);
+      return { valido: false, error: 'Motorista não está mais vinculado a esta coleta' };
+    }
+    
+    // Verificar se coleta foi finalizada
+    const etapasFinalizadas = ['concluida', 'finalizada', 'cancelada'];
+    if (coleta.etapa_atual && etapasFinalizadas.includes(coleta.etapa_atual.toLowerCase())) {
+      // Coleta finalizada, mas não invalidamos o token ainda (pode estar em processo de finalização)
+      // Retornamos válido mas com aviso
+      return {
+        valido: true,
+        motoristaId: tokenData.motorista_id,
+        coletaId: tokenData.coleta_id,
+        coletaFinalizada: true
+      };
+    }
+    
+    return {
+      valido: true,
+      motoristaId: tokenData.motorista_id,
+      coletaId: tokenData.coleta_id,
+      coletaFinalizada: false
+    };
+  } catch (error) {
+    console.error('❌ Erro ao validar token de rastreamento:', error);
+    return { valido: false, error: 'Erro ao processar validação do token' };
+  }
+}
 
 // Verificar se termo de rastreamento foi aceito
 app.get('/api/rastreamento/verificar-termo', async (req, res) => {
@@ -4463,19 +4801,8 @@ app.post('/api/rastreamento/aceitar-termo', express.json(), async (req, res) => 
       return res.status(409).json({ success: false, error: 'Complete seu cadastro primeiro.' });
     }
 
-    // Verificar se o cadastro do motorista está completo (status deve ser 'ativo')
-    const motoristaStatus = (motorista.status || '').toLowerCase();
-    if (motoristaStatus !== 'ativo') {
-      console.log('❌ Tentativa de aceitar termo com cadastro pendente:', {
-        motoristaId: motorista.id,
-        status: motorista.status,
-        nome: motorista.nome
-      });
-      return res.status(409).json({ 
-        success: false, 
-        error: 'Seu cadastro está pendente. Complete seu cadastro e aguarde a aprovação antes de aceitar termos de rastreamento.' 
-      });
-    }
+    // Verificar apenas se o cadastro está completo (dados básicos)
+    // Não verificar mais o status "ativo" - a análise final será feita na etapa GR
 
     // Verificar se já existe termo ativo
     const { data: termoExistente } = await supabaseAdmin
@@ -4518,7 +4845,21 @@ app.post('/api/rastreamento/aceitar-termo', express.json(), async (req, res) => 
       descricao: 'Termo de rastreamento aceito e rastreamento iniciado'
     });
 
-    res.json({ success: true, termo: novoTermo });
+    // Gerar token de rastreamento persistente
+    let tokenRastreamento = null;
+    try {
+      tokenRastreamento = await gerarTokenRastreamento(motorista.id, coletaId);
+      console.log('✅ Token de rastreamento gerado ao aceitar termo:', { motoristaId: motorista.id, coletaId });
+    } catch (tokenError) {
+      console.warn('⚠️ Erro ao gerar token de rastreamento (não crítico):', tokenError.message || tokenError);
+      // Não bloquear o fluxo se o token falhar
+    }
+
+    res.json({ 
+      success: true, 
+      termo: novoTermo,
+      tokenRastreamento: tokenRastreamento // Token para monitoramento persistente
+    });
   } catch (error) {
     console.error('❌ Erro ao aceitar termo:', error);
     res.status(500).json({ success: false, error: 'Erro ao processar aceite do termo.' });
@@ -4528,13 +4869,53 @@ app.post('/api/rastreamento/aceitar-termo', express.json(), async (req, res) => 
 // Enviar posição GPS
 app.post('/api/rastreamento/enviar-posicao', express.json(), async (req, res) => {
   try {
-    const { user, motorista, error } = await requireMotoristaAuth(req);
-    if (error) {
-      return res.status(error.status || 401).json({ success: false, error: error.message });
+    let motorista = null;
+    let coletaIdFromToken = null;
+    let usandoToken = false;
+
+    // Tentar autenticação via sessão primeiro
+    const { user, motorista: motoristaSessao, error: authError } = await requireMotoristaAuth(req);
+    
+    if (authError || !motoristaSessao) {
+      // Se não houver sessão, tentar autenticação via token de rastreamento
+      const authHeader = req.headers.authorization;
+      if (authHeader && authHeader.startsWith('Bearer ')) {
+        const token = authHeader.substring(7);
+        const validacao = await validarTokenRastreamento(token);
+        
+        if (validacao.valido) {
+          usandoToken = true;
+          coletaIdFromToken = validacao.coletaId;
+          
+          // Buscar dados do motorista
+          const { data: motoristaData, error: motoristaError } = await supabaseAdmin
+            .from('motoristas')
+            .select('id, nome, telefone, estado, classe_veiculo, tipo_veiculo, tipo_carroceria, placa_cavalo, status')
+            .eq('id', validacao.motoristaId)
+            .single();
+          
+          if (motoristaError || !motoristaData) {
+            console.error('❌ Motorista não encontrado para token:', validacao.motoristaId);
+            return res.status(404).json({ success: false, error: 'Motorista não encontrado para este token.' });
+          }
+          
+          motorista = motoristaData;
+          console.log('✅ Autenticação via token de rastreamento:', { motoristaId: motorista.id, coletaId: coletaIdFromToken });
+        } else {
+          console.warn('⚠️ Token de rastreamento inválido:', validacao.error);
+          return res.status(401).json({ success: false, error: validacao.error || 'Token de rastreamento inválido.' });
+        }
+      } else {
+        // Sem sessão e sem token
+        return res.status(401).json({ success: false, error: 'Autenticação necessária. Faça login ou use um token de rastreamento válido.' });
+      }
+    } else {
+      // Autenticação via sessão bem-sucedida
+      motorista = motoristaSessao;
     }
 
     const {
-      coletaId,
+      coletaId: coletaIdBody,
       latitude,
       longitude,
       precisao,
@@ -4547,12 +4928,16 @@ app.post('/api/rastreamento/enviar-posicao', express.json(), async (req, res) =>
       conectadoRedeCelular
     } = req.body;
 
+    // Usar coletaId do token se estiver usando token, senão usar do body
+    const coletaId = usandoToken ? coletaIdFromToken : coletaIdBody;
+
     console.log('📍 Dados recebidos do cliente:', {
       motorista_id: motorista?.id,
       coletaId: coletaId,
       latitude: latitude,
       longitude: longitude,
       hasPrecisao: !!precisao,
+      usandoToken: usandoToken,
       timestamp: new Date().toISOString()
     });
 
@@ -4859,7 +5244,8 @@ async function fetchPosicoesResumoPorColeta(coletaId, janelaMinutos, includeSemC
     coletaId: coleta.id,
     motoristaId: coleta.motorista_id,
     janelaMinutos,
-    totalPosicoesRetornadas: posicoes.length
+    totalPosicoesRetornadas: posicoes.length,
+    observacao: 'Posições retornadas mesmo se motorista estiver usando token de rastreamento (sem sessão ativa)'
   });
 
   const info = {
@@ -4876,10 +5262,15 @@ async function fetchPosicoesResumoPorColeta(coletaId, janelaMinutos, includeSemC
 
 app.get('/api/rastreamento/posicoes', async (req, res) => {
   try {
-    if (!(await usuarioAutenticadoMonitoramento(req))) {
-      console.warn('❌ Acesso não autorizado ao endpoint de múltiplas posições');
+    // Verificar autenticação do operador (quem está visualizando), não do motorista
+    // O motorista pode estar usando token de rastreamento e não ter sessão ativa
+    const operadorAutenticado = await usuarioAutenticadoMonitoramento(req);
+    if (!operadorAutenticado) {
+      console.warn('❌ Acesso não autorizado ao endpoint de múltiplas posições - operador não autenticado');
       return res.status(401).json({ success: false, error: 'Não autenticado.' });
     }
+    
+    console.log('✅ Operador autenticado - buscando posições (motorista pode estar usando token de rastreamento)');
 
     const coletasParam = (req.query.coletas || '').toString();
     const coletaIds = coletasParam
@@ -5595,6 +5986,105 @@ CREATE TABLE IF NOT EXISTS solicitacoes_documentos (
   }
 });
 
+// ========== ENDPOINT PARA ADICIONAR COLUNA DATA_ENTREGA À TABELA COLETAS ==========
+// Endpoint para executar migração de data_entrega - pode ser chamado via MCP ou diretamente
+app.post('/api/admin/adicionar-data-entrega-coletas', async (req, res) => {
+  try {
+    console.log('🔧 Endpoint chamado para adicionar coluna data_entrega à tabela coletas...');
+
+    // Verificar se a coluna já existe
+    const { data: coletas, error: verifError } = await supabaseAdmin
+      .from('coletas')
+      .select('id, data_recebimento, data_entrega')
+      .limit(1);
+
+    if (!verifError && coletas && coletas.length > 0 && 'data_entrega' in coletas[0]) {
+      console.log('✅ Coluna data_entrega já existe na tabela coletas!');
+      return res.json({
+        success: true,
+        message: 'Coluna data_entrega já existe na tabela coletas',
+        colunaExiste: true
+      });
+    }
+
+    // SQL da migração
+    const migrationSQL = `
+DO $$ 
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 
+        FROM information_schema.columns 
+        WHERE table_name = 'coletas' 
+        AND column_name = 'data_entrega'
+    ) THEN
+        ALTER TABLE coletas 
+        ADD COLUMN data_entrega TIMESTAMPTZ NULL;
+        
+        RAISE NOTICE 'Coluna data_entrega adicionada com sucesso à tabela coletas';
+    ELSE
+        RAISE NOTICE 'Coluna data_entrega já existe na tabela coletas';
+    END IF;
+END $$;
+
+COMMENT ON COLUMN coletas.data_entrega IS 'Data de entrega da coleta ao destino final';
+    `.trim();
+
+    // Tentar executar via RPC exec_sql
+    console.log('⏳ Tentando executar migração via RPC exec_sql...');
+    const { data: rpcData, error: rpcError } = await supabaseAdmin.rpc('exec_sql', {
+      sql_query: migrationSQL
+    });
+
+    if (rpcError) {
+      console.error('❌ Erro ao executar migração via RPC:', rpcError);
+      return res.status(500).json({
+        success: false,
+        error: 'Não foi possível executar a migração automaticamente. Execute o SQL manualmente no Supabase Dashboard.',
+        sql: migrationSQL,
+        instrucoes: [
+          '1. Acesse: https://supabase.com/dashboard',
+          '2. Selecione seu projeto',
+          '3. Vá em: SQL Editor > New Query',
+          '4. Cole o SQL fornecido',
+          '5. Execute (Run ou Ctrl+Enter)'
+        ]
+      });
+    }
+
+    // Aguardar um pouco para garantir que a alteração foi processada
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
+    // Verificar se a coluna foi criada
+    const { data: coletasVerif, error: verifError2 } = await supabaseAdmin
+      .from('coletas')
+      .select('id, data_recebimento, data_entrega')
+      .limit(1);
+
+    if (verifError2 && verifError2.message && verifError2.message.includes('data_entrega')) {
+      return res.status(500).json({
+        success: false,
+        error: 'Migração executada mas coluna não está acessível. Verifique no Supabase Dashboard.',
+        sql: migrationSQL
+      });
+    }
+
+    console.log('✅ Coluna data_entrega adicionada com sucesso à tabela coletas!');
+
+    res.json({
+      success: true,
+      message: 'Coluna data_entrega adicionada com sucesso à tabela coletas!',
+      colunaExiste: true
+    });
+  } catch (error) {
+    console.error('❌ Erro ao executar migração:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Erro ao executar migração: ' + error.message,
+      sql: migrationSQL || 'Verifique o arquivo migration_adicionar_data_entrega_coletas.sql'
+    });
+  }
+});
+
 // Trocar senha
 app.post('/api/auth/trocar-senha', express.json(), async (req, res) => {
   try {
@@ -5839,13 +6329,15 @@ app.get('/api/active-sessions', async (req, res) => {
       console.warn('⚠️ Erro ao processar sessões SQLite:', error.message);
     }
     
-    // 2. Contar tokens ativos do Supabase Auth (últimas 24 horas)
+    // Janela de atividade considerada "online" (2 horas)
+    const janelaAtividadeMs = 2 * 60 * 60 * 1000; // 2h
+    
+    // 2. Contar tokens ativos do Supabase Auth (últimas 2 horas)
     try {
       const { data: authUsers, error: authError } = await supabaseAdmin.auth.admin.listUsers();
       
       if (!authError && authUsers && authUsers.users) {
         const agora = Date.now();
-        const vinteQuatroHoras = 24 * 60 * 60 * 1000; // 24 horas em ms
         
         authUsers.users.forEach(user => {
           // Excluir motoristas
@@ -5853,13 +6345,13 @@ app.get('/api/active-sessions', async (req, res) => {
             return;
           }
           
-          // Verificar se o usuário tem última sessão recente (últimas 24h)
+          // Verificar se o usuário tem última sessão recente (últimas 2h)
           if (user.last_sign_in_at) {
             const lastSignIn = new Date(user.last_sign_in_at).getTime();
             const diff = agora - lastSignIn;
             
-            // Se fez login nas últimas 24 horas, considerar como ativo
-            if (diff < vinteQuatroHoras) {
+            // Se fez login nas últimas 2 horas, considerar como ativo
+            if (diff < janelaAtividadeMs) {
               usuariosUnicos.add(user.id);
               
               // Buscar dados completos do usuário no user_profiles
@@ -5920,7 +6412,18 @@ app.get('/api/active-sessions', async (req, res) => {
       }
     }
     
-    const totalUsuariosLogados = usuariosCompletos.length;
+    // Filtrar por janela de atividade para evitar mostrar sessões antigas
+    const agora = Date.now();
+    const usuariosFiltrados = usuariosCompletos.filter(u => {
+      if (u.last_sign_in_at) {
+        const diff = agora - new Date(u.last_sign_in_at).getTime();
+        return diff < janelaAtividadeMs;
+      }
+      // Se não temos last_sign_in_at, manter (ex.: sessão ativa sem timestamp)
+      return true;
+    });
+    
+    const totalUsuariosLogados = usuariosFiltrados.length;
     
     // 4. Sincronizar com a tabela user_presence (marcar usuários logados como online)
     try {
@@ -5958,7 +6461,7 @@ app.get('/api/active-sessions', async (req, res) => {
     res.json({
       success: true,
       count: totalUsuariosLogados,
-      usuarios: usuariosCompletos
+      usuarios: usuariosFiltrados
     });
   } catch (error) {
     console.error('❌ Erro ao contar sessões ativas:', error);

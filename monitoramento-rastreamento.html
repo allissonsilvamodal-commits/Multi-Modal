@@ -1761,75 +1761,119 @@
                 }
                 
                 // Log informações para debug
+                console.log('📊 Resultado completo da API:', {
+                    success: result.success,
+                    totalPosicoes: result.posicoes?.length || 0,
+                    info: result.info,
+                    coletasSelecionadas: selectedColetas
+                });
+                
                 if (result.info) {
-                    console.log('📊 Informações da coleta:', result.info);
-                    console.log('📍 Posições recebidas:', result.posicoes?.length || 0);
-                    if (result.posicoes && result.posicoes.length > 0) {
-                        console.log('📍 Primeira posição:', {
-                            motorista: result.posicoes[0].motoristas?.nome,
-                            lat: result.posicoes[0].latitude,
-                            lng: result.posicoes[0].longitude,
-                            timestamp: result.posicoes[0].timestamp_gps
+                    console.log('📊 Informações detalhadas:', {
+                        multi: result.info.multi,
+                        janelaMinutos: result.info.janelaMinutos,
+                        totalColetas: result.info.totalColetas,
+                        coletas: result.info.coletas
+                    });
+                    
+                    // Log para cada coleta
+                    if (result.info.coletas && Array.isArray(result.info.coletas)) {
+                        result.info.coletas.forEach((coletaInfo, index) => {
+                            console.log(`📦 Coleta ${index + 1}:`, {
+                                coletaId: coletaInfo.coletaId,
+                                motoristaId: coletaInfo.motoristaId,
+                                temMotoristaVinculado: coletaInfo.temMotoristaVinculado,
+                                totalPosicoesEncontradas: coletaInfo.totalPosicoesEncontradas,
+                                status: coletaInfo.status
+                            });
                         });
-                    } else if (selectedColetas.length === 1 && result.posicoes && result.posicoes.length === 0) {
-                        // Se não há posições, fazer diagnóstico (apenas na primeira vez ou após 30 segundos)
-                        const agora = Date.now();
-                        const ultimoDiagnostico = window.ultimoDiagnostico || 0;
-                        const tempoDesdeUltimoDiagnostico = agora - ultimoDiagnostico;
-                        
-                        // Fazer diagnóstico apenas a cada 30 segundos para não sobrecarregar
-                        if (tempoDesdeUltimoDiagnostico > 30000) {
-                            window.ultimoDiagnostico = agora;
-                            
-                            try {
-                                const diagResponse = await fetch(`/api/rastreamento/diagnostico/${selectedColetas[0]}`, {
-                                    method: 'GET',
-                                    credentials: 'include',
-                                    headers: {
-                                        'Content-Type': 'application/json'
-                                    }
-                                });
-                                
-                                if (diagResponse.ok) {
-                                    const diagData = await diagResponse.json();
-                                    console.log('🔍 Diagnóstico da coleta:', {
-                                        coletaId: selectedColetas[0],
-                                        termoAceito: diagData.termoAceito,
-                                        rastreamentoAtivo: diagData.rastreamentoAtivo,
-                                        totalPosicoes: diagData.totalPosicoes,
-                                        posicoesComColetaId: diagData.posicoesComColetaId,
-                                        posicoesSemColetaId: diagData.posicoesSemColetaId,
-                                        ultimaPosicao: diagData.ultimaPosicao ? new Date(diagData.ultimaPosicao.timestamp_gps).toLocaleString('pt-BR') : 'N/A'
-                                    });
-                                    
-                                    if (!diagData.termoAceito) {
-                                        mostrarNotificacao('⚠️ Termo de rastreamento não foi aceito pelo motorista. O rastreamento não está ativo.', 'warning', 10000);
-                                    } else if (!diagData.rastreamentoAtivo) {
-                                        mostrarNotificacao('⚠️ Rastreamento não está ativo. O motorista precisa iniciar o rastreamento no portal.', 'warning', 10000);
-                                    } else if (diagData.totalPosicoes === 0) {
-                                        mostrarNotificacao('⚠️ Motorista ainda não enviou posições GPS. Aguarde alguns segundos ou verifique se o rastreamento está ativo no portal do motorista.', 'warning', 10000);
-                                    } else if (diagData.posicoesComColetaId === 0 && diagData.posicoesSemColetaId > 0) {
-                                        mostrarNotificacao(`ℹ️ Motorista tem ${diagData.totalPosicoes} posições, mas nenhuma está vinculada a esta coleta. Verifique se o motorista está rastreando a coleta correta.`, 'info', 10000);
-                                    } else if (diagData.ultimaPosicao) {
-                                        const tempoDesdeUltima = diagData.tempoDesdeUltimaPosicao;
-                                        if (tempoDesdeUltima > 300) { // Mais de 5 minutos
-                                            mostrarNotificacao(`⚠️ Última posição recebida há ${Math.floor(tempoDesdeUltima / 60)} minutos. O motorista pode ter parado o rastreamento.`, 'warning', 10000);
-                                        }
-                                    }
-                                } else {
-                                    console.log('ℹ️ Diagnóstico não disponível (status:', diagResponse.status + ')');
-                                }
-                            } catch (diagError) {
-                                console.log('ℹ️ Diagnóstico não disponível:', diagError.message);
-                                // Não mostrar erro ao usuário, apenas logar
-                            }
-                        }
                     }
-                } else {
-                    console.warn('⚠️ Nenhuma informação adicional recebida do servidor');
                 }
                 
+                console.log('📍 Posições recebidas:', result.posicoes?.length || 0);
+                if (result.posicoes && result.posicoes.length > 0) {
+                    console.log('📍 Primeira posição:', {
+                        motorista: result.posicoes[0].motoristas?.nome,
+                        motoristaId: result.posicoes[0].motorista_id,
+                        coletaId: result.posicoes[0].coleta_id,
+                        lat: result.posicoes[0].latitude,
+                        lng: result.posicoes[0].longitude,
+                        timestamp: result.posicoes[0].timestamp_gps
+                    });
+                } else if (selectedColetas.length === 1 && result.posicoes && result.posicoes.length === 0) {
+                    // Se não há posições, fazer diagnóstico (apenas na primeira vez ou após 30 segundos)
+                    const agora = Date.now();
+                    const ultimoDiagnostico = window.ultimoDiagnostico || 0;
+                    const tempoDesdeUltimoDiagnostico = agora - ultimoDiagnostico;
+                    
+                    // Fazer diagnóstico apenas a cada 30 segundos para não sobrecarregar
+                    if (tempoDesdeUltimoDiagnostico > 30000) {
+                        window.ultimoDiagnostico = agora;
+                        
+                        try {
+                            const diagResponse = await fetch(`/api/rastreamento/diagnostico/${selectedColetas[0]}`, {
+                                method: 'GET',
+                                credentials: 'include',
+                                headers: {
+                                    'Content-Type': 'application/json'
+                                }
+                            });
+                            
+                            if (diagResponse.ok) {
+                                const diagData = await diagResponse.json();
+                                console.log('🔍 Diagnóstico da coleta:', {
+                                    coletaId: selectedColetas[0],
+                                    termoAceito: diagData.termoAceito,
+                                    rastreamentoAtivo: diagData.rastreamentoAtivo,
+                                    totalPosicoes: diagData.totalPosicoes,
+                                    posicoesComColetaId: diagData.posicoesComColetaId,
+                                    posicoesSemColetaId: diagData.posicoesSemColetaId,
+                                    ultimaPosicao: diagData.ultimaPosicao ? new Date(diagData.ultimaPosicao.timestamp_gps).toLocaleString('pt-BR') : 'N/A'
+                                });
+                                
+                                if (!diagData.termoAceito) {
+                                    mostrarNotificacao('⚠️ Termo de rastreamento não foi aceito pelo motorista. O rastreamento não está ativo.', 'warning', 10000);
+                                } else if (!diagData.rastreamentoAtivo) {
+                                    mostrarNotificacao('⚠️ Rastreamento não está ativo. O motorista precisa iniciar o rastreamento no portal.', 'warning', 10000);
+                                } else if (diagData.totalPosicoes === 0) {
+                                    mostrarNotificacao('⚠️ Motorista ainda não enviou posições GPS. Aguarde alguns segundos ou verifique se o rastreamento está ativo no portal do motorista.', 'warning', 10000);
+                                } else if (diagData.posicoesComColetaId === 0 && diagData.posicoesSemColetaId > 0) {
+                                    mostrarNotificacao(`ℹ️ Motorista tem ${diagData.totalPosicoes} posições, mas nenhuma está vinculada a esta coleta. Verifique se o motorista está rastreando a coleta correta.`, 'info', 10000);
+                                } else if (diagData.ultimaPosicao) {
+                                    const tempoDesdeUltima = diagData.tempoDesdeUltimaPosicao;
+                                    if (tempoDesdeUltima > 300) { // Mais de 5 minutos
+                                        mostrarNotificacao(`⚠️ Última posição recebida há ${Math.floor(tempoDesdeUltima / 60)} minutos. O motorista pode ter parado o rastreamento.`, 'warning', 10000);
+                                    }
+                                }
+                            } else {
+                                console.log('ℹ️ Diagnóstico não disponível (status:', diagResponse.status + ')');
+                            }
+                        } catch (diagError) {
+                            console.log('ℹ️ Diagnóstico não disponível:', diagError.message);
+                            // Não mostrar erro ao usuário, apenas logar
+                        }
+                    }
+                }
+                // Continuar processamento das posições
                 ultimaListaPosicoes = result.posicoes || [];
+                
+                // Log adicional para verificar se as posições têm motorista vinculado
+                if (ultimaListaPosicoes.length > 0) {
+                    console.log('✅ Posições processadas:', {
+                        total: ultimaListaPosicoes.length,
+                        motoristas: ultimaListaPosicoes.map(p => ({
+                            motoristaId: p.motorista_id,
+                            nome: p.motoristas?.nome,
+                            coletaId: p.coleta_id
+                        }))
+                    });
+                } else {
+                    console.warn('⚠️ Nenhuma posição retornada pela API:', {
+                        coletasSelecionadas: selectedColetas,
+                        info: result.info
+                    });
+                }
+                
                 atualizarMapa(ultimaListaPosicoes, result.info);
                 atualizarListaMotoristas(ultimaListaPosicoes);
                 atualizarEstatisticas(ultimaListaPosicoes);
@@ -1866,11 +1910,18 @@
                     if (!info.temMotoristaVinculado) {
                         mensagem = 'Esta coleta não tem motorista vinculado ainda.';
                     } else if (info.totalPosicoesEncontradas === 0) {
-                        mensagem = 'Motorista vinculado, mas ainda não há posições GPS registradas. O motorista precisa ativar o rastreamento.';
+                        mensagem = 'Motorista vinculado, mas ainda não há posições GPS registradas. O motorista precisa ativar o rastreamento no portal.';
                     } else {
-                        mensagem = 'Nenhuma posição GPS recente encontrada.';
+                        mensagem = `Nenhuma posição GPS encontrada nos últimos ${info.janelaMinutos || filtroTempoMinutos} minutos. Verifique se o motorista está enviando posições.`;
                     }
                 }
+                
+                // Log detalhado para debug
+                console.warn('⚠️ Nenhuma posição encontrada:', {
+                    coletasSelecionadas: selectedColetas,
+                    info: info,
+                    janelaMinutos: filtroTempoMinutos
+                });
                 
                 mostrarNotificacao(mensagem, 'info');
                 return;

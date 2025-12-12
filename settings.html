@@ -2182,9 +2182,18 @@
                 }
                 
                 // Renderizar usuários
+                const JANELA_ONLINE_MS = 2 * 60 * 60 * 1000; // 2h
+                
                 container.innerHTML = '';
                 
                 data.usuarios.forEach(usuario => {
+                    const lastLoginDate = usuario.last_sign_in_at ? new Date(usuario.last_sign_in_at) : null;
+                    const diffMs = lastLoginDate ? (Date.now() - lastLoginDate.getTime()) : 0;
+                    const isOnline = !lastLoginDate || diffMs <= JANELA_ONLINE_MS;
+                    const ultimoLoginFmt = lastLoginDate 
+                        ? new Date(usuario.last_sign_in_at).toLocaleString('pt-BR') 
+                        : null;
+                    
                     const roleBadge = usuario.role === 'admin' 
                         ? '<span class="badge bg-danger">Admin</span>'
                         : '<span class="badge bg-primary">Usuário</span>';
@@ -2197,9 +2206,9 @@
                         ? `<small class="text-muted d-block"><i class="fas fa-briefcase me-1"></i>${usuario.cargo}</small>` 
                         : '';
                     
-                    const ultimoLogin = usuario.last_sign_in_at 
-                        ? `<small class="text-muted d-block"><i class="fas fa-clock me-1"></i>Último acesso: ${new Date(usuario.last_sign_in_at).toLocaleString('pt-BR')}</small>` 
-                        : '<small class="text-success d-block"><i class="fas fa-circle me-1"></i>Online agora</small>';
+                    const ultimoLogin = isOnline
+                        ? '<small class="text-success d-block"><i class="fas fa-circle me-1"></i>Online agora</small>'
+                        : `<small class="text-muted d-block"><i class="fas fa-clock me-1"></i>Último acesso: ${ultimoLoginFmt || 'Não informado'}</small>`;
                     
                     const card = document.createElement('div');
                     card.className = 'col-md-6 col-lg-4';
@@ -2214,8 +2223,8 @@
                                         </h6>
                                         ${roleBadge}
                                     </div>
-                                    <div class="text-success">
-                                        <i class="fas fa-circle" style="font-size: 0.5rem;"></i>
+                                    <div class="${isOnline ? 'text-success' : 'text-muted'}">
+                                        <i class="fas fa-circle" style="font-size: 0.5rem; opacity:${isOnline ? '1' : '0.4'};"></i>
                                     </div>
                                 </div>
                                 <p class="text-muted small mb-2">

@@ -39,7 +39,7 @@
         }
 
         body {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+            background: linear-gradient(135deg, #f5f7fa 0%, #e8ecf1 50%, #f0f4f8 100%);
             background-attachment: fixed;
             color: var(--cinza-escuro);
             line-height: 1.6;
@@ -358,19 +358,33 @@
         }
 
         .coleta-card {
-            background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.98) 100%);
-            border-radius: var(--border-radius);
-            padding: 1.5rem;
-            box-shadow: var(--card-shadow);
-            transition: var(--transition);
-            border: 1px solid rgba(255, 255, 255, 0.2);
+            background: rgba(255, 255, 255, 0.98);
+            backdrop-filter: blur(20px) saturate(180%);
+            border-radius: 20px;
+            padding: 1.75rem;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08),
+                        0 0 0 1px rgba(0, 0, 0, 0.04);
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            border: 1px solid rgba(0, 0, 0, 0.06);
             position: relative;
-            overflow: hidden;
+            overflow: visible;
             cursor: pointer;
             display: flex;
             flex-direction: column;
-            gap: 1rem;
-            backdrop-filter: blur(10px);
+            gap: 1.25rem;
+            width: 100%;
+            max-width: 100%;
+            box-sizing: border-box;
+        }
+        
+        .coleta-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            z-index: 1;
         }
         
         .coleta-card::after {
@@ -380,11 +394,11 @@
             left: 0;
             right: 0;
             bottom: 0;
-            background: radial-gradient(circle at 20% 50%, rgba(102, 126, 234, 0.05) 0%, transparent 50%),
-                        radial-gradient(circle at 80% 80%, rgba(118, 75, 162, 0.05) 0%, transparent 50%);
+            background: radial-gradient(circle at 20% 50%, rgba(102, 126, 234, 0.06) 0%, transparent 60%),
+                        radial-gradient(circle at 80% 80%, rgba(118, 75, 162, 0.06) 0%, transparent 60%);
             pointer-events: none;
             opacity: 0;
-            transition: opacity 0.3s;
+            transition: opacity 0.4s ease;
         }
         
         .coleta-card:hover::after {
@@ -393,6 +407,36 @@
         
         .coleta-card.expanded {
             max-height: none;
+            overflow: visible;
+        }
+        
+        .coleta-card.expanded .card-content {
+            width: 100%;
+            overflow: visible;
+            box-sizing: border-box;
+        }
+        
+        .coleta-card.expanded .card-details {
+            width: 100%;
+            overflow: visible;
+            box-sizing: border-box;
+        }
+        
+        .coleta-card.expanded .etapas-container,
+        .coleta-card.expanded .validation-actions,
+        .coleta-card.expanded .etapa-validation,
+        .coleta-card.expanded .anexos-section,
+        .coleta-card.expanded .historico-list-card {
+            width: 100%;
+            box-sizing: border-box;
+            max-width: 100%;
+            overflow-x: auto;
+            overflow-y: visible;
+        }
+        
+        .coleta-card.expanded * {
+            max-width: 100%;
+            box-sizing: border-box;
         }
         
         .coleta-card.collapsed .card-details,
@@ -440,24 +484,70 @@
             transform: rotate(180deg);
         }
 
-        .coleta-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 4px;
-        }
 
         .coleta-card.pendente::before { background: var(--vermelho); }
         .coleta-card.em_andamento::before { background: var(--laranja); }
         .coleta-card.concluida::before { background: var(--verde); }
         .coleta-card.cancelada::before { background: #6c757d; }
 
+        /* Design moderno e elegante para coletas urgentes - seguindo padrões de UI/UX profissional */
+        .coleta-card.urgente {
+            position: relative;
+            border-left: 4px solid #e74c3c !important;
+            background: linear-gradient(to right, rgba(231, 76, 60, 0.06) 0%, rgba(255, 255, 255, 0.98) 100%) !important;
+            box-shadow: 0 4px 20px rgba(231, 76, 60, 0.15),
+                        0 0 0 1px rgba(231, 76, 60, 0.15) !important;
+        }
+
+        /* Barra superior vermelha sólida */
+        .coleta-card.urgente::before {
+            background: #e74c3c !important;
+            height: 4px !important;
+        }
+
+        /* Ponto indicador sutil no canto superior direito */
+        .coleta-card.urgente::after {
+            content: '';
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            width: 10px;
+            height: 10px;
+            background: #e74c3c;
+            border-radius: 50%;
+            box-shadow: 0 0 0 2px rgba(231, 76, 60, 0.15),
+                        0 0 0 4px rgba(231, 76, 60, 0.08);
+            z-index: 5;
+            pointer-events: none;
+            animation: urgent-dot-pulse 2s ease-in-out infinite;
+        }
+
+        /* Animação muito sutil para o ponto indicador */
+        @keyframes urgent-dot-pulse {
+            0%, 100% {
+                opacity: 1;
+                transform: scale(1);
+            }
+            50% {
+                opacity: 0.7;
+                transform: scale(1.1);
+            }
+        }
+
+        /* Hover elegante mantendo consistência */
+        .coleta-card.urgente:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 32px rgba(231, 76, 60, 0.2),
+                        0 0 0 1px rgba(231, 76, 60, 0.2) !important;
+            border-left-width: 5px !important;
+        }
+
         .coleta-card:hover {
-            transform: translateY(-8px);
-            box-shadow: 0 20px 50px rgba(102, 126, 234, 0.2), 0 0 0 1px rgba(102, 126, 234, 0.1);
-            background: linear-gradient(135deg, rgba(255, 255, 255, 1) 0%, rgba(255, 255, 255, 1) 100%);
+            transform: translateY(-4px);
+            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12),
+                        0 0 0 1px rgba(102, 126, 234, 0.1);
+            background: rgba(255, 255, 255, 1);
+            border-color: rgba(102, 126, 234, 0.2);
         }
         
         @keyframes pulse {
@@ -484,20 +574,22 @@
 
         .card-title {
             font-size: 1.3rem;
-            font-weight: 700;
+            font-weight: 600;
             color: var(--cinza-escuro);
             margin-bottom: 0.5rem;
-            line-height: 1.3;
+            line-height: 1.4;
+            letter-spacing: -0.3px;
         }
 
         .card-id {
-            font-size: 0.8rem;
-            color: var(--cinza-escuro);
-            background: var(--cinza-claro);
-            padding: 0.3rem 0.8rem;
-            border-radius: 20px;
-            font-weight: 600;
+            font-size: 0.75rem;
+            color: #6c757d;
+            background: rgba(0, 0, 0, 0.04);
+            padding: 0.35rem 0.75rem;
+            border-radius: 12px;
+            font-weight: 500;
             display: inline-block;
+            border: 1px solid rgba(0, 0, 0, 0.06);
         }
 
         .status-section {
@@ -509,15 +601,15 @@
 
         .status-badge {
             padding: 0.5rem 1rem;
-            border-radius: 20px;
-            font-size: 0.75rem;
-            font-weight: 700;
+            border-radius: 12px;
+            font-size: 0.7rem;
+            font-weight: 600;
             text-transform: uppercase;
-            letter-spacing: 0.8px;
+            letter-spacing: 0.5px;
             white-space: nowrap;
             position: relative;
             overflow: hidden;
-            transition: all 0.3s;
+            transition: all 0.3s ease;
             backdrop-filter: blur(10px);
         }
         
@@ -568,11 +660,12 @@
             background: linear-gradient(135deg, #002776 0%, #003a9f 100%);
             color: var(--branco);
             padding: 0.5rem 1rem;
-            border-radius: 15px;
-            font-size: 0.9rem;
-            font-weight: 800;
-            box-shadow: 0 4px 15px rgba(0, 39, 118, 0.4),
+            border-radius: 12px;
+            font-size: 0.875rem;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(0, 39, 118, 0.25),
                         inset 0 1px 0 rgba(255, 255, 255, 0.2);
+            border: none;
             position: relative;
             overflow: hidden;
         }
@@ -596,41 +689,100 @@
         .card-content {
             display: flex;
             flex-direction: column;
-            gap: 1rem;
+            gap: 1.2rem;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        
+        .card-details {
+            padding-top: 0.5rem;
+            width: 100%;
+            box-sizing: border-box;
+            overflow: visible;
         }
 
         .info-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 1rem;
+            gap: 1.2rem;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        
+        @media (max-width: 768px) {
+            .info-grid {
+                grid-template-columns: 1fr;
+                gap: 1rem;
+            }
         }
 
         .info-item {
             display: flex;
             flex-direction: column;
-            gap: 0.3rem;
+            gap: 0.4rem;
+            width: 100%;
+            box-sizing: border-box;
+            min-width: 0;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
         }
 
         .info-label {
-            font-size: 0.75rem;
+            font-size: 0.7rem;
             color: #6c757d;
-            font-weight: 600;
+            font-weight: 500;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
+            letter-spacing: 0.8px;
+            margin-bottom: 0.25rem;
+            width: 100%;
+            box-sizing: border-box;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
         }
 
         .info-value {
-            font-size: 0.9rem;
+            font-size: 0.95rem;
             color: var(--cinza-escuro);
-            font-weight: 600;
+            font-weight: 500;
             display: flex;
             align-items: center;
             gap: 0.5rem;
+            line-height: 1.5;
+            width: 100%;
+            box-sizing: border-box;
+            min-width: 0;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+        }
+        
+        .info-value > * {
+            flex-shrink: 1;
+            min-width: 0;
+        }
+        
+        /* Estilo específico para badges de tipos de veículo e carroceria */
+        .info-value span[style*="display: inline-block"] {
+            display: inline-block !important;
+            word-wrap: break-word;
+            max-width: 100%;
+            box-sizing: border-box;
+        }
+        
+        /* Garantir que os badges quebrem linha corretamente */
+        .info-value {
+            flex-wrap: wrap;
+        }
+        
+        /* Container para badges de tipos - garante que fiquem dentro do card */
+        .info-value > span[style*="display: flex"] {
+            max-width: 100%;
+            overflow: hidden;
         }
 
         .info-value i {
-            color: var(--azul-escuro);
+            color: #667eea;
             width: 16px;
+            opacity: 0.9;
         }
 
         /* Seção de Anexos nos Cards */
@@ -2070,8 +2222,10 @@
                         <option value="CE">Ceará</option>
                         <option value="SE">Sergipe</option>
                         <option value="PB">Paraíba</option>
+                        <option value="PE">Recife</option>
                         <option value="AMBEV">Ambev</option>
                         <option value="US">Usinas</option>
+                        <option value="PARATIBE">Paratibe</option>
                     </select>
                 </div>
                 <div class="filter-group">
@@ -2118,16 +2272,21 @@
                     <i class="fas fa-truck-loading"></i>
                     <span id="modalTitle">Nova Coleta</span>
                 </h2>
-                <button class="close-modal" onclick="closeModal()">
-                    <i class="fas fa-times"></i>
-                </button>
+                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                    <button type="button" id="toggleModoLote" class="action-btn secondary" onclick="alternarModoCriacao()" style="font-size: 0.85rem; padding: 0.4rem 0.8rem;">
+                        <i class="fas fa-layer-group"></i> <span id="modoTexto">Criar Múltiplas</span>
+                    </button>
+                    <button class="close-modal" onclick="closeModal()">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
                 </div>
             
             <form id="coletaForm">
                 <div class="form-grid">
                     <div class="form-group">
                         <label for="filial">Filial *</label>
-                        <select id="filial" name="filial" required>
+                        <select id="filial" name="filial" required onchange="filtrarClientesPorFilial()">
                             <option value="">Selecione a filial</option>
                             <option value="JBO">Jaboatão (JBO)</option>
                             <option value="CABO">Cabo (CABO)</option>
@@ -2138,19 +2297,41 @@
                             <option value="PE">Recife (PE)</option>
                             <option value="PB">João Pessoa (PB)</option>
                             <option value="CE">Fortaleza (CE)</option>
+                            <option value="AMBEV">Ambev (AMBEV)</option>
+                            <option value="US">Usinas (US)</option>
+                            <option value="PARATIBE">Paratibe (PARATIBE)</option>
                         </select>
                     </div>
-                    <div class="form-group">
+                    <div class="form-group" id="grupoNumeroColeta">
                         <label for="numeroColeta">Nº da Coleta *</label>
                         <input type="text" id="numeroColeta" name="numeroColeta" placeholder="Ex: 5565" required pattern="[1-9][0-9]*" title="Digite apenas números, sem zeros à esquerda (ex: 5565)" oninput="this.value = this.value.replace(/^0+/, '').replace(/[^0-9]/g, '')">
-                                </div>
+                    </div>
+                    <div class="form-group" id="grupoMultiplosNumeros" style="display: none;">
+                        <label for="multiplosNumeros">
+                            <i class="fas fa-list-ol"></i> Números das Coletas *
+                            <span style="font-size: 0.75rem; color: #6c757d; font-weight: normal; display: block; margin-top: 0.2rem;">
+                                Separe por vírgula ou use intervalo (ex: 5565,5566,5567 ou 5565-5569)
+                            </span>
+                        </label>
+                        <textarea id="multiplosNumeros" name="multiplosNumeros" rows="3" placeholder="Ex: 5565,5566,5567,5568,5569&#10;Ou: 5565-5569" style="width: 100%; padding: 0.75rem; border: 2px solid #e0e0e0; border-radius: 8px; font-family: inherit; resize: vertical;" oninput="processarMultiplosNumeros()"></textarea>
+                        <div id="previewNumeros" style="margin-top: 0.5rem; padding: 0.5rem; background: #f8f9fa; border-radius: 6px; font-size: 0.85rem; color: #495057; display: none;">
+                            <strong>Serão criadas <span id="totalColetas">0</span> coleta(s):</strong>
+                            <div id="listaNumeros" style="margin-top: 0.3rem; max-height: 100px; overflow-y: auto;"></div>
+                        </div>
+                    </div>
                     <div class="form-group">
                         <label for="cliente">Cliente *</label>
-                        <input type="text" id="cliente" name="cliente" required>
+                        <select id="cliente" name="cliente" required disabled>
+                            <option value="">Selecione primeiro a filial</option>
+                        </select>
                             </div>
                     <div class="form-group">
-                        <label for="dataRecebimento">Data Recebimento *</label>
+                        <label for="dataRecebimento">Data de Coleta *</label>
                         <input type="date" id="dataRecebimento" name="dataRecebimento" required>
+                                </div>
+                    <div class="form-group">
+                        <label for="dataEntrega">Data de Entrega</label>
+                        <input type="date" id="dataEntrega" name="dataEntrega">
                                 </div>
                     <div class="form-group">
                         <label for="origem">Origem *</label>
@@ -2311,7 +2492,7 @@
                         </div>
                                 </div>
                     <div class="form-group">
-                        <label for="status">Status</label>
+                        <label for="status"><i class="fas fa-flag me-2"></i>Status</label>
                         <select id="status" name="status">
                             <option value="pendente">Pendente</option>
                             <option value="em_andamento">Em Andamento</option>
@@ -2320,7 +2501,16 @@
                         </select>
                             </div>
                     <div class="form-group">
-                        <label for="etapaAtual">Etapa Atual</label>
+                        <label for="prioridade"><i class="fas fa-exclamation-triangle me-2" style="color: #f59e0b;"></i>Prioridade</label>
+                        <select id="prioridade" name="prioridade" style="border-left: 3px solid #f59e0b;">
+                            <option value="baixa">Baixa</option>
+                            <option value="normal" selected>Normal</option>
+                            <option value="alta">Alta</option>
+                            <option value="urgente">Urgente</option>
+                        </select>
+                            </div>
+                    <div class="form-group">
+                        <label for="etapaAtual"><i class="fas fa-layer-group me-2"></i>Etapa Atual</label>
                         <select id="etapaAtual" name="etapaAtual">
                             <option value="comercial">Comercial</option>
                             <option value="price">Price</option>
@@ -2636,6 +2826,433 @@
             return ETAPAS.find(e => e.id === etapaId)?.nome || etapaId;
         }
 
+        // ========== MAPEAMENTO DE CLIENTES POR FILIAL ==========
+        const clientesPorFilial = {
+            'JBO': [
+                'VIVIX / OWENS - JAZIDA',
+                'VIVIX / NACIONAL - AREAL',
+                'VIVIX / OWENS - FELDSPATO',
+                'VIVIX / OWENS - AREAL',
+                'VIVIX / MURO ALTO - AREIA',
+                'VIVIX / TENNIS PACK',
+                'VIVIX / PRAINHA ZN',
+                'VIVIX / POLIPISO',
+                'VIVIX NAVIO',
+                'CONTINENTAL NAVIO',
+                'OWENS - BARRILHA (PARATIBE)',
+                'OWENS - GARRAFAS MG',
+                'OWENS - IMPORTAÇÃO',
+                'OWENS-PE / CENTROAIDAR-GO',
+                'OWENS - MOV. INTERNA',
+                'OWENS - TESTE CALCÁRIO',
+                'OWENS - TESTE FELDSPATO',
+                'VIVIX / MANUCHAR',
+                'OWENS / ACQUA EMBALAGENS BH',
+                'NAVIO VIVIX',
+                'POLIPISO',
+                'HNK MALTE PACATUBA CE',
+                'HNK GARRAFAS - BENEVIDES PA',
+                'HNK MALTE - CABEDELO PB',
+                'HNK MALTE - CAXIAS',
+                'HNK GARRAFAS - RECIFE / IGARASSU',
+                'HNK CARRAFAS - IGARASSU PE',
+                'HNK GARRAFAS - ALAGOINHAS BA',
+                'YARA BIG BAGS',
+                'MOHAWKBR - PB x BA',
+                'GRUPO MOURA',
+                'COLSUGAR',
+                'NAVIO SOLVAY / VIVIX',
+                'NAVIO MV K BEREKET / VIVIX',
+                'NAVIO MV K BEREKET / CONTINENTAL-PB',
+                'GERDAU'
+            ],
+            'US': [
+                'NAVIO - USINA OLHO D\'AGUA',
+                'NAVIO SINDAÇÚCAR',
+                'USINA MIRIRI',
+                'USINA GIASA-PB x SINDAÇÚCAR-PE',
+                'USINA SÃO JOSÉ X MARILAN',
+                'USINA IPOJUCA x BONGI',
+                'USINA IPOJUCA x PETROLINA',
+                'USINA IPOJUCA X CABO',
+                'USINA IPOJUCA x M.DIAS BRANCO',
+                'USINA PETRIBU VHP',
+                'USINA UNIÃO',
+                'NAVIO BARRILHA OWENS',
+                'NAVIO BARRILHA CONTINENTAL',
+                'NAVIO JB (ST THERESA)',
+                'HNK GARRAFAS RECIFE',
+                'HNK RETORNO ATG',
+                'ENERGIZER IMPORTAÇÃO',
+                'BEEVA_USINAS'
+            ],
+            'AMBEV': [
+                'AMBEV AÇÚCAR',
+                'AMBEV GARRAFAS OWENS',
+                'AMBEV GARRAFAS JACUTINGA',
+                'AMBEV PREFORMA',
+                'AMBEV MALTE',
+                'NAVIO AMBEV MALTE (PARATIBE)',
+                'AMBEV ATG',
+                'NAVIO AMBEV'
+            ],
+            'BA': [
+                'HNK GARRAFAS',
+                'IVN X HNK ALAGOINHAS',
+                'INOVA PISOS CNTR',
+                'HNK X IVN RETORNO',
+                'NATIVILLE INSUMOS',
+                'MERCOSUL SSA',
+                'AMBEV CDR - BA / PE',
+                'AMBEV - JACAREÍ SP',
+                'COSTA BRASIL CNTR',
+                'MAERSK SAFRA',
+                'INDAIÁ',
+                'JMACÊDO - SSA',
+                'JMACÊDO - SIF',
+                'ENGEPACK'
+            ],
+            'SE': [
+                'HNK GARRAFAS',
+                'IVN X HNK ALAGOINHAS',
+                'INOVA PISOS CNTR',
+                'HNK X IVN RETORNO',
+                'NATIVILLE INSUMOS',
+                'MERCOSUL SSA',
+                'AMBEV CDR - BA / PE',
+                'AMBEV - JACAREÍ SP',
+                'COSTA BRASIL CNTR',
+                'MAERSK SAFRA',
+                'INDAIÁ',
+                'JMACÊDO - SSA',
+                'JMACÊDO - SIF',
+                'ENGEPACK'
+            ],
+            'CE': [
+                'HNK GARRAFAS',
+                'IVN X HNK ALAGOINHAS',
+                'INOVA PISOS CNTR',
+                'HNK X IVN RETORNO',
+                'NATIVILLE INSUMOS',
+                'MERCOSUL SSA',
+                'AMBEV CDR - BA / PE',
+                'AMBEV - JACAREÍ SP',
+                'COSTA BRASIL CNTR',
+                'MAERSK SAFRA',
+                'INDAIÁ',
+                'JMACÊDO - SSA',
+                'JMACÊDO - SIF',
+                'ENGEPACK'
+            ],
+            'PARATIBE': [
+                'ADESBRA'
+            ],
+            'AL': [
+                'SERRA GRANDE-AL x MDB SALVADOR-BA',
+                'USINA CORURIPE',
+                'NATVILLE',
+                'USINA CAETÉ - SALVADOR',
+                'USINA CAETÉ - MARACANAÚ',
+                'BEEVA',
+                'NAVIO SERRA GRANDE',
+                'NAVIO YARA  MCZ',
+                'YARA TRANSF. - PORTO ALEGRE',
+                'YARA OUTBOUND'
+            ],
+            'SP': [
+                'AMBEV GARRAFAS - VIRALLIA-MG / JACAREÍ-SP',
+                'AMBEV AÇÚCAR  "SP"'
+            ],
+            'CABO': [
+                'ENERGIZER EXPORTAÇÃO',
+                'ENERGIZER IMPORTAÇÃO "CABO"',
+                'ALIANÇA CNTR',
+                'CBMC',
+                'UNIVAR SOLUTIONS',
+                'COSTA BRASIL',
+                'IQUINE',
+                'USINA SERRA GRANDE',
+                'NATURALLY',
+                'CIMENTO NACIONAL',
+                'GUARAVES',
+                'ACTION',
+                'INOVA PISOS',
+                'MERCOSUL SUA',
+                'GERDAU CNTR',
+                'GRUPO JB',
+                'NORCOAST'
+            ]
+        };
+
+        // Função para filtrar clientes baseado na filial selecionada
+        function filtrarClientesPorFilial() {
+            const filialSelect = document.getElementById('filial');
+            const clienteSelect = document.getElementById('cliente');
+            const filialSelecionada = filialSelect.value;
+
+            // Limpar opções atuais
+            clienteSelect.innerHTML = '';
+
+            if (!filialSelecionada) {
+                clienteSelect.innerHTML = '<option value="">Selecione primeiro a filial</option>';
+                clienteSelect.disabled = true;
+                return;
+            }
+
+            // Habilitar o select de clientes
+            clienteSelect.disabled = false;
+
+            // Adicionar opção padrão
+            const optionPadrao = document.createElement('option');
+            optionPadrao.value = '';
+            optionPadrao.textContent = 'Selecione o cliente';
+            clienteSelect.appendChild(optionPadrao);
+
+            // Buscar clientes da filial selecionada
+            const clientes = clientesPorFilial[filialSelecionada] || [];
+
+            if (clientes.length === 0) {
+                const optionSemCliente = document.createElement('option');
+                optionSemCliente.value = '';
+                optionSemCliente.textContent = 'Nenhum cliente cadastrado para esta filial';
+                clienteSelect.appendChild(optionSemCliente);
+                clienteSelect.disabled = true;
+                return;
+            }
+
+            // Ordenar clientes alfabeticamente
+            const clientesOrdenados = [...clientes].sort();
+
+            // Adicionar opções de clientes
+            clientesOrdenados.forEach(cliente => {
+                const option = document.createElement('option');
+                option.value = cliente;
+                option.textContent = cliente;
+                clienteSelect.appendChild(option);
+            });
+        }
+
+        // Tornar função acessível globalmente
+        window.filtrarClientesPorFilial = filtrarClientesPorFilial;
+
+        // ========== SISTEMA DE CRIAÇÃO EM LOTE ==========
+        let modoCriacaoLote = false; // false = única, true = múltiplas
+
+        // Função para alternar entre modo único e múltiplo
+        function alternarModoCriacao() {
+            modoCriacaoLote = !modoCriacaoLote;
+            const grupoNumero = document.getElementById('grupoNumeroColeta');
+            const grupoMultiplos = document.getElementById('grupoMultiplosNumeros');
+            const inputNumero = document.getElementById('numeroColeta');
+            const textareaMultiplos = document.getElementById('multiplosNumeros');
+            const modoTexto = document.getElementById('modoTexto');
+            const previewNumeros = document.getElementById('previewNumeros');
+
+            if (modoCriacaoLote) {
+                // Modo múltiplas coletas
+                grupoNumero.style.display = 'none';
+                grupoMultiplos.style.display = 'block';
+                inputNumero.removeAttribute('required');
+                textareaMultiplos.setAttribute('required', 'required');
+                modoTexto.innerHTML = '<i class="fas fa-layer-group"></i> Criar Uma';
+                previewNumeros.style.display = 'none';
+                textareaMultiplos.value = '';
+            } else {
+                // Modo única coleta
+                grupoNumero.style.display = 'block';
+                grupoMultiplos.style.display = 'none';
+                inputNumero.setAttribute('required', 'required');
+                textareaMultiplos.removeAttribute('required');
+                modoTexto.innerHTML = '<i class="fas fa-layer-group"></i> Criar Múltiplas';
+                previewNumeros.style.display = 'none';
+                textareaMultiplos.value = '';
+            }
+        }
+
+        // Função para processar múltiplos números e mostrar preview
+        function processarMultiplosNumeros() {
+            const textarea = document.getElementById('multiplosNumeros');
+            const preview = document.getElementById('previewNumeros');
+            const totalSpan = document.getElementById('totalColetas');
+            const listaSpan = document.getElementById('listaNumeros');
+            const valor = textarea.value.trim();
+
+            if (!valor) {
+                preview.style.display = 'none';
+                return;
+            }
+
+            const numeros = parsearMultiplosNumeros(valor);
+            
+            if (numeros.length === 0) {
+                preview.style.display = 'none';
+                return;
+            }
+
+            totalSpan.textContent = numeros.length;
+            listaSpan.innerHTML = numeros.slice(0, 10).map(n => `<span style="display: inline-block; background: #667eea; color: white; padding: 0.2rem 0.5rem; margin: 0.2rem; border-radius: 4px; font-size: 0.75rem;">${n}</span>`).join('');
+            
+            if (numeros.length > 10) {
+                listaSpan.innerHTML += `<span style="display: block; margin-top: 0.3rem; color: #6c757d;">... e mais ${numeros.length - 10} coleta(s)</span>`;
+            }
+
+            preview.style.display = 'block';
+        }
+
+        // Função para parsear múltiplos números (suporta vírgula e intervalos)
+        function parsearMultiplosNumeros(input) {
+            const numeros = new Set();
+            const partes = input.split(/[,\n]/).map(p => p.trim()).filter(p => p);
+
+            partes.forEach(parte => {
+                // Verificar se é um intervalo (ex: 5565-5569)
+                if (parte.includes('-')) {
+                    const [inicio, fim] = parte.split('-').map(n => parseInt(n.trim(), 10));
+                    if (!isNaN(inicio) && !isNaN(fim) && inicio > 0 && fim > 0) {
+                        const menor = Math.min(inicio, fim);
+                        const maior = Math.max(inicio, fim);
+                        for (let i = menor; i <= maior; i++) {
+                            numeros.add(String(i));
+                        }
+                    }
+                } else {
+                    // Número único
+                    const num = parte.replace(/[^0-9]/g, '');
+                    if (num && parseInt(num, 10) > 0) {
+                        numeros.add(String(parseInt(num, 10)));
+                    }
+                }
+            });
+
+            // Converter para array e ordenar
+            return Array.from(numeros).sort((a, b) => parseInt(a, 10) - parseInt(b, 10));
+        }
+
+        // Função para criar múltiplas coletas
+        async function criarMultiplasColetas(rawData, numerosColetas) {
+            if (!supabase) {
+                showNotification('Erro: Supabase não inicializado', 'error');
+                return;
+            }
+
+            showNotification(`🔄 Criando ${numerosColetas.length} coleta(s)...`, 'info');
+            
+            // Converter datas
+            let dataRecebimento = rawData.dataRecebimento;
+            if (dataRecebimento && dataRecebimento.length === 10) {
+                dataRecebimento = dataRecebimento + 'T12:00:00.000Z';
+            }
+            
+            let dataEntrega = rawData.dataEntrega;
+            if (dataEntrega && dataEntrega.length === 10) {
+                dataEntrega = dataEntrega + 'T12:00:00.000Z';
+            }
+            
+            // Coletar tipos de veículo e carroceria
+            const tiposVeiculoSelecionados = Array.from(document.querySelectorAll('input[name="tiposVeiculo"]:checked'))
+                .map(checkbox => checkbox.value);
+            
+            const tiposCarroceriaSelecionados = Array.from(document.querySelectorAll('input[name="tiposCarroceria"]:checked'))
+                .map(checkbox => checkbox.value);
+            
+            // Buscar usuário atual
+            const loggedInUserData = localStorage.getItem('loggedInUser');
+            const userData = loggedInUserData ? JSON.parse(loggedInUserData) : null;
+            
+            // Preparar dados base para todas as coletas
+            const dadosBase = {
+                filial: rawData.filial,
+                cliente: rawData.cliente,
+                data_recebimento: dataRecebimento,
+                data_entrega: dataEntrega || null,
+                origem: rawData.origem,
+                destino: rawData.destino,
+                valor: parseFloat(rawData.valor) || 0,
+                km: parseFloat(rawData.km) || 0,
+                tipos_veiculo: tiposVeiculoSelecionados,
+                tipos_carroceria: tiposCarroceriaSelecionados,
+                status: rawData.status || 'pendente',
+                etapa_atual: rawData.etapaAtual || 'comercial',
+                observacoes: rawData.observacoes || null,
+                prioridade: rawData.prioridade || 'normal',
+                created_by: userData?.id || null,
+                updated_by: userData?.id || null,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+                data_atualizacao: new Date().toISOString()
+            };
+            
+            // Verificar duplicatas antes de criar
+            const { data: coletasExistentes } = await supabase
+                .from('coletas')
+                .select('filial, numero_coleta')
+                .eq('filial', rawData.filial)
+                .in('numero_coleta', numerosColetas);
+            
+            const numerosExistentes = new Set((coletasExistentes || []).map(c => c.numero_coleta));
+            const numerosParaCriar = numerosColetas.filter(n => !numerosExistentes.has(n));
+            const numerosDuplicados = numerosColetas.filter(n => numerosExistentes.has(n));
+            
+            if (numerosDuplicados.length > 0) {
+                showNotification(
+                    `⚠️ ${numerosDuplicados.length} número(s) já existem: ${numerosDuplicados.join(', ')}. Serão ignorados.`,
+                    'warning',
+                    5000
+                );
+            }
+            
+            if (numerosParaCriar.length === 0) {
+                showNotification('⚠️ Todas as coletas já existem!', 'warning');
+                return;
+            }
+            
+            // Preparar array de coletas para inserção
+            const coletasParaInserir = numerosParaCriar.map(numero => ({
+                ...dadosBase,
+                numero_coleta: numero
+            }));
+            
+            // Inserir todas as coletas de uma vez
+            const { data: coletasCriadas, error } = await supabase
+                .from('coletas')
+                .insert(coletasParaInserir)
+                .select();
+            
+            if (error) {
+                console.error('❌ Erro ao criar múltiplas coletas:', error);
+                showNotification(`❌ Erro ao criar coletas: ${error.message}`, 'error');
+                return;
+            }
+            
+            // Registrar no histórico para cada coleta criada
+            if (coletasCriadas && coletasCriadas.length > 0) {
+                for (const coleta of coletasCriadas) {
+                    try {
+                        await salvarNoHistorico(coleta.id, 'coleta_criada', `Nova coleta criada em lote - ${rawData.filial} #${coleta.numero_coleta}`);
+                    } catch (histError) {
+                        console.warn('⚠️ Erro ao salvar histórico:', histError);
+                    }
+                }
+            }
+            
+            // Fechar modal e recarregar
+            closeModal();
+            showNotification(
+                `✅ ${coletasCriadas.length} coleta(s) criada(s) com sucesso!${numerosDuplicados.length > 0 ? ` (${numerosDuplicados.length} ignorada(s))` : ''}`,
+                'success',
+                5000
+            );
+            
+            // Recarregar coletas após um pequeno delay
+            setTimeout(() => {
+                carregarColetas();
+            }, 500);
+        }
+
+        // Tornar funções acessíveis globalmente
+        window.alternarModoCriacao = alternarModoCriacao;
+        window.processarMultiplosNumeros = processarMultiplosNumeros;
+
         // Variável global para permissões de etapas
         let permissoesEtapasColetas = [];
 
@@ -2844,6 +3461,19 @@
                 // 🔐 Carregar permissões de etapas
                 permissoesEtapasColetas = await carregarPermissoesEtapasColetas();
                 console.log('✅ Permissões de etapas carregadas:', permissoesEtapasColetas);
+                
+                // Inicializar campo cliente (desabilitado por padrão)
+                const clienteSelect = document.getElementById('cliente');
+                if (clienteSelect) {
+                    clienteSelect.disabled = true;
+                    clienteSelect.innerHTML = '<option value="">Selecione primeiro a filial</option>';
+                }
+                
+                // Adicionar listener adicional para o campo filial (além do onchange inline)
+                const filialSelect = document.getElementById('filial');
+                if (filialSelect) {
+                    filialSelect.addEventListener('change', filtrarClientesPorFilial);
+                }
                 
                 // 🏷️ Carregar etiquetas disponíveis
                 await carregarEtiquetasDisponiveis();
@@ -4372,9 +5002,16 @@
                 let data, error;
                 
                 if (currentEditingId) {
+                    // ✅ CAPTURAR DADOS ANTIGOS ANTES DE ATUALIZAR
+                    const { data: dadosAntigos } = await supabase
+                        .from('coletas')
+                        .select('*')
+                        .eq('id', currentEditingId)
+                        .single();
+                    
                     // ✅ UPDATE - FILTRA apenas campos VÁLIDOS
                     const camposValidos = [
-                        'filial', 'numero_coleta', 'cliente', 'data_recebimento', 'origem', 'destino',
+                        'filial', 'numero_coleta', 'cliente', 'data_recebimento', 'data_entrega', 'origem', 'destino',
                         'valor', 'km', 'tipos_veiculo', 'tipos_carroceria', 'status', 'etapa_atual', 'observacoes',
                         'prioridade', 'motorista_id', 'etapas_concluidas'
                     ];
@@ -4398,6 +5035,24 @@
                         .update(updateData)
                         .eq('id', currentEditingId)
                         .select());
+
+                if (error) throw error;
+                    
+                    // ✅ GERAR HISTÓRICO DETALHADO DAS MUDANÇAS
+                    if (dadosAntigos) {
+                        console.log('📋 Dados antigos:', dadosAntigos);
+                        console.log('📋 Dados novos (updateData):', updateData);
+                        const mudancas = compararDadosColeta(dadosAntigos, updateData);
+                        console.log('📋 Mudanças detectadas:', mudancas);
+                        if (mudancas.length > 0) {
+                            await salvarNoHistorico(currentEditingId, 'coleta_editada', mudancas);
+                            console.log('✅ Histórico detalhado salvo com sucesso');
+                        } else {
+                            console.log('⚠️ Nenhuma mudança detectada para salvar no histórico');
+                        }
+                    } else {
+                        console.warn('⚠️ Dados antigos não encontrados, não será possível gerar histórico detalhado');
+                    }
                 } else {
                     // ✅ INSERT - já está funcionando
                     const novaColeta = {
@@ -4423,13 +5078,23 @@
                 showNotification(currentEditingId ? 'Coleta atualizada!' : 'Nova coleta criada!', 'success');
                 
                 // ✅ HISTÓRICO DENTRO DO TRY - DEPOIS DO SUCESSO
-                if (currentEditingId) {
-                    await salvarNoHistorico(currentEditingId, 'coleta_editada', 'Coleta atualizada');
-                } else {
+                // (Para updates, o histórico já foi salvo acima com detalhes)
+                if (!currentEditingId) {
                     await salvarNoHistorico(data[0].id, 'coleta_criada', 'Nova coleta criada'); // usa o ID retornado
                 }
                 
                 await carregarColetas();
+                
+                // Recarregar histórico se o card estiver expandido
+                if (currentEditingId) {
+                    const card = document.querySelector(`.coleta-card[data-coleta-id="${currentEditingId}"]`);
+                    if (card && card.classList.contains('expanded')) {
+                        setTimeout(() => {
+                            carregarHistoricoParaCard(currentEditingId);
+                        }, 500);
+                    }
+                }
+                
                 return data;
                 
             } catch (error) {
@@ -5158,6 +5823,117 @@
             }
         }
 
+        // Função para comparar dados e gerar histórico detalhado
+        function compararDadosColeta(dadosAntigos, dadosNovos) {
+            const mudancas = [];
+            const nomesCampos = {
+                'filial': 'Filial',
+                'numero_coleta': 'Número da Coleta',
+                'cliente': 'Cliente',
+                'data_recebimento': 'Data de Coleta',
+                'data_entrega': 'Data de Entrega',
+                'origem': 'Origem',
+                'destino': 'Destino',
+                'valor': 'Valor',
+                'km': 'KM',
+                'tipos_veiculo': 'Tipos de Veículo',
+                'tipos_carroceria': 'Tipos de Carroceria',
+                'status': 'Status',
+                'etapa_atual': 'Etapa Atual',
+                'observacoes': 'Observações',
+                'prioridade': 'Prioridade',
+                'motorista_id': 'Motorista'
+            };
+            
+            Object.keys(dadosNovos).forEach(campo => {
+                if (campo === 'updated_at' || campo === 'updated_by' || campo === 'data_atualizacao') {
+                    return; // Ignorar campos de controle
+                }
+                
+                const valorAntigo = dadosAntigos[campo];
+                const valorNovo = dadosNovos[campo];
+                
+                // Normalizar valores para comparação (convertendo strings para números quando aplicável)
+                let valorAntigoNormalizado = valorAntigo;
+                let valorNovoNormalizado = valorNovo;
+                
+                // Converter strings numéricas para números para campos numéricos
+                if (campo === 'valor' || campo === 'km') {
+                    if (typeof valorAntigo === 'string' && valorAntigo !== '' && valorAntigo !== null) {
+                        valorAntigoNormalizado = parseFloat(valorAntigo.replace(/[^\d,.-]/g, '').replace(',', '.')) || valorAntigo;
+                    }
+                    if (typeof valorNovo === 'string' && valorNovo !== '' && valorNovo !== null) {
+                        valorNovoNormalizado = parseFloat(valorNovo.replace(/[^\d,.-]/g, '').replace(',', '.')) || valorNovo;
+                    }
+                    // Comparar números arredondados para evitar problemas de precisão
+                    if (typeof valorAntigoNormalizado === 'number' && typeof valorNovoNormalizado === 'number') {
+                        if (Math.abs(valorAntigoNormalizado - valorNovoNormalizado) < 0.01) {
+                            return; // Valores são iguais, não registrar mudança (retorna do forEach)
+                        }
+                    }
+                }
+                
+                // Comparar valores (considerando arrays e objetos)
+                const valorAntigoStr = JSON.stringify(valorAntigoNormalizado);
+                const valorNovoStr = JSON.stringify(valorNovoNormalizado);
+                
+                if (valorAntigoStr !== valorNovoStr) {
+                    let valorAntigoFormatado = formatarValorParaHistorico(valorAntigo, campo);
+                    let valorNovoFormatado = formatarValorParaHistorico(valorNovo, campo);
+                    
+                    mudancas.push({
+                        campo: nomesCampos[campo] || campo,
+                        valorAntigo: valorAntigoFormatado,
+                        valorNovo: valorNovoFormatado
+                    });
+                }
+            });
+            
+            return mudancas;
+        }
+        
+        // Função para formatar valores para exibição no histórico
+        function formatarValorParaHistorico(valor, campo) {
+            if (valor === null || valor === undefined || valor === '') {
+                return '(vazio)';
+            }
+            
+            // Formatar arrays (tipos_veiculo, tipos_carroceria)
+            if (Array.isArray(valor)) {
+                return valor.length > 0 ? valor.join(', ') : '(nenhum)';
+            }
+            
+            // Formatar datas
+            if (campo.includes('data') || campo.includes('Data')) {
+                if (valor) {
+                    try {
+                        return new Date(valor).toLocaleDateString('pt-BR', {
+                            day: '2-digit',
+                            month: '2-digit',
+                            year: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                        });
+                    } catch (e) {
+                        return valor;
+                    }
+                }
+            }
+            
+            // Formatar valores monetários
+            if (campo === 'valor') {
+                return `R$ ${parseFloat(valor || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+            }
+            
+            // Formatar motorista_id (buscar nome se possível)
+            if (campo === 'motorista_id') {
+                // Retornar ID por enquanto, pode ser melhorado buscando o nome
+                return valor || '(nenhum)';
+            }
+            
+            return valor;
+        }
+        
         // Função para salvar no histórico (salva em ambas as tabelas)
         async function salvarNoHistorico(coletaId, acao, detalhes = '') {
             try {
@@ -5171,6 +5947,16 @@
                 const usuarioNome = currentUser?.nome || currentUser?.username || userData?.email || 'Sistema';
                 const usuarioId = currentUser?.id || userData?.id || null;
                 
+                // Se detalhes é um array de mudanças, formatar para string
+                let detalhesFormatado = '';
+                if (Array.isArray(detalhes) && detalhes.length > 0) {
+                    detalhesFormatado = detalhes.map(m => 
+                        `• ${m.campo}: "${m.valorAntigo}" → "${m.valorNovo}"`
+                    ).join('\n');
+                } else {
+                    detalhesFormatado = detalhes;
+                }
+                
                 // Salvar na tabela historico_coletas (para compatibilidade)
                 const { error: error1 } = await supabase
                     .from('historico_coletas')
@@ -5179,7 +5965,7 @@
                         coleta_id: coletaId,
                         usuario: usuarioNome,
                         acao: acao,
-                        detalhes: detalhes,
+                        detalhes: detalhesFormatado,
                         created_at: new Date().toISOString()
                     }]);
 
@@ -5193,7 +5979,7 @@
                     .insert([{
                         coleta_id: coletaId,
                         acao: acao,
-                        detalhes: detalhes,
+                        detalhes: detalhesFormatado,
                         usuario_id: usuarioId,
                         usuario_nome: usuarioNome,
                         created_at: new Date().toISOString()
@@ -5235,18 +6021,44 @@
                     // Mostra apenas as 3 últimas movimentações
                     const ultimasMovimentacoes = historico.slice(0, 3);
                     
-                    historicoContainer.innerHTML = ultimasMovimentacoes.map(item => `
+                    historicoContainer.innerHTML = ultimasMovimentacoes.map(item => {
+                        // Verificar se detalhes contém mudanças formatadas
+                        let detalhesHTML = '';
+                        if (item.detalhes && item.detalhes.includes('→')) {
+                            detalhesHTML = item.detalhes.split('\n').map(linha => {
+                                if (linha.includes('→')) {
+                                    const [campo, mudanca] = linha.split(':');
+                                    const [antigo, novo] = mudanca.split('→').map(s => s.trim().replace(/"/g, ''));
+                                    return `
+                                        <div style="margin: 0.5rem 0; padding: 0.5rem; background: rgba(102, 126, 234, 0.05); border-radius: 6px; border-left: 3px solid #667eea;">
+                                            <div style="font-weight: 600; color: #667eea; font-size: 0.75rem; margin-bottom: 0.3rem;">${campo.replace('•', '').trim()}</div>
+                                            <div style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; flex-wrap: wrap;">
+                                                <span style="color: #6c757d; text-decoration: line-through;">${antigo}</span>
+                                                <i class="fas fa-arrow-right" style="color: #667eea; font-size: 0.7rem;"></i>
+                                                <span style="color: #28a745; font-weight: 600;">${novo}</span>
+                                            </div>
+                                        </div>
+                                    `;
+                                }
+                                return `<div style="margin: 0.3rem 0; font-size: 0.85rem;">${linha}</div>`;
+                            }).join('');
+                        } else {
+                            detalhesHTML = `<div style="font-size: 0.85rem; color: #6c757d; margin-top: 0.5rem;">${item.detalhes || 'Sem detalhes'}</div>`;
+                        }
+                        
+                        return `
                         <div class="historico-item-card">
                             <div class="historico-item-header">
-                                <span class="historico-usuario-card">${item.usuario}</span>
+                                <span class="historico-usuario-card">${item.usuario || item.usuario_nome || 'Sistema'}</span>
                                 <span class="historico-data-card">${formatarDataHora(item.created_at)}</span>
                             </div>
                             <div class="historico-acao-card">
                                 ${getTextoAcao(item.acao)}
-                                ${item.detalhes ? `<br><small>${item.detalhes}</small>` : ''}
                             </div>
+                            ${detalhesHTML}
                         </div>
-                    `).join('');
+                    `;
+                    }).join('');
                     
                     // Se tiver mais de 3, mostra contador
                     if (historico.length > 3) {
@@ -5430,7 +6242,9 @@
 
         function createColetaCard(coleta) {
             const card = document.createElement('div');
-            card.className = `coleta-card ${coleta.status} collapsed`;
+            // Adicionar classe 'urgente' se a prioridade for urgente
+            const classeUrgente = (coleta.prioridade === 'urgente') ? 'urgente' : '';
+            card.className = `coleta-card ${coleta.status} ${classeUrgente} collapsed`.trim();
             card.setAttribute('data-coleta-id', coleta.id);
             card.onclick = () => openEditColetaModal(coleta.id);
 
@@ -5455,6 +6269,14 @@
                         ` : ''}
                         </div>
                     <div class="status-section">
+                        ${coleta.prioridade === 'urgente' ? `
+                        <div class="urgente-badge" style="background: #e74c3c; color: white; padding: 0.35rem 0.75rem; border-radius: 6px; font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.5rem; box-shadow: 0 2px 4px rgba(231, 76, 60, 0.25); white-space: nowrap; display: inline-flex; align-items: center; gap: 0.3rem;">
+                            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg" style="flex-shrink: 0;">
+                                <path d="M6 0L7.5 4.5L12 6L7.5 7.5L6 12L4.5 7.5L0 6L4.5 4.5L6 0Z" fill="currentColor"/>
+                            </svg>
+                            <span>URGENTE</span>
+                        </div>
+                        ` : ''}
                         <div class="status-badge status-${coleta.status}">
                             ${getStatusText(coleta.status)}
                         </div>
@@ -5511,26 +6333,30 @@
                                 ${coleta.destino}
                             </div>
                         </div>
-                        <div class="info-item">
+                        <div class="info-item" style="grid-column: 1 / -1;">
                             <div class="info-label">Tipos de Veículo</div>
-                            <div class="info-value">
-                                <i class="fas fa-truck"></i>
-                                ${coleta.tipos_veiculo && coleta.tipos_veiculo.length > 0 
-                                    ? coleta.tipos_veiculo.map(v => `<span style="display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 0.2rem 0.6rem; border-radius: 12px; font-size: 0.75rem; margin: 0.2rem 0.2rem 0.2rem 0;">${v}</span>`).join('')
-                                    : '-'}
+                            <div class="info-value" style="flex-wrap: wrap; gap: 0.3rem;">
+                                <i class="fas fa-truck" style="flex-shrink: 0;"></i>
+                                <span style="display: flex; flex-wrap: wrap; gap: 0.3rem; flex: 1; min-width: 0; max-width: 100%; box-sizing: border-box;">
+                                    ${coleta.tipos_veiculo && coleta.tipos_veiculo.length > 0 
+                                        ? coleta.tipos_veiculo.map(v => `<span style="display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 0.2rem 0.6rem; border-radius: 12px; font-size: 0.75rem; white-space: nowrap; max-width: 100%; box-sizing: border-box;">${v}</span>`).join('')
+                                        : '-'}
+                                </span>
                             </div>
                         </div>
-                        <div class="info-item">
+                        <div class="info-item" style="grid-column: 1 / -1;">
                             <div class="info-label">Tipos de Carroceria</div>
-                            <div class="info-value">
-                                <i class="fas fa-box"></i>
-                                ${(() => {
-                                    if (!coleta.tipos_carroceria || coleta.tipos_carroceria.length === 0) return '-';
-                                    return coleta.tipos_carroceria.map(c => {
-                                        const nomeAmigavel = tiposCarroceriaMap[c] || c;
-                                        return `<span style="display: inline-block; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; padding: 0.2rem 0.6rem; border-radius: 12px; font-size: 0.75rem; margin: 0.2rem 0.2rem 0.2rem 0;">${nomeAmigavel}</span>`;
-                                    }).join('');
-                                })()}
+                            <div class="info-value" style="flex-wrap: wrap; gap: 0.3rem;">
+                                <i class="fas fa-box" style="flex-shrink: 0;"></i>
+                                <span style="display: flex; flex-wrap: wrap; gap: 0.3rem; flex: 1; min-width: 0; max-width: 100%; box-sizing: border-box;">
+                                    ${(() => {
+                                        if (!coleta.tipos_carroceria || coleta.tipos_carroceria.length === 0) return '-';
+                                        return coleta.tipos_carroceria.map(c => {
+                                            const nomeAmigavel = tiposCarroceriaMap[c] || c;
+                                            return `<span style="display: inline-block; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; padding: 0.2rem 0.6rem; border-radius: 12px; font-size: 0.75rem; white-space: nowrap; max-width: 100%; box-sizing: border-box;">${nomeAmigavel}</span>`;
+                                        }).join('');
+                                    })()}
+                                </span>
                             </div>
                         </div>
                         <div class="info-item">
@@ -5546,7 +6372,7 @@
                                 <span><i class="fas fa-user-check"></i> Motorista Vinculado</span>
                                 <i class="fas fa-chevron-right" style="font-size: 0.8rem; opacity: 0.7;"></i>
                             </div>
-                            <div class="info-value" id="motorista-info-${coleta.id}" style="color: #333; font-weight: 500; display: flex; flex-wrap: wrap; gap: 1rem;">
+                            <div class="info-value" id="motorista-info-${coleta.id}" style="color: var(--cinza-escuro); font-weight: 500; display: flex; flex-wrap: wrap; gap: 1rem;">
                                 <span><i class="fas fa-spinner fa-spin"></i> Carregando...</span>
                             </div>
                         </div>
@@ -5783,9 +6609,15 @@
                             </button>
                         ` : ''}
                     </div>
-                    <div class="card-date">
-                        <i class="fas fa-calendar"></i>
-                        ${formatarData(coleta.data_recebimento)}
+                    <div class="card-date" style="display: flex; flex-direction: column; gap: 0.3rem;">
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <i class="fas fa-calendar"></i>
+                            <span><strong>Data de Coleta:</strong> ${formatarData(coleta.data_recebimento)}</span>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <i class="fas fa-calendar-check"></i>
+                            <span><strong>Data de Entrega:</strong> ${coleta.data_entrega ? formatarData(coleta.data_entrega) : 'Não informada'}</span>
+                        </div>
                     </div>
                 </div>
             `;
@@ -5813,13 +6645,41 @@
         // ========== MODAIS ==========
         function openNewColetaModal() {
             currentEditingId = null;
+            modoCriacaoLote = false; // Resetar para modo único
+            
             document.getElementById('modalTitle').textContent = 'Nova Coleta';
             document.getElementById('coletaForm').reset();
             document.getElementById('dataRecebimento').valueAsDate = new Date();
             document.getElementById('status').value = 'pendente';
+            document.getElementById('prioridade').value = 'normal';
             document.getElementById('etapaAtual').value = 'comercial';
             document.getElementById('filial').value = ''; // Não preencher automaticamente, obrigar seleção
             document.getElementById('numeroColeta').value = ''; // Limpar número da coleta
+            
+            // Resetar modo de criação (mostrar campo único, esconder múltiplos)
+            const grupoNumero = document.getElementById('grupoNumeroColeta');
+            const grupoMultiplos = document.getElementById('grupoMultiplosNumeros');
+            const inputNumero = document.getElementById('numeroColeta');
+            const textareaMultiplos = document.getElementById('multiplosNumeros');
+            const previewNumeros = document.getElementById('previewNumeros');
+            const modoTexto = document.getElementById('modoTexto');
+            
+            grupoNumero.style.display = 'block';
+            grupoMultiplos.style.display = 'none';
+            inputNumero.setAttribute('required', 'required');
+            textareaMultiplos.removeAttribute('required');
+            modoTexto.innerHTML = '<i class="fas fa-layer-group"></i> Criar Múltiplas';
+            previewNumeros.style.display = 'none';
+            textareaMultiplos.value = '';
+            
+            // Mostrar botão de alternar modo ao criar nova coleta
+            const toggleModoLote = document.getElementById('toggleModoLote');
+            if (toggleModoLote) toggleModoLote.style.display = 'block';
+            
+            // Limpar e desabilitar campo cliente
+            const clienteSelect = document.getElementById('cliente');
+            clienteSelect.innerHTML = '<option value="">Selecione primeiro a filial</option>';
+            clienteSelect.disabled = true;
             
             // Limpar checkboxes de tipos de veículo e carroceria
             document.querySelectorAll('input[name="tiposVeiculo"]').forEach(checkbox => checkbox.checked = false);
@@ -5843,6 +6703,15 @@
 
             currentEditingId = coletaId;
             
+            // Desabilitar modo lote ao editar (sempre editar uma coleta por vez)
+            modoCriacaoLote = false;
+            const grupoNumero = document.getElementById('grupoNumeroColeta');
+            const grupoMultiplos = document.getElementById('grupoMultiplosNumeros');
+            const toggleModoLote = document.getElementById('toggleModoLote');
+            if (grupoNumero) grupoNumero.style.display = 'block';
+            if (grupoMultiplos) grupoMultiplos.style.display = 'none';
+            if (toggleModoLote) toggleModoLote.style.display = 'none'; // Esconder botão de alternar modo ao editar
+            
             // Definir título do modal de forma amigável
             let tituloModal = 'Editar Coleta';
             if (coleta.filial && coleta.numero_coleta) {
@@ -5855,7 +6724,13 @@
             // Preencher formulário
             document.getElementById('filial').value = coleta.filial || '';
             document.getElementById('numeroColeta').value = coleta.numero_coleta || '';
-            document.getElementById('cliente').value = coleta.cliente || '';
+            
+            // Filtrar clientes baseado na filial e depois selecionar o cliente
+            filtrarClientesPorFilial();
+            // Aguardar um pouco para garantir que as opções foram carregadas antes de selecionar
+            setTimeout(() => {
+                document.getElementById('cliente').value = coleta.cliente || '';
+            }, 100);
             
             // Converter data_recebimento (timestamp) para formato de input date (YYYY-MM-DD)
             let dataRecebimentoValue = '';
@@ -5867,6 +6742,17 @@
                 dataRecebimentoValue = `${ano}-${mes}-${dia}`;
             }
             document.getElementById('dataRecebimento').value = dataRecebimentoValue;
+            
+            // Converter data_entrega (timestamp) para formato de input date (YYYY-MM-DD)
+            let dataEntregaValue = '';
+            if (coleta.data_entrega) {
+                const data = new Date(coleta.data_entrega);
+                const ano = data.getFullYear();
+                const mes = String(data.getMonth() + 1).padStart(2, '0');
+                const dia = String(data.getDate()).padStart(2, '0');
+                dataEntregaValue = `${ano}-${mes}-${dia}`;
+            }
+            document.getElementById('dataEntrega').value = dataEntregaValue;
             
             document.getElementById('origem').value = coleta.origem || '';
             document.getElementById('destino').value = coleta.destino || '';
@@ -5886,6 +6772,7 @@
             });
             
             document.getElementById('status').value = coleta.status || 'pendente';
+            document.getElementById('prioridade').value = coleta.prioridade || 'normal';
             document.getElementById('etapaAtual').value = coleta.etapa_atual || 'comercial';
             document.getElementById('observacoes').value = coleta.observacoes || '';
             
@@ -5916,6 +6803,36 @@
                 rawData.etapaAtual = coleta.etapa_atual;
             }
             
+            // ========== MODO CRIAÇÃO EM LOTE ==========
+            if (modoCriacaoLote && !currentEditingId) {
+                const multiplosNumerosInput = document.getElementById('multiplosNumeros').value.trim();
+                if (!multiplosNumerosInput) {
+                    showNotification('⚠️ Por favor, informe os números das coletas', 'warning');
+                    return;
+                }
+                
+                const numerosColetas = parsearMultiplosNumeros(multiplosNumerosInput);
+                if (numerosColetas.length === 0) {
+                    showNotification('⚠️ Nenhum número válido encontrado. Use vírgulas ou intervalos (ex: 5565,5566 ou 5565-5569)', 'warning');
+                    return;
+                }
+                
+                if (!rawData.filial) {
+                    showNotification('⚠️ Por favor, selecione a filial', 'warning');
+                    return;
+                }
+                
+                if (!rawData.cliente) {
+                    showNotification('⚠️ Por favor, selecione o cliente', 'warning');
+                    return;
+                }
+                
+                // Criar múltiplas coletas
+                await criarMultiplasColetas(rawData, numerosColetas);
+                return; // Sair da função após criar múltiplas
+            }
+            
+            // ========== MODO CRIAÇÃO ÚNICA ==========
             // Validar e processar número da coleta (remover zeros à esquerda)
             let numeroColeta = rawData.numeroColeta ? rawData.numeroColeta.trim() : '';
             if (numeroColeta) {
@@ -5984,6 +6901,15 @@
                 }
             }
             
+            // Converter data de entrega para formato ISO (YYYY-MM-DD -> YYYY-MM-DDTHH:MM:SS)
+            let dataEntrega = rawData.dataEntrega;
+            if (dataEntrega) {
+                // Se tiver apenas a data, adicionar horário (meio-dia UTC)
+                if (dataEntrega.length === 10) {
+                    dataEntrega = dataEntrega + 'T12:00:00.000Z';
+                }
+            }
+            
             // Coletar tipos de veículo selecionados
             const tiposVeiculoSelecionados = Array.from(document.querySelectorAll('input[name="tiposVeiculo"]:checked'))
                 .map(checkbox => checkbox.value);
@@ -5997,6 +6923,7 @@
                 numero_coleta: numeroColeta || null,
                 cliente: rawData.cliente,
                 data_recebimento: dataRecebimento,
+                data_entrega: dataEntrega || null,
                 origem: rawData.origem,
                 destino: rawData.destino,
                 valor: parseFloat(rawData.valor) || 0,
@@ -6004,7 +6931,8 @@
                 tipos_veiculo: tiposVeiculoSelecionados,
                 tipos_carroceria: tiposCarroceriaSelecionados,
                 status: rawData.status,
-                etapa_atual: rawData.etapaAtual, 
+                etapa_atual: rawData.etapaAtual,
+                prioridade: rawData.prioridade || 'normal',
                 observacoes: rawData.observacoes
             };
             
@@ -6532,8 +7460,8 @@
                 }
 
                 // Filtro de etapa
-                if (etapaFilter && coleta.etapaAtual !== etapaFilter) {
-                    console.log(`❌ Filtrado por etapa: ${coleta.etapaAtual} !== ${etapaFilter}`);
+                if (etapaFilter && coleta.etapa_atual !== etapaFilter) {
+                    console.log(`❌ Filtrado por etapa: ${coleta.etapa_atual} !== ${etapaFilter}`);
                     return false;
                 }
 
@@ -7439,3 +8367,5 @@
 <script src="js/chat-ia.js"></script>
 </body>
 </html>
+
+
