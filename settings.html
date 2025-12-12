@@ -713,6 +713,11 @@
                         </button>
                     </li>
                     <li class="nav-item" role="presentation">
+                        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabAvisos" type="button">
+                            <i class="fas fa-bullhorn me-2"></i>Avisos
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
                         <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabSistema" type="button">
                             <i class="fas fa-cogs me-2"></i>Configurações
                         </button>
@@ -959,6 +964,42 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- Tab Avisos -->
+                    <div class="tab-pane fade" id="tabAvisos" role="tabpanel">
+                        <div class="card fade-in">
+                            <div class="card-header">
+                                <h5 class="mb-0">
+                                    <i class="fas fa-bullhorn me-2"></i>
+                                    Gerenciamento de Avisos do Sistema
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="alert alert-info">
+                                    <i class="fas fa-info-circle me-2"></i>
+                                    <strong>Como funciona:</strong> Crie avisos que serão exibidos automaticamente quando os usuários logarem no sistema. 
+                                    Se o aviso for obrigatório, o usuário precisará confirmar a leitura antes de continuar.
+                                </div>
+                                
+                                <div class="mb-4">
+                                    <button class="btn btn-primary" onclick="abrirModalNovoAviso()">
+                                        <i class="fas fa-plus me-2"></i>Criar Novo Aviso
+                                    </button>
+                                </div>
+
+                                <div id="containerAvisos">
+                                    <div class="d-flex justify-content-center py-5">
+                                        <div class="text-center">
+                                            <div class="spinner-border text-primary" role="status">
+                                                <span class="visually-hidden">Carregando...</span>
+                                            </div>
+                                            <p class="text-muted mt-3">Carregando avisos...</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
 
                 <!-- Tab Sistema -->
                     <div class="tab-pane fade" id="tabSistema" role="tabpanel">
@@ -1484,6 +1525,97 @@
         </div>
     </div>
 
+    <!-- Modal Novo Aviso -->
+    <div class="modal fade" id="modalNovoAviso" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="fas fa-bullhorn me-2"></i><span id="modalAvisoTitulo">Novo Aviso</span>
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="formNovoAviso">
+                        <input type="hidden" id="avisoId">
+                        <div class="mb-3">
+                            <label class="form-label">Título do Aviso *</label>
+                            <input type="text" id="tituloAviso" class="form-control" required 
+                                   placeholder="Ex: Feriado Nacional - Dia da Independência" autocomplete="off">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Conteúdo do Aviso *</label>
+                            <textarea id="conteudoAviso" class="form-control" rows="6" required 
+                                      placeholder="Digite o conteúdo completo do aviso..." autocomplete="off"></textarea>
+                            <small class="text-muted">Você pode usar HTML para formatação</small>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Tipo de Aviso *</label>
+                                <select id="tipoAviso" class="form-select" required>
+                                    <option value="info">Informação (Azul)</option>
+                                    <option value="warning">Atenção (Amarelo)</option>
+                                    <option value="success">Sucesso (Verde)</option>
+                                    <option value="danger">Urgente (Vermelho)</option>
+                                    <option value="feriado">Feriado</option>
+                                    <option value="atualizacao">Atualização do Sistema</option>
+                                    <option value="treinamento">Treinamento</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Prioridade *</label>
+                                <select id="prioridadeAviso" class="form-select" required>
+                                    <option value="baixa">Baixa</option>
+                                    <option value="normal" selected>Normal</option>
+                                    <option value="alta">Alta</option>
+                                    <option value="urgente">Urgente</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Data de Início</label>
+                                <input type="datetime-local" id="dataInicioAviso" class="form-control">
+                                <small class="text-muted">Deixe em branco para começar imediatamente</small>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Data de Término (Opcional)</label>
+                                <input type="datetime-local" id="dataFimAviso" class="form-control">
+                                <small class="text-muted">O aviso expirará automaticamente após esta data</small>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="obrigatorioAviso" checked>
+                                <label class="form-check-label" for="obrigatorioAviso">
+                                    <strong>Aviso Obrigatório</strong>
+                                    <small class="text-muted d-block">O usuário precisa confirmar a leitura antes de continuar</small>
+                                </label>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="ativoAviso" checked>
+                                <label class="form-check-label" for="ativoAviso">
+                                    <strong>Aviso Ativo</strong>
+                                    <small class="text-muted d-block">O aviso será exibido para os usuários</small>
+                                </label>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-2"></i>Cancelar
+                    </button>
+                    <button type="button" class="btn btn-primary" onclick="salvarAviso()">
+                        <i class="fas fa-save me-2"></i>Salvar Aviso
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -1548,6 +1680,7 @@
             await carregarUsuariosLogados(); // Carregar usuários logados ao iniciar
             await carregarCredenciaisAPI();
             await carregarConfiguracoes();
+            // Não carregar avisos aqui - será carregado quando a tab for exibida
             console.log('✅ Configurações carregadas com sucesso!');
         });
 
@@ -3098,11 +3231,6 @@
                             <label class="form-check-label" for="permPortalMonitoramento">Monitoramento</label>
                         </div>
                     </div>
-                </div>
-                <div class="row mb-2">
-                    <div class="col-12">
-                        <h6 class="text-muted mb-2"><i class="fas fa-users"></i> Gestão</h6>
-                    </div>
                     <div class="col-md-3">
                         <div class="form-check form-switch">
                             <input class="form-check-input" type="checkbox" id="permPortalCadastro" 
@@ -3110,6 +3238,11 @@
                                 onchange="salvarPermissaoPortal('cadastro', this.checked)">
                             <label class="form-check-label" for="permPortalCadastro">Cadastro de Motoristas</label>
                         </div>
+                    </div>
+                </div>
+                <div class="row mb-2">
+                    <div class="col-12">
+                        <h6 class="text-muted mb-2"><i class="fas fa-users"></i> Gestão</h6>
                     </div>
                     <div class="col-md-3">
                         <div class="form-check form-switch">
@@ -4227,11 +4360,298 @@
             mostrarInfo('Funcionalidade de edição em desenvolvimento');
         }
 
+        // ========== GERENCIAMENTO DE AVISOS ==========
+        async function carregarAvisos() {
+            try {
+                const { data, error } = await window.supabase
+                    .from('avisos_sistema')
+                    .select('*')
+                    .order('created_at', { ascending: false });
+
+                if (error) throw error;
+
+                const container = document.getElementById('containerAvisos');
+                if (!container) return;
+
+                if (!data || data.length === 0) {
+                    container.innerHTML = `
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle me-2"></i>
+                            Nenhum aviso criado ainda. Clique em "Criar Novo Aviso" para começar.
+                        </div>
+                    `;
+                    return;
+                }
+
+                container.innerHTML = `
+                    <div class="row g-3">
+                        ${data.map(aviso => {
+                            const tipoBadges = {
+                                'info': 'bg-info',
+                                'warning': 'bg-warning text-dark',
+                                'success': 'bg-success',
+                                'danger': 'bg-danger',
+                                'feriado': 'bg-secondary',
+                                'atualizacao': 'bg-primary',
+                                'treinamento': 'bg-info'
+                            };
+                            const prioridadeBadges = {
+                                'baixa': 'bg-secondary',
+                                'normal': 'bg-primary',
+                                'alta': 'bg-warning text-dark',
+                                'urgente': 'bg-danger'
+                            };
+                            const tipoNomes = {
+                                'info': 'Informação',
+                                'warning': 'Atenção',
+                                'success': 'Sucesso',
+                                'danger': 'Urgente',
+                                'feriado': 'Feriado',
+                                'atualizacao': 'Atualização',
+                                'treinamento': 'Treinamento'
+                            };
+                            const tipoIcones = {
+                                'info': 'fa-info-circle',
+                                'warning': 'fa-exclamation-triangle',
+                                'success': 'fa-check-circle',
+                                'danger': 'fa-exclamation-circle',
+                                'feriado': 'fa-calendar-alt',
+                                'atualizacao': 'fa-sync-alt',
+                                'treinamento': 'fa-graduation-cap'
+                            };
+                            
+                            const dataInicio = aviso.data_inicio 
+                                ? new Date(aviso.data_inicio).toLocaleString('pt-BR')
+                                : 'Imediato';
+                            const dataFim = aviso.data_fim 
+                                ? new Date(aviso.data_fim).toLocaleString('pt-BR')
+                                : 'Sem data de término';
+                            const expirado = aviso.data_fim && new Date(aviso.data_fim) < new Date();
+                            
+                            return `
+                                <div class="col-md-6 col-lg-4">
+                                    <div class="card border-0 shadow-sm h-100 ${!aviso.ativo || expirado ? 'opacity-75' : ''}">
+                                        <div class="card-body">
+                                            <div class="d-flex align-items-start justify-content-between mb-2">
+                                                <div>
+                                                    <span class="badge ${tipoBadges[aviso.tipo] || 'bg-secondary'} me-2">
+                                                        <i class="fas ${tipoIcones[aviso.tipo] || 'fa-bullhorn'} me-1"></i>
+                                                        ${tipoNomes[aviso.tipo] || aviso.tipo}
+                                                    </span>
+                                                    <span class="badge ${prioridadeBadges[aviso.prioridade] || 'bg-primary'}">
+                                                        ${aviso.prioridade}
+                                                    </span>
+                                                </div>
+                                                ${!aviso.ativo ? '<span class="badge bg-secondary">Inativo</span>' : ''}
+                                                ${expirado ? '<span class="badge bg-warning text-dark">Expirado</span>' : ''}
+                                            </div>
+                                            <h6 class="card-title mb-2">${aviso.titulo}</h6>
+                                            <p class="card-text small text-muted mb-2" style="
+                                                display: -webkit-box;
+                                                -webkit-line-clamp: 3;
+                                                -webkit-box-orient: vertical;
+                                                overflow: hidden;
+                                            ">${aviso.conteudo.replace(/<[^>]*>/g, '').substring(0, 150)}...</p>
+                                            <div class="mb-2">
+                                                <small class="text-muted d-block">
+                                                    <i class="fas fa-calendar-alt me-1"></i>
+                                                    Início: ${dataInicio}
+                                                </small>
+                                                <small class="text-muted d-block">
+                                                    <i class="fas fa-calendar-times me-1"></i>
+                                                    Fim: ${dataFim}
+                                                </small>
+                                                ${aviso.obrigatorio ? '<small class="text-danger d-block"><i class="fas fa-lock me-1"></i>Obrigatório</small>' : ''}
+                                            </div>
+                                            <div class="btn-group btn-group-sm w-100">
+                                                <button class="btn btn-outline-primary" onclick="editarAviso('${aviso.id}')" title="Editar">
+                                                    <i class="fas fa-edit"></i>
+                                                </button>
+                                                <button class="btn btn-${aviso.ativo ? 'warning' : 'success'}" onclick="toggleAviso('${aviso.id}', ${aviso.ativo})" title="${aviso.ativo ? 'Desativar' : 'Ativar'}">
+                                                    <i class="fas fa-${aviso.ativo ? 'pause' : 'play'}"></i>
+                                                </button>
+                                                <button class="btn btn-outline-danger" onclick="excluirAviso('${aviso.id}', '${(aviso.titulo || '').replace(/'/g, "\\'")}')" title="Excluir">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                `;
+            } catch (error) {
+                console.error('❌ Erro ao carregar avisos:', error);
+                document.getElementById('containerAvisos').innerHTML = `
+                    <div class="alert alert-danger">
+                        <i class="fas fa-exclamation-circle me-2"></i>
+                        Erro ao carregar avisos: ${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        function abrirModalNovoAviso() {
+            document.getElementById('formNovoAviso').reset();
+            document.getElementById('avisoId').value = '';
+            document.getElementById('modalAvisoTitulo').textContent = 'Novo Aviso';
+            document.getElementById('obrigatorioAviso').checked = true;
+            document.getElementById('ativoAviso').checked = true;
+            document.getElementById('prioridadeAviso').value = 'normal';
+            document.getElementById('tipoAviso').value = 'info';
+            document.getElementById('dataInicioAviso').value = '';
+            document.getElementById('dataFimAviso').value = '';
+            new bootstrap.Modal(document.getElementById('modalNovoAviso')).show();
+        }
+
+        async function editarAviso(avisoId) {
+            try {
+                const { data, error } = await window.supabase
+                    .from('avisos_sistema')
+                    .select('*')
+                    .eq('id', avisoId)
+                    .single();
+
+                if (error) throw error;
+
+                document.getElementById('avisoId').value = data.id;
+                document.getElementById('tituloAviso').value = data.titulo || '';
+                document.getElementById('conteudoAviso').value = data.conteudo || '';
+                document.getElementById('tipoAviso').value = data.tipo || 'info';
+                document.getElementById('prioridadeAviso').value = data.prioridade || 'normal';
+                document.getElementById('obrigatorioAviso').checked = data.obrigatorio !== false;
+                document.getElementById('ativoAviso').checked = data.ativo !== false;
+                
+                if (data.data_inicio) {
+                    const dataInicio = new Date(data.data_inicio);
+                    dataInicio.setMinutes(dataInicio.getMinutes() - dataInicio.getTimezoneOffset());
+                    document.getElementById('dataInicioAviso').value = dataInicio.toISOString().slice(0, 16);
+                } else {
+                    document.getElementById('dataInicioAviso').value = '';
+                }
+                
+                if (data.data_fim) {
+                    const dataFim = new Date(data.data_fim);
+                    dataFim.setMinutes(dataFim.getMinutes() - dataFim.getTimezoneOffset());
+                    document.getElementById('dataFimAviso').value = dataFim.toISOString().slice(0, 16);
+                } else {
+                    document.getElementById('dataFimAviso').value = '';
+                }
+
+                document.getElementById('modalAvisoTitulo').textContent = 'Editar Aviso';
+                new bootstrap.Modal(document.getElementById('modalNovoAviso')).show();
+            } catch (error) {
+                console.error('❌ Erro ao carregar aviso:', error);
+                mostrarErro('Erro ao carregar aviso: ' + error.message);
+            }
+        }
+
+        async function salvarAviso() {
+            try {
+                const avisoId = document.getElementById('avisoId').value;
+                const titulo = document.getElementById('tituloAviso').value.trim();
+                const conteudo = document.getElementById('conteudoAviso').value.trim();
+                const tipo = document.getElementById('tipoAviso').value;
+                const prioridade = document.getElementById('prioridadeAviso').value;
+                const obrigatorio = document.getElementById('obrigatorioAviso').checked;
+                const ativo = document.getElementById('ativoAviso').checked;
+                const dataInicio = document.getElementById('dataInicioAviso').value;
+                const dataFim = document.getElementById('dataFimAviso').value;
+
+                if (!titulo || !conteudo) {
+                    mostrarErro('Preencha todos os campos obrigatórios');
+                    return;
+                }
+
+                const avisoData = {
+                    titulo,
+                    conteudo,
+                    tipo,
+                    prioridade,
+                    obrigatorio,
+                    ativo,
+                    data_inicio: dataInicio ? new Date(dataInicio).toISOString() : null,
+                    data_fim: dataFim ? new Date(dataFim).toISOString() : null
+                };
+
+                if (avisoId) {
+                    // Atualizar aviso existente
+                    const { error } = await window.supabase
+                        .from('avisos_sistema')
+                        .update(avisoData)
+                        .eq('id', avisoId);
+
+                    if (error) throw error;
+                    mostrarSucesso('Aviso atualizado com sucesso!');
+                } else {
+                    // Criar novo aviso
+                    avisoData.criado_por = currentUser.id;
+                    const { error } = await window.supabase
+                        .from('avisos_sistema')
+                        .insert([avisoData]);
+
+                    if (error) throw error;
+                    mostrarSucesso('Aviso criado com sucesso!');
+                }
+
+                bootstrap.Modal.getInstance(document.getElementById('modalNovoAviso')).hide();
+                await carregarAvisos();
+            } catch (error) {
+                console.error('❌ Erro ao salvar aviso:', error);
+                mostrarErro('Erro ao salvar aviso: ' + error.message);
+            }
+        }
+
+        async function toggleAviso(avisoId, ativoAtual) {
+            try {
+                const { error } = await window.supabase
+                    .from('avisos_sistema')
+                    .update({ ativo: !ativoAtual })
+                    .eq('id', avisoId);
+
+                if (error) throw error;
+                mostrarSucesso(`Aviso ${!ativoAtual ? 'ativado' : 'desativado'} com sucesso!`);
+                await carregarAvisos();
+            } catch (error) {
+                console.error('❌ Erro ao alterar status do aviso:', error);
+                mostrarErro('Erro ao alterar status: ' + error.message);
+            }
+        }
+
+        async function excluirAviso(avisoId, titulo) {
+            if (!confirm(`Tem certeza que deseja excluir o aviso "${titulo}"?\n\nEsta ação não pode ser desfeita.`)) {
+                return;
+            }
+
+            try {
+                const { error } = await window.supabase
+                    .from('avisos_sistema')
+                    .delete()
+                    .eq('id', avisoId);
+
+                if (error) throw error;
+                mostrarSucesso('Aviso excluído com sucesso!');
+                await carregarAvisos();
+            } catch (error) {
+                console.error('❌ Erro ao excluir aviso:', error);
+                mostrarErro('Erro ao excluir aviso: ' + error.message);
+            }
+        }
+
         // Carregar etiquetas quando a aba Etiquetas for exibida
         const btnTabEtiquetas = document.querySelector('button[data-bs-target="#tabEtiquetas"]');
         if (btnTabEtiquetas) {
             btnTabEtiquetas.addEventListener('shown.bs.tab', function () {
                 carregarEtiquetas();
+            });
+        }
+
+        // Carregar avisos quando a aba Avisos for exibida
+        const btnTabAvisos = document.querySelector('button[data-bs-target="#tabAvisos"]');
+        if (btnTabAvisos) {
+            btnTabAvisos.addEventListener('shown.bs.tab', function () {
+                carregarAvisos();
             });
         }
 
