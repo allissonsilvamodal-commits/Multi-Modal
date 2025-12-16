@@ -2256,7 +2256,7 @@
                         description: 'Sistema completo de avaliação de desempenho',
                         icon: 'fas fa-chart-pie',
                         url: 'avaliacao-360.html',
-                        permission: 'avaliacao_360',
+                        permission: 'avaliacao-360',
                         adminOnly: false
                     }
                 ]
@@ -3279,6 +3279,15 @@
                     return;
                 }
 
+                // Verificar se os avisos já foram exibidos nesta sessão de login
+                const sessionKey = `avisos_exibidos_${currentUser.id}`;
+                const avisosExibidosSessao = sessionStorage.getItem(sessionKey);
+                
+                if (avisosExibidosSessao) {
+                    console.log('✅ Avisos já foram exibidos nesta sessão');
+                    return;
+                }
+
                 // Buscar avisos ativos não lidos pelo usuário
                 const { data: avisos, error } = await supabase
                     .from('avisos_sistema')
@@ -3295,6 +3304,8 @@
 
                 if (!avisos || avisos.length === 0) {
                     console.log('✅ Nenhum aviso ativo encontrado');
+                    // Marcar como exibido mesmo sem avisos para não verificar novamente
+                    sessionStorage.setItem(sessionKey, 'true');
                     return;
                 }
 
@@ -3323,6 +3334,8 @@
 
                 if (avisosNaoLidos.length === 0) {
                     console.log('✅ Todos os avisos já foram lidos');
+                    // Marcar como exibido para não verificar novamente nesta sessão
+                    sessionStorage.setItem(sessionKey, 'true');
                     return;
                 }
 
@@ -3337,6 +3350,9 @@
 
                 avisosPendentes = avisosNaoLidos;
                 avisoAtualIndex = 0;
+
+                // Marcar que os avisos foram exibidos nesta sessão (antes de exibir para evitar múltiplas exibições)
+                sessionStorage.setItem(sessionKey, 'true');
 
                 // Exibir primeiro aviso
                 exibirProximoAviso();
