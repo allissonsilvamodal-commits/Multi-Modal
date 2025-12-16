@@ -3286,8 +3286,8 @@
 
         async function verificarAvisosNaoLidos() {
             try {
-                if (!currentUser || !currentUser.id || !supabase) {
-                    console.warn('⚠️ Não é possível verificar avisos: usuário ou supabase não inicializado');
+                if (!currentUser || !currentUser.id || !supabaseClient) {
+                    console.warn('⚠️ Não é possível verificar avisos: usuário ou supabaseClient não inicializado');
                     return;
                 }
 
@@ -3300,17 +3300,30 @@
                     return;
                 }
 
+                // Verificar se há sessão autenticada antes de buscar avisos
+                const { data: { session } } = await supabaseClient.auth.getSession();
+                if (!session || !session.access_token) {
+                    console.warn('⚠️ Sessão do Supabase não encontrada, não é possível buscar avisos');
+                    return;
+                }
+
                 // Buscar avisos ativos não lidos pelo usuário
-                const { data: avisos, error } = await supabase
+                const agora = new Date().toISOString();
+                // Buscar avisos ativos (filtrar data_inicio e data_fim no JavaScript para evitar problemas com OR aninhados)
+                const { data: avisos, error } = await supabaseClient
                     .from('avisos_sistema')
                     .select('*')
                     .eq('ativo', true)
-                    .or(`data_fim.is.null,data_fim.gte.${new Date().toISOString()}`)
                     .order('prioridade', { ascending: false })
                     .order('created_at', { ascending: false });
 
                 if (error) {
-                    console.error('❌ Erro ao buscar avisos:', error);
+                    // Se for erro de RLS, apenas logar (não bloquear completamente)
+                    if (error.code === '42501' || error.message?.includes('row-level security') || error.code === 'PGRST301') {
+                        console.warn('⚠️ Erro de RLS ao buscar avisos (política de segurança). Avisos não serão exibidos:', error.message);
+                    } else {
+                        console.error('❌ Erro ao buscar avisos:', error);
+                    }
                     return;
                 }
 
@@ -3321,21 +3334,50 @@
                     return;
                 }
 
+                // Filtrar avisos por data_inicio e data_fim no JavaScript
+                const avisosNoPeriodo = avisos.filter(aviso => {
+                    const agora = new Date();
+                    
+                    // Verificar data_inicio: se tiver, deve ser <= agora
+                    if (aviso.data_inicio) {
+                        const dataInicio = new Date(aviso.data_inicio);
+                        if (dataInicio > agora) {
+                            return false; // Aviso ainda não começou
+                        }
+                    }
+                    
+                    // Verificar data_fim: se tiver, deve ser >= agora
+                    if (aviso.data_fim) {
+                        const dataFim = new Date(aviso.data_fim);
+                        if (dataFim < agora) {
+                            return false; // Aviso já expirou
+                        }
+                    }
+                    
+                    return true; // Aviso está no período válido
+                });
+
                 // Buscar quais avisos já foram lidos pelo usuário
+                let idsLidos = new Set();
                 const { data: avisosLidos, error: errorLidos } = await supabaseClient
                     .from('avisos_lidos')
                     .select('aviso_id')
                     .eq('user_id', currentUser.id);
 
                 if (errorLidos) {
-                    console.error('❌ Erro ao buscar avisos lidos:', errorLidos);
-                    return;
+                    // Se for erro de RLS, continuar mesmo assim (tratar como nenhum aviso lido)
+                    if (errorLidos.code === '42501' || errorLidos.message?.includes('row-level security')) {
+                        console.warn('⚠️ Erro de RLS ao buscar avisos lidos, continuando como se nenhum aviso tivesse sido lido:', errorLidos.message);
+                    } else {
+                        console.error('❌ Erro ao buscar avisos lidos:', errorLidos);
+                        // Continuar mesmo com erro para não bloquear a exibição de avisos
+                    }
+                } else if (avisosLidos) {
+                    idsLidos = new Set(avisosLidos.map(al => al.aviso_id));
                 }
 
-                const idsLidos = new Set((avisosLidos || []).map(al => al.aviso_id));
-                
-                // Filtrar avisos para exibir
-                const avisosNaoLidos = avisos.filter(aviso => {
+                // Filtrar avisos para exibir (dos que estão no período válido)
+                const avisosNaoLidos = avisosNoPeriodo.filter(aviso => {
                     // Se for obrigatório, SEMPRE mostrar (independente de já ter sido lido)
                     if (aviso.obrigatorio) {
                         return true;
