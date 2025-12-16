@@ -1755,29 +1755,41 @@
                         // ✅ Buscar perfil do usuário no Supabase para verificar role
                         let isAdminFromDB = userData.isAdmin || userData.role === 'admin';
                         
-                        // ✅ Buscar role diretamente do Supabase (sem depender da API que retorna 404)
+                        // ✅ Buscar role diretamente do Supabase (com tratamento de erro RLS)
                         try {
-                            if (window.supabase) {
-                                console.log('🔍 Buscando perfil no Supabase para ID:', userData.id);
-                                const { data: profile, error } = await window.supabase
-                                    .from('user_profiles')
-                                    .select('role, nome')
-                                    .eq('id', userData.id)
-                                    .single();
+                            if (supabaseClient) {
+                                // Tentar obter sessão primeiro para garantir autenticação
+                                const { data: { session } } = await supabaseClient.auth.getSession();
                                 
-                                console.log('📋 Resposta do Supabase:', { profile, error: error?.message });
-                                
-                                if (!error && profile) {
-                                    isAdminFromDB = profile.role === 'admin';
-                                    console.log('✅ Role encontrado na tabela user_profiles:', profile.role);
-                                    if (profile.nome) {
-                                        userData.username = profile.nome;
+                                if (session && session.access_token) {
+                                    console.log('🔍 Buscando perfil no Supabase para ID:', userData.id);
+                                    const { data: profile, error } = await supabaseClient
+                                        .from('user_profiles')
+                                        .select('role, nome')
+                                        .eq('id', userData.id)
+                                        .single();
+                                    
+                                    console.log('📋 Resposta do Supabase:', { profile, error: error?.message });
+                                    
+                                    if (!error && profile) {
+                                        isAdminFromDB = profile.role === 'admin';
+                                        console.log('✅ Role encontrado na tabela user_profiles:', profile.role);
+                                        if (profile.nome) {
+                                            userData.username = profile.nome;
+                                        }
+                                    } else {
+                                        // Se der erro de RLS (406, 401, 42501), usar role do localStorage
+                                        if (error && (error.code === '42501' || error.code === 'PGRST301' || error.message?.includes('row-level security'))) {
+                                            console.log('⚠️ Erro de RLS ao buscar perfil, usando role do localStorage:', error?.message);
+                                        } else {
+                                            console.log('⚠️ Erro ao buscar perfil:', error?.message, error?.details, error?.hint);
+                                        }
                                     }
                                 } else {
-                                    console.log('⚠️ Erro ao buscar perfil:', error?.message, error?.details, error?.hint);
+                                    console.log('⚠️ Sessão do Supabase não encontrada, usando role do localStorage');
                                 }
                             } else {
-                                console.error('❌ window.supabase não está inicializado');
+                                console.error('❌ supabaseClient não está inicializado');
                             }
                         } catch (error) {
                             console.error('❌ Erro ao buscar perfil do Supabase:', error);
@@ -3502,16 +3514,34 @@
             const aviso = avisosPendentes[avisoAtualIndex];
             
             try {
-                // Marcar aviso como lido
-                const { error } = await supabaseClient
-                    .from('avisos_lidos')
-                    .insert([{
-                        aviso_id: aviso.id,
-                        user_id: currentUser.id
-                    }]);
+                // Verificar se há sessão autenticada antes de tentar inserir
+                if (!supabaseClient || !currentUser || !currentUser.id) {
+                    console.warn('⚠️ Supabase não inicializado ou usuário não autenticado');
+                    // Continuar mesmo sem marcar como lido (não bloquear UX)
+                } else {
+                    // Tentar obter sessão para garantir autenticação
+                    const { data: { session } } = await supabaseClient.auth.getSession();
+                    
+                    if (session && session.access_token) {
+                        // Marcar aviso como lido
+                        const { error } = await supabaseClient
+                            .from('avisos_lidos')
+                            .insert([{
+                                aviso_id: aviso.id,
+                                user_id: currentUser.id
+                            }]);
 
-                if (error && !error.message.includes('duplicate')) {
-                    console.error('❌ Erro ao marcar aviso como lido:', error);
+                        if (error && !error.message.includes('duplicate')) {
+                            // Se for erro de RLS, apenas logar (não bloquear UX)
+                            if (error.code === '42501' || error.message?.includes('row-level security')) {
+                                console.warn('⚠️ Erro de RLS ao marcar aviso como lido (política de segurança). Continuando...', error.message);
+                            } else {
+                                console.error('❌ Erro ao marcar aviso como lido:', error);
+                            }
+                        }
+                    } else {
+                        console.warn('⚠️ Sessão do Supabase não encontrada, não foi possível marcar aviso como lido');
+                    }
                 }
 
                 // Fechar modal atual
