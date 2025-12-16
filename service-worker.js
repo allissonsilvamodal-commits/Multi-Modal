@@ -56,8 +56,14 @@ self.addEventListener('fetch', (event) => {
 
   // Cache de recursos estáticos (apenas same-origin)
   event.respondWith(
-    caches.match(event.request).then((response) => {
-      return response || fetch(event.request).then((fetchResponse) => {
+    caches.match(event.request).then((cachedResponse) => {
+      // Se temos uma resposta em cache, retornar
+      if (cachedResponse) {
+        return cachedResponse;
+      }
+      
+      // Tentar buscar da rede
+      return fetch(event.request).then((fetchResponse) => {
         // Não fazer cache de HTML dinâmico
         if (event.request.destination === 'document') {
           return fetchResponse;
@@ -84,9 +90,26 @@ self.addEventListener('fetch', (event) => {
         }
         return fetchResponse;
       }).catch((error) => {
-        // Se o fetch falhar, retornar erro
-        console.warn('⚠️ Erro ao fazer fetch:', error);
-        throw error;
+        // Se o fetch falhar e não temos cache, retornar erro de rede
+        // Mas apenas logar o erro, não quebrar a aplicação
+        console.warn('⚠️ Erro ao fazer fetch (offline ou erro de rede):', {
+          url: event.request.url,
+          error: error.message || error.toString()
+        });
+        // Retornar erro de rede genérico
+        return new Response('Erro de rede', {
+          status: 503,
+          statusText: 'Service Unavailable',
+          headers: { 'Content-Type': 'text/plain' }
+        });
+      });
+    }).catch((error) => {
+      // Se tudo falhar, retornar erro genérico
+      console.warn('⚠️ Erro geral no service worker fetch:', error);
+      return new Response('Erro no service worker', {
+        status: 500,
+        statusText: 'Internal Server Error',
+        headers: { 'Content-Type': 'text/plain' }
       });
     })
   );

@@ -3688,19 +3688,78 @@
               <span><i class="fas fa-coins"></i> ${formatCurrency(viagem.valor)}</span>
               <span><i class="fas fa-diagram-project"></i> Etapa: ${escapeHtml((viagem.etapaAtual || viagem.etapa_atual || '—').toUpperCase())}</span>
             </div>
-            ${podeDesvincular ? `
-              <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid rgba(148, 163, 184, 0.2); display: block !important;">
-                <button class="btn btn-outline danger" onclick="window.desvincularColeta('${escapeHtml(viagem.id)}', '${escapeHtml(identificador)}')" style="width: 100%; padding: 0.5rem; display: block !important; visibility: visible !important; opacity: 1 !important;">
-                  <i class="fas fa-unlink me-2"></i> Desvincular desta coleta
+            <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid rgba(148, 163, 184, 0.2); display: flex; gap: 0.5rem; flex-wrap: wrap;">
+              <button class="btn btn-primary" onclick="window.ativarLocalizacaoGPS('${escapeHtml(viagem.id)}', '${escapeHtml(identificador)}')" style="flex: 1; min-width: 150px; padding: 0.5rem; display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
+                <i class="fas fa-map-marker-alt"></i>
+                <span>Ativar Localização GPS</span>
+              </button>
+              ${podeDesvincular ? `
+                <button class="btn btn-outline danger" onclick="window.desvincularColeta('${escapeHtml(viagem.id)}', '${escapeHtml(identificador)}')" style="flex: 1; min-width: 150px; padding: 0.5rem; display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
+                  <i class="fas fa-unlink"></i>
+                  <span>Desvincular</span>
                 </button>
-              </div>
-            ` : ''}
+              ` : ''}
+            </div>
           </article>
         `;
       }).join('');
 
       elements.minhasViagensLista.innerHTML = html;
     }
+
+    // Função para ativar localização GPS (tornada global para onclick)
+    window.ativarLocalizacaoGPS = async function(coletaId, identificador) {
+      if (!coletaId) {
+        logger.error('❌ ID da coleta não fornecido');
+        showToast('Erro: ID da coleta não fornecido', 'error');
+        return;
+      }
+
+      try {
+        logger.log('📍 Ativando localização GPS para coleta:', coletaId);
+
+        // Verificar se o rastreamento já está ativo para esta coleta
+        if (rastreamentoAtivo && coletaRastreamentoAtiva === coletaId) {
+          showToast('✅ Localização GPS já está ativa para esta viagem!', 'success');
+          return;
+        }
+
+        // Verificar termo de rastreamento
+        try {
+          const termoResponse = await fetch(`/api/rastreamento/verificar-termo?coletaId=${encodeURIComponent(coletaId)}`, {
+            headers: getAuthHeaders()
+          });
+
+          if (!termoResponse.ok) {
+            throw new Error('Erro ao verificar termo de rastreamento');
+          }
+
+          const termoData = await termoResponse.json();
+
+          // Se não aceitou o termo, mostrar modal
+          if (!termoData.aceito) {
+            logger.log('⚠️ Termo de rastreamento não aceito, mostrando modal...');
+            coletaPendenteConfirmacao = coletaId;
+            mostrarModalTermoRastreamento();
+            return;
+          }
+
+          logger.log('✅ Termo de rastreamento já aceito');
+        } catch (termoError) {
+          logger.warn('⚠️ Erro ao verificar termo, tentando iniciar mesmo assim:', termoError);
+          // Continuar mesmo se houver erro ao verificar termo
+        }
+
+        // Iniciar rastreamento
+        await iniciarRastreamento(coletaId);
+
+        showToast(`📍 Localização GPS ativada com sucesso para: ${identificador}`, 'success');
+
+      } catch (error) {
+        logger.error('❌ Erro ao ativar localização GPS:', error);
+        showToast(error.message || 'Erro ao ativar localização GPS. Tente novamente.', 'error');
+      }
+    };
 
     // Função para desvincular de uma coleta (tornada global para onclick)
     window.desvincularColeta = async function(coletaId, identificador) {
@@ -3772,14 +3831,21 @@
 
           const html = notificacoes.map(notif => {
             const dataFormatada = notif.solicitadoEm ? new Date(notif.solicitadoEm).toLocaleString('pt-BR') : 'Agora';
+            
+            // Verificar se é uma solicitação de localização GPS
+            const isLocalizacao = notif.motivo && notif.motivo.startsWith('📍 LOCALIZAÇÃO GPS:');
+            const motivoDisplay = isLocalizacao 
+              ? notif.motivo.replace('📍 LOCALIZAÇÃO GPS: ', '').trim()
+              : escapeHtml(notif.motivo);
+            
             return `
               <div class="notification-item">
                 <div class="notification-icon">
-                  <i class="fas fa-exclamation-circle"></i>
+                  <i class="fas ${isLocalizacao ? 'fa-map-marker-alt' : 'fa-exclamation-circle'}"></i>
                 </div>
                 <div class="notification-content">
-                  <h4>Atualização solicitada: ${escapeHtml(notif.categoriaLabel)}</h4>
-                  <p class="notification-motive">${escapeHtml(notif.motivo)}</p>
+                  <h4>${isLocalizacao ? '📍 Solicitação de Localização GPS' : `Atualização solicitada: ${escapeHtml(notif.categoriaLabel)}`}</h4>
+                  <p class="notification-motive">${motivoDisplay}</p>
                   ${notif.coleta ? `
                     <p class="notification-coleta">
                       <i class="fas fa-truck"></i> 
@@ -3792,9 +3858,15 @@
                   </p>
                 </div>
                 <div class="notification-actions">
-                  <button class="btn btn-primary btn-sm" onclick="window.abrirModalAtualizacaoDocumento('${notif.coletaId}', '${notif.categoria}', '${notif.id}')">
-                    <i class="fas fa-upload"></i> Atualizar
-                  </button>
+                  ${isLocalizacao ? `
+                    <button class="btn btn-primary btn-sm" onclick="window.atenderSolicitacaoLocalizacao('${notif.coletaId}', '${notif.id}')">
+                      <i class="fas fa-map-marker-alt"></i> Ativar Localização
+                    </button>
+                  ` : `
+                    <button class="btn btn-primary btn-sm" onclick="window.abrirModalAtualizacaoDocumento('${notif.coletaId}', '${notif.categoria}', '${notif.id}')">
+                      <i class="fas fa-upload"></i> Atualizar
+                    </button>
+                  `}
                 </div>
               </div>
             `;
@@ -3806,6 +3878,49 @@
         }
       }, 'Erro ao carregar notificações');
     }
+
+    window.atenderSolicitacaoLocalizacao = async function(coletaId, solicitacaoId) {
+      if (!coletaId) {
+        showToast('Erro: ID da coleta não fornecido', 'error');
+        return;
+      }
+
+      try {
+        logger.log('📍 Atendendo solicitação de localização GPS:', { coletaId, solicitacaoId });
+
+        // Buscar identificador da coleta para mensagens
+        const viagem = state.viagens?.find(v => v.id === coletaId);
+        const identificador = viagem 
+          ? ((viagem.filial && viagem.numeroColeta) 
+            ? `${viagem.filial} #${viagem.numeroColeta}`
+            : viagem.cliente || 'Coleta')
+          : 'Coleta';
+
+        // Ativar localização GPS usando a função existente
+        await ativarLocalizacaoGPS(coletaId, identificador);
+
+        // Marcar solicitação como atendida
+        try {
+          const response = await fetchJSON(`/api/motoristas/solicitacoes/${solicitacaoId}/atender`, {
+            method: 'POST',
+            headers: getAuthHeaders()
+          });
+
+          if (response && response.success) {
+            logger.log('✅ Solicitação marcada como atendida');
+          }
+        } catch (error) {
+          logger.warn('⚠️ Erro ao marcar solicitação como atendida (mas localização foi ativada):', error);
+        }
+
+        // Recarregar notificações para remover a solicitação
+        await carregarNotificacoes();
+
+      } catch (error) {
+        logger.error('❌ Erro ao atender solicitação de localização:', error);
+        showToast(error.message || 'Erro ao ativar localização GPS. Tente novamente.', 'error');
+      }
+    };
 
     window.abrirModalAtualizacaoDocumento = async function(coletaId, categoria, solicitacaoId) {
       if (!coletaId || !categoria) return;
@@ -5475,12 +5590,13 @@
 
       const options = {
         enableHighAccuracy: true,
-        timeout: 30000, // Aumentado para 30 segundos para dar mais tempo
-        maximumAge: 60000 // Aceitar posição com até 1 minuto de idade para evitar timeouts
+        timeout: 60000, // 60 segundos para dar mais tempo ao GPS inicializar
+        maximumAge: 120000 // Aceitar posição com até 2 minutos de idade para evitar timeouts
       };
 
-      // Capturar posição inicial
+      // Capturar posição inicial (opcional - o watchPosition já está monitorando)
       logger.log('📍 Solicitando posição inicial...');
+      let primeiraPosicaoEnviada = false;
       navigator.geolocation.getCurrentPosition(
         (position) => {
           logger.log('✅ Posição inicial obtida:', {
@@ -5488,49 +5604,54 @@
             lng: position.coords.longitude,
             accuracy: position.coords.accuracy
           });
+          primeiraPosicaoEnviada = true;
           enviarPosicao(position, coletaId);
         },
         (error) => {
           let mensagemErro = 'Erro ao acessar sua localização.';
           let deveParar = false;
-          let logLevel = 'error';
+          let deveLogar = false; // Controle mais fino para logs
           
           switch(error.code) {
             case error.PERMISSION_DENIED:
               mensagemErro = 'Permissão de localização negada.';
               deveParar = true;
-              logLevel = 'error';
+              deveLogar = true;
               // Mostrar modal com instruções
               mostrarModalPermissaoLocalizacao(coletaId);
               break;
             case error.POSITION_UNAVAILABLE:
               mensagemErro = 'Localização indisponível. Verifique se o GPS está ativado. O sistema continuará tentando...';
               deveParar = false; // Continuar tentando
-              logLevel = 'warn';
+              deveLogar = true;
               break;
             case error.TIMEOUT:
-              mensagemErro = 'Tempo esgotado ao obter localização inicial. O sistema continuará tentando em segundo plano...';
+              // Timeout é esperado - o GPS pode demorar para inicializar
+              // Não logar como warning pois é comportamento normal
               deveParar = false; // Continuar tentando - o watchPosition vai funcionar
-              logLevel = 'warn'; // Timeout não é um erro crítico
+              deveLogar = false; // Não logar timeouts pois são esperados
               break;
             default:
-              logLevel = 'error';
+              deveLogar = true;
           }
           
-          // Logar com nível apropriado
-          if (logLevel === 'warn') {
-            logger.warn('⚠️ Aviso ao obter localização inicial:', {
-              code: error.code,
-              message: error.message,
-              tipo: error.code === error.TIMEOUT ? 'timeout' : 'indisponível'
-            });
-          } else {
-            logger.error('❌ Erro ao obter localização inicial:', error);
+          // Logar apenas erros críticos
+          if (deveLogar && error.code !== error.TIMEOUT) {
+            if (error.code === error.PERMISSION_DENIED) {
+              logger.error('❌ Erro ao obter localização inicial:', error);
+            } else {
+              logger.warn('⚠️ Aviso ao obter localização inicial:', {
+                code: error.code,
+                message: error.message,
+                tipo: error.code === error.TIMEOUT ? 'timeout (esperado)' : 'indisponível',
+                nota: 'O watchPosition continuará monitorando em segundo plano'
+              });
+            }
           }
           
           if (deveParar) {
-          showToast(mensagemErro, 'error');
-          rastreamentoAtivo = false;
+            showToast(mensagemErro, 'error');
+            rastreamentoAtivo = false;
           } else {
             // Mostrar mensagem informativa mas não parar o rastreamento
             // Para timeouts, não mostrar toast para não incomodar
@@ -5571,10 +5692,10 @@
               // Não desativar, apenas logar
               break;
             case error.TIMEOUT:
-              logLevel = 'warn';
-              // Timeout é esperado em algumas situações (GPS fraco, área coberta, etc)
+              // Timeout é esperado em algumas situações (GPS fraco, área coberta, inicialização, etc)
               // O watchPosition continuará tentando automaticamente
-              // Não mostrar toast para não incomodar o usuário com timeouts frequentes
+              // Não logar como warning pois é comportamento normal - apenas em modo dev
+              logLevel = IS_DEV ? 'warn' : 'log'; // Apenas log em dev, sem warning em produção
               break;
             default:
               logLevel = 'error';
@@ -5588,9 +5709,10 @@
               tipo: error.code === error.TIMEOUT ? 'timeout (esperado)' : 'indisponível',
               acao: 'Continuando tentativas...'
             });
-          } else {
+          } else if (logLevel === 'error') {
             logger.error('❌ Erro no watchPosition:', error);
           }
+          // Para timeouts, não logar (é comportamento esperado)
           
           if (mensagemErro) {
             showToast(mensagemErro, 'error');
@@ -5616,7 +5738,12 @@
               enviarPosicao(position, coletaId);
             },
             (error) => {
-              logger.warn('⚠️ Erro ao obter primeira posição:', error);
+              // Não logar timeouts como warning - são esperados durante inicialização
+              if (error.code !== error.TIMEOUT) {
+                logger.warn('⚠️ Erro ao obter primeira posição:', error);
+              } else {
+                logger.log('📍 Timeout ao obter primeira posição (normal durante inicialização do GPS)');
+              }
             },
             options
           );
@@ -5682,18 +5809,16 @@
       console.log(`⏰ Posições serão enviadas a cada 5 minutos`);
       console.log(`📊 Status: rastreamentoAtivo=${rastreamentoAtivo}, intervaloAtivo=${intervaloRastreamento !== null}`);
       
-      // Verificar se a primeira posição foi enviada após 10 segundos
+      // Verificar status após um tempo (sem warning - apenas log informativo)
       setTimeout(() => {
         if (rastreamentoAtivo && coletaRastreamentoAtiva === coletaId) {
-          logger.log('✅ Rastreamento ainda ativo após 10 segundos');
           const posicoesEnviadas = window.contadorPosicoesEnviadas || 0;
-          if (posicoesEnviadas === 0) {
-            logger.warn('⚠️ Rastreamento ativo mas primeira posição ainda não foi enviada (pode estar aguardando GPS)');
-        } else {
-            logger.log(`✅ Primeira posição já foi enviada (total: ${posicoesEnviadas})`);
+          if (posicoesEnviadas > 0) {
+            logger.log(`✅ Rastreamento ativo - ${posicoesEnviadas} posição(ões) enviada(s)`);
+          } else {
+            // Não mostrar warning - é normal o GPS demorar para inicializar
+            logger.log('📍 Rastreamento ativo, aguardando primeira posição GPS (pode levar alguns minutos)...');
           }
-        } else {
-          logger.warn('⚠️ Rastreamento não está mais ativo após 10 segundos');
         }
       }, 10000);
       

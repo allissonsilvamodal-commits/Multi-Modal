@@ -5213,38 +5213,173 @@ async function fetchPosicoesResumoPorColeta(coletaId, janelaMinutos, includeSemC
     return { coleta: null, posicoes: [], info: null };
   }
 
-  const { data: posicoesRpc, error: rpcError } = await supabaseAdmin.rpc('get_posicoes_resumo', {
-    p_coleta_id: coletaId,
-    p_include_sem_coleta: includeSemColeta,
-    p_max_minutes: janelaMinutos,
-    p_limit_por_motorista: 1
-  });
-
-  if (rpcError) {
-    throw rpcError;
+  // Tentar usar RPC primeiro, se falhar, buscar diretamente
+  let posicoesRpc = null;
+  let rpcError = null;
+  
+  try {
+    const { data, error } = await supabaseAdmin.rpc('get_posicoes_resumo', {
+      p_coleta_id: coletaId,
+      p_include_sem_coleta: includeSemColeta,
+      p_max_minutes: janelaMinutos,
+      p_limit_por_motorista: 1
+    });
+    
+    if (!error) {
+      posicoesRpc = data;
+    } else {
+      rpcError = error;
+      console.warn('⚠️ RPC get_posicoes_resumo não disponível, usando busca direta:', rpcError.message);
+    }
+  } catch (err) {
+    rpcError = err;
+    console.warn('⚠️ Erro ao chamar RPC get_posicoes_resumo, usando busca direta:', err.message);
   }
 
-  const posicoes = (posicoesRpc || []).map(pos => ({
-    id: pos.id,
-    motorista_id: pos.motorista_id,
-    coleta_id: pos.coleta_id,
-    latitude: pos.latitude,
-    longitude: pos.longitude,
-    timestamp_gps: pos.timestamp_gps,
-    velocidade: pos.velocidade,
-    endereco: pos.endereco,
-    motoristas: {
-      id: pos.motorista_id,
-      nome: pos.motorista_nome,
-      telefone1: pos.motorista_telefone
+  let posicoes = [];
+
+  if (posicoesRpc && !rpcError) {
+    // Usar dados da RPC
+    posicoes = (posicoesRpc || []).map(pos => ({
+      id: pos.id,
+      motorista_id: pos.motorista_id,
+      coleta_id: pos.coleta_id,
+      latitude: pos.latitude,
+      longitude: pos.longitude,
+      timestamp_gps: pos.timestamp_gps,
+      velocidade: pos.velocidade,
+      endereco: pos.endereco,
+      motoristas: {
+        id: pos.motorista_id,
+        nome: pos.motorista_nome,
+        telefone1: pos.motorista_telefone
+      }
+    }));
+  } else {
+    // Buscar diretamente da tabela se RPC não estiver disponível
+    const tempoLimite = new Date(Date.now() - janelaMinutos * 60 * 1000).toISOString();
+    let posicoesData = [];
+    
+    console.log('🔍 Buscando posições diretamente:', {
+      coletaId,
+      motoristaId: coleta.motorista_id,
+      janelaMinutos,
+      tempoLimite,
+      agora: new Date().toISOString(),
+      diferencaMinutos: Math.floor((Date.now() - new Date(tempoLimite).getTime()) / 1000 / 60)
+    });
+    
+    // Primeiro buscar posições vinculadas à coleta
+    // IMPORTANTE: buscar SEM o relacionamento primeiro para verificar se há posições
+    let queryBase = supabaseAdmin
+      .from('rastreamento_posicoes')
+      .select('id, motorista_id, coleta_id, latitude, longitude, timestamp_gps, velocidade, endereco')
+      .eq('coleta_id', coletaId)
+      .gte('timestamp_gps', tempoLimite)
+      .order('timestamp_gps', { ascending: false });
+    
+    console.log('🔍 Executando query base (sem relacionamento)...');
+    const { data: posicoesBase, error: errorBase } = await queryBase;
+    
+    if (errorBase) {
+      console.error('❌ Erro na query base:', errorBase);
+      throw errorBase;
     }
-  }));
+    
+    console.log('📊 Posições encontradas (query base):', {
+      total: posicoesBase?.length || 0,
+      coletaId
+    });
+    
+    // Se não encontrou nada, pode ser que as posições sejam antigas demais
+    if (!posicoesBase || posicoesBase.length === 0) {
+      // Tentar buscar sem filtro de tempo para debug
+      const { data: todasPosicoes, error: errorTodas } = await supabaseAdmin
+        .from('rastreamento_posicoes')
+        .select('id, motorista_id, coleta_id, timestamp_gps')
+        .eq('coleta_id', coletaId)
+        .order('timestamp_gps', { ascending: false })
+        .limit(5);
+      
+      if (!errorTodas && todasPosicoes && todasPosicoes.length > 0) {
+        console.warn('⚠️ Posições encontradas mas fora da janela de tempo:', {
+          totalEncontradas: todasPosicoes.length,
+          maisRecente: todasPosicoes[0].timestamp_gps,
+          tempoLimite,
+          diferencaHoras: Math.floor((Date.now() - new Date(todasPosicoes[0].timestamp_gps).getTime()) / 1000 / 60 / 60)
+        });
+      }
+      
+      posicoesData = [];
+    } else {
+      // Se encontrou posições, buscar com relacionamento
+      const motoristaIds = [...new Set(posicoesBase.map(p => p.motorista_id).filter(Boolean))];
+      
+      if (motoristaIds.length > 0) {
+        // Buscar dados dos motoristas
+        const { data: motoristasData, error: motoristasError } = await supabaseAdmin
+          .from('motoristas')
+          .select('id, nome, telefone1')
+          .in('id', motoristaIds);
+        
+        if (motoristasError) {
+          console.warn('⚠️ Erro ao buscar motoristas (continuando sem):', motoristasError);
+        }
+        
+        // Mapear motoristas por ID
+        const motoristasMap = new Map();
+        (motoristasData || []).forEach(m => motoristasMap.set(m.id, m));
+        
+        // Combinar posições com dados dos motoristas
+        posicoesData = posicoesBase.map(pos => ({
+          ...pos,
+          motoristas: motoristasMap.get(pos.motorista_id) || null
+        }));
+      } else {
+        posicoesData = posicoesBase;
+      }
+    }
+    
+    console.log('📊 Posições encontradas na query final:', {
+      total: posicoesData.length,
+      coletaId,
+      motoristaId: coleta.motorista_id,
+      temMotoristas: posicoesData.length > 0 && posicoesData[0].motoristas ? true : false
+    });
+
+    // Agrupar por motorista e pegar a mais recente de cada
+    const posicoesPorMotorista = new Map();
+    (posicoesData || []).forEach(pos => {
+      const key = pos.motorista_id;
+      if (!posicoesPorMotorista.has(key) || 
+          new Date(pos.timestamp_gps) > new Date(posicoesPorMotorista.get(key).timestamp_gps)) {
+        posicoesPorMotorista.set(key, pos);
+      }
+    });
+
+    posicoes = Array.from(posicoesPorMotorista.values()).map(pos => ({
+      id: pos.id,
+      motorista_id: pos.motorista_id,
+      coleta_id: pos.coleta_id,
+      latitude: pos.latitude,
+      longitude: pos.longitude,
+      timestamp_gps: pos.timestamp_gps,
+      velocidade: pos.velocidade,
+      endereco: pos.endereco,
+      motoristas: pos.motoristas ? {
+        id: pos.motoristas.id,
+        nome: pos.motoristas.nome,
+        telefone1: pos.motoristas.telefone1
+      } : null
+    }));
+  }
 
   console.log('📊 Resumo de posições:', {
     coletaId: coleta.id,
     motoristaId: coleta.motorista_id,
     janelaMinutos,
     totalPosicoesRetornadas: posicoes.length,
+    usandoRPC: !rpcError,
     observacao: 'Posições retornadas mesmo se motorista estiver usando token de rastreamento (sem sessão ativa)'
   });
 
@@ -5845,6 +5980,67 @@ app.get('/api/motoristas/notificacoes', async (req, res) => {
   } catch (error) {
     console.error('❌ Erro ao buscar notificações:', error);
     res.status(500).json({ success: false, error: 'Erro ao buscar notificações. Tente novamente.' });
+  }
+});
+
+// Endpoint para solicitar ativação de localização GPS
+app.post('/api/coletas/:coletaId/solicitar-ativacao-localizacao', requireAuth, async (req, res) => {
+  try {
+    const coletaId = req.params.coletaId;
+    const { motivo } = req.body;
+
+    // Buscar a coleta e verificar motorista vinculado
+    const { data: coleta, error: coletaError } = await supabaseAdmin
+      .from('coletas')
+      .select('id, motorista_id')
+      .eq('id', coletaId)
+      .single();
+
+    if (coletaError || !coleta) {
+      return res.status(404).json({ success: false, error: 'Coleta não encontrada.' });
+    }
+
+    if (!coleta.motorista_id) {
+      return res.status(400).json({ success: false, error: 'Coleta não tem motorista vinculado.' });
+    }
+
+    // Obter usuário que está solicitando
+    const usuario = req.session?.usuario || req.supabaseUser?.email || req.supabaseUser?.id || 'Sistema';
+    
+    const motivoPadrao = motivo || 'Solicitação de ativação de localização GPS para rastreamento em tempo real';
+    
+    console.log('📍 Criando solicitação de ativação de localização:', { coletaId, motorista_id: coleta.motorista_id, usuario });
+    
+    // Criar solicitação usando a tabela de solicitações com categoria 'localizacao'
+    // Usaremos categoria 'outro' por enquanto, mas podemos adicionar 'localizacao' na tabela depois
+    const { data: solicitacao, error: solicitacaoError } = await supabaseAdmin
+      .from('solicitacoes_documentos')
+      .insert({
+        coleta_id: coletaId,
+        motorista_id: coleta.motorista_id,
+        categoria: 'outro', // Por enquanto usar 'outro', pode ser alterado depois
+        motivo: `📍 LOCALIZAÇÃO GPS: ${motivoPadrao}`,
+        solicitado_por: usuario,
+        status: 'pendente'
+      })
+      .select()
+      .single();
+
+    if (solicitacaoError) {
+      console.error('❌ Erro ao inserir solicitação de localização:', solicitacaoError);
+      throw solicitacaoError;
+    }
+    
+    console.log('✅ Solicitação de localização criada:', solicitacao?.id);
+
+    res.json({ success: true, solicitacao });
+  } catch (error) {
+    console.error('❌ Erro ao solicitar ativação de localização:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Não foi possível criar a solicitação. Tente novamente.',
+      details: error.message || error.toString()
+    });
   }
 });
 

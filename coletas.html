@@ -4310,6 +4310,57 @@
             console.log('✅ Informações do motorista carregadas com sucesso');
         }
 
+        window.solicitarAtivacaoLocalizacao = async function(coletaId) {
+            try {
+                const coleta = coletasData.find(c => c.id === coletaId);
+                if (!coleta || !coleta.motorista_id) {
+                    showNotification('⚠️ É necessário ter motorista vinculado para solicitar ativação de localização.', 'warning');
+                    return;
+                }
+
+                const confirmar = confirm(
+                    `📍 Solicitar Ativação de Localização GPS\n\n` +
+                    `Você está prestes a solicitar ao motorista que ative a localização GPS para esta coleta.\n\n` +
+                    `O motorista receberá uma notificação e poderá ativar a localização diretamente pelo portal.\n\n` +
+                    `Deseja continuar?`
+                );
+
+                if (!confirmar) {
+                    return;
+                }
+
+                // Obter nome do usuário atual
+                const usuario = currentUser?.nome || currentUser?.email || 'Sistema';
+
+                // Fazer solicitação via API
+                const headers = await getSupabaseAuthHeaders();
+                
+                const response = await fetch(`/api/coletas/${coletaId}/solicitar-ativacao-localizacao`, {
+                    method: 'POST',
+                    headers: {
+                        ...headers,
+                        'Content-Type': 'application/json'
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify({
+                        motivo: 'Solicitação de ativação de localização GPS para rastreamento em tempo real'
+                    })
+                });
+
+                const result = await response.json();
+
+                if (!response.ok || !result.success) {
+                    throw new Error(result.error || 'Erro ao criar solicitação');
+                }
+
+                showNotification('✅ Solicitação de ativação de localização enviada ao motorista com sucesso!', 'success');
+
+            } catch (error) {
+                console.error('❌ Erro ao solicitar ativação de localização:', error);
+                showNotification('Erro ao enviar solicitação: ' + (error.message || 'Erro desconhecido'), 'error');
+            }
+        }
+
         async function verDetalhesMotorista(coletaId) {
             const coleta = coletasData.find(c => c.id === coletaId);
             if (!coleta || !coleta.motorista_id) return;
@@ -4428,8 +4479,12 @@
                             `}
                         </div>
                         
-                        <div class="modal-footer" style="padding-top: 1.5rem; border-top: 1px solid #e9ecef; display: flex; justify-content: space-between; gap: 1rem;">
-                            <div>
+                        <div class="modal-footer" style="padding-top: 1.5rem; border-top: 1px solid #e9ecef; display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap;">
+                            <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+                                <button class="btn btn-primary" onclick="event.stopPropagation(); solicitarAtivacaoLocalizacao('${coletaId}'); this.closest('.modal').remove();" style="padding: 0.75rem 1.5rem; border-radius: 10px; border: none; font-weight: 600; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                                    <i class="fas fa-map-marker-alt me-2"></i>
+                                    Solicitar Localização GPS
+                                </button>
                                 <button class="btn btn-warning" onclick="event.stopPropagation(); trocarMotorista('${coletaId}')" style="padding: 0.75rem 1.5rem; border-radius: 10px; border: none; font-weight: 600;">
                                     <i class="fas fa-exchange-alt"></i> Trocar Motorista
                                 </button>
@@ -6367,10 +6422,26 @@
                             </div>
                         </div>
                         ${coleta.motorista_id ? `
-                        <div class="info-item motorista-card-${coleta.id}" id="motorista-card-wrapper-${coleta.id}" style="grid-column: 1 / -1; background: linear-gradient(135deg, rgba(40, 167, 69, 0.1) 0%, rgba(32, 201, 151, 0.1) 100%); padding: 0.8rem; border-radius: 10px; border: 1px solid #28a745; cursor: pointer; transition: all 0.3s;" onclick="event.stopPropagation(); verDetalhesMotorista('${coleta.id}')" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(40, 167, 69, 0.3)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none';">
-                            <div class="info-label motorista-label-${coleta.id}" id="motorista-label-${coleta.id}" style="color: #28a745; font-weight: 700; display: flex; justify-content: space-between; align-items: center;">
+                        <div class="info-item motorista-card-${coleta.id}" id="motorista-card-wrapper-${coleta.id}" style="grid-column: 1 / -1; background: linear-gradient(135deg, rgba(40, 167, 69, 0.1) 0%, rgba(32, 201, 151, 0.1) 100%); padding: 0.8rem; border-radius: 10px; border: 1px solid #28a745; transition: all 0.3s;">
+                            <div class="info-label motorista-label-${coleta.id}" id="motorista-label-${coleta.id}" style="color: #28a745; font-weight: 700; display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
                                 <span><i class="fas fa-user-check"></i> Motorista Vinculado</span>
-                                <i class="fas fa-chevron-right" style="font-size: 0.8rem; opacity: 0.7;"></i>
+                                <div style="display: flex; gap: 0.5rem;">
+                                    <button onclick="event.stopPropagation(); solicitarAtivacaoLocalizacao('${coleta.id}')" 
+                                            title="Solicitar ao motorista que ative a localização GPS" 
+                                            style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 0.4rem 0.8rem; border-radius: 6px; font-size: 0.75rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 0.4rem; box-shadow: 0 2px 6px rgba(102, 126, 234, 0.3); transition: all 0.2s;" 
+                                            onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 10px rgba(102, 126, 234, 0.4)';" 
+                                            onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 6px rgba(102, 126, 234, 0.3)';">
+                                        <i class="fas fa-map-marker-alt"></i>
+                                        Solicitar Localização
+                                    </button>
+                                    <button onclick="event.stopPropagation(); verDetalhesMotorista('${coleta.id}')" 
+                                            title="Ver detalhes do motorista" 
+                                            style="background: transparent; color: #28a745; border: 1px solid #28a745; padding: 0.4rem 0.8rem; border-radius: 6px; font-size: 0.75rem; font-weight: 600; cursor: pointer; transition: all 0.2s;" 
+                                            onmouseover="this.style.background='#28a745'; this.style.color='white';" 
+                                            onmouseout="this.style.background='transparent'; this.style.color='#28a745';">
+                                        <i class="fas fa-chevron-right"></i>
+                                    </button>
+                                </div>
                             </div>
                             <div class="info-value" id="motorista-info-${coleta.id}" style="color: var(--cinza-escuro); font-weight: 500; display: flex; flex-wrap: wrap; gap: 1rem;">
                                 <span><i class="fas fa-spinner fa-spin"></i> Carregando...</span>
