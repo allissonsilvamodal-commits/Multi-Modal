@@ -1622,7 +1622,7 @@
     <script src="js/permissions.js"></script>
     <script>
         // ========== CONFIGURAÇÃO ==========
-        let supabase = null;
+        let supabaseClient = null; // Renomeado para evitar conflito com possível variável global do Supabase
         let currentUser = null;
         let usuariosData = [];
         let credenciaisAPI = [];
@@ -1691,8 +1691,8 @@
                 if (!response.ok) throw new Error('Erro ao buscar configurações');
                 
                 const config = await response.json();
-                supabase = window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey);
-                window.supabase = supabase;
+                supabaseClient = window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey);
+                window.supabase = supabaseClient; // Manter compatibilidade com código que usa window.supabase
                 
                 console.log('✅ Supabase inicializado');
                 
@@ -4248,7 +4248,7 @@
             }
         }
 
-        function abrirModalNovaEtiqueta() {
+        window.abrirModalNovaEtiqueta = function() {
             document.getElementById('formNovaEtiqueta').reset();
             document.getElementById('corEtiquetaInput').value = '#667eea';
             document.getElementById('corEtiquetaHex').value = '#667eea';
@@ -4278,7 +4278,7 @@
             });
             
             new bootstrap.Modal(document.getElementById('modalNovaEtiqueta')).show();
-        }
+        };
 
         async function salvarNovaEtiqueta() {
             try {

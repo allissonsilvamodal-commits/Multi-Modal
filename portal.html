@@ -1560,7 +1560,7 @@
     <script src="js/chat-ia.js"></script>
     <script>
         // ========== CONFIGURAÇÕES SUPABASE ==========
-        let supabase = null;
+        let supabaseClient = null; // Renomeado para evitar conflito com possível variável global do Supabase
         let currentUser = null;
         let systemChart = null;
 
@@ -1631,8 +1631,8 @@
                 }
                 
                 const config = await response.json();
-                supabase = window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey);
-                window.supabase = supabase;
+                supabaseClient = window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey);
+                window.supabase = supabaseClient; // Manter compatibilidade com código que usa window.supabase
                 
                 // Inicializar chat IA após Supabase estar pronto
                 if (window.inicializarChatIA) {
@@ -1659,11 +1659,11 @@
         // ========== CONTADOR DE MENSAGENS NÃO LIDAS ==========
         async function atualizarContadorMensagens() {
             try {
-                if (!supabase || !currentUser || !currentUser.id) {
+                if (!supabaseClient || !currentUser || !currentUser.id) {
                     return;
                 }
 
-                const { data: unreadMessages, error } = await supabase
+                const { data: unreadMessages, error } = await supabaseClient
                     .from('chat_mensagens')
                     .select('id')
                     .eq('destinatario_id', currentUser.id)
@@ -1697,11 +1697,11 @@
         // ========== CONTADOR DE NOTIFICAÇÕES AVALIAÇÃO 360º ==========
         async function atualizarContadorAvaliacao360() {
             try {
-                if (!supabase || !currentUser || !currentUser.id) {
+                if (!supabaseClient || !currentUser || !currentUser.id) {
                     return;
                 }
 
-                const { data: notificacoes, error } = await supabase
+                const { data: notificacoes, error } = await supabaseClient
                     .from('avaliacao_360_notificacoes')
                     .select('id')
                     .eq('usuario_id', currentUser.id)
@@ -1716,7 +1716,7 @@
                 }
 
                 // Contar avaliações pendentes onde o usuário é avaliador
-                const { data: avaliadores, error: errAvaliadores } = await supabase
+                const { data: avaliadores, error: errAvaliadores } = await supabaseClient
                     .from('avaliacao_360_avaliadores')
                     .select('id')
                     .eq('avaliador_id', currentUser.id)
@@ -1824,9 +1824,9 @@
                 
                 // Buscar headers de autenticação
                 let headers = { 'Content-Type': 'application/json' };
-                if (supabase) {
+                if (supabaseClient) {
                     try {
-                        const { data: { session } } = await supabase.auth.getSession();
+                        const { data: { session } } = await supabaseClient.auth.getSession();
                         if (session && session.access_token) {
                             headers['Authorization'] = `Bearer ${session.access_token}`;
                         }
@@ -1905,7 +1905,7 @@
         async function carregarMetricas() {
             try {
                 // Verificar se o Supabase está inicializado
-                if (!supabase) {
+                if (!supabaseClient) {
                     console.warn('⚠️ Supabase não inicializado, usando valores padrão');
                     animarMetrica('totalUsers', 0);
                     animarMetrica('totalOperations', 0);
@@ -1919,7 +1919,7 @@
                 // 1. Usuários Ativos - contar usuários ativos na tabela user_profiles
                 let usuariosAtivos = 0;
                 try {
-                    const { count, error } = await supabase
+                    const { count, error } = await supabaseClient
                         .from('user_profiles')
                         .select('*', { count: 'exact', head: true })
                         .eq('active', true);
@@ -1931,7 +1931,7 @@
                     console.error('❌ Erro ao buscar usuários ativos:', error);
                     // Fallback: tentar tabela usuarios
                     try {
-                        const { count } = await supabase
+                        const { count } = await supabaseClientClient
                             .from('usuarios')
                             .select('*', { count: 'exact', head: true });
                         usuariosAtivos = count || 0;
@@ -1947,8 +1947,8 @@
                     hoje.setHours(0, 0, 0, 0);
                     const hojeISO = hoje.toISOString();
                     
-                    const { count, error } = await supabase
-                        .from('coletas')
+                    const { count, error } = await supabaseClient
+                    .from('coletas')
                         .select('*', { count: 'exact', head: true })
                         .gte('created_at', hojeISO);
                     
@@ -3310,7 +3310,7 @@
                 }
 
                 // Buscar quais avisos já foram lidos pelo usuário
-                const { data: avisosLidos, error: errorLidos } = await supabase
+                const { data: avisosLidos, error: errorLidos } = await supabaseClient
                     .from('avisos_lidos')
                     .select('aviso_id')
                     .eq('user_id', currentUser.id);
@@ -3503,7 +3503,7 @@
             
             try {
                 // Marcar aviso como lido
-                const { error } = await supabase
+                const { error } = await supabaseClient
                     .from('avisos_lidos')
                     .insert([{
                         aviso_id: aviso.id,

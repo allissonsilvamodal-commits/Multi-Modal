@@ -17,7 +17,7 @@
         .form-select, .form-control { background: rgba(255,255,255,0.06); color: #fff; border-color: rgba(255,255,255,0.15); }
     </style>
     <script>
-        let supabase;
+        let supabaseClient = null; // Renomeado para evitar conflito com possível variável global do Supabase
         let charts = {};
 
         document.addEventListener('DOMContentLoaded', async () => {
@@ -29,12 +29,13 @@
         async function initSupabase() {
             const res = await fetch('/api/supabase-config');
             const cfg = await res.json();
-            supabase = window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey);
+            supabaseClient = window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey);
+            window.supabase = supabaseClient; // Manter compatibilidade com código que usa window.supabase
         }
 
         async function carregarFiltros() {
             // Usuários
-            const { data: users } = await supabase.from('user_profiles').select('id, nome, email, departamento').eq('active', true).order('nome');
+            const { data: users } = await supabaseClient.from('user_profiles').select('id, nome, email, departamento').eq('active', true).order('nome');
             const selUser = document.getElementById('filtroUsuario');
             selUser.innerHTML = '<option value="">Todos os usuários</option>';
             (users||[]).forEach(u => {
@@ -60,7 +61,7 @@
             const departamento = document.getElementById('filtroDepartamento').value;
 
             const { start, end, group } = obterIntervalo(periodo);
-            let query = supabase.from('disparos_log').select('user_id, departamento, created_at').gte('created_at', start).lte('created_at', end);
+            let query = supabaseClient.from('disparos_log').select('user_id, departamento, created_at').gte('created_at', start).lte('created_at', end);
             if (usuarioId) query = query.eq('user_id', usuarioId);
             if (departamento) query = query.eq('departamento', departamento);
             const { data, error } = await query;
@@ -98,7 +99,7 @@
             const ids = Object.keys(counts).filter(id => id !== 'Anônimo');
             let namesMap = {};
             if (ids.length) {
-                const { data: users } = await supabase.from('user_profiles').select('id, nome, email').in('id', ids);
+                const { data: users } = await supabaseClient.from('user_profiles').select('id, nome, email').in('id', ids);
                 (users||[]).forEach(u => namesMap[u.id] = u.nome || u.email || u.id);
             }
             const labels = Object.keys(counts).map(id => id === 'Anônimo' ? 'Anônimo' : (namesMap[id] || id));

@@ -1830,7 +1830,7 @@
       initTheme();
     }
     
-    let supabase;
+    let supabaseClient = null; // Renomeado para evitar conflito com possível variável global do Supabase
     let todosChamados = [];
     let chamadosFiltrados = [];
     let currentUserId = null;
@@ -1866,7 +1866,7 @@
     async function inicializarSupabase() {
       try {
         if (window.supabase && window.supabase.from) {
-          supabase = window.supabase;
+          supabaseClient = window.supabase;
         } else {
           const response = await fetch('/api/supabase-config');
           if (!response.ok) {
@@ -1874,8 +1874,8 @@
           }
           
           const config = await response.json();
-          supabase = window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey);
-          window.supabase = supabase;
+          supabaseClient = window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey);
+          window.supabase = supabaseClient; // Manter compatibilidade com código que usa window.supabase
         }
         
         // Verificar se o bucket existe
@@ -1883,7 +1883,7 @@
       } catch (error) {
         console.error('Erro ao inicializar Supabase:', error);
         if (window.supabase && window.supabase.from) {
-          supabase = window.supabase;
+          supabaseClient = window.supabase;
         } else {
           mostrarErro('Erro ao conectar com o banco de dados');
         }

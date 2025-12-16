@@ -2708,7 +2708,7 @@
 
     <script>
         // ========== CONFIGURAÇÃO SUPABASE ==========
-        let supabase = null;
+        let supabaseClient = null; // Renomeado para evitar conflito com possível variável global do Supabase
         
         async function inicializarSupabase() {
             try {
@@ -2724,13 +2724,13 @@
                 console.log('📋 Configuração Supabase:', config);
                 
                 // Inicializar cliente Supabase
-                supabase = window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey);
-                window.supabase = supabase;
+                supabaseClient = window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey);
+                window.supabase = supabaseClient; // Manter compatibilidade com código que usa window.supabase
                 
                 console.log('✅ Supabase inicializado com sucesso!');
                 
                 // Configurar listener de autenticação para detectar sessões expiradas
-                supabase.auth.onAuthStateChange((event, session) => {
+                supabaseClient.auth.onAuthStateChange((event, session) => {
                     console.log('🔐 Mudança de autenticação detectada:', event);
                     
                     if (event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED') {
@@ -3130,7 +3130,7 @@
 
         // Função para criar múltiplas coletas
         async function criarMultiplasColetas(rawData, numerosColetas) {
-            if (!supabase) {
+            if (!supabaseClient) {
                 showNotification('Erro: Supabase não inicializado', 'error');
                 return;
             }
@@ -3183,7 +3183,7 @@
             };
             
             // Verificar duplicatas antes de criar
-            const { data: coletasExistentes } = await supabase
+            const { data: coletasExistentes } = await supabaseClient
                 .from('coletas')
                 .select('filial, numero_coleta')
                 .eq('filial', rawData.filial)
@@ -3213,7 +3213,7 @@
             }));
             
             // Inserir todas as coletas de uma vez
-            const { data: coletasCriadas, error } = await supabase
+            const { data: coletasCriadas, error } = await supabaseClient
                 .from('coletas')
                 .insert(coletasParaInserir)
                 .select();
@@ -3265,7 +3265,7 @@
                 const userData = JSON.parse(loggedInUserData);
                 console.log('🔐 Carregando permissões de etapas para:', userData.email);
 
-                const { data, error } = await supabase
+                const { data, error } = await supabaseClient
                     .from('permissoes_coletas')
                     .select('etapa_id')
                     .eq('usuario_id', userData.id);
@@ -3286,7 +3286,7 @@
 
         async function getSupabaseAuthHeaders() {
             try {
-                if (!supabase) {
+                if (!supabaseClient) {
                     console.warn('⚠️ Supabase não inicializado ao obter headers');
                     // Tentar obter token do localStorage como fallback
                     const userData = localStorage.getItem('loggedInUser');
@@ -3315,7 +3315,7 @@
                 }
 
                 // Tentar obter a sessão atual
-                const { data, error } = await supabase.auth.getSession();
+                const { data, error } = await supabaseClient.auth.getSession();
 
                 if (error) {
                     console.error('❌ Erro ao obter sessão do Supabase:', error);
@@ -3327,7 +3327,7 @@
                         supabaseTokenExpiry = 0;
                         
                         try {
-                            const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+                            const { data: refreshData, error: refreshError } = await supabaseClient.auth.refreshSession();
                             if (!refreshError && refreshData?.session?.access_token) {
                                 supabaseAccessToken = refreshData.session.access_token;
                                 supabaseTokenExpiry = refreshData.session.expires_at ? refreshData.session.expires_at * 1000 : now + (60 * 60 * 1000);
@@ -3702,13 +3702,28 @@
 
         async function selecionarMotorista(coletaId, motoristaId) {
             try {
+                // Buscar dados do motorista e da coleta para o histórico
+                const coleta = coletasData.find(c => c.id === coletaId);
+                const motorista = await buscarMotoristaPorId(motoristaId);
+                
+                const motoristaAnteriorId = coleta?.motorista_id || null;
+                let detalhes = `Motorista vinculado: ${motorista?.nome || motoristaId}`;
+                
+                if (motoristaAnteriorId) {
+                    const motoristaAnterior = await buscarMotoristaPorId(motoristaAnteriorId);
+                    detalhes = `Motorista trocado: ${motoristaAnterior?.nome || motoristaAnteriorId} → ${motorista?.nome || motoristaId}`;
+                }
+
                 // Atualizar coleta com motorista vinculado
-                const { error } = await supabase
+                const { error } = await supabaseClient
                     .from('coletas')
                     .update({ motorista_id: motoristaId })
                     .eq('id', coletaId);
 
                 if (error) throw error;
+
+                // Registrar no histórico
+                await salvarNoHistorico(coletaId, motoristaAnteriorId ? 'motorista_trocado' : 'motorista_vinculado', detalhes);
 
                 showNotification('Motorista vinculado com sucesso!', 'success');
                 fecharModalMotorista();
@@ -3717,7 +3732,6 @@
                 const confirmar = confirm('⚠️ IMPORTANTE: Anexe os documentos do motorista (CNH, CPF, etc.) para prosseguir.\n\nDeseja anexar agora?');
                 if (confirmar) {
                     // Abrir modal de anexos
-                    const coleta = coletasData.find(c => c.id === coletaId);
                     if (coleta) {
                         abrirModalAnexos(coletaId);
                     }
@@ -3799,7 +3813,7 @@
 
             try {
                 // Aprovar GR
-                const { error } = await supabase
+                const { error } = await supabaseClient
                     .from('coletas')
                     .update({ 
                         gr_aprovado: true,
@@ -3917,8 +3931,8 @@
                 if (!headers.Authorization) {
                     console.error('❌ Token de autenticação não disponível');
                     // Tentar obter sessão novamente
-                    if (supabase) {
-                        const { data, error } = await supabase.auth.getSession();
+                    if (supabaseClient) {
+                        const { data, error } = await supabaseClient.auth.getSession();
                         if (error) {
                             throw new Error('Erro ao obter sessão: ' + error.message);
                         }
@@ -4031,7 +4045,7 @@
                         // Reprovar GR e voltar para etapa anterior (Contratação)
                         const etapaAnterior = ETAPAS.find(e => e.id === 'contratacao');
                         
-                        const { error: updateError } = await supabase
+                        const { error: updateError } = await supabaseClient
                     .from('coletas')
                             .update({ 
                                 gr_aprovado: false,
@@ -4084,7 +4098,10 @@
             }
 
             try {
-                const { error } = await supabase
+                const etapaOrigemNome = obterNomeEtapa(coleta.etapa_atual);
+                const etapaDestinoNome = obterNomeEtapa(etapaDestino);
+
+                const { error } = await supabaseClient
                     .from('coletas')
                     .update({ 
                         etapa_atual: etapaDestino,
@@ -4095,9 +4112,9 @@
                 if (error) throw error;
 
                 // Salvar no histórico
-                await salvarNoHistorico(coletaId, 'Voltar Etapa', `Voltou para etapa ${etapaDestino}`);
+                await salvarNoHistorico(coletaId, 'etapa_retornada', `Etapa voltou de ${etapaOrigemNome} para ${etapaDestinoNome}`);
 
-                showNotification(`Coleta voltou para etapa ${etapaDestino}!`, 'info');
+                showNotification(`Coleta voltou para etapa ${etapaDestinoNome}!`, 'info');
                 await carregarColetas();
                 
             } catch (error) {
@@ -4110,7 +4127,7 @@
         async function buscarMotoristas() {
             try {
                 // Verificar se o Supabase está inicializado
-                if (!supabase) {
+                if (!supabaseClient) {
                     console.error('❌ Supabase não inicializado');
                     return [];
                 }
@@ -4131,8 +4148,8 @@
 
         async function buscarMotoristaPorId(motoristaId) {
             try {
-                if (!supabase || !motoristaId) {
-                    console.warn('⚠️ Supabase não inicializado ou motoristaId inválido:', { supabase: !!supabase, motoristaId });
+                if (!supabaseClient || !motoristaId) {
+                    console.warn('⚠️ Supabase não inicializado ou motoristaId inválido:', { supabase: !!supabaseClient, motoristaId });
                     return null;
                 }
                 
@@ -4663,7 +4680,7 @@
         async function salvarMotorista(motoristaData) {
             try {
                 // Verificar se o Supabase está inicializado
-                if (!supabase) {
+                if (!supabaseClient) {
                     console.error('❌ Supabase não inicializado');
                     showNotification('Erro: Supabase não inicializado', 'error');
                     return;
@@ -4778,18 +4795,18 @@
         let coletasRealtimeChannel = null;
         
         function configurarRealtimeColetas() {
-            if (!supabase) {
+            if (!supabaseClient) {
                 console.warn('⚠️ Supabase não inicializado, pulando configuração de realtime');
                 return;
             }
             
             // Remover listener anterior se existir
             if (coletasRealtimeChannel) {
-                supabase.removeChannel(coletasRealtimeChannel);
+                supabaseClient.removeChannel(coletasRealtimeChannel);
             }
             
             // Configurar listener para mudanças na tabela coletas
-            coletasRealtimeChannel = supabase
+            coletasRealtimeChannel = supabaseClient
                 .channel('coletas-changes')
                 .on('postgres_changes', {
                     event: '*', // Escutar todos os eventos (INSERT, UPDATE, DELETE)
@@ -4997,7 +5014,7 @@
             
             try {
                 // Verificar se o Supabase está inicializado
-                if (!supabase) {
+                if (!supabaseClient) {
                     console.error('❌ Supabase não inicializado');
                     showNotification('Erro: Supabase não inicializado', 'error');
                     return;
@@ -5032,8 +5049,24 @@
                 console.log('📊 Coletas Ativas:', window.coletasAtivas.length);
                 console.log('📚 Coletas Arquivadas:', window.coletasArquivadas.length);
                 
-                await renderColetas();
-                updateStats();
+                // ✅ PRESERVAR FILTROS: Verificar se há filtros ativos e reaplicá-los
+                const temFiltrosAtivos = 
+                    document.getElementById('statusFilter')?.value ||
+                    document.getElementById('etapaFilter')?.value ||
+                    document.getElementById('filialFilter')?.value ||
+                    document.getElementById('searchFilter')?.value ||
+                    document.getElementById('dataInicio')?.value ||
+                    document.getElementById('dataFim')?.value;
+                
+                if (temFiltrosAtivos) {
+                    console.log('🔍 Filtros detectados, reaplicando após carregamento...');
+                    // Reaplicar filtros automaticamente
+                    filterColetas();
+                } else {
+                    // Se não há filtros, renderizar normalmente
+                    await renderColetas();
+                    updateStats();
+                }
                 
             } catch (error) {
                 console.error('❌ Erro ao carregar coletas:', error);
@@ -5046,7 +5079,7 @@
         async function salvarColeta(coletaData) {
             try {
                 // Verificar se o Supabase está inicializado
-                if (!supabase) {
+                if (!supabaseClient) {
                     console.error('❌ Supabase não inicializado');
                     showNotification('Erro: Supabase não inicializado', 'error');
                     return;
@@ -5162,7 +5195,7 @@
 
         async function finalizarColeta(coletaId, resultado) {
             try {
-                if (!supabase) {
+                if (!supabaseClient) {
                     console.error('❌ Supabase não inicializado');
                     showNotification('Erro: Supabase não inicializado', 'error');
                     return;
@@ -5178,7 +5211,7 @@
                 if (!confirmacao) return;
 
                 // Atualizar status da coleta para arquivada
-                const { error } = await supabase
+                const { error } = await supabaseClient
                     .from('coletas')
                     .update({
                         resultado_final: resultado,
@@ -5211,7 +5244,7 @@
 
         async function marcarComoPago(coletaId, tipoPagamento) {
             try {
-                if (!supabase) {
+                if (!supabaseClient) {
                     console.error('❌ Supabase não inicializado');
                     showNotification('Erro: Supabase não inicializado', 'error');
                     return;
@@ -5303,6 +5336,19 @@
 
                 const usuarioNome = currentUser.nome || currentUser.username || currentUser.email;
 
+                // Verificar se já existe um tipo de pagamento marcado anteriormente
+                let tipoFinal = tipoPagamento;
+                const tipoAtual = coleta.contas_pagar_tipo;
+                
+                // Se já existe um tipo e não é pagamento_total, combinar os tipos
+                if (tipoAtual && tipoAtual !== tipoPagamento && tipoAtual !== 'pagamento_total' && tipoPagamento !== 'pagamento_total') {
+                    // Combinar tipos: se já tem adiantamento e está marcando saldo, ou vice-versa
+                    if ((tipoAtual === 'adiantamento' && tipoPagamento === 'saldo') || 
+                        (tipoAtual === 'saldo' && tipoPagamento === 'adiantamento')) {
+                        tipoFinal = 'ambos'; // Usar 'ambos' para indicar que adiantamento e saldo foram pagos
+                    }
+                }
+
                 // Atualizar coleta como paga
                 const { error: updateError } = await supabase
                     .from('coletas')
@@ -5310,7 +5356,7 @@
                         contas_pagar_pago: true,
                         contas_pagar_data: new Date().toISOString(),
                         contas_pagar_pago_por: usuarioNome,
-                        contas_pagar_tipo: tipoPagamento,
+                        contas_pagar_tipo: tipoFinal,
                         updated_at: new Date().toISOString()
                     })
                     .eq('id', coletaId);
@@ -5389,7 +5435,7 @@
         // Função para verificar e exibir notificações de pagamento para o criador
         async function verificarNotificacoesPagamento() {
             try {
-                if (!supabase || !currentUser) return;
+                if (!supabaseClient || !currentUser) return;
 
                 // Buscar coletas criadas pelo usuário atual que foram marcadas como pagas recentemente
                 const { data: coletasPagas, error } = await supabase
@@ -5473,7 +5519,7 @@
         async function excluirColeta(coletaId) {
             try {
                 // Verificar se o Supabase está inicializado
-                if (!supabase) {
+                if (!supabaseClient) {
                     console.error('❌ Supabase não inicializado');
                     showNotification('Erro: Supabase não inicializado', 'error');
                     return;
@@ -5483,7 +5529,17 @@
                     return;
                 }
                 
-                const { error } = await supabase
+                // Buscar dados da coleta antes de excluir para o histórico
+                const coleta = coletasData.find(c => c.id === coletaId);
+                let detalhesExclusao = 'Coleta excluída';
+                if (coleta) {
+                    detalhesExclusao = `Coleta excluída: ${coleta.filial || ''} ${coleta.numero_coleta || ''} - ${coleta.cliente || ''} (${coleta.origem || ''} → ${coleta.destino || ''})`;
+                }
+
+                // Registrar no histórico ANTES de excluir (pois depois não terá mais acesso aos dados)
+                await salvarNoHistorico(coletaId, 'coleta_excluida', detalhesExclusao);
+                
+                const { error } = await supabaseClient
                     .from('coletas')
                     .delete()
                     .eq('id', coletaId);
@@ -5607,6 +5663,10 @@
 
                 // Invalidar cache de anexos para esta coleta
                 invalidarCacheAnexos(coletaId);
+
+                // Registrar no histórico
+                const nomeArquivo = result.anexo?.nome_arquivo || file.name || 'arquivo';
+                await salvarNoHistorico(coletaId, 'anexo_adicionado', `Anexo adicionado: ${nomeArquivo}`);
 
                 return { success: true, anexo: result.anexo };
             } catch (error) {
@@ -5757,15 +5817,21 @@
 
         async function excluirAnexo(anexoId) {
             try {
-                // Buscar informações do anexo para obter o coletaId
+                // Buscar informações do anexo para obter o coletaId e nome do arquivo
                 let coletaId = null;
+                let nomeArquivo = 'arquivo';
                 try {
                     const anexoInfo = await buscarAnexoPorId(anexoId);
-                    if (anexoInfo && anexoInfo.coleta_id) {
+                    if (anexoInfo) {
+                        if (anexoInfo.coleta_id) {
                         coletaId = anexoInfo.coleta_id;
+                        }
+                        if (anexoInfo.nome_arquivo) {
+                            nomeArquivo = anexoInfo.nome_arquivo;
+                        }
                     }
                 } catch (err) {
-                    console.warn('⚠️ Não foi possível obter coletaId do anexo:', err);
+                    console.warn('⚠️ Não foi possível obter informações do anexo:', err);
                 }
                 
                 const headers = await getSupabaseAuthHeaders();
@@ -5779,6 +5845,11 @@
 
                 if (!response.ok) {
                     throw new Error(result.error || 'Erro ao excluir anexo.');
+                }
+
+                // Registrar no histórico ANTES de invalidar o cache
+                if (coletaId) {
+                    await salvarNoHistorico(coletaId, 'anexo_removido', `Anexo removido: ${nomeArquivo}`);
                 }
 
                 // Invalidar cache de anexos para esta coleta (ou todas se não encontrou o coletaId)
@@ -5800,7 +5871,7 @@
         async function carregarMensagensChat(coletaId) {
             try {
                 // Verificar se o Supabase está inicializado
-                if (!supabase) {
+                if (!supabaseClient) {
                     console.error('❌ Supabase não inicializado');
                     return [];
                 }
@@ -5822,7 +5893,7 @@
         async function enviarMensagem(coletaId, mensagem, usuario) {
             try {
                 // Verificar se o Supabase está inicializado
-                if (!supabase) {
+                if (!supabaseClient) {
                     console.error('❌ Supabase não inicializado');
                     showNotification('Erro: Supabase não inicializado', 'error');
                     return { success: false };
@@ -5859,7 +5930,7 @@
         async function carregarHistorico(coletaId) {
             try {
                 // Verificar se o Supabase está inicializado
-                if (!supabase) {
+                if (!supabaseClient) {
                     console.error('❌ Supabase não inicializado');
                     return [];
                 }
@@ -5993,7 +6064,7 @@
         async function salvarNoHistorico(coletaId, acao, detalhes = '') {
             try {
                 // Verificar se o Supabase está inicializado
-                if (!supabase) {
+                if (!supabaseClient) {
                     console.error('❌ Supabase não inicializado');
                     return;
                 }
@@ -6055,7 +6126,7 @@
         async function carregarHistoricoParaCard(coletaId) {
             try {
                 // Verificar se o Supabase está inicializado
-                if (!supabase) {
+                if (!supabaseClient) {
                     console.error('❌ Supabase não inicializado');
                     return [];
                 }
@@ -6155,9 +6226,13 @@
                 'coleta_criada': '📝 Coleta criada',
                 'coleta_editada': '✏️ Coleta editada', 
                 'etapa_avancada': '🚀 Etapa avançada',
+                'etapa_retornada': '⬅️ Etapa retornada',
                 'coleta_excluida': '🗑️ Coleta excluída',
                 'anexo_adicionado': '📎 Anexo adicionado',
-                'anexo_removido': '📎 Anexo removido'
+                'anexo_removido': '📎 Anexo removido',
+                'etiquetas_alteradas': '🏷️ Etiquetas alteradas',
+                'motorista_vinculado': '👤 Motorista vinculado',
+                'motorista_trocado': '🔄 Motorista trocado'
             };
             return acoes[acao] || acao;
         }
@@ -6621,7 +6696,79 @@
                 ` : ''}
 
                 <!-- Validação para etapa Contas a Pagar -->
-                ${coleta.etapa_atual === 'contas_pagar' && !coleta.contas_pagar_pago ? `
+                ${coleta.etapa_atual === 'contas_pagar' ? (() => {
+                    // Verificar quais pagamentos já foram realizados
+                    const tipoPago = coleta.contas_pagar_tipo || null;
+                    const adiantamentoPago = tipoPago === 'adiantamento' || tipoPago === 'pagamento_total' || tipoPago === 'ambos';
+                    const saldoPago = tipoPago === 'saldo' || tipoPago === 'pagamento_total' || tipoPago === 'ambos';
+                    const pagamentoTotalPago = tipoPago === 'pagamento_total';
+                    const ambosPagos = tipoPago === 'ambos';
+                    const algumPagamentoPago = coleta.contas_pagar_pago === true;
+                    
+                    // Se todos os pagamentos foram realizados, mostrar apenas mensagem de sucesso
+                    if (pagamentoTotalPago || ambosPagos) {
+                        return `
+                            <div class="etapa-validation" style="background: linear-gradient(135deg, rgba(40, 167, 69, 0.1) 0%, rgba(32, 201, 151, 0.1) 100%); border: 1px solid #28a745;">
+                                <div class="validation-title" style="color: #28a745;">
+                                    <i class="fas fa-check-circle"></i>
+                                    Pagamento Completo
+                                </div>
+                                <div class="validation-message" style="color: #155724;">
+                                    ${tipoPago === 'pagamento_total' ? '💳 Pagamento Total' : '✅ Todos os pagamentos (Adiantamento e Saldo)'} marcado(s) como realizado(s) em ${coleta.contas_pagar_data ? new Date(coleta.contas_pagar_data).toLocaleString('pt-BR') : 'data não informada'} por ${coleta.contas_pagar_pago_por || 'Usuário Desconhecido'}.
+                                </div>
+                            </div>
+                        `;
+                    }
+                    
+                    // Se algum pagamento foi realizado, mostrar status e opções pendentes
+                    if (algumPagamentoPago) {
+                        const botoesPendentes = [];
+                        
+                        if (!adiantamentoPago) {
+                            botoesPendentes.push(`
+                                <button class="btn-validation success" onclick="event.stopPropagation(); marcarComoPago('${coleta.id}', 'adiantamento')" ${!coleta.motorista_id ? 'disabled title="É necessário ter motorista vinculado"' : !temPermissaoEtapa('contas_pagar') ? 'disabled title="Sem permissão para esta etapa"' : ''} style="flex: 1; min-width: 180px;">
+                                    <i class="fas fa-money-bill-wave"></i> Adiantamento de Frete
+                                </button>
+                            `);
+                        }
+                        
+                        if (!saldoPago) {
+                            botoesPendentes.push(`
+                                <button class="btn-validation success" onclick="event.stopPropagation(); marcarComoPago('${coleta.id}', 'saldo')" ${!coleta.motorista_id ? 'disabled title="É necessário ter motorista vinculado"' : !temPermissaoEtapa('contas_pagar') ? 'disabled title="Sem permissão para esta etapa"' : ''} style="flex: 1; min-width: 180px;">
+                                    <i class="fas fa-wallet"></i> Saldo
+                                </button>
+                            `);
+                        }
+                        
+                        if (!pagamentoTotalPago) {
+                            botoesPendentes.push(`
+                                <button class="btn-validation success" onclick="event.stopPropagation(); marcarComoPago('${coleta.id}', 'pagamento_total')" ${!coleta.motorista_id ? 'disabled title="É necessário ter motorista vinculado"' : !temPermissaoEtapa('contas_pagar') ? 'disabled title="Sem permissão para esta etapa"' : ''} style="flex: 1; min-width: 180px;">
+                                    <i class="fas fa-credit-card"></i> Pagamento Total
+                                </button>
+                            `);
+                        }
+                        
+                        return `
+                            <div class="etapa-validation" id="validation-contas_pagar-${coleta.id}">
+                                <div class="validation-title">
+                                    <i class="fas fa-money-check-alt"></i>
+                                    ${tipoPago === 'adiantamento' ? '💵 Adiantamento Pago - Pendente: Saldo' : tipoPago === 'saldo' ? '💰 Saldo Pago - Pendente: Adiantamento' : 'Pagamentos'}
+                                </div>
+                                <div class="validation-message">
+                                    ${tipoPago ? `${tipoPago === 'adiantamento' ? '💵 Adiantamento' : tipoPago === 'saldo' ? '💰 Saldo' : '✅ Pagamento'} marcado como realizado em ${coleta.contas_pagar_data ? new Date(coleta.contas_pagar_data).toLocaleString('pt-BR') : 'data não informada'} por ${coleta.contas_pagar_pago_por || 'Usuário Desconhecido'}.<br><br>` : ''}
+                                    ${botoesPendentes.length > 0 ? 'Marque os pagamentos pendentes como realizados. O motorista e o criador da oportunidade serão notificados.' : ''}
+                                </div>
+                                ${botoesPendentes.length > 0 ? `
+                                    <div class="validation-actions" style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 1rem;">
+                                        ${botoesPendentes.join('')}
+                                    </div>
+                                ` : ''}
+                            </div>
+                        `;
+                    }
+                    
+                    // Se nenhum pagamento foi realizado, mostrar todas as opções
+                    return `
                     <div class="etapa-validation" id="validation-contas_pagar-${coleta.id}">
                         <div class="validation-title">
                             <i class="fas fa-money-check-alt"></i>
@@ -6642,17 +6789,8 @@
                             </button>
                         </div>
                     </div>
-                ` : coleta.etapa_atual === 'contas_pagar' && coleta.contas_pagar_pago ? `
-                    <div class="etapa-validation" style="background: linear-gradient(135deg, rgba(40, 167, 69, 0.1) 0%, rgba(32, 201, 151, 0.1) 100%); border: 1px solid #28a745;">
-                        <div class="validation-title" style="color: #28a745;">
-                            <i class="fas fa-check-circle"></i>
-                            Pagamento Realizado
-                        </div>
-                        <div class="validation-message" style="color: #155724;">
-                            ${coleta.contas_pagar_tipo === 'adiantamento' ? '💵 Adiantamento de Frete' : coleta.contas_pagar_tipo === 'saldo' ? '💰 Saldo' : coleta.contas_pagar_tipo === 'pagamento_total' ? '💳 Pagamento Total' : 'Pagamento'} marcado como realizado em ${coleta.contas_pagar_data ? new Date(coleta.contas_pagar_data).toLocaleString('pt-BR') : 'data não informada'} por ${coleta.contas_pagar_pago_por || 'Usuário Desconhecido'}.
-                        </div>
-                    </div>
-                ` : ''}
+                    `;
+                })() : ''}
 
                 <div class="card-footer">
                     <div class="card-actions">
@@ -6928,7 +7066,7 @@
                 
                 // Validar duplicidade (filial + número da coleta) antes de criar
                 try {
-                    if (!supabase) {
+                    if (!supabaseClient) {
                         console.error('❌ Supabase não inicializado');
                         showNotification('Erro: Supabase não inicializado', 'error');
                         return;
@@ -8033,7 +8171,7 @@
         }
 
         async function abrirModalEtiquetas(coletaId) {
-            if (!supabase) {
+            if (!supabaseClient) {
                 showNotification('Erro ao conectar com o banco de dados', 'error');
                 return;
             }
@@ -8368,6 +8506,28 @@
                 const checkboxes = document.querySelectorAll('#modalEtiquetas input[type="checkbox"]:checked');
                 const etiquetasSelecionadas = Array.from(checkboxes).map(cb => cb.value);
 
+                // Buscar etiquetas antigas para comparar
+                const { data: etiquetasAntigasData } = await supabase
+                    .from('coleta_etiquetas')
+                    .select(`
+                        etiqueta_id,
+                        etiquetas_coletas:etiqueta_id (
+                            id,
+                            nome
+                        )
+                    `)
+                    .eq('coleta_id', coletaEtiquetasModal);
+
+                const etiquetasAntigas = etiquetasAntigasData?.map(e => e.etiquetas_coletas?.nome).filter(Boolean) || [];
+
+                // Buscar nomes das novas etiquetas
+                const { data: etiquetasData } = await supabase
+                    .from('etiquetas_coletas')
+                    .select('id, nome')
+                    .in('id', etiquetasSelecionadas);
+
+                const etiquetasNovas = etiquetasData?.map(e => e.nome) || [];
+
                 // Remover todas as etiquetas da coleta
                 const { error: deleteError } = await supabase
                     .from('coleta_etiquetas')
@@ -8389,6 +8549,23 @@
 
                     if (insertError) throw insertError;
                 }
+
+                // Registrar no histórico
+                let detalhesHistorico = '';
+                if (etiquetasNovas.length > 0 && etiquetasAntigas.length > 0) {
+                    // Houve mudança
+                    detalhesHistorico = `Etiquetas alteradas: ${etiquetasAntigas.join(', ')} → ${etiquetasNovas.join(', ')}`;
+                } else if (etiquetasNovas.length > 0) {
+                    // Adicionadas novas etiquetas
+                    detalhesHistorico = `Etiquetas adicionadas: ${etiquetasNovas.join(', ')}`;
+                } else if (etiquetasAntigas.length > 0) {
+                    // Todas as etiquetas foram removidas
+                    detalhesHistorico = `Etiquetas removidas: ${etiquetasAntigas.join(', ')}`;
+                } else {
+                    detalhesHistorico = 'Nenhuma etiqueta vinculada';
+                }
+
+                await salvarNoHistorico(coletaEtiquetasModal, 'etiquetas_alteradas', detalhesHistorico);
 
                 showNotification('Etiquetas salvas com sucesso!', 'success');
                 fecharModalEtiquetas();

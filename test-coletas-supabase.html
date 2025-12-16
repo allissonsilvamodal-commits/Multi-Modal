@@ -72,7 +72,7 @@
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
-        let supabase = null;
+        let supabaseClient = null; // Renomeado para evitar conflito com possível variável global do Supabase
         let logElement = document.getElementById('log');
         let statusElement = document.getElementById('status');
 
@@ -105,7 +105,8 @@
                 const config = await response.json();
                 log(`✅ Configuração obtida: ${config.url}`);
                 
-                supabase = window.supabase.createClient(config.url, config.anonKey);
+                supabaseClient = window.supabase.createClient(config.url, config.anonKey);
+                window.supabase = supabaseClient; // Manter compatibilidade
                 log('✅ Cliente Supabase criado');
                 
                 updateStatus('✅ Supabase inicializado com sucesso', 'success');
@@ -126,7 +127,7 @@
             }
             
             try {
-                const { data, error } = await supabase.auth.getSession();
+                const { data, error } = await supabaseClient.auth.getSession();
                 if (error) {
                     log(`❌ Erro na sessão: ${error.message}`, 'error');
                 } else {

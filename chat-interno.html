@@ -1347,6 +1347,11 @@
         .reply-preview-text {
             font-size: 0.8rem;
             opacity: 0.8;
+        }
+
+        .forward-recipient-item:hover {
+            background: rgba(255, 255, 255, 0.1) !important;
+        }
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
@@ -2096,6 +2101,39 @@
                             <div class="search-empty">
                                 <i class="fas fa-search"></i>
                                 <p>Digite para buscar mensagens</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal de Encaminhamento -->
+            <div class="search-modal" id="forwardModal" style="display: none;">
+                <div class="search-modal-content">
+                    <div class="search-modal-header">
+                        <h5><i class="fas fa-share"></i> Encaminhar mensagem</h5>
+                        <button class="search-modal-close" id="forwardModalClose">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div class="search-modal-body">
+                        <div id="forwardMessagePreview" style="background: rgba(102, 126, 234, 0.1); border-left: 3px solid var(--primary); padding: 1rem; margin-bottom: 1rem; border-radius: 8px;">
+                            <!-- Preview da mensagem será inserido aqui -->
+                        </div>
+                        <div class="search-input-wrapper">
+                            <input type="text" id="forwardSearchInput" class="search-input" placeholder="Buscar usuários ou grupos...">
+                            <i class="fas fa-search search-input-icon"></i>
+                        </div>
+                        <div style="margin: 1rem 0;">
+                            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; padding: 0.5rem; border-radius: 8px; transition: background 0.2s;">
+                                <input type="checkbox" id="forwardIncludeGroups" style="cursor: pointer;">
+                                <span>Mostrar grupos</span>
+                            </label>
+                        </div>
+                        <div class="search-results" id="forwardResults" style="max-height: 400px; overflow-y: auto;">
+                            <div class="search-empty">
+                                <i class="fas fa-users"></i>
+                                <p>Busque por usuários ou grupos</p>
                             </div>
                         </div>
                     </div>
@@ -4098,6 +4136,10 @@ ALTER TABLE chat_mensagens ADD COLUMN IF NOT EXISTS visualizada BOOLEAN DEFAULT 
                         <i class="fas fa-reply"></i>
                         <span>Responder</span>
                     </button>
+                    <button class="btn-reply" onclick="startForward('${message.id}')" title="Encaminhar">
+                        <i class="fas fa-share"></i>
+                        <span>Encaminhar</span>
+                    </button>
                 </div>
             `;
 
@@ -4342,6 +4384,286 @@ ALTER TABLE chat_mensagens ADD COLUMN IF NOT EXISTS visualizada BOOLEAN DEFAULT 
         function cancelReply() {
             replyingToMessage = null;
             document.getElementById('replyPreviewContainer').style.display = 'none';
+        }
+
+        // Iniciar encaminhamento de mensagem
+        window.startForward = function(messageId) {
+            const message = messagesCache.get(messageId);
+            if (!message) return;
+
+            forwardingMessage = message;
+            
+            // Exibir preview da mensagem no modal
+            const previewContainer = document.getElementById('forwardMessagePreview');
+            const senderName = message.remetente_id === currentUserId 
+                ? (currentUserData?.nome || 'Você') 
+                : (message.remetente_nome || 'Usuário');
+            const messageText = message.mensagem.length > 100 
+                ? message.mensagem.substring(0, 100) + '...' 
+                : message.mensagem;
+            
+            let previewHtml = `
+                <div style="font-weight: 600; margin-bottom: 0.5rem; color: var(--primary);">De: ${escapeHtml(senderName)}</div>
+                <div style="opacity: 0.9;">${escapeHtml(messageText)}</div>
+            `;
+            
+            // Adicionar preview de arquivo se houver
+            if (message.arquivo_url) {
+                const fileName = message.arquivo_nome || 'Arquivo';
+                previewHtml += `<div style="margin-top: 0.5rem; opacity: 0.8;"><i class="fas fa-paperclip"></i> ${escapeHtml(fileName)}</div>`;
+            }
+            
+            previewContainer.innerHTML = previewHtml;
+            
+            // Mostrar modal
+            document.getElementById('forwardModal').style.display = 'flex';
+            
+            // Carregar lista de destinatários
+            loadForwardRecipients();
+            
+            // Focar no campo de busca
+            document.getElementById('forwardSearchInput').focus();
+        }
+
+        // Carregar destinatários para encaminhamento
+        async function loadForwardRecipients() {
+            const resultsContainer = document.getElementById('forwardResults');
+            const searchInput = document.getElementById('forwardSearchInput');
+            const includeGroups = document.getElementById('forwardIncludeGroups').checked;
+            const searchTerm = searchInput.value.toLowerCase().trim();
+
+            try {
+                let html = '';
+                let count = 0;
+
+                // Buscar usuários
+                const filteredUsers = allUsersData.filter(user => {
+                    if (user.id === currentUserId) return false; // Não mostrar o próprio usuário
+                    if (searchTerm) {
+                        const nome = (user.nome || '').toLowerCase();
+                        const email = (user.email || '').toLowerCase();
+                        return nome.includes(searchTerm) || email.includes(searchTerm);
+                    }
+                    return true;
+                });
+
+                // Renderizar usuários
+                if (filteredUsers.length > 0) {
+                    html += '<div style="margin-bottom: 1rem;"><strong style="color: var(--primary); font-size: 0.85rem; text-transform: uppercase;">Usuários</strong></div>';
+                    filteredUsers.forEach(user => {
+                        count++;
+                        const isOnline = userStatusMap.get(user.id)?.online || false;
+                        html += `
+                            <div class="forward-recipient-item" data-type="user" data-id="${user.id}" data-name="${escapeHtml(user.nome || user.email)}" style="padding: 0.75rem; border-radius: 8px; cursor: pointer; margin-bottom: 0.5rem; background: rgba(255, 255, 255, 0.05); transition: background 0.2s; display: flex; align-items: center; gap: 0.75rem;">
+                                <div style="width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, var(--primary), var(--secondary)); display: flex; align-items: center; justify-content: center; color: white; font-weight: 600;">
+                                    ${(user.nome || user.email || 'U').charAt(0).toUpperCase()}
+                                </div>
+                                <div style="flex: 1;">
+                                    <div style="font-weight: 600;">${escapeHtml(user.nome || user.email)}</div>
+                                    <div style="font-size: 0.85rem; opacity: 0.7;">${user.email || ''}</div>
+                                </div>
+                                ${isOnline ? '<span style="width: 10px; height: 10px; border-radius: 50%; background: var(--success);"></span>' : ''}
+                            </div>
+                        `;
+                    });
+                }
+
+                // Buscar grupos se solicitado
+                if (includeGroups && gruposData.length > 0) {
+                    const filteredGrupos = gruposData.filter(grupo => {
+                        if (searchTerm) {
+                            const nome = (grupo.nome || '').toLowerCase();
+                            return nome.includes(searchTerm);
+                        }
+                        return true;
+                    });
+
+                    if (filteredGrupos.length > 0) {
+                        html += '<div style="margin-top: 1.5rem; margin-bottom: 1rem;"><strong style="color: var(--primary); font-size: 0.85rem; text-transform: uppercase;">Grupos</strong></div>';
+                        filteredGrupos.forEach(grupo => {
+                            count++;
+                            html += `
+                                <div class="forward-recipient-item" data-type="group" data-id="${grupo.id}" data-name="${escapeHtml(grupo.nome)}" style="padding: 0.75rem; border-radius: 8px; cursor: pointer; margin-bottom: 0.5rem; background: rgba(255, 255, 255, 0.05); transition: background 0.2s; display: flex; align-items: center; gap: 0.75rem;">
+                                    <div style="width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, var(--secondary), var(--accent)); display: flex; align-items: center; justify-content: center; color: white; font-size: 1.2rem;">
+                                        <i class="fas fa-users"></i>
+                                    </div>
+                                    <div style="flex: 1;">
+                                        <div style="font-weight: 600;">${escapeHtml(grupo.nome)}</div>
+                                        <div style="font-size: 0.85rem; opacity: 0.7;">Grupo</div>
+                                    </div>
+                                </div>
+                            `;
+                        });
+                    }
+                }
+
+                if (count === 0) {
+                    html = '<div class="search-empty"><i class="fas fa-search"></i><p>Nenhum destinatário encontrado</p></div>';
+                }
+
+                resultsContainer.innerHTML = html;
+
+                // Adicionar hover effect e click handler
+                document.querySelectorAll('.forward-recipient-item').forEach(item => {
+                    item.addEventListener('mouseenter', function() {
+                        this.style.background = 'rgba(255, 255, 255, 0.1)';
+                    });
+                    item.addEventListener('mouseleave', function() {
+                        this.style.background = 'rgba(255, 255, 255, 0.05)';
+                    });
+                    
+                    // Adicionar click handler
+                    item.addEventListener('click', function() {
+                        const type = this.dataset.type;
+                        const id = this.dataset.id;
+                        const name = this.dataset.name;
+                        if (type && id && name) {
+                            selectForwardRecipient(type, id, name);
+                        }
+                    });
+                });
+
+            } catch (error) {
+                console.error('Erro ao carregar destinatários:', error);
+                resultsContainer.innerHTML = '<div class="search-empty"><i class="fas fa-exclamation-triangle"></i><p>Erro ao carregar destinatários</p></div>';
+            }
+        }
+
+        // Selecionar destinatário para encaminhamento
+        window.selectForwardRecipient = async function(type, id, name) {
+            if (!forwardingMessage) {
+                console.error('❌ Nenhuma mensagem para encaminhar');
+                return;
+            }
+
+            try {
+                console.log('📤 Encaminhando mensagem:', { type, id, name });
+                
+                // Criar cópia da mensagem antes de limpar
+                const messageToForward = forwardingMessage;
+                
+                // Fechar modal
+                document.getElementById('forwardModal').style.display = 'none';
+                forwardingMessage = null;
+
+                // Encaminhar mensagem
+                await forwardMessage(type, id, name, messageToForward);
+
+            } catch (error) {
+                console.error('❌ Erro ao selecionar destinatário:', error);
+                alert('Erro ao encaminhar mensagem: ' + (error.message || 'Tente novamente.'));
+            }
+        }
+
+        // Encaminhar mensagem para destinatário
+        async function forwardMessage(recipientType, recipientId, recipientName, messageToForward = null) {
+            const message = messageToForward || forwardingMessage;
+            if (!message) {
+                console.error('❌ Nenhuma mensagem para encaminhar');
+                return;
+            }
+
+            try {
+                const remetenteNome = currentUserData?.nome || 'Usuário';
+                
+                // Preparar dados da mensagem encaminhada
+                const messageData = {
+                    remetente_id: currentUserId,
+                    remetente_nome: remetenteNome,
+                    mensagem: message.mensagem,
+                    created_at: new Date().toISOString()
+                };
+
+                // Adicionar arquivo se houver
+                if (message.arquivo_url) {
+                    messageData.arquivo_url = message.arquivo_url;
+                    messageData.arquivo_nome = message.arquivo_nome;
+                    messageData.arquivo_tipo = message.arquivo_tipo;
+                    messageData.arquivo_tamanho = message.arquivo_tamanho;
+                }
+
+                // Adicionar indicador de mensagem encaminhada
+                const originalSender = message.remetente_id === currentUserId 
+                    ? (currentUserData?.nome || 'Você')
+                    : (message.remetente_nome || 'Usuário');
+                
+                messageData.mensagem = `↪️ Mensagem encaminhada de ${originalSender}\n\n${message.mensagem}`;
+
+                // Definir destinatário
+                if (recipientType === 'group') {
+                    messageData.grupo_id = recipientId;
+                    const grupo = gruposData.find(g => g.id === recipientId);
+                    if (grupo) {
+                        messageData.destinatario_nome = grupo.nome;
+                    }
+                } else {
+                    messageData.destinatario_id = recipientId;
+                    messageData.destinatario_nome = recipientName;
+                }
+
+                // Enviar mensagem
+                const { data, error } = await supabaseClient
+                    .from('chat_mensagens')
+                    .insert([messageData])
+                    .select()
+                    .single();
+
+                if (error) throw error;
+
+                // Mostrar mensagem de sucesso (usar toast se disponível, senão alert)
+                if (typeof showToast === 'function') {
+                    showToast(`Mensagem encaminhada para ${recipientName} com sucesso!`, 'success');
+                } else {
+                    alert(`Mensagem encaminhada para ${recipientName} com sucesso!`);
+                }
+
+                // Se estiver visualizando a conversa do destinatário, recarregar mensagens
+                if ((recipientType === 'user' && selectedUserId === recipientId) ||
+                    (recipientType === 'group' && selectedGrupoId === recipientId)) {
+                    await loadMessages();
+                }
+
+                // Atualizar lista de usuários
+                await loadUsers();
+
+            } catch (error) {
+                console.error('Erro ao encaminhar mensagem:', error);
+                throw error;
+            }
+        }
+
+        // Inicializar modal de encaminhamento
+        function initForwardModal() {
+            const forwardModal = document.getElementById('forwardModal');
+            const forwardModalClose = document.getElementById('forwardModalClose');
+            const forwardSearchInput = document.getElementById('forwardSearchInput');
+            const forwardIncludeGroups = document.getElementById('forwardIncludeGroups');
+
+            // Fechar modal
+            forwardModalClose.addEventListener('click', () => {
+                forwardModal.style.display = 'none';
+                forwardingMessage = null;
+                forwardSearchInput.value = '';
+            });
+
+            // Fechar ao clicar fora
+            forwardModal.addEventListener('click', (e) => {
+                if (e.target === forwardModal) {
+                    forwardModal.style.display = 'none';
+                    forwardingMessage = null;
+                    forwardSearchInput.value = '';
+                }
+            });
+
+            // Buscar ao digitar
+            forwardSearchInput.addEventListener('input', () => {
+                loadForwardRecipients();
+            });
+
+            // Atualizar lista ao alternar grupos
+            forwardIncludeGroups.addEventListener('change', () => {
+                loadForwardRecipients();
+            });
         }
 
         // Gerenciar seleção de arquivo
@@ -5751,6 +6073,7 @@ ALTER TABLE chat_mensagens ADD COLUMN IF NOT EXISTS visualizada BOOLEAN DEFAULT 
             initAudioRecording();
             initSearch();
             initUsersSearch();
+            initForwardModal();
             
             // Iniciar sistema de status online/offline
             startStatusSystem();

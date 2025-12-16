@@ -454,7 +454,7 @@
         ];
         
         // ========== INICIALIZAÇÃO SUPABASE ==========
-        let supabase = null;
+        let supabaseClient = null; // Renomeado para evitar conflito com possível variável global do Supabase
         
         async function inicializarSupabase() {
             try {
@@ -472,8 +472,8 @@
                 
                 // Inicializar cliente Supabase
                 if (typeof window.supabase !== 'undefined') {
-                    supabase = window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey);
-                    window.supabase = supabase;
+                    supabaseClient = window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey);
+                    window.supabase = supabaseClient; // Manter compatibilidade com código que usa window.supabase
                     console.log('✅ Supabase inicializado com sucesso');
                     return true;
                 } else {
@@ -539,8 +539,8 @@
                 let authToken = null;
                 let userEmail = null;
                 
-                if (supabase || window.supabase) {
-                    const sbClient = supabase || window.supabase;
+                if (supabaseClient || window.supabase) {
+                    const sbClient = supabaseClient || window.supabase;
                     try {
                         const { data: session } = await sbClient.auth.getSession();
                         if (session?.session?.access_token) {

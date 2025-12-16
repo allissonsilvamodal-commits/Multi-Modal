@@ -397,7 +397,7 @@
     </div>
 
     <script>
-        let supabase;
+        let supabaseClient = null; // Renomeado para evitar conflito com possível variável global do Supabase
         let historicoColetas = [];
         let currentUser = null;
 
@@ -414,7 +414,8 @@
             try {
                 const response = await fetch('/api/supabase-config');
                 const config = await response.json();
-                supabase = window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey);
+                supabaseClient = window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey);
+                window.supabase = supabaseClient; // Manter compatibilidade com código que usa window.supabase
                 console.log('✅ Supabase inicializado');
                 
                 // Inicializar chat IA após Supabase estar pronto
@@ -444,7 +445,7 @@
             try {
                 console.log('📚 Carregando coletas arquivadas...');
                 
-                const { data, error } = await supabase
+                const { data, error } = await supabaseClient
                     .from('coletas')
                     .select('*')
                     .eq('arquivado', true)
@@ -579,7 +580,7 @@
         async function abrirModalDetalhes(coletaId) {
             try {
                 // Buscar detalhes completos da coleta
-                const { data, error } = await supabase
+                const { data, error } = await supabaseClient
                     .from('coletas')
                     .select('*')
                     .eq('id', coletaId)
@@ -650,7 +651,7 @@
 
         async function carregarHistoricoMovimentacoes(coletaId) {
             try {
-                const { data, error } = await supabase
+                const { data, error } = await supabaseClient
                     .from('historico_movimentacoes')
                     .select('*')
                     .eq('coleta_id', coletaId)
@@ -707,7 +708,7 @@
                 console.log('🔄 Reabrindo coleta:', coletaSelecionadaId);
 
                 // Atualizar coleta: desarquivar e mudar status
-                const { error: updateError } = await supabase
+                const { error: updateError } = await supabaseClient
                     .from('coletas')
                     .update({
                         arquivado: false,
@@ -722,7 +723,7 @@
                 // Registrar no histórico de movimentações
                 const userData = JSON.parse(localStorage.getItem('loggedInUser'));
                 
-                const { error: histError } = await supabase
+                const { error: histError } = await supabaseClient
                     .from('historico_movimentacoes')
                     .insert({
                         coleta_id: coletaSelecionadaId,

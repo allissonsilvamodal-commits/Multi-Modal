@@ -1335,7 +1335,7 @@
         let selectedColetas = [];
         let updateInterval = null;
         let lastUpdateTime = null;
-        let supabase = null;
+        let supabaseClient = null; // Renomeado para evitar conflito com possível variável global do Supabase
         let filtroTempoMinutos = 60;
         let filtroMotoristaTerm = '';
         let ultimaListaPosicoes = [];
@@ -1479,7 +1479,8 @@
                 }
 
                 // Inicializar cliente Supabase com as credenciais do servidor
-                supabase = window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey);
+                supabaseClient = window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey);
+                window.supabase = supabaseClient; // Manter compatibilidade com código que usa window.supabase
                 console.log('✅ Supabase inicializado com sucesso (credenciais do servidor)');
                 return true;
             } catch (error) {
@@ -1563,7 +1564,7 @@
         async function carregarColetas() {
             try {
                 // Verificar se o Supabase está inicializado
-                if (!supabase) {
+                if (!supabaseClient) {
                     console.error('❌ Supabase não está inicializado');
                     mostrarNotificacao('Erro: Supabase não inicializado. Recarregue a página.', 'error');
                     return;
@@ -1573,7 +1574,7 @@
                 
                 // Buscar coletas que tenham motorista vinculado
                 // Incluir coletas na etapa de monitoramento ou que tenham motorista vinculado
-                const { data: coletas, error } = await supabase
+                const { data: coletas, error } = await supabaseClient
                     .from('coletas')
                     .select('id, cliente, origem, destino, etapa_atual, motorista_id, filial, numero_coleta')
                     .not('motorista_id', 'is', null)
@@ -2271,7 +2272,7 @@
             
             // Aguardar Supabase estar pronto antes de carregar coletas
             const tentarCarregarColetas = (tentativas = 0) => {
-                if (supabase) {
+                if (supabaseClient) {
         carregarColetas();
                 } else if (tentativas < 20) { // Máximo de 20 tentativas (4 segundos)
                     console.warn(`⚠️ Aguardando Supabase inicializar... (tentativa ${tentativas + 1}/20)`);

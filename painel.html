@@ -1696,7 +1696,8 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script>
         // ========== CONFIGURAÇÃO DO SUPABASE ==========
-        let supabaseUrl, supabaseKey, supabase;
+        let supabaseUrl, supabaseKey;
+        let supabaseClient = null; // Renomeado para evitar conflito com possível variável global do Supabase
         
         const CONFIG_DISPARO_STORAGE_KEY = 'painelDisparoConfig';
         const DEFAULT_DISPARO_CONFIG = {
@@ -1922,7 +1923,8 @@ async function inicializarSupabase() {
                     if (config.supabaseUrl && config.supabaseAnonKey) {
                         supabaseUrl = config.supabaseUrl;
                         supabaseKey = config.supabaseAnonKey;
-                        supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+                        supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
+                        window.supabase = supabaseClient; // Manter compatibilidade com código que usa window.supabase
                         console.log('✅ Supabase configurado com sucesso');
                         
                         // Inicializar chat IA após Supabase estar pronto
@@ -2181,7 +2183,7 @@ const estados = [
             console.log('📊 Iniciando carregamento de estatísticas...');
             try {
                 // Tentar carregar do Supabase com contagem otimizada
-                if (!supabase) {
+                if (!supabaseClient) {
                     console.warn('⚠️ Supabase não inicializado, usando dados mockados');
                     throw new Error('Supabase não inicializado');
                 }
@@ -2189,7 +2191,7 @@ const estados = [
                 console.log('🔍 Buscando contagens do Supabase...');
                 
                 // Contar total de motoristas
-                const { count: totalCount, error: totalError } = await supabase
+                const { count: totalCount, error: totalError } = await supabaseClient
                     .from('motoristas')
                     .select('*', { count: 'exact', head: true });
 
@@ -2199,7 +2201,7 @@ const estados = [
                 }
                 
                 // Contar motoristas ativos
-                const { count: ativosCount, error: ativosError } = await supabase
+                const { count: ativosCount, error: ativosError } = await supabaseClient
                     .from('motoristas')
                     .select('*', { count: 'exact', head: true })
                     .eq('status', 'ativo');
@@ -2210,7 +2212,7 @@ const estados = [
                 }
                 
                 // Contar motoristas inativos
-                const { count: inativosCount, error: inativosError } = await supabase
+                const { count: inativosCount, error: inativosError } = await supabaseClient
                     .from('motoristas')
                     .select('*', { count: 'exact', head: true })
                     .eq('status', 'inativo');
@@ -2841,9 +2843,9 @@ const estados = [
             };
             
             // Tentar obter token do Supabase
-            if (supabase) {
+            if (supabaseClient) {
                 try {
-                    const { data: { session } } = await supabase.auth.getSession();
+                    const { data: { session } } = await supabaseClient.auth.getSession();
                     if (session && session.access_token) {
                         headers['Authorization'] = `Bearer ${session.access_token}`;
                     }
@@ -2977,7 +2979,7 @@ const estados = [
                 let todosMotoristas = [];
                 
                 // Tentar carregar do Supabase com paginação otimizada
-                if (!supabase) {
+                if (!supabaseClient) {
                     console.warn('⚠️ Supabase não inicializado, usando dados mockados');
                     todosMotoristas = allMotoristas.filter(m => m.classe_veiculo === classe && m.status === 'ativo');
                 } else {
@@ -2993,7 +2995,7 @@ const estados = [
                     
                     while (hasMore) {
                         console.log(`📥 Buscando motoristas: de ${from} até ${from + limit - 1}`);
-                        let query = supabase
+                        let query = supabaseClient
                             .from('motoristas')
                             .select('id, nome, telefone1, telefone2, estado, classe_veiculo, tipo_veiculo, tipo_carroceria, status, telefone1_erro, telefone2_erro, telefone1_erro_motivo, telefone2_erro_motivo')
                             .eq('classe_veiculo', classe);
@@ -3325,13 +3327,13 @@ const estados = [
         // ========== GERENCIAR FAVORITOS ==========
         async function carregarFavoritos() {
             try {
-                if (!supabase || !currentUser) {
+                if (!supabaseClient || !currentUser) {
                     console.log('⚠️ Supabase ou usuário não disponível para carregar favoritos');
                     return;
                 }
 
                 // Buscar favoritos do usuário atual
-                const { data, error } = await supabase
+                const { data, error } = await supabaseClient
                     .from('motoristas_favoritos')
                     .select('motorista_id')
                     .eq('usuario_id', currentUser);
@@ -3356,7 +3358,7 @@ const estados = [
 
         async function toggleFavorito(motoristaId) {
             try {
-                if (!supabase || !currentUser) {
+                if (!supabaseClient || !currentUser) {
                     mostrarAviso('Erro: usuário não autenticado');
                     return;
                 }
@@ -3365,7 +3367,7 @@ const estados = [
 
                 if (isFavorito) {
                     // Remover dos favoritos
-                    const { error } = await supabase
+                    const { error } = await supabaseClient
                         .from('motoristas_favoritos')
                         .delete()
                         .eq('usuario_id', currentUser)
@@ -3377,7 +3379,7 @@ const estados = [
                     console.log(`⭐ Favorito removido: ${motoristaId}`);
                 } else {
                     // Adicionar aos favoritos
-                    const { error } = await supabase
+                    const { error } = await supabaseClient
                         .from('motoristas_favoritos')
                         .insert([{
                             usuario_id: currentUser,
@@ -3460,7 +3462,7 @@ const estados = [
             try {
                 let todosMotoristas = [];
                 
-                if (supabase) {
+                if (supabaseClient) {
                     // Usar currentClass (selecionado pelos cards)
                     if (!currentClass) {
                         mostrarAviso('Selecione uma categoria primeiro');
@@ -3468,7 +3470,7 @@ const estados = [
                     }
                     
                     // Construir query do Supabase com filtros
-                    let query = supabase
+                    let query = supabaseClient
                         .from('motoristas')
                         .select('id, nome, telefone1, telefone2, estado, classe_veiculo, tipo_veiculo, tipo_carroceria, status')
                         .eq('classe_veiculo', currentClass);
@@ -4808,18 +4810,8 @@ const estados = [
                     continue;
                 }
 
-                // Aguardar delay aleatório ANTES de cada envio (exceto o primeiro)
-                if (i > 0) {
-                    // Verificar novamente se foi cancelado antes de aguardar
-                    if (disparoCancelado) break;
-                    
-                    const delaySegundos = gerarDelayAleatorio();
-                    adicionarLog(`⏳ Aguardando ${delaySegundos} segundos antes do próximo envio...`, 'info');
-                    await aguardarComContador(delaySegundos);
-                    
-                    // Verificar se foi cancelado durante a espera
-                    if (disparoCancelado) break;
-                }
+                // ✅ DELAY REMOVIDO DAQUI - será aplicado apenas após sucesso
+                // O tempo gasto em erros já conta como delay para o próximo envio
 
                 const mensagemBase = mensagem
                     .replace(/\{\{name\}\}/g, motorista.nome || 'Motorista')
@@ -4917,6 +4909,16 @@ const estados = [
                                 motivoCancelamento = 'cooldown';
                                 minutosCooldownRestante = data.cooldownMinutes || minutosCooldownRestante;
                                 break;
+                            }
+                            
+                            // ✅ APLICAR DELAY APENAS APÓS SUCESSO (exceto se for o último motorista)
+                            if (i < motoristasArray.length - 1 && !disparoCancelado) {
+                                const delaySegundos = gerarDelayAleatorio();
+                                adicionarLog(`⏳ Aguardando ${delaySegundos} segundos antes do próximo envio...`, 'info');
+                                await aguardarComContador(delaySegundos);
+                                
+                                // Verificar se foi cancelado durante a espera
+                                if (disparoCancelado) break;
                             }
                         } else {
                             totalFalhas++;

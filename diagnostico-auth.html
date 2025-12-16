@@ -60,7 +60,7 @@
     </div>
 
     <script>
-        let supabase = null;
+        let supabaseClient = null; // Renomeado para evitar conflito com possível variável global do Supabase
         
         async function executarDiagnostico() {
             const resultsDiv = document.getElementById('diagnosticResults');
@@ -153,7 +153,8 @@
                     throw new Error('Configuração incompleta');
                 }
                 
-                supabase = window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey);
+                supabaseClient = window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey);
+                window.supabase = supabaseClient; // Manter compatibilidade
                 
                 if (supabase) {
                     return '✅ Supabase inicializado com sucesso';
@@ -171,7 +172,7 @@
                     throw new Error('Supabase não inicializado');
                 }
                 
-                const { data: { session }, error } = await supabase.auth.getSession();
+                const { data: { session }, error } = await supabaseClient.auth.getSession();
                 
                 if (error) {
                     return `⚠️ Erro na sessão: ${error.message}`;

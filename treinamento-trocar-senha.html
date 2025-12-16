@@ -626,7 +626,7 @@
         });
         
         // Inicializar Supabase
-        let supabase = null;
+        let supabaseClient = null; // Renomeado para evitar conflito com possível variável global do Supabase
         
         async function inicializarSupabase() {
             try {
@@ -634,10 +634,11 @@
                 if (!response.ok) throw new Error('Erro ao obter configurações do Supabase');
                 
                 const config = await response.json();
-                supabase = window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey);
+                supabaseClient = window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey);
+                window.supabase = supabaseClient; // Manter compatibilidade com código que usa window.supabase
                 
                 // Obter sessão do usuário
-                const { data: { session } } = await supabase.auth.getSession();
+                const { data: { session } } = await supabaseClient.auth.getSession();
                 if (!session) {
                     console.warn('⚠️ Usuário não autenticado');
                 }
@@ -675,7 +676,7 @@
                 // Obter user_id se autenticado
                 let userId = null;
                 if (supabase) {
-                    const { data: { session } } = await supabase.auth.getSession();
+                    const { data: { session } } = await supabaseClient.auth.getSession();
                     if (session && session.user) {
                         userId = session.user.id;
                     }
@@ -685,7 +686,7 @@
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        ...(userId && supabase ? { 'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}` } : {})
+                        ...(userId && supabaseClient ? { 'Authorization': `Bearer ${(await supabaseClient.auth.getSession()).data.session?.access_token}` } : {})
                     },
                     body: JSON.stringify({
                         treinamento_slug: 'trocar_senha',

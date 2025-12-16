@@ -696,7 +696,7 @@
     // ========== CONFIGURAÇÕES SEGURAS ==========
     let SUPABASE_URL = '';
     let SUPABASE_ANON_KEY = '';
-    let supabase = null;
+    let supabaseClient = null; // Renomeado para evitar conflito com possível variável global do Supabase
     
     // ========== CONFIGURAÇÕES ==========
     const SERVER_URL = window.location.origin;
@@ -740,7 +740,7 @@
             SUPABASE_ANON_KEY = config.supabaseAnonKey;
             
             // Inicializar cliente Supabase
-            supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
             
             console.log('✅ Supabase inicializado com sucesso (configurações seguras)');
             return true;
@@ -857,14 +857,14 @@
 
     // ========== SISTEMA DE AUTENTICAÇÃO SUPABASE ==========
     async function fazerLoginSupabase(email, senha) {
-        if (!supabase) {
+        if (!supabaseClient) {
             throw new Error('Sistema não inicializado corretamente');
         }
         
         console.log('🔐 Tentando login via Supabase Auth:', email);
         
         // ✅ Usar autenticação nativa do Supabase
-        const { data, error } = await supabase.auth.signInWithPassword({
+        const { data, error } = await supabaseClient.auth.signInWithPassword({
             email: email,
             password: senha
         });
@@ -893,7 +893,7 @@
                         console.log('✅ E-mail confirmado automaticamente. Tentando login novamente...');
                         
                         // Tentar login novamente após confirmação
-                        const { data: retryData, error: retryError } = await supabase.auth.signInWithPassword({
+                        const { data: retryData, error: retryError } = await supabaseClient.auth.signInWithPassword({
                             email: email,
                             password: senha
                         });
@@ -935,7 +935,7 @@
         console.log('👤 Buscando perfil do usuário autenticado');
         
         // ✅ Usar dados do usuário autenticado do Supabase
-        const { data: { user }, error } = await supabase.auth.getUser();
+        const { data: { user }, error } = await supabaseClient.auth.getUser();
 
         if (error || !user) {
             console.error('❌ Erro ao buscar usuário autenticado:', error);
@@ -946,7 +946,7 @@
         let role = user.user_metadata?.role || 'user';
         
         try {
-            const { data: profileData, error: profileError } = await supabase
+            const { data: profileData, error: profileError } = await supabaseClient
                 .from('user_profiles')
                 .select('role')
                 .eq('id', user.id)
@@ -977,9 +977,9 @@
     async function verificarSessaoAtiva() {
         console.log('🔍 Verificando sessão Supabase...');
         
-        if (!supabase) return null;
+        if (!supabaseClient) return null;
         
-        const { data, error } = await supabase.auth.getSession();
+        const { data, error } = await supabaseClient.auth.getSession();
         
         if (error) {
             console.error('❌ Erro ao verificar sessão:', error);
@@ -1081,13 +1081,13 @@
         try {
             console.log('🧪 Testando conexão Supabase...');
             
-            if (!supabase) {
+            if (!supabaseClient) {
                 console.error('❌ Supabase não inicializado');
                 return false;
             }
             
             // Testa a conexão com o Supabase Auth
-            const { data, error } = await supabase.auth.getSession();
+            const { data, error } = await supabaseClient.auth.getSession();
 
             if (error) {
                 console.error('❌ Erro Supabase Auth:', error);
@@ -1213,7 +1213,7 @@
         }
         
         // Verificar se o Supabase foi inicializado
-        if (!supabase) {
+        if (!supabaseClient) {
             showAlert('Sistema não inicializado. Recarregue a página.', 'danger');
             return;
         }
@@ -1337,8 +1337,8 @@
     // Logout function para usar em outras páginas
     window.fazerLogout = async function() {
         try {
-            if (supabase) {
-                await supabase.auth.signOut();
+            if (supabaseClient) {
+                await supabaseClient.auth.signOut();
             }
             localStorage.removeItem('loggedInUser');
             console.log('🚪 Logout realizado');

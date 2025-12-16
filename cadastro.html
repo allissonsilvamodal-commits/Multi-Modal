@@ -1386,7 +1386,7 @@ async function verificarTreinamentoCadastro(silencioso = false) {
 // ========== SUPABASE CONFIGURATION ==========
 let SUPABASE_URL = '';
 let SUPABASE_ANON_KEY = '';
-let supabase = null;
+let supabaseClient = null; // Renomeado para evitar conflito com possível variável global do Supabase
 
 // ========== INICIALIZAÇÃO SEGURA DO SUPABASE ==========
 async function inicializarSupabase() {
@@ -1398,7 +1398,8 @@ async function inicializarSupabase() {
         SUPABASE_URL = config.supabaseUrl;
         SUPABASE_ANON_KEY = config.supabaseAnonKey;
         
-        supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        window.supabase = supabaseClient; // Manter compatibilidade com código que usa window.supabase
         
         console.log('✅ Supabase inicializado com sucesso');
         
@@ -2059,7 +2060,7 @@ async function cadastrarMotorista() {
   };
 
   try {
-    const { data, error } = await supabase.from('motoristas').insert([motoristaData]).select();
+    const { data, error } = await supabaseClient.from('motoristas').insert([motoristaData]).select();
 
     if (error) throw error;
 
