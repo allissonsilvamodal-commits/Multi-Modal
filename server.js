@@ -10330,7 +10330,7 @@ app.get('/api/coletas/exportar', requireAuth, async (req, res) => {
 });
 // ========== ENDPOINTS PARA ANEXOS ==========
 // Upload de anexos
-app.post('/api/anexos', requireAuth, upload.single('file'), async (req, res) => {
+app.post('/api/anexos', requireAuth, uploadDocumentos.single('file'), async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ error: 'Nenhum arquivo enviado' });

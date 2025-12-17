@@ -3709,15 +3709,28 @@
                 const motoristaAnteriorId = coleta?.motorista_id || null;
                 let detalhes = `Motorista vinculado: ${motorista?.nome || motoristaId}`;
                 
+                // Verificar se é o mesmo motorista
+                if (motoristaAnteriorId === motoristaId) {
+                    showNotification('Este motorista já está vinculado a esta coleta.', 'info');
+                    fecharModalMotorista();
+                    return;
+                }
+                
                 if (motoristaAnteriorId) {
                     const motoristaAnterior = await buscarMotoristaPorId(motoristaAnteriorId);
                     detalhes = `Motorista trocado: ${motoristaAnterior?.nome || motoristaAnteriorId} → ${motorista?.nome || motoristaId}`;
                 }
 
-                // Atualizar coleta com motorista vinculado
+                // Atualizar coleta com motorista vinculado e arquivar automaticamente
+                // (sempre permite, mesmo se já tiver motorista)
+                const updateData = { 
+                    motorista_id: motoristaId,
+                    arquivado: true // Arquivar quando motorista for vinculado
+                };
+
                 const { error } = await supabaseClient
                     .from('coletas')
-                    .update({ motorista_id: motoristaId })
+                    .update(updateData)
                     .eq('id', coletaId);
 
                 if (error) throw error;
@@ -5064,8 +5077,8 @@
                     filterColetas();
                 } else {
                     // Se não há filtros, renderizar normalmente
-                    await renderColetas();
-                    updateStats();
+                await renderColetas();
+                updateStats();
                 }
                 
             } catch (error) {

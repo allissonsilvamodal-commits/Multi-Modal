@@ -2007,6 +2007,27 @@
           <span class="chip success" id="chipStatusMotorista" style="display:none;"><i class="fas fa-check-circle"></i> Cadastro completo</span>
           <span class="chip warning" id="chipCadastroPendente" style="display:none;"><i class="fas fa-hourglass-half"></i> Cadastro pendente</span>
         </div>
+        <!-- Estatísticas de Viagens -->
+        <div id="estatisticasViagens" style="display: none; margin-bottom: 1.5rem;">
+          <div class="quick-actions" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+            <div class="quick-card" style="background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%); border: 1px solid rgba(102, 126, 234, 0.3);">
+              <strong><i class="fas fa-route me-2" style="color: #667eea;"></i> Total de Viagens</strong>
+              <p id="statTotalViagens" style="font-size: 1.5rem; font-weight: 700; color: #667eea; margin-top: 0.5rem;">0</p>
+            </div>
+            <div class="quick-card" style="background: linear-gradient(135deg, rgba(40, 167, 69, 0.1) 0%, rgba(32, 201, 151, 0.1) 100%); border: 1px solid rgba(40, 167, 69, 0.3);">
+              <strong><i class="fas fa-users me-2" style="color: #28a745;"></i> Clientes Únicos</strong>
+              <p id="statClientesUnicos" style="font-size: 1.5rem; font-weight: 700; color: #28a745; margin-top: 0.5rem;">0</p>
+            </div>
+            <div class="quick-card" style="background: linear-gradient(135deg, rgba(255, 193, 7, 0.1) 0%, rgba(255, 152, 0, 0.1) 100%); border: 1px solid rgba(255, 193, 7, 0.3);">
+              <strong><i class="fas fa-dollar-sign me-2" style="color: #ffc107;"></i> Valor Total</strong>
+              <p id="statValorTotal" style="font-size: 1.5rem; font-weight: 700; color: #ffc107; margin-top: 0.5rem;">R$ 0,00</p>
+            </div>
+            <div class="quick-card" style="background: linear-gradient(135deg, rgba(0, 123, 255, 0.1) 0%, rgba(0, 86, 179, 0.1) 100%); border: 1px solid rgba(0, 123, 255, 0.3);">
+              <strong><i class="fas fa-road me-2" style="color: #007bff;"></i> Total de KMs</strong>
+              <p id="statTotalKms" style="font-size: 1.5rem; font-weight: 700; color: #007bff; margin-top: 0.5rem;">0 km</p>
+            </div>
+          </div>
+        </div>
         <div class="quick-actions">
           <div class="quick-card">
             <strong><i class="fas fa-phone me-2"></i> Telefone principal</strong>
@@ -3612,6 +3633,7 @@
           clientes: state.viagens.map(v => v.cliente)
         });
         renderViagens();
+        atualizarEstatisticasViagens(); // Atualizar estatísticas após carregar viagens
         
         // Sempre verificar e iniciar rastreamento após carregar viagens
         // Esta função é centralizada e trata todos os casos
@@ -3693,6 +3715,10 @@
                 <i class="fas fa-map-marker-alt"></i>
                 <span>Ativar Localização GPS</span>
               </button>
+              <button class="btn btn-success" onclick="window.anexarCanhoto('${escapeHtml(viagem.id)}', '${escapeHtml(identificador)}')" style="flex: 1; min-width: 150px; padding: 0.5rem; display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
+                <i class="fas fa-camera"></i>
+                <span>Anexar Canhoto</span>
+              </button>
               ${podeDesvincular ? `
                 <button class="btn btn-outline danger" onclick="window.desvincularColeta('${escapeHtml(viagem.id)}', '${escapeHtml(identificador)}')" style="flex: 1; min-width: 150px; padding: 0.5rem; display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
                   <i class="fas fa-unlink"></i>
@@ -3706,6 +3732,166 @@
 
       elements.minhasViagensLista.innerHTML = html;
     }
+
+    // Função para atualizar estatísticas de viagens no painel
+    function atualizarEstatisticasViagens() {
+      const viagens = state.viagens || [];
+      const estatisticasDiv = document.getElementById('estatisticasViagens');
+      const statTotalViagens = document.getElementById('statTotalViagens');
+      const statClientesUnicos = document.getElementById('statClientesUnicos');
+      const statValorTotal = document.getElementById('statValorTotal');
+      const statTotalKms = document.getElementById('statTotalKms');
+
+      if (!estatisticasDiv) return;
+
+      if (viagens.length === 0) {
+        estatisticasDiv.style.display = 'none';
+        return;
+      }
+
+      // Mostrar painel de estatísticas
+      estatisticasDiv.style.display = 'block';
+
+      // Calcular estatísticas
+      const totalViagens = viagens.length;
+
+      // Clientes únicos
+      const clientesSet = new Set();
+      viagens.forEach(viagem => {
+        if (viagem.cliente) {
+          clientesSet.add(viagem.cliente.trim());
+        }
+      });
+      const clientesUnicos = clientesSet.size;
+
+      // Valor total
+      const valorTotal = viagens.reduce((sum, viagem) => {
+        const valor = parseFloat(viagem.valor) || 0;
+        return sum + valor;
+      }, 0);
+
+      // Total de KMs
+      const totalKms = viagens.reduce((sum, viagem) => {
+        const km = parseFloat(viagem.km) || 0;
+        return sum + km;
+      }, 0);
+
+      // Atualizar elementos
+      if (statTotalViagens) {
+        statTotalViagens.textContent = totalViagens;
+      }
+
+      if (statClientesUnicos) {
+        statClientesUnicos.textContent = clientesUnicos;
+      }
+
+      if (statValorTotal) {
+        statValorTotal.textContent = valorTotal.toLocaleString('pt-BR', {
+          style: 'currency',
+          currency: 'BRL',
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2
+        });
+      }
+
+      if (statTotalKms) {
+        statTotalKms.textContent = totalKms.toLocaleString('pt-BR', {
+          minimumFractionDigits: 0,
+          maximumFractionDigits: 0
+        }) + ' km';
+      }
+    }
+
+    // Função para anexar canhoto usando a câmera (tornada global para onclick)
+    window.anexarCanhoto = async function(coletaId, identificador) {
+      if (!coletaId) {
+        logger.error('❌ ID da coleta não fornecido');
+        showToast('Erro: ID da coleta não fornecido', 'error');
+        return;
+      }
+
+      try {
+        logger.log('📷 Iniciando anexo de canhoto para coleta:', coletaId);
+
+        // Criar input file oculto para capturar foto da câmera
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = 'image/*';
+        input.capture = 'environment'; // Usar câmera traseira (melhor para documentos)
+        
+        // Evento quando a foto for selecionada
+        input.onchange = async (event) => {
+          const file = event.target.files?.[0];
+          if (!file) {
+            logger.log('⚠️ Nenhuma foto selecionada');
+            return;
+          }
+
+          // Validar se é uma imagem
+          if (!file.type.startsWith('image/')) {
+            showToast('Por favor, selecione uma imagem válida', 'error');
+            return;
+          }
+
+          // Validar tamanho do arquivo (máximo 10MB)
+          const maxSize = 10 * 1024 * 1024; // 10MB
+          if (file.size > maxSize) {
+            showToast('A imagem é muito grande. Por favor, use uma imagem menor que 10MB', 'error');
+            return;
+          }
+
+          try {
+            showToast('📤 Enviando canhoto...', 'info');
+
+            // Preparar FormData para upload
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('coleta_id', coletaId);
+            formData.append('usuario', state.motorista?.nome || state.user?.email || 'Motorista');
+
+            // Obter headers de autenticação (remover Content-Type para FormData)
+            const authHeaders = getAuthHeaders();
+            const { 'Content-Type': _, ...headers } = authHeaders; // Remover Content-Type para o browser definir automaticamente
+
+            // Fazer upload
+            const response = await fetch('/api/anexos', {
+              method: 'POST',
+              headers: headers,
+              credentials: 'include',
+              body: formData
+            });
+
+            if (!response.ok) {
+              const errorData = await response.json().catch(() => ({ error: 'Erro desconhecido' }));
+              throw new Error(errorData.error || 'Erro ao fazer upload do canhoto');
+            }
+
+            const result = await response.json();
+
+            if (result.success && result.anexo) {
+              showToast('✅ Canhoto anexado com sucesso!', 'success');
+              logger.log('✅ Canhoto anexado:', result.anexo.id);
+              
+              // Recarregar viagens para atualizar interface
+              await carregarViagens();
+            } else {
+              throw new Error('Resposta inválida do servidor');
+            }
+
+          } catch (uploadError) {
+            logger.error('❌ Erro ao fazer upload do canhoto:', uploadError);
+            showToast(uploadError.message || 'Erro ao enviar canhoto. Tente novamente.', 'error');
+          }
+        };
+
+        // Abrir seletor de arquivo/câmera
+        input.click();
+
+      } catch (error) {
+        logger.error('❌ Erro ao anexar canhoto:', error);
+        showToast(error.message || 'Erro ao acessar câmera. Verifique as permissões.', 'error');
+      }
+    };
 
     // Função para ativar localização GPS (tornada global para onclick)
     window.ativarLocalizacaoGPS = async function(coletaId, identificador) {
