@@ -10413,6 +10413,145 @@ app.post('/api/anexos', requireAuth, uploadDocumentos.single('file'), async (req
   }
 });
 
+// Endpoint para finalizar operação (anexar canhoto e mover para finalizar_operacao)
+app.post('/api/motoristas/coletas/:coletaId/finalizar-operacao', uploadDocumentos.single('canhoto'), async (req, res) => {
+  try {
+    const { motorista, error: authError } = await requireMotoristaAuth(req);
+    if (authError) {
+      return res.status(authError.status || 401).json({ success: false, error: authError.message });
+    }
+
+    if (!motorista) {
+      return res.status(409).json({ success: false, error: 'Complete seu cadastro para finalizar operação.' });
+    }
+
+    const coletaId = req.params.coletaId;
+    if (!coletaId) {
+      return res.status(400).json({ success: false, error: 'ID da coleta é obrigatório.' });
+    }
+
+    // Buscar dados da coleta
+    const { data: coleta, error: coletaError } = await supabaseAdmin
+      .from('coletas')
+      .select('id, motorista_id, etapa_atual, contas_pagar_tipo, cliente, origem, destino, filial, numero_coleta')
+      .eq('id', coletaId)
+      .single();
+
+    if (coletaError || !coleta) {
+      return res.status(404).json({ success: false, error: 'Coleta não encontrada.' });
+    }
+
+    // Verificar se o motorista está vinculado a esta coleta
+    if (coleta.motorista_id !== motorista.id) {
+      return res.status(403).json({ success: false, error: 'Você não tem permissão para finalizar esta operação.' });
+    }
+
+    // Verificar se há arquivo de canhoto
+    if (!req.file) {
+      return res.status(400).json({ success: false, error: 'É necessário anexar o canhoto para finalizar a operação.' });
+    }
+
+    // Upload do canhoto
+    const sanitizedName = sanitizeFilename(req.file.originalname || 'canhoto.jpg');
+    const fileExt = path.extname(sanitizedName) || '.jpg';
+    const uniqueName = `canhoto-${Date.now()}-${generateId()}${fileExt}`;
+    const storagePath = `coletas/${coletaId}/anexos/${uniqueName}`;
+    const uploadOptions = {
+      contentType: req.file.mimetype || 'image/jpeg',
+      cacheControl: '3600',
+      upsert: false
+    };
+
+    const fileBuffer = req.file.buffer;
+    const { error: storageError } = await supabaseAdmin.storage
+      .from(ANEXOS_BUCKET)
+      .upload(storagePath, fileBuffer, uploadOptions);
+
+    if (storageError) {
+      throw storageError;
+    }
+
+    const storageUrl = buildStorageUrl(ANEXOS_BUCKET, storagePath);
+
+    // Salvar anexo no banco
+    const { data: anexoData, error: anexoError } = await supabaseAdmin
+      .from('anexos')
+      .insert([{
+        id: generateUUID(),
+        coleta_id: coletaId,
+        nome_arquivo: 'Canhoto - ' + (req.file.originalname || 'canhoto.jpg'),
+        tipo_arquivo: req.file.mimetype || 'image/jpeg',
+        tamanho: req.file.size,
+        url: storageUrl
+      }])
+      .select()
+      .single();
+
+    if (anexoError) {
+      await supabaseAdmin.storage.from(ANEXOS_BUCKET).remove([storagePath]).catch(() => {});
+      throw anexoError;
+    }
+
+    // Verificar pendências de pagamento
+    const contasPagarTipo = coleta.contas_pagar_tipo || '';
+    const temPendenciaSaldo = contasPagarTipo.includes('saldo') && 
+                              !contasPagarTipo.includes('pagamento_total') && 
+                              contasPagarTipo !== 'ambos';
+
+    // Mover coleta para etapa finalizar_operacao
+    const { error: updateError } = await supabaseAdmin
+      .from('coletas')
+      .update({ etapa_atual: 'finalizar_operacao' })
+      .eq('id', coletaId);
+
+    if (updateError) {
+      throw updateError;
+    }
+
+    // Registrar no histórico
+    const identificadorColeta = coleta.filial && coleta.numero_coleta 
+      ? `${coleta.filial} #${coleta.numero_coleta}` 
+      : coleta.cliente || coletaId;
+
+    await supabaseAdmin
+      .from('historico_coletas')
+      .insert([{
+        id: generateUUID(),
+        coleta_id: coletaId,
+        acao: 'canhoto_anexado',
+        detalhes: `Canhoto anexado pelo motorista. Operação finalizada. ${temPendenciaSaldo ? 'Aguardando pagamento do saldo.' : ''}`,
+        realizado_por: motorista.nome || motorista.id,
+        realizado_em: new Date().toISOString()
+      }]);
+
+    // A notificação será visível através do realtime quando a coleta for atualizada
+    // Os usuários em coletas.html verão a mudança de etapa para 'finalizar_operacao'
+    // e poderão verificar o histórico para ver que o canhoto foi anexado
+    console.log('📋 Operação finalizada. Coleta movida para etapa finalizar_operacao. Notificação visível via realtime.');
+
+    console.log('✅ Operação finalizada com sucesso:', {
+      coletaId,
+      motoristaId: motorista.id,
+      temPendenciaSaldo,
+      anexoId: anexoData?.id
+    });
+
+    res.json({
+      success: true,
+      message: temPendenciaSaldo 
+        ? 'Canhoto anexado com sucesso! Aguardando pagamento do saldo para concluir a operação.'
+        : 'Operação finalizada com sucesso! Aguardando validação.',
+      anexo: anexoData,
+      temPendenciaSaldo,
+      etapa: 'finalizar_operacao'
+    });
+
+  } catch (error) {
+    console.error('❌ Erro ao finalizar operação:', error);
+    res.status(500).json({ success: false, error: error.message || 'Erro ao finalizar operação.' });
+  }
+});
+
 app.get('/api/anexos/:id/info', requireAuth, async (req, res) => {
   try {
     const { id } = req.params;

@@ -4912,6 +4912,7 @@ const estados = [
                             }
                             
                             // ✅ APLICAR DELAY APENAS APÓS SUCESSO (exceto se for o último motorista)
+                            // IMPORTANTE: O delay NÃO é aplicado em caso de erro - o próximo envio é instantâneo
                             if (i < motoristasArray.length - 1 && !disparoCancelado) {
                                 const delaySegundos = gerarDelayAleatorio();
                                 adicionarLog(`⏳ Aguardando ${delaySegundos} segundos antes do próximo envio...`, 'info');
@@ -4921,9 +4922,12 @@ const estados = [
                                 if (disparoCancelado) break;
                             }
                         } else {
+                            // ❌ ERRO: Número inválido ou falha no envio
+                            // NÃO aplicar delay aqui - o próximo envio será instantâneo
                             totalFalhas++;
                             const errorMsg = data?.error || data?.message || 'Erro desconhecido';
                             adicionarLog(`❌ Falha para ${motorista.nome}: ${errorMsg}`, 'danger');
+                            adicionarLog(`⚡ Próximo envio será instantâneo (erro não conta como delay)`, 'info');
                             
                             // Marcar telefone com erro no banco de dados
                             try {
@@ -4978,6 +4982,7 @@ const estados = [
                         const errorData = await response.json().catch(() => ({}));
                         const errorMsg = errorData.error || `HTTP ${response.status}`;
                         adicionarLog(`❌ Falha para ${motorista.nome}: HTTP ${response.status}`, 'danger');
+                        adicionarLog(`⚡ Próximo envio será instantâneo (erro não conta como delay)`, 'info');
                         
                         // Marcar telefone com erro no banco de dados
                         try {
@@ -5025,6 +5030,7 @@ const estados = [
                 } catch (error) {
                     totalFalhas++;
                     adicionarLog(`❌ Erro para ${motorista.nome}: ${error.message}`, 'danger');
+                    adicionarLog(`⚡ Próximo envio será instantâneo (erro não conta como delay)`, 'info');
                     console.error('❌ Erro ao enviar mensagem:', error);
                     
                     // Marcar telefone com erro no banco de dados

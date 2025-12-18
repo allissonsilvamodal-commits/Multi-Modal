@@ -362,10 +362,9 @@
             backdrop-filter: blur(20px) saturate(180%);
             border-radius: 20px;
             padding: 1.75rem;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08),
-                        0 0 0 1px rgba(0, 0, 0, 0.04);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
             transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-            border: 1px solid rgba(0, 0, 0, 0.06);
+            border: none;
             position: relative;
             overflow: visible;
             cursor: pointer;
@@ -490,13 +489,23 @@
         .coleta-card.concluida::before { background: var(--verde); }
         .coleta-card.cancelada::before { background: #6c757d; }
 
-        /* Design moderno e elegante para coletas urgentes - seguindo padrões de UI/UX profissional */
+        /* Animação de piscar para coletas urgentes */
+        @keyframes piscarUrgente {
+            0%, 100% {
+                opacity: 1;
+                box-shadow: 0 4px 20px rgba(231, 76, 60, 0.2);
+            }
+            50% {
+                opacity: 0.7;
+                box-shadow: 0 4px 30px rgba(231, 76, 60, 0.4);
+            }
+        }
+
+        /* Design moderno para coletas urgentes com animação de piscar */
         .coleta-card.urgente {
             position: relative;
-            border-left: 4px solid #e74c3c !important;
-            background: linear-gradient(to right, rgba(231, 76, 60, 0.06) 0%, rgba(255, 255, 255, 0.98) 100%) !important;
-            box-shadow: 0 4px 20px rgba(231, 76, 60, 0.15),
-                        0 0 0 1px rgba(231, 76, 60, 0.15) !important;
+            background: linear-gradient(to right, rgba(231, 76, 60, 0.08) 0%, rgba(255, 255, 255, 0.98) 100%) !important;
+            animation: piscarUrgente 2s ease-in-out infinite;
         }
 
         /* Barra superior vermelha sólida */
@@ -505,49 +514,21 @@
             height: 4px !important;
         }
 
-        /* Ponto indicador sutil no canto superior direito */
+        /* Remover ponto indicador no canto - desabilitado */
         .coleta-card.urgente::after {
-            content: '';
-            position: absolute;
-            top: 1rem;
-            right: 1rem;
-            width: 10px;
-            height: 10px;
-            background: #e74c3c;
-            border-radius: 50%;
-            box-shadow: 0 0 0 2px rgba(231, 76, 60, 0.15),
-                        0 0 0 4px rgba(231, 76, 60, 0.08);
-            z-index: 5;
-            pointer-events: none;
-            animation: urgent-dot-pulse 2s ease-in-out infinite;
-        }
-
-        /* Animação muito sutil para o ponto indicador */
-        @keyframes urgent-dot-pulse {
-            0%, 100% {
-                opacity: 1;
-                transform: scale(1);
-            }
-            50% {
-                opacity: 0.7;
-                transform: scale(1.1);
-            }
+            display: none;
         }
 
         /* Hover elegante mantendo consistência */
         .coleta-card.urgente:hover {
             transform: translateY(-4px);
-            box-shadow: 0 12px 32px rgba(231, 76, 60, 0.2),
-                        0 0 0 1px rgba(231, 76, 60, 0.2) !important;
-            border-left-width: 5px !important;
+            animation: piscarUrgente 1.5s ease-in-out infinite;
         }
 
         .coleta-card:hover {
             transform: translateY(-4px);
-            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12),
-                        0 0 0 1px rgba(102, 126, 234, 0.1);
+            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12);
             background: rgba(255, 255, 255, 1);
-            border-color: rgba(102, 126, 234, 0.2);
         }
         
         @keyframes pulse {
@@ -2667,6 +2648,46 @@
                                 </div>
                             </div>
 
+    <!-- Modal de Tipo de Pagamento para Contas a Pagar -->
+    <div class="modal-overlay" id="modalTipoPagamento" style="display: none;">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header">
+                <h2 class="modal-title">
+                    <i class="fas fa-money-bill-wave"></i>
+                    Tipo de Pagamento
+                </h2>
+                <button class="close-modal" onclick="fecharModalTipoPagamento()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body" style="padding: 1.5rem;">
+                <p style="color: #6c757d; margin-bottom: 1.5rem;">
+                    É obrigatório informar o tipo de pagamento ao mover para a etapa <strong>Contas a Pagar</strong>.
+                </p>
+                <div class="form-group">
+                    <label for="tipoPagamentoSelect"><i class="fas fa-list"></i> Selecione o tipo de pagamento:</label>
+                    <select id="tipoPagamentoSelect" style="width: 100%; padding: 0.8rem; border: 2px solid #e9ecef; border-radius: 10px; font-size: 1rem;">
+                        <option value="">Selecione o tipo de pagamento</option>
+                        <option value="GNRE">GNRE</option>
+                        <option value="PEDÁGIO">PEDÁGIO</option>
+                        <option value="GNRE + PEDÁGIO">GNRE + PEDÁGIO</option>
+                        <option value="ADIANTAMENTO">ADIANTAMENTO</option>
+                        <option value="SALDO">SALDO</option>
+                        <option value="PAGAMENTO DE FRETE TOTAL">PAGAMENTO DE FRETE TOTAL</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="action-btn warning" onclick="fecharModalTipoPagamento()">
+                    <i class="fas fa-times"></i> Cancelar
+                </button>
+                <button type="button" class="action-btn secondary" onclick="confirmarTipoPagamento()">
+                    <i class="fas fa-check"></i> Confirmar
+                </button>
+                                    </div>
+                                </div>
+                            </div>
+
     <!-- Modal de Histórico Completo -->
     <div class="modal-overlay" id="modalHistoricoCompleto" style="display: none;">
         <div class="modal-content" style="max-width: 900px; max-height: 90vh; overflow-y: auto; background: white; border-radius: 20px; padding: 2rem;">
@@ -3721,11 +3742,11 @@
                     detalhes = `Motorista trocado: ${motoristaAnterior?.nome || motoristaAnteriorId} → ${motorista?.nome || motoristaId}`;
                 }
 
-                // Atualizar coleta com motorista vinculado e arquivar automaticamente
+                // Atualizar coleta com motorista vinculado
                 // (sempre permite, mesmo se já tiver motorista)
+                // NOTA: Não arquivar aqui - a coleta só deve ser arquivada quando finalizada (ganhou/perdeu)
                 const updateData = { 
-                    motorista_id: motoristaId,
-                    arquivado: true // Arquivar quando motorista for vinculado
+                    motorista_id: motoristaId
                 };
 
                 const { error } = await supabaseClient
@@ -6420,6 +6441,12 @@
                             <span>URGENTE</span>
                         </div>
                         ` : ''}
+                        ${coleta.etapa_atual === 'contas_pagar' && coleta.contas_pagar_tipo ? `
+                        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 0.4rem 0.8rem; border-radius: 8px; font-size: 0.75rem; font-weight: 600; display: inline-flex; align-items: center; gap: 0.4rem; margin-bottom: 0.5rem; box-shadow: 0 2px 6px rgba(102, 126, 234, 0.3);">
+                            <i class="fas fa-money-bill-wave"></i>
+                            <span>Tipo: ${coleta.contas_pagar_tipo}</span>
+                        </div>
+                        ` : ''}
                         <div class="status-badge status-${coleta.status}">
                             ${getStatusText(coleta.status)}
                         </div>
@@ -6646,10 +6673,13 @@
                     </div>
                     <div class="etapas-labels">
                         ${ETAPAS.map(etapa => {
-                            const isConcluida = coleta.etapas_concluidas?.includes(etapa.id) || false;
-                            const isAtiva = coleta.etapa_atual === etapa.id;
-                            const classe = isConcluida ? 'concluida' : (isAtiva ? 'ativa' : '');
-                            const icon = isConcluida ? 'fa-check' : (isAtiva ? 'fa-play' : 'fa-clock');
+                            const isAtiva = coleta.etapa_atual === etapa.id; // Etapa atual
+                            const passouPorEla = coleta.etapas_concluidas?.includes(etapa.id) || false; // Passou por esta etapa
+                            const jaPassouMasNaoEAtual = passouPorEla && !isAtiva; // Passou mas não é a atual
+                            
+                            // Lógica: apenas a etapa atual fica verde, as que passou ficam azuis
+                            const classe = isAtiva ? 'concluida' : (jaPassouMasNaoEAtual ? 'ativa' : '');
+                            const icon = isAtiva ? 'fa-check' : (jaPassouMasNaoEAtual ? 'fa-check' : 'fa-clock');
                             return `
                                 <span class="etapa-badge ${classe}">
                                     <i class="fas ${icon}"></i>
@@ -6676,6 +6706,31 @@
                             </button>
                             <button class="btn-validation success" onclick="event.stopPropagation(); cadastrarMotorista('${coleta.id}')">
                                 <i class="fas fa-user-plus"></i> Cadastrar Novo Motorista
+                            </button>
+                        </div>
+                    </div>
+                ` : ''}
+                
+                <!-- Validação para etapa Finalizar Operação (Canhoto Anexado) -->
+                ${coleta.etapa_atual === 'finalizar_operacao' ? `
+                    <div class="etapa-validation" id="validation-finalizar-${coleta.id}" style="background: linear-gradient(135deg, rgba(255, 193, 7, 0.1) 0%, rgba(255, 152, 0, 0.1) 100%); border: 2px solid #ffc107;">
+                        <div class="validation-title" style="color: #f57c00;">
+                            <i class="fas fa-check-circle"></i>
+                            Canhoto Anexado - Aguardando Validação
+                        </div>
+                        <div class="validation-message" style="color: #333;">
+                            O motorista anexou o canhoto da entrega. Verifique o documento nos anexos e finalize a operação quando estiver tudo correto.
+                            ${coleta.contas_pagar_tipo && coleta.contas_pagar_tipo.includes('saldo') && coleta.contas_pagar_tipo !== 'pagamento_total' && coleta.contas_pagar_tipo !== 'ambos' ? 
+                                '<br><br><strong style="color: #f57c00;"><i class="fas fa-exclamation-triangle"></i> ATENÇÃO: Pendência de pagamento do saldo.</strong>' : 
+                                ''
+                            }
+                        </div>
+                        <div class="validation-actions">
+                            <button class="btn-validation success" onclick="event.stopPropagation(); abrirModalAnexos('${coleta.id}')">
+                                <i class="fas fa-paperclip"></i> Ver Anexos
+                            </button>
+                            <button class="btn-validation primary" onclick="event.stopPropagation(); abrirModalHistoricoCompleto('${coleta.id}')">
+                                <i class="fas fa-history"></i> Ver Histórico
                             </button>
                         </div>
                     </div>
@@ -6710,31 +6765,53 @@
 
                 <!-- Validação para etapa Contas a Pagar -->
                 ${coleta.etapa_atual === 'contas_pagar' ? (() => {
-                    // Verificar quais pagamentos já foram realizados
-                    const tipoPago = coleta.contas_pagar_tipo || null;
-                    const adiantamentoPago = tipoPago === 'adiantamento' || tipoPago === 'pagamento_total' || tipoPago === 'ambos';
-                    const saldoPago = tipoPago === 'saldo' || tipoPago === 'pagamento_total' || tipoPago === 'ambos';
-                    const pagamentoTotalPago = tipoPago === 'pagamento_total';
-                    const ambosPagos = tipoPago === 'ambos';
-                    const algumPagamentoPago = coleta.contas_pagar_pago === true;
+                    // Tipo de pagamento selecionado ao mover para contas_pagar
+                    const tipoPagamentoSelecionado = coleta.contas_pagar_tipo || null;
+                    const tiposEspecificos = ['GNRE', 'PEDÁGIO', 'GNRE + PEDÁGIO', 'ADIANTAMENTO', 'SALDO', 'PAGAMENTO DE FRETE TOTAL'];
+                    const tiposGenericos = ['adiantamento', 'saldo', 'pagamento_total', 'ambos'];
+                    // Verificar se é um tipo específico (comparação exata ou parcial para "GNRE + PEDÁGIO")
+                    const isTipoEspecifico = tipoPagamentoSelecionado && (
+                        tiposEspecificos.some(t => tipoPagamentoSelecionado.trim() === t.trim()) ||
+                        (tipoPagamentoSelecionado.includes('GNRE') && tipoPagamentoSelecionado.includes('PEDÁGIO'))
+                    );
+                    const isTipoGenerico = tipoPagamentoSelecionado && tiposGenericos.includes(tipoPagamentoSelecionado.toLowerCase());
                     
-                    // Se todos os pagamentos foram realizados, mostrar apenas mensagem de sucesso
-                    if (pagamentoTotalPago || ambosPagos) {
+                    // Verificar se já foi marcado como pago
+                    const tipoPagamentoPago = coleta.contas_pagar_pago === true;
+                    
+                    // Verificar tipos genéricos (quando foi marcado como pago usando tipos genéricos)
+                    const tipoPagoGenerico = isTipoGenerico ? tipoPagamentoSelecionado : null;
+                    const adiantamentoPago = tipoPagoGenerico === 'adiantamento' || tipoPagoGenerico === 'pagamento_total' || tipoPagoGenerico === 'ambos';
+                    const saldoPago = tipoPagoGenerico === 'saldo' || tipoPagoGenerico === 'pagamento_total' || tipoPagoGenerico === 'ambos';
+                    const pagamentoTotalPago = tipoPagoGenerico === 'pagamento_total';
+                    const ambosPagos = tipoPagoGenerico === 'ambos';
+                    
+                    // Badge com o tipo de pagamento selecionado (sempre visível)
+                    const tipoPagamentoBadge = tipoPagamentoSelecionado ? `
+                        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 0.6rem 1rem; border-radius: 12px; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem; font-weight: 600; box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);">
+                            <i class="fas fa-money-bill-wave"></i>
+                            <span>Tipo de Pagamento: <strong>${tipoPagamentoSelecionado}</strong></span>
+                        </div>
+                    ` : '';
+                    
+                    // Se já foi marcado como pago, mostrar mensagem de sucesso
+                    if (tipoPagamentoPago) {
                         return `
                             <div class="etapa-validation" style="background: linear-gradient(135deg, rgba(40, 167, 69, 0.1) 0%, rgba(32, 201, 151, 0.1) 100%); border: 1px solid #28a745;">
+                                ${tipoPagamentoBadge}
                                 <div class="validation-title" style="color: #28a745;">
                                     <i class="fas fa-check-circle"></i>
-                                    Pagamento Completo
+                                    Pagamento Realizado
                                 </div>
                                 <div class="validation-message" style="color: #155724;">
-                                    ${tipoPago === 'pagamento_total' ? '💳 Pagamento Total' : '✅ Todos os pagamentos (Adiantamento e Saldo)'} marcado(s) como realizado(s) em ${coleta.contas_pagar_data ? new Date(coleta.contas_pagar_data).toLocaleString('pt-BR') : 'data não informada'} por ${coleta.contas_pagar_pago_por || 'Usuário Desconhecido'}.
+                                    ✅ ${tipoPagamentoSelecionado || 'Pagamento'} marcado como realizado em ${coleta.contas_pagar_data ? new Date(coleta.contas_pagar_data).toLocaleString('pt-BR') : 'data não informada'} por ${coleta.contas_pagar_pago_por || 'Usuário Desconhecido'}.
                                 </div>
                             </div>
                         `;
                     }
                     
-                    // Se algum pagamento foi realizado, mostrar status e opções pendentes
-                    if (algumPagamentoPago) {
+                    // Se algum pagamento genérico foi realizado (mas não completo), mostrar status e opções pendentes
+                    if (tipoPagoGenerico && tipoPagamentoPago && (adiantamentoPago || saldoPago) && !pagamentoTotalPago && !ambosPagos) {
                         const botoesPendentes = [];
                         
                         if (!adiantamentoPago) {
@@ -6762,15 +6839,16 @@
                         }
                         
                         return `
-                            <div class="etapa-validation" id="validation-contas_pagar-${coleta.id}">
-                                <div class="validation-title">
-                                    <i class="fas fa-money-check-alt"></i>
-                                    ${tipoPago === 'adiantamento' ? '💵 Adiantamento Pago - Pendente: Saldo' : tipoPago === 'saldo' ? '💰 Saldo Pago - Pendente: Adiantamento' : 'Pagamentos'}
-                                </div>
-                                <div class="validation-message">
-                                    ${tipoPago ? `${tipoPago === 'adiantamento' ? '💵 Adiantamento' : tipoPago === 'saldo' ? '💰 Saldo' : '✅ Pagamento'} marcado como realizado em ${coleta.contas_pagar_data ? new Date(coleta.contas_pagar_data).toLocaleString('pt-BR') : 'data não informada'} por ${coleta.contas_pagar_pago_por || 'Usuário Desconhecido'}.<br><br>` : ''}
+                    <div class="etapa-validation" id="validation-contas_pagar-${coleta.id}">
+                                ${tipoPagamentoBadge}
+                        <div class="validation-title">
+                            <i class="fas fa-money-check-alt"></i>
+                                    ${tipoPagoGenerico === 'adiantamento' ? '💵 Adiantamento Pago - Pendente: Saldo' : tipoPagoGenerico === 'saldo' ? '💰 Saldo Pago - Pendente: Adiantamento' : 'Pagamentos'}
+                        </div>
+                        <div class="validation-message">
+                                    ${tipoPagoGenerico ? `${tipoPagoGenerico === 'adiantamento' ? '💵 Adiantamento' : tipoPagoGenerico === 'saldo' ? '💰 Saldo' : '✅ Pagamento'} marcado como realizado em ${coleta.contas_pagar_data ? new Date(coleta.contas_pagar_data).toLocaleString('pt-BR') : 'data não informada'} por ${coleta.contas_pagar_pago_por || 'Usuário Desconhecido'}.<br><br>` : ''}
                                     ${botoesPendentes.length > 0 ? 'Marque os pagamentos pendentes como realizados. O motorista e o criador da oportunidade serão notificados.' : ''}
-                                </div>
+                        </div>
                                 ${botoesPendentes.length > 0 ? `
                                     <div class="validation-actions" style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 1rem;">
                                         ${botoesPendentes.join('')}
@@ -6780,28 +6858,55 @@
                         `;
                     }
                     
-                    // Se nenhum pagamento foi realizado, mostrar todas as opções
+                    // Se nenhum pagamento foi realizado, mostrar APENAS o tipo selecionado
+                    const botoesPagamento = [];
+                    
+                    // SEMPRE mostrar APENAS o tipo selecionado quando o usuário moveu para contas_pagar
+                    // Não mostrar opções genéricas se já foi selecionado um tipo específico
+                    if (tipoPagamentoSelecionado && !isTipoGenerico) {
+                        // Mostrar APENAS o tipo específico selecionado
+                        botoesPagamento.push(`
+                            <button class="btn-validation success" onclick="event.stopPropagation(); marcarTipoPagamentoEspecifico('${coleta.id}', '${String(tipoPagamentoSelecionado).replace(/'/g, "\\'").replace(/"/g, '&quot;')}')" ${!coleta.motorista_id ? 'disabled title="É necessário ter motorista vinculado"' : !temPermissaoEtapa('contas_pagar') ? 'disabled title="Sem permissão para esta etapa"' : ''} style="flex: 1; min-width: 200px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); font-weight: 600; font-size: 0.95rem;">
+                                <i class="${getIconeTipoPagamento(tipoPagamentoSelecionado)}"></i> 
+                                Marcar ${tipoPagamentoSelecionado} como Pago
+                            </button>
+                        `);
+                    } else if (!tipoPagamentoSelecionado || isTipoGenerico) {
+                        // Se não há tipo selecionado OU é um tipo genérico antigo, mostrar opções genéricas
+                        botoesPagamento.push(`
+                            <button class="btn-validation success" onclick="event.stopPropagation(); marcarComoPago('${coleta.id}', 'adiantamento')" ${!coleta.motorista_id ? 'disabled title="É necessário ter motorista vinculado"' : !temPermissaoEtapa('contas_pagar') ? 'disabled title="Sem permissão para esta etapa"' : ''} style="flex: 1; min-width: 180px;">
+                                <i class="fas fa-money-bill-wave"></i> Adiantamento de Frete
+                            </button>
+                        `);
+                        botoesPagamento.push(`
+                            <button class="btn-validation success" onclick="event.stopPropagation(); marcarComoPago('${coleta.id}', 'saldo')" ${!coleta.motorista_id ? 'disabled title="É necessário ter motorista vinculado"' : !temPermissaoEtapa('contas_pagar') ? 'disabled title="Sem permissão para esta etapa"' : ''} style="flex: 1; min-width: 180px;">
+                                <i class="fas fa-wallet"></i> Saldo
+                            </button>
+                        `);
+                        botoesPagamento.push(`
+                            <button class="btn-validation success" onclick="event.stopPropagation(); marcarComoPago('${coleta.id}', 'pagamento_total')" ${!coleta.motorista_id ? 'disabled title="É necessário ter motorista vinculado"' : !temPermissaoEtapa('contas_pagar') ? 'disabled title="Sem permissão para esta etapa"' : ''} style="flex: 1; min-width: 180px;">
+                                <i class="fas fa-credit-card"></i> Pagamento Total
+                            </button>
+                        `);
+                    }
+                    
                     return `
                     <div class="etapa-validation" id="validation-contas_pagar-${coleta.id}">
+                        ${tipoPagamentoBadge}
                         <div class="validation-title">
                             <i class="fas fa-money-check-alt"></i>
                             Marcar como Pago
                         </div>
                         <div class="validation-message">
-                            Selecione o tipo de pagamento realizado. O motorista e o criador da oportunidade serão notificados.
-                        </div>
-                        <div class="validation-actions" style="display: flex; gap: 10px; flex-wrap: wrap;">
-                            <button class="btn-validation success" onclick="event.stopPropagation(); marcarComoPago('${coleta.id}', 'adiantamento')" ${!coleta.motorista_id ? 'disabled title="É necessário ter motorista vinculado"' : !temPermissaoEtapa('contas_pagar') ? 'disabled title="Sem permissão para esta etapa"' : ''} style="flex: 1; min-width: 180px;">
-                                <i class="fas fa-money-bill-wave"></i> Adiantamento de Frete
-                            </button>
-                            <button class="btn-validation success" onclick="event.stopPropagation(); marcarComoPago('${coleta.id}', 'saldo')" ${!coleta.motorista_id ? 'disabled title="É necessário ter motorista vinculado"' : !temPermissaoEtapa('contas_pagar') ? 'disabled title="Sem permissão para esta etapa"' : ''} style="flex: 1; min-width: 180px;">
-                                <i class="fas fa-wallet"></i> Saldo
-                            </button>
-                            <button class="btn-validation success" onclick="event.stopPropagation(); marcarComoPago('${coleta.id}', 'pagamento_total')" ${!coleta.motorista_id ? 'disabled title="É necessário ter motorista vinculado"' : !temPermissaoEtapa('contas_pagar') ? 'disabled title="Sem permissão para esta etapa"' : ''} style="flex: 1; min-width: 180px;">
-                                <i class="fas fa-credit-card"></i> Pagamento Total
-                            </button>
-                        </div>
+                            ${tipoPagamentoSelecionado 
+                                ? `Tipo de pagamento selecionado: <strong>${tipoPagamentoSelecionado}</strong>. Marque como pago quando o pagamento for realizado. O motorista e o criador da oportunidade serão notificados.`
+                                : 'Selecione o tipo de pagamento realizado. O motorista e o criador da oportunidade serão notificados.'
+                            }
                     </div>
+                        <div class="validation-actions" style="display: flex; gap: 10px; flex-wrap: wrap;">
+                            ${botoesPagamento.join('')}
+                        </div>
+                        </div>
                     `;
                 })() : ''}
 
@@ -6810,7 +6915,7 @@
                         <button class="action-btn chat" onclick="event.stopPropagation(); openChatModal('${coleta.id}')">
                             <i class="fas fa-comment"></i> Chat
                         </button>
-                        <button class="action-btn secondary" onclick="event.stopPropagation(); openMoverEtapaModal('${coleta.id}')" ${!temPermissaoEtapa(coleta.etapa_atual) ? 'disabled title="Sem permissão para esta etapa"' : ''}>
+                        <button class="action-btn secondary" onclick="event.stopPropagation(); openMoverEtapaModal('${coleta.id}')" ${!temPermissaoEtapa(coleta.etapa_atual) ? 'disabled title="Sem permissão para esta etapa"' : coleta.etapa_atual === 'contratacao' && !coleta.motorista_id ? 'disabled title="É necessário vincular um motorista para mover da etapa Contratação"' : ''}>
                             <i class="fas fa-arrows-alt-h"></i> Mover Etapa
                         </button>
                         <button class="action-btn primary" onclick="event.stopPropagation(); avancarEtapa('${coleta.id}')" ${coleta.etapa_atual === 'finalizar_operacao' ? 'disabled title="Use os botões Ganhou/Perdeu para finalizar"' : coleta.etapa_atual === 'contratacao' && !coleta.motorista_id ? 'disabled' : coleta.etapa_atual === 'gr' && !coleta.gr_aprovado ? 'disabled' : !temPermissaoEtapa(coleta.etapa_atual) ? 'disabled title="Sem permissão para esta etapa"' : ''}>
@@ -7489,14 +7594,10 @@
                 return;
             }
 
-            // Validações específicas por etapa
-            if (coleta.etapa_atual === 'contratacao') {
-                if (!coleta.motorista_id) {
+            // ✅ VALIDAÇÃO OBRIGATÓRIA: Não pode avançar da etapa contratação sem motorista vinculado
+            if (coleta.etapa_atual === 'contratacao' && !coleta.motorista_id) {
                     showNotification('⚠️ Para avançar da etapa Contratação, é necessário vincular um motorista à coleta.', 'warning');
-                    // Abrir modal para vincular motorista automaticamente
-                    await vincularMotorista(coletaId);
                     return;
-                }
             }
 
             if (coleta.etapa_atual === 'gr') {
@@ -7514,6 +7615,15 @@
 
             const etapaAtualIndex = ETAPAS.findIndex(e => e.id === coleta.etapa_atual);
             if (etapaAtualIndex < ETAPAS.length - 1) {
+                const proximaEtapaId = ETAPAS[etapaAtualIndex + 1].id;
+                
+                // ✅ VALIDAÇÃO: Se a próxima etapa for contas_pagar, solicitar tipo de pagamento
+                if (proximaEtapaId === 'contas_pagar') {
+                    etapaPendenteTipoPagamento = proximaEtapaId;
+                    coletaPendenteTipoPagamento = coletaId;
+                    abrirModalTipoPagamento();
+                    return;
+                }
                 
                 // Atualizar etapas_concluidas: adicionar a etapa atual se ainda não estiver
                 const etapasConcluidas = Array.isArray(coleta.etapas_concluidas) ? [...coleta.etapas_concluidas] : [];
@@ -7522,7 +7632,7 @@
                 }
                 
                 const updateData = {
-                    etapa_atual: ETAPAS[etapaAtualIndex + 1].id,
+                    etapa_atual: proximaEtapaId,
                     status: etapaAtualIndex + 1 === ETAPAS.length - 1 ? 'concluida' : 'em_andamento',
                     etapas_concluidas: etapasConcluidas,
                     updated_at: new Date().toISOString()
@@ -7537,7 +7647,7 @@
                     
                     // ✅ HISTÓRICO NO LUGAR CERTO - DENTRO DO TRY (sucesso)
                     await salvarNoHistorico(coletaId, 'etapa_avancada', 
-                        `Etapa avançada de ${coleta.etapa_atual} para ${ETAPAS[etapaAtualIndex + 1].id}`
+                        `Etapa avançada de ${coleta.etapa_atual} para ${proximaEtapaId}`
                     );
                     
                     showNotification(`✅ Etapa avançada para ${ETAPAS[etapaAtualIndex + 1].nome}`, 'success');
@@ -7560,15 +7670,23 @@
                 return;
             }
 
+            // ✅ VALIDAÇÃO: Se está na etapa contratação sem motorista, não permitir abrir o modal de mover
+            if (coleta.etapa_atual === 'contratacao' && !coleta.motorista_id) {
+                showNotification('⚠️ Para mover uma coleta da etapa Contratação, é necessário vincular um motorista à coleta.', 'warning');
+                return;
+            }
+
             moverEtapaColetaId = coletaId;
             document.getElementById('moverEtapaAtual').textContent = obterNomeEtapa(coleta.etapa_atual);
 
             const select = document.getElementById('novaEtapaSelect');
-            select.innerHTML = `<option value="">Selecione a etapa</option>` + ETAPAS.map(etapa => `
-                <option value="${etapa.id}" ${etapa.id === coleta.etapa_atual ? 'disabled' : ''}>
-                    ${etapa.nome}
-                </option>
-            `).join('');
+            select.innerHTML = `<option value="">Selecione a etapa</option>` + ETAPAS.map(etapa => {
+                // Não permitir selecionar a própria etapa atual
+                if (etapa.id === coleta.etapa_atual) {
+                    return `<option value="${etapa.id}" disabled>${etapa.nome} (Atual)</option>`;
+                }
+                return `<option value="${etapa.id}">${etapa.nome}</option>`;
+            }).join('');
             select.value = '';
 
             document.getElementById('moverEtapaModal').classList.add('active');
@@ -7580,20 +7698,220 @@
             document.getElementById('moverEtapaModal').classList.remove('active');
         }
 
+        let etapaPendenteTipoPagamento = null; // Armazena a etapa que aguarda tipo de pagamento
+        let coletaPendenteTipoPagamento = null; // Armazena o ID da coleta que aguarda tipo de pagamento
+
         async function confirmarMoverEtapa() {
             if (!moverEtapaColetaId) {
                 showNotification('Nenhuma coleta selecionada para mover.', 'warning');
                 return;
             }
+
+            const coleta = coletasData.find(c => c.id === moverEtapaColetaId);
+            if (!coleta) {
+                showNotification('Coleta não encontrada.', 'error');
+                return;
+            }
+
+            // ✅ VALIDAÇÃO OBRIGATÓRIA: Não pode sair da etapa contratação sem motorista vinculado
+            if (coleta.etapa_atual === 'contratacao' && !coleta.motorista_id) {
+                showNotification('⚠️ Para mover uma coleta da etapa Contratação, é necessário vincular um motorista à coleta.', 'warning');
+                fecharMoverEtapaModal();
+                return;
+            }
+
             const novaEtapaId = document.getElementById('novaEtapaSelect').value;
             if (!novaEtapaId) {
                 showNotification('Selecione a nova etapa desejada.', 'warning');
                 return;
             }
+
+            // Se a nova etapa for "contas_pagar", solicitar tipo de pagamento
+            if (novaEtapaId === 'contas_pagar') {
+                etapaPendenteTipoPagamento = novaEtapaId;
+                coletaPendenteTipoPagamento = moverEtapaColetaId;
+                fecharMoverEtapaModal();
+                abrirModalTipoPagamento();
+                return;
+            }
+
             await moverEtapa(moverEtapaColetaId, novaEtapaId);
         }
 
-        async function moverEtapa(coletaId, novaEtapaId) {
+        function abrirModalTipoPagamento() {
+            const modal = document.getElementById('modalTipoPagamento');
+            modal.style.display = 'flex';
+            document.getElementById('tipoPagamentoSelect').value = '';
+        }
+        
+        // Event listener para fechar modal ao clicar fora (configurado uma vez)
+        document.addEventListener('DOMContentLoaded', function() {
+            const modalTipoPagamento = document.getElementById('modalTipoPagamento');
+            if (modalTipoPagamento) {
+                modalTipoPagamento.addEventListener('click', function(e) {
+                    if (e.target === modalTipoPagamento) {
+                        fecharModalTipoPagamento();
+                    }
+                });
+            }
+        });
+
+        function fecharModalTipoPagamento() {
+            document.getElementById('modalTipoPagamento').style.display = 'none';
+            etapaPendenteTipoPagamento = null;
+            coletaPendenteTipoPagamento = null;
+        }
+
+        async function confirmarTipoPagamento() {
+            const tipoPagamento = document.getElementById('tipoPagamentoSelect').value;
+            
+            if (!tipoPagamento) {
+                showNotification('⚠️ Selecione o tipo de pagamento', 'warning');
+                return;
+            }
+
+            if (!coletaPendenteTipoPagamento || !etapaPendenteTipoPagamento) {
+                showNotification('Erro: Dados não encontrados', 'error');
+                fecharModalTipoPagamento();
+                return;
+            }
+
+            const coletaId = coletaPendenteTipoPagamento;
+            const novaEtapaId = etapaPendenteTipoPagamento;
+            const coleta = coletasData.find(c => c.id === coletaId);
+            
+            if (!coleta) {
+                showNotification('Coleta não encontrada', 'error');
+                fecharModalTipoPagamento();
+                return;
+            }
+
+            // Atualizar etapas_concluidas: adicionar a etapa atual se ainda não estiver
+            const etapasConcluidas = Array.isArray(coleta.etapas_concluidas) ? [...coleta.etapas_concluidas] : [];
+            if (!etapasConcluidas.includes(coleta.etapa_atual)) {
+                etapasConcluidas.push(coleta.etapa_atual);
+            }
+
+            const updateData = {
+                etapa_atual: novaEtapaId,
+                status: 'em_andamento',
+                etapas_concluidas: etapasConcluidas,
+                contas_pagar_tipo: tipoPagamento
+            };
+
+            try {
+                currentEditingId = coletaId;
+                await salvarColeta(updateData);
+                await salvarNoHistorico(coletaId, 'etapa_alterada', 
+                    `Etapa alterada para ${obterNomeEtapa(novaEtapaId)}. Tipo de pagamento: ${tipoPagamento}`
+                );
+                showNotification(`✅ Etapa movida para ${obterNomeEtapa(novaEtapaId)} - Tipo: ${tipoPagamento}`, 'success');
+                fecharModalTipoPagamento();
+            } catch (error) {
+                console.error('❌ Erro ao mover etapa:', error);
+                showNotification('Erro ao mover etapa: ' + error.message, 'error');
+            } finally {
+                currentEditingId = null;
+                etapaPendenteTipoPagamento = null;
+                coletaPendenteTipoPagamento = null;
+            }
+        }
+
+        // Função para marcar tipo de pagamento específico como pago (GNRE, PEDÁGIO, etc)
+        async function marcarTipoPagamentoEspecifico(coletaId, tipoPagamento) {
+            try {
+                if (!supabaseClient) {
+                    showNotification('Erro: Supabase não inicializado', 'error');
+                    return;
+                }
+
+                const coleta = coletasData.find(c => c.id === coletaId);
+                if (!coleta) {
+                    showNotification('Coleta não encontrada', 'error');
+                    return;
+                }
+
+                if (!temPermissaoEtapa('contas_pagar')) {
+                    showNotification('⚠️ Você não tem permissão para marcar como pago nesta etapa', 'warning');
+                    return;
+                }
+
+                if (!coleta.motorista_id) {
+                    showNotification('⚠️ É necessário ter um motorista vinculado para marcar como pago', 'warning');
+                    return;
+                }
+
+                const confirmacao = confirm(`Confirmar que ${tipoPagamento} foi pago? O motorista e o criador da oportunidade serão notificados.`);
+                if (!confirmacao) return;
+
+                const userData = JSON.parse(localStorage.getItem('loggedInUser'));
+                const usuarioNome = userData?.nome || userData?.email || 'Usuário';
+
+                // Buscar informações do motorista
+                const motorista = await buscarMotoristaPorId(coleta.motorista_id);
+                if (!motorista) {
+                    showNotification('Erro ao buscar informações do motorista', 'error');
+                    return;
+                }
+
+                // Atualizar coleta como paga
+                const { error: updateError } = await supabaseClient
+                    .from('coletas')
+                    .update({
+                        contas_pagar_pago: true,
+                        contas_pagar_data: new Date().toISOString(),
+                        contas_pagar_pago_por: usuarioNome,
+                        updated_at: new Date().toISOString()
+                    })
+                    .eq('id', coletaId);
+
+                if (updateError) throw updateError;
+
+                // Salvar no histórico
+                await salvarNoHistorico(coletaId, 'contas_pagar_pago', 
+                    `${tipoPagamento} marcado como pago por ${usuarioNome}`
+                );
+
+                // Enviar mensagem para o motorista
+                if (motorista.telefone1) {
+                    try {
+                        const mensagemMotorista = `✅ *${tipoPagamento} PAGO*\n\nOlá ${motorista.nome || 'Motorista'}!\n\nO pagamento ${tipoPagamento} da coleta *${coleta.cliente}* (${coleta.origem} → ${coleta.destino}) foi marcado como realizado.\n\nObrigado pelo seu trabalho! 🚚`;
+
+                        const response = await fetch('/webhook/send-supabase', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                number: motorista.telefone1,
+                                message: mensagemMotorista,
+                                usuario: userData?.email || currentUser?.email || 'sistema',
+                                userId: userData?.id || currentUser?.id || null
+                            })
+                        });
+
+                        if (!response.ok) {
+                            console.warn('⚠️ Erro ao enviar mensagem para motorista');
+                        }
+                    } catch (msgError) {
+                        console.warn('⚠️ Erro ao enviar mensagem:', msgError);
+                    }
+                }
+
+                showNotification(`✅ ${tipoPagamento} marcado como pago! Motorista e criador da oportunidade foram notificados.`, 'success');
+
+                await carregarColetas();
+
+            } catch (error) {
+                console.error('❌ Erro ao marcar tipo de pagamento como pago:', error);
+                showNotification('Erro ao marcar como pago: ' + error.message, 'error');
+            }
+        }
+
+        // Tornar funções globalmente acessíveis
+        window.fecharModalTipoPagamento = fecharModalTipoPagamento;
+        window.confirmarTipoPagamento = confirmarTipoPagamento;
+        window.marcarTipoPagamentoEspecifico = marcarTipoPagamentoEspecifico;
+
+        async function moverEtapa(coletaId, novaEtapaId, tipoPagamento = null) {
             const coleta = coletasData.find(c => c.id === coletaId);
             if (!coleta) return;
 
@@ -7607,6 +7925,14 @@
                 return;
             }
 
+            // ✅ VALIDAÇÃO: Se for mover para contas_pagar, tipo de pagamento é obrigatório
+            if (novaEtapaId === 'contas_pagar' && !tipoPagamento) {
+                etapaPendenteTipoPagamento = novaEtapaId;
+                coletaPendenteTipoPagamento = coletaId;
+                abrirModalTipoPagamento();
+                return;
+            }
+
             const etapaAtualIndex = ETAPAS.findIndex(e => e.id === coleta.etapa_atual);
             const novaEtapaIndex = ETAPAS.findIndex(e => e.id === novaEtapaId);
             if (novaEtapaIndex === -1) {
@@ -7614,9 +7940,9 @@
                 return;
             }
 
-            if (coleta.etapa_atual === 'contratacao' && novaEtapaIndex > etapaAtualIndex && !coleta.motorista_id) {
-                showNotification('⚠️ Vincule um motorista antes de seguir para etapas posteriores.', 'warning');
-                await vincularMotorista(coletaId);
+            // ✅ VALIDAÇÃO OBRIGATÓRIA: Não pode sair da etapa contratação sem motorista vinculado
+            if (coleta.etapa_atual === 'contratacao' && !coleta.motorista_id) {
+                showNotification('⚠️ Para mover uma coleta da etapa Contratação, é necessário vincular um motorista à coleta.', 'warning');
                 return;
             }
 
@@ -7643,11 +7969,19 @@
                 etapas_concluidas: etapasConcluidas
             };
 
+            // ✅ Adicionar tipo de pagamento se for contas_pagar
+            if (novaEtapaId === 'contas_pagar' && tipoPagamento) {
+                updateData.contas_pagar_tipo = tipoPagamento;
+            }
+
             try {
                 currentEditingId = coletaId;
                 await salvarColeta(updateData);
-                await salvarNoHistorico(coletaId, 'etapa_alterada', `Etapa alterada de ${obterNomeEtapa(coleta.etapa_atual)} para ${obterNomeEtapa(novaEtapaId)}`);
-                showNotification(`Etapa movida para ${obterNomeEtapa(novaEtapaId)}`, 'success');
+                const detalhesHistorico = tipoPagamento 
+                    ? `Etapa alterada de ${obterNomeEtapa(coleta.etapa_atual)} para ${obterNomeEtapa(novaEtapaId)}. Tipo de pagamento: ${tipoPagamento}`
+                    : `Etapa alterada de ${obterNomeEtapa(coleta.etapa_atual)} para ${obterNomeEtapa(novaEtapaId)}`;
+                await salvarNoHistorico(coletaId, 'etapa_alterada', detalhesHistorico);
+                showNotification(`Etapa movida para ${obterNomeEtapa(novaEtapaId)}${tipoPagamento ? ` - Tipo: ${tipoPagamento}` : ''}`, 'success');
                 fecharMoverEtapaModal();
             } catch (error) {
                 console.error('❌ Erro ao mover etapa:', error);
@@ -7674,7 +8008,15 @@
                 searchFilter
             });
 
-            const filtered = coletasData.filter(coleta => {
+            // ✅ FILTRAR APENAS COLETAS NÃO ARQUIVADAS
+            const coletasParaFiltrar = window.coletasAtivas || coletasData.filter(c => !c.arquivado);
+            
+            const filtered = coletasParaFiltrar.filter(coleta => {
+                // ✅ Filtro de arquivado - garantir que nunca apareçam coletas arquivadas
+                if (coleta.arquivado) {
+                    return false;
+                }
+
                 // Filtro de status
                 if (statusFilter && coleta.status !== statusFilter) {
                     console.log(`❌ Filtrado por status: ${coleta.status} !== ${statusFilter}`);
@@ -7704,7 +8046,8 @@
 
                 // ✅ CORREÇÃO: Filtro de datas - usando o campo correto
                 if (dataInicio || dataFim) {
-                    const dataColeta = coleta.dataRecebimento; // Campo correto da coleta
+                    // Campo correto: data_recebimento (snake_case)
+                    const dataColeta = coleta.data_recebimento || coleta.dataRecebimento;
                     
                     if (!dataColeta) {
                         console.log(`❌ Coleta sem data: ${coleta.id}`);
@@ -7712,21 +8055,40 @@
                     }
 
                     // Converter para Date para comparação
-                    const dataColetaObj = new Date(dataColeta + 'T00:00:00'); // Adiciona horário para evitar problemas de fuso
+                    // Se já é uma string ISO, usar diretamente; se não, adicionar horário
+                    let dataColetaObj;
+                    if (typeof dataColeta === 'string') {
+                        // Se já tem horário (ISO format), usar diretamente
+                        if (dataColeta.includes('T') || dataColeta.includes(' ')) {
+                            dataColetaObj = new Date(dataColeta);
+                        } else {
+                            // Se é apenas data (YYYY-MM-DD), adicionar horário
+                            dataColetaObj = new Date(dataColeta + 'T00:00:00');
+                        }
+                    } else {
+                        dataColetaObj = new Date(dataColeta);
+                    }
+                    
                     const inicioObj = dataInicio ? new Date(dataInicio + 'T00:00:00') : null;
                     const fimObj = dataFim ? new Date(dataFim + 'T23:59:59') : null; // Fim do dia
+
+                    // Validar se as datas são válidas
+                    if (isNaN(dataColetaObj.getTime())) {
+                        console.log(`❌ Data inválida na coleta: ${coleta.id}, data: ${dataColeta}`);
+                        return false;
+                    }
 
                     console.log(`📅 Comparando datas: Coleta=${dataColetaObj.toISOString()}, Início=${inicioObj?.toISOString()}, Fim=${fimObj?.toISOString()}`);
 
                     // Filtro data início
-                    if (dataInicio && dataColetaObj < inicioObj) {
-                        console.log(`❌ Filtrado por data início: ${dataColeta} < ${dataInicio}`);
+                    if (dataInicio && inicioObj && dataColetaObj < inicioObj) {
+                        console.log(`❌ Filtrado por data início: ${dataColetaObj.toISOString()} < ${inicioObj.toISOString()}`);
                         return false;
                     }
 
                     // Filtro data fim
-                    if (dataFim && dataColetaObj > fimObj) {
-                        console.log(`❌ Filtrado por data fim: ${dataColeta} > ${dataFim}`);
+                    if (dataFim && fimObj && dataColetaObj > fimObj) {
+                        console.log(`❌ Filtrado por data fim: ${dataColetaObj.toISOString()} > ${fimObj.toISOString()}`);
                         return false;
                     }
                 }
@@ -7943,15 +8305,56 @@
         }
 
         // Modal de Histórico Completo
+        // Função auxiliar para processar detalhes e substituir IDs de motorista por nome e telefone
+        async function processarDetalhesComMotorista(detalhes) {
+            if (!detalhes) return detalhes;
+            
+            // Regex para encontrar IDs de motorista (UUIDs)
+            const motoristaIdRegex = /([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})/gi;
+            const idsEncontrados = detalhes.match(motoristaIdRegex);
+            
+            if (!idsEncontrados) return detalhes;
+            
+            let detalhesProcessados = detalhes;
+            
+            // Processar cada ID único
+            const idsUnicos = [...new Set(idsEncontrados)];
+            for (const motoristaId of idsUnicos) {
+                try {
+                    const motorista = await buscarMotoristaPorId(motoristaId);
+                    if (motorista) {
+                        const nome = motorista.nome || 'Motorista desconhecido';
+                        const telefone = motorista.telefone1 || motorista.telefone || '';
+                        const infoMotorista = telefone ? `${nome} (${telefone})` : nome;
+                        detalhesProcessados = detalhesProcessados.replace(new RegExp(motoristaId, 'g'), infoMotorista);
+                    }
+                } catch (error) {
+                    console.warn(`⚠️ Erro ao buscar motorista ${motoristaId}:`, error);
+                    // Manter o ID se não conseguir buscar
+                }
+            }
+            
+            return detalhesProcessados;
+        }
+
         async function abrirModalHistoricoCompleto(coletaId) {
             try {
                 document.getElementById('modalHistoricoCompleto').style.display = 'flex';
                 document.getElementById('conteudoHistoricoCompleto').innerHTML = '<div style="text-align: center; padding: 2rem;"><i class="fas fa-spinner fa-spin fa-2x"></i><p style="margin-top: 1rem;">Carregando histórico...</p></div>';
                 
+                // Buscar dados da coleta para obter o número da OC
+                const { data: coleta, error: coletaError } = await supabaseClient
+                    .from('coletas')
+                    .select('id, filial, numero_coleta, cliente')
+                    .eq('id', coletaId)
+                    .single();
+                
+                const numeroOC = coleta?.numero_coleta ? `${coleta.filial || ''} #${coleta.numero_coleta}`.trim() : null;
+                
                 let historico = [];
                 
                 // Buscar histórico da tabela historico_movimentacoes (prioritária)
-                const { data: dataMov, error: errorMov } = await supabase
+                const { data: dataMov, error: errorMov } = await supabaseClient
                     .from('historico_movimentacoes')
                     .select('*')
                     .eq('coleta_id', coletaId)
@@ -7960,17 +8363,21 @@
                 if (errorMov) {
                     console.warn('⚠️ Erro ao buscar historico_movimentacoes:', errorMov);
                 } else if (dataMov && dataMov.length > 0) {
-                    historico = dataMov.map(mov => ({
+                    // Processar cada item do histórico para substituir IDs de motorista
+                    historico = await Promise.all(dataMov.map(async (mov) => {
+                        const detalhesProcessados = await processarDetalhesComMotorista(mov.detalhes || '');
+                        return {
                         acao: mov.acao || 'Movimentação',
                         usuario_nome: mov.usuario_nome || 'Sistema',
-                        detalhes: mov.detalhes || '',
+                            detalhes: detalhesProcessados,
                         created_at: mov.created_at
+                        };
                     }));
                 }
 
                 // Se não encontrou nada, buscar também de historico_coletas (compatibilidade)
                 if (historico.length === 0) {
-                    const { data: dataColetas, error: errorColetas } = await supabase
+                    const { data: dataColetas, error: errorColetas } = await supabaseClient
                         .from('historico_coletas')
                         .select('*')
                         .eq('coleta_id', coletaId)
@@ -7979,11 +8386,15 @@
                     if (errorColetas) {
                         console.warn('⚠️ Erro ao buscar historico_coletas:', errorColetas);
                     } else if (dataColetas && dataColetas.length > 0) {
-                        historico = dataColetas.map(h => ({
+                        // Processar cada item do histórico para substituir IDs de motorista
+                        historico = await Promise.all(dataColetas.map(async (h) => {
+                            const detalhesProcessados = await processarDetalhesComMotorista(h.detalhes || '');
+                            return {
                             acao: h.acao || 'Movimentação',
                             usuario_nome: h.usuario || 'Sistema',
-                            detalhes: h.detalhes || '',
+                                detalhes: detalhesProcessados,
                             created_at: h.created_at
+                            };
                         }));
                     }
                 }
@@ -7995,12 +8406,20 @@
                     historico.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
                     
                     historicoDiv.innerHTML = `
+                        ${numeroOC ? `
+                            <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 1rem; border-radius: 12px; margin-bottom: 1.5rem; box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);">
+                                <div style="display: flex; align-items: center; gap: 0.5rem; font-size: 1.1rem; font-weight: 600;">
+                                    <i class="fas fa-hashtag"></i>
+                                    <span>OC: ${numeroOC}</span>
+                                </div>
+                            </div>
+                        ` : ''}
                         <div style="display: grid; gap: 1rem;">
                             ${historico.map(mov => `
                                 <div style="padding: 1rem; background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); border-radius: 12px; border-left: 4px solid #667eea; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
                                     <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 0.5rem;">
                                         <div>
-                                            <strong style="color: #667eea; font-size: 1rem;">${mov.acao || 'Movimentação'}</strong>
+                                            <strong style="color: #667eea; font-size: 1rem;">${getTextoAcao(mov.acao) || mov.acao || 'Movimentação'}</strong>
                                         </div>
                                         <small style="color: #666;">${formatarDataHora(mov.created_at)}</small>
                                     </div>
@@ -8018,6 +8437,14 @@
                     `;
                 } else {
                     historicoDiv.innerHTML = `
+                        ${numeroOC ? `
+                            <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 1rem; border-radius: 12px; margin-bottom: 1.5rem; box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);">
+                                <div style="display: flex; align-items: center; gap: 0.5rem; font-size: 1.1rem; font-weight: 600;">
+                                    <i class="fas fa-hashtag"></i>
+                                    <span>OC: ${numeroOC}</span>
+                                </div>
+                            </div>
+                        ` : ''}
                         <div style="text-align: center; padding: 3rem; color: #999;">
                             <i class="fas fa-inbox fa-3x" style="margin-bottom: 1rem; opacity: 0.5;"></i>
                             <p style="font-size: 1.1rem;">Nenhuma movimentação registrada</p>

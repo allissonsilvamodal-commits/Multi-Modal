@@ -3715,9 +3715,9 @@
                 <i class="fas fa-map-marker-alt"></i>
                 <span>Ativar Localização GPS</span>
               </button>
-              <button class="btn btn-success" onclick="window.anexarCanhoto('${escapeHtml(viagem.id)}', '${escapeHtml(identificador)}')" style="flex: 1; min-width: 150px; padding: 0.5rem; display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
-                <i class="fas fa-camera"></i>
-                <span>Anexar Canhoto</span>
+              <button class="btn btn-success" onclick="window.finalizarOperacao('${escapeHtml(viagem.id)}', '${escapeHtml(identificador)}')" style="flex: 1; min-width: 150px; padding: 0.5rem; display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
+                <i class="fas fa-check-circle"></i>
+                <span>Finalizar Operação</span>
               </button>
               ${podeDesvincular ? `
                 <button class="btn btn-outline danger" onclick="window.desvincularColeta('${escapeHtml(viagem.id)}', '${escapeHtml(identificador)}')" style="flex: 1; min-width: 150px; padding: 0.5rem; display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
@@ -3802,8 +3802,8 @@
       }
     }
 
-    // Função para anexar canhoto usando a câmera (tornada global para onclick)
-    window.anexarCanhoto = async function(coletaId, identificador) {
+    // Função para finalizar operação (anexar canhoto e finalizar) (tornada global para onclick)
+    window.finalizarOperacao = async function(coletaId, identificador) {
       if (!coletaId) {
         logger.error('❌ ID da coleta não fornecido');
         showToast('Erro: ID da coleta não fornecido', 'error');
@@ -3811,7 +3811,19 @@
       }
 
       try {
-        logger.log('📷 Iniciando anexo de canhoto para coleta:', coletaId);
+        logger.log('✅ Iniciando finalização de operação para coleta:', coletaId);
+
+        // Confirmar ação
+        const confirmar = confirm(
+          `⚠️ Finalizar Operação\n\n` +
+          `Você está prestes a finalizar a operação para:\n${identificador}\n\n` +
+          `Será necessário anexar o canhoto (foto do documento de entrega).\n\n` +
+          `Deseja continuar?`
+        );
+
+        if (!confirmar) {
+          return;
+        }
 
         // Criar input file oculto para capturar foto da câmera
         const input = document.createElement('input');
@@ -3841,20 +3853,18 @@
           }
 
           try {
-            showToast('📤 Enviando canhoto...', 'info');
+            showToast('📤 Finalizando operação e enviando canhoto...', 'info');
 
-            // Preparar FormData para upload
+            // Preparar FormData para upload usando endpoint de finalizar operação
             const formData = new FormData();
-            formData.append('file', file);
-            formData.append('coleta_id', coletaId);
-            formData.append('usuario', state.motorista?.nome || state.user?.email || 'Motorista');
+            formData.append('canhoto', file);
 
             // Obter headers de autenticação (remover Content-Type para FormData)
             const authHeaders = getAuthHeaders();
-            const { 'Content-Type': _, ...headers } = authHeaders; // Remover Content-Type para o browser definir automaticamente
+            const { 'Content-Type': _, ...headers } = authHeaders;
 
-            // Fazer upload
-            const response = await fetch('/api/anexos', {
+            // Fazer chamada ao endpoint de finalizar operação
+            const response = await fetch(`/api/motoristas/coletas/${coletaId}/finalizar-operacao`, {
               method: 'POST',
               headers: headers,
               credentials: 'include',
@@ -3863,24 +3873,31 @@
 
             if (!response.ok) {
               const errorData = await response.json().catch(() => ({ error: 'Erro desconhecido' }));
-              throw new Error(errorData.error || 'Erro ao fazer upload do canhoto');
+              throw new Error(errorData.error || 'Erro ao finalizar operação');
             }
 
             const result = await response.json();
 
-            if (result.success && result.anexo) {
-              showToast('✅ Canhoto anexado com sucesso!', 'success');
-              logger.log('✅ Canhoto anexado:', result.anexo.id);
+            if (result.success) {
+              if (result.temPendenciaSaldo) {
+                showToast('✅ Canhoto anexado! ⚠️ Aguardando pagamento do saldo para concluir.', 'warning');
+              } else {
+                showToast('✅ Operação finalizada com sucesso! Aguardando validação.', 'success');
+              }
+              
+              logger.log('✅ Operação finalizada:', result);
               
               // Recarregar viagens para atualizar interface
-              await carregarViagens();
+              setTimeout(async () => {
+                await carregarViagens();
+              }, 1000);
             } else {
-              throw new Error('Resposta inválida do servidor');
+              throw new Error(result.error || 'Resposta inválida do servidor');
             }
 
           } catch (uploadError) {
-            logger.error('❌ Erro ao fazer upload do canhoto:', uploadError);
-            showToast(uploadError.message || 'Erro ao enviar canhoto. Tente novamente.', 'error');
+            logger.error('❌ Erro ao finalizar operação:', uploadError);
+            showToast(uploadError.message || 'Erro ao finalizar operação. Tente novamente.', 'error');
           }
         };
 
