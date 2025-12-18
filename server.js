@@ -5219,18 +5219,18 @@ async function fetchPosicoesResumoPorColeta(coletaId, janelaMinutos, includeSemC
   
   try {
     const { data, error } = await supabaseAdmin.rpc('get_posicoes_resumo', {
-      p_coleta_id: coletaId,
-      p_include_sem_coleta: includeSemColeta,
-      p_max_minutes: janelaMinutos,
-      p_limit_por_motorista: 1
-    });
-    
+    p_coleta_id: coletaId,
+    p_include_sem_coleta: includeSemColeta,
+    p_max_minutes: janelaMinutos,
+    p_limit_por_motorista: 1
+  });
+
     if (!error) {
       posicoesRpc = data;
     } else {
       rpcError = error;
       console.warn('⚠️ RPC get_posicoes_resumo não disponível, usando busca direta:', rpcError.message);
-    }
+  }
   } catch (err) {
     rpcError = err;
     console.warn('⚠️ Erro ao chamar RPC get_posicoes_resumo, usando busca direta:', err.message);
@@ -5241,20 +5241,20 @@ async function fetchPosicoesResumoPorColeta(coletaId, janelaMinutos, includeSemC
   if (posicoesRpc && !rpcError) {
     // Usar dados da RPC
     posicoes = (posicoesRpc || []).map(pos => ({
-      id: pos.id,
-      motorista_id: pos.motorista_id,
-      coleta_id: pos.coleta_id,
-      latitude: pos.latitude,
-      longitude: pos.longitude,
-      timestamp_gps: pos.timestamp_gps,
-      velocidade: pos.velocidade,
-      endereco: pos.endereco,
-      motoristas: {
-        id: pos.motorista_id,
-        nome: pos.motorista_nome,
-        telefone1: pos.motorista_telefone
-      }
-    }));
+    id: pos.id,
+    motorista_id: pos.motorista_id,
+    coleta_id: pos.coleta_id,
+    latitude: pos.latitude,
+    longitude: pos.longitude,
+    timestamp_gps: pos.timestamp_gps,
+    velocidade: pos.velocidade,
+    endereco: pos.endereco,
+    motoristas: {
+      id: pos.motorista_id,
+      nome: pos.motorista_nome,
+      telefone1: pos.motorista_telefone
+    }
+  }));
   } else {
     // Buscar diretamente da tabela se RPC não estiver disponível
     const tempoLimite = new Date(Date.now() - janelaMinutos * 60 * 1000).toISOString();

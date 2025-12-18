@@ -867,6 +867,54 @@
             color: #6c757d;
         }
 
+        /* ========== LOADING SKELETONS ========== */
+        .skeleton {
+            background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+            background-size: 200% 100%;
+            animation: loading 1.5s infinite;
+            border-radius: 8px;
+        }
+
+        @keyframes loading {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+
+        .skeleton-card {
+            background: white;
+            border-radius: 16px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+            margin-bottom: 1.5rem;
+        }
+
+        .skeleton-line {
+            height: 16px;
+            margin-bottom: 12px;
+            border-radius: 4px;
+        }
+
+        .skeleton-line:last-child {
+            margin-bottom: 0;
+        }
+
+        .skeleton-title {
+            height: 24px;
+            width: 60%;
+            margin-bottom: 16px;
+        }
+
+        .skeleton-subtitle {
+            height: 18px;
+            width: 40%;
+            margin-bottom: 12px;
+        }
+
+        .skeleton-text {
+            height: 14px;
+            width: 80%;
+        }
+
         .anexo-actions {
             display: flex;
             gap: 0.3rem;
@@ -2795,7 +2843,241 @@
         let currentChatColetaId = null;
         let supabaseAccessToken = null;
         let supabaseTokenExpiry = 0;
+        
+        // ========== VARIÁVEIS DE PAGINAÇÃO ==========
+        let paginaAtual = 1;
+        const itensPorPagina = 50;
+        let coletasFiltradas = [];
         let moverEtapaColetaId = null;
+
+        // ========== FUNÇÕES HELPER - FORMATADORES ==========
+        const formatters = {
+            data: (data) => {
+                if (!data) return '';
+                try {
+                    return new Date(data).toLocaleDateString('pt-BR', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric'
+                    });
+                } catch (e) {
+                    return data;
+                }
+            },
+            dataHora: (data) => {
+                if (!data) return '';
+                try {
+                    return new Date(data).toLocaleString('pt-BR', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                    });
+                } catch (e) {
+                    return data;
+                }
+            },
+            moeda: (valor) => {
+                if (valor === null || valor === undefined || valor === '') return 'R$ 0,00';
+                return `R$ ${parseFloat(valor || 0).toLocaleString('pt-BR', {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2
+                })}`;
+            },
+            telefone: (tel) => {
+                if (!tel) return '';
+                const numeros = tel.replace(/\D/g, '');
+                if (numeros.length === 11) {
+                    return numeros.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3');
+                } else if (numeros.length === 10) {
+                    return numeros.replace(/(\d{2})(\d{4})(\d{4})/, '($1) $2-$3');
+                }
+                return tel;
+            },
+            numero: (num) => {
+                if (num === null || num === undefined || num === '') return '';
+                return parseFloat(num || 0).toLocaleString('pt-BR');
+            }
+        };
+
+        // ========== FUNÇÃO HELPER - DEBOUNCE ==========
+        function debounce(func, wait) {
+            let timeout;
+            return function executedFunction(...args) {
+                const later = () => {
+                    clearTimeout(timeout);
+                    func(...args);
+                };
+                clearTimeout(timeout);
+                timeout = setTimeout(later, wait);
+            };
+        }
+
+        // ========== FUNÇÃO HELPER - TRATAMENTO DE ERROS ==========
+        async function handleError(error, context) {
+            console.error(`❌ Erro em ${context}:`, error);
+            
+            // Log detalhado em desenvolvimento
+            if (window.DEBUG || window.location.hostname === 'localhost') {
+                console.error('Detalhes do erro:', {
+                    message: error.message,
+                    code: error.code,
+                    details: error.details,
+                    hint: error.hint
+                });
+            }
+            
+            // Mensagem amigável para o usuário
+            let mensagem = 'Ocorreu um erro. Tente novamente.';
+            if (error.message) {
+                mensagem = error.message;
+            } else if (error.code === 'PGRST301') {
+                mensagem = 'Erro ao acessar o banco de dados. Verifique sua conexão.';
+            } else if (error.code === '42501') {
+                mensagem = 'Você não tem permissão para realizar esta ação.';
+            } else if (error.code === '23505') {
+                mensagem = 'Já existe um registro com essas informações.';
+            }
+            
+            showNotification(mensagem, 'error');
+            
+            // Retornar para monitoramento futuro (Sentry, etc.)
+            if (window.errorReporter) {
+                window.errorReporter.captureException(error, { context });
+            }
+        }
+
+        // ========== FUNÇÃO HELPER - LOADING SKELETONS ==========
+        function criarSkeletonCard() {
+            return `
+                <div class="coleta-card skeleton-card">
+                    <div class="skeleton-line skeleton-title"></div>
+                    <div class="skeleton-line skeleton-subtitle"></div>
+                    <div class="skeleton-line skeleton-text"></div>
+                    <div class="skeleton-line skeleton-text" style="width: 60%;"></div>
+                </div>
+            `;
+        }
+
+        function mostrarSkeletons(containerId, quantidade = 6) {
+            const container = document.getElementById(containerId);
+            if (container) {
+                container.innerHTML = Array(quantidade).fill(0).map(() => criarSkeletonCard()).join('');
+            }
+        }
+
+        // ========== FUNÇÃO HELPER - CRIAÇÃO DE MODAIS REUTILIZÁVEIS ==========
+        function criarModal({ titulo, conteudo, acoes, id, tamanho = 'medio', fecharAoClickFora = true }) {
+            const modalId = id || `modal-${Date.now()}`;
+            const tamanhoClass = {
+                pequeno: 'modal-sm',
+                medio: '',
+                grande: 'modal-lg',
+                extraGrande: 'modal-xl'
+            }[tamanho] || '';
+
+            const modal = document.createElement('div');
+            modal.className = `modal-overlay ${modalId}`;
+            modal.id = modalId;
+            modal.innerHTML = `
+                <div class="modal ${tamanhoClass}" style="max-width: ${tamanho === 'pequeno' ? '400px' : tamanho === 'grande' ? '800px' : tamanho === 'extraGrande' ? '1200px' : '600px'};">
+                    <div class="modal-header" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 1.5rem; border-radius: 12px 12px 0 0; display: flex; justify-content: space-between; align-items: center;">
+                        <h3 style="margin: 0; font-size: 1.3rem; font-weight: 600;">${titulo}</h3>
+                        <button class="close-modal" onclick="fecharModalHelper('${modalId}')" style="background: rgba(255,255,255,0.2); border: none; color: white; width: 32px; height: 32px; border-radius: 50%; cursor: pointer; font-size: 1.2rem; display: flex; align-items: center; justify-content: center; transition: all 0.3s;">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div class="modal-body" style="padding: 1.5rem; max-height: 70vh; overflow-y: auto;">
+                        ${conteudo}
+                    </div>
+                    ${acoes ? `
+                    <div class="modal-footer" style="padding: 1rem 1.5rem; border-top: 1px solid #e0e0e0; display: flex; justify-content: flex-end; gap: 0.5rem; border-radius: 0 0 12px 12px;">
+                        ${acoes}
+                    </div>
+                    ` : ''}
+                </div>
+            `;
+
+            // Fechar ao clicar fora do modal
+            if (fecharAoClickFora) {
+                modal.addEventListener('click', (e) => {
+                    if (e.target === modal) {
+                        fecharModalHelper(modalId);
+                    }
+                });
+            }
+
+            document.body.appendChild(modal);
+            setTimeout(() => modal.classList.add('active'), 10);
+            
+            return modalId;
+        }
+
+        function fecharModalHelper(modalId) {
+            const modal = document.getElementById(modalId);
+            if (modal) {
+                modal.classList.remove('active');
+                setTimeout(() => {
+                    modal.remove();
+                }, 300);
+            }
+        }
+
+        // ========== FUNÇÃO HELPER - CONFIRMAÇÃO PARA AÇÕES DESTRUTIVAS ==========
+        async function confirmarAcaoDestrutiva({ titulo, mensagem, detalhes, textoConfirmar = 'Confirmar', textoCancelar = 'Cancelar', corConfirmar = '#dc3545' }) {
+            return new Promise((resolve) => {
+                const modalId = criarModal({
+                    titulo: `⚠️ ${titulo}`,
+                    tamanho: 'pequeno',
+                    conteudo: `
+                        <div style="text-align: center;">
+                            <div style="font-size: 3rem; color: #dc3545; margin-bottom: 1rem;">
+                                <i class="fas fa-exclamation-triangle"></i>
+                            </div>
+                            <p style="font-size: 1.1rem; margin-bottom: 1rem; color: #333;">${mensagem}</p>
+                            ${detalhes ? `
+                            <div style="background: #fff3cd; padding: 1rem; border-radius: 8px; margin: 1rem 0; text-align: left; border-left: 4px solid #ffc107;">
+                                <strong style="color: #856404;">Detalhes:</strong>
+                                <div style="margin-top: 0.5rem; color: #856404;">${detalhes}</div>
+                            </div>
+                            ` : ''}
+                            <p style="color: #dc3545; font-weight: 600; margin-top: 1.5rem; padding: 1rem; background: #f8d7da; border-radius: 8px;">
+                                <i class="fas fa-info-circle"></i> Esta ação não pode ser desfeita.
+                            </p>
+                        </div>
+                    `,
+                    acoes: `
+                        <button class="btn btn-secondary" onclick="cancelarAcaoDestrutiva('${modalId}')" style="padding: 0.6rem 1.5rem; border-radius: 8px; border: 1px solid #6c757d; background: white; color: #6c757d; cursor: pointer; font-weight: 600; transition: all 0.3s;">
+                            <i class="fas fa-times"></i> ${textoCancelar}
+                        </button>
+                        <button class="btn btn-danger" onclick="executarAcaoDestrutiva('${modalId}')" style="padding: 0.6rem 1.5rem; border-radius: 8px; border: none; background: ${corConfirmar}; color: white; cursor: pointer; font-weight: 600; transition: all 0.3s; box-shadow: 0 2px 8px rgba(220, 53, 69, 0.3);">
+                            <i class="fas fa-check"></i> ${textoConfirmar}
+                        </button>
+                    `
+                });
+
+                // Armazenar resolve na variável global temporária
+                window._acaoDestrutivaResolve = resolve;
+                window._acaoDestrutivaModalId = modalId;
+            });
+        }
+
+        function cancelarAcaoDestrutiva(modalId) {
+            if (window._acaoDestrutivaResolve) {
+                window._acaoDestrutivaResolve(false);
+                window._acaoDestrutivaResolve = null;
+            }
+            fecharModalHelper(modalId);
+        }
+
+        function executarAcaoDestrutiva(modalId) {
+            if (window._acaoDestrutivaResolve) {
+                window._acaoDestrutivaResolve(true);
+                window._acaoDestrutivaResolve = null;
+            }
+            fecharModalHelper(modalId);
+        }
 
         // Etapas do processo
         const ETAPAS = [
@@ -3504,6 +3786,58 @@
                 setupDragAndDrop();
                 setupChatInput();
                 
+                // ✅ OTIMIZAÇÃO: Adicionar debounce no filtro de busca
+                const searchFilter = document.getElementById('searchFilter');
+                if (searchFilter) {
+                    const debouncedFilter = debounce(filterColetas, 300);
+                    searchFilter.addEventListener('input', debouncedFilter);
+                    console.log('✅ Debounce aplicado ao filtro de busca');
+                }
+                
+                // ✅ MELHORIA UX: Adicionar atalhos de teclado
+                document.addEventListener('keydown', (e) => {
+                    // Ctrl/Cmd + N: Nova coleta
+                    if ((e.ctrlKey || e.metaKey) && e.key === 'n' && !e.shiftKey) {
+                        e.preventDefault();
+                        const modal = document.getElementById('coletaModal');
+                        if (!modal?.classList.contains('active')) {
+                            openNewColetaModal();
+                        }
+                    }
+                    
+                    // Esc: Fechar modais
+                    if (e.key === 'Escape') {
+                        const modais = document.querySelectorAll('.modal-overlay.active, .modal.active, .modal.show');
+                        modais.forEach(modal => {
+                            const fecharBtn = modal.querySelector('[onclick*="close"], [onclick*="fechar"], .close-modal, .btn-close');
+                            if (fecharBtn) {
+                                fecharBtn.click();
+                            } else {
+                                modal.classList.remove('active', 'show');
+                                modal.style.display = 'none';
+                            }
+                        });
+                    }
+                    
+                    // Ctrl/Cmd + F: Focar busca (se não estiver em input/textarea)
+                    if ((e.ctrlKey || e.metaKey) && e.key === 'f' && !e.target.matches('input, textarea, [contenteditable="true"]')) {
+                        e.preventDefault();
+                        const searchInput = document.getElementById('searchFilter');
+                        if (searchInput) {
+                            searchInput.focus();
+                            searchInput.select();
+                        }
+                    }
+                    
+                    // Ctrl/Cmd + R: Recarregar coletas (prevenir reload da página)
+                    if ((e.ctrlKey || e.metaKey) && e.key === 'r' && !e.target.matches('input, textarea')) {
+                        e.preventDefault();
+                        carregarColetas();
+                    }
+                });
+                
+                console.log('✅ Atalhos de teclado configurados');
+                
                 // Carregar dados do Supabase
                 await carregarColetas();
                 
@@ -4166,9 +4500,10 @@
                     return [];
                 }
                 
+                // ✅ OTIMIZAÇÃO: Selecionar apenas campos necessários
                 const { data, error } = await supabase
                     .from('motoristas')
-                    .select('*')
+                    .select('id, nome, cnh, categoria_cnh, telefone, telefone1, status, estado, classe_veiculo, tipo_veiculo, tipo_carroceria')
                     .eq('status', 'ativo')
                     .order('nome', { ascending: true });
 
@@ -5054,11 +5389,19 @@
                     return;
                 }
                 
+                // ✅ MELHORIA UX: Mostrar skeletons durante carregamento
+                const coletasGrid = document.getElementById('coletasGrid');
+                if (coletasGrid && coletasGrid.children.length === 0) {
+                    mostrarSkeletons('coletasGrid', 6);
+                }
+                
                 showNotification('Carregando coletas...', 'info');
                 
+                // ✅ OTIMIZAÇÃO: Selecionar apenas campos necessários em vez de *
+                // v2.0 - Campos corrigidos: removidos contas_pagar_adiantamento, contas_pagar_saldo, pendencia_saldo (não existem na tabela)
                 const { data, error } = await supabase
                     .from('coletas')
-                    .select('*')
+                    .select('id, filial, numero_coleta, cliente, data_recebimento, data_entrega, origem, destino, valor, km, tipos_veiculo, tipos_carroceria, status, etapa_atual, observacoes, prioridade, motorista_id, etapas_concluidas, arquivado, resultado_final, data_finalizacao, created_at, updated_at, created_by, updated_by, data_atualizacao, gr_aprovado, gr_reprovado_por, gr_motivo_reprovacao, gr_data_reprovacao, contas_pagar_pago, contas_pagar_tipo, contas_pagar_data, contas_pagar_pago_por')
                     .order('created_at', { ascending: false });
 
                 if (error) throw error;
@@ -5103,8 +5446,7 @@
                 }
                 
             } catch (error) {
-                console.error('❌ Erro ao carregar coletas:', error);
-                showNotification('Erro ao carregar coletas: ' + error.message, 'error');
+                await handleError(error, 'carregarColetas');
             } finally {
                 carregandoColetas = false;
             }
@@ -5125,9 +5467,10 @@
                 
                 if (currentEditingId) {
                     // ✅ CAPTURAR DADOS ANTIGOS ANTES DE ATUALIZAR
+                    // ✅ OTIMIZAÇÃO: Selecionar apenas campos necessários
                     const { data: dadosAntigos } = await supabase
                         .from('coletas')
-                        .select('*')
+                        .select('id, filial, numero_coleta, cliente, data_recebimento, data_entrega, origem, destino, valor, km, tipos_veiculo, tipos_carroceria, status, etapa_atual, observacoes, prioridade, motorista_id, etapas_concluidas, arquivado, contas_pagar_tipo')
                         .eq('id', currentEditingId)
                         .single();
                     
@@ -5220,9 +5563,7 @@
                 return data;
                 
             } catch (error) {
-                console.error('❌ Erro ao salvar coleta:', error);
-                console.error('❌ Detalhes do erro:', error.code, error.message, error.details);
-                showNotification('Erro ao salvar coleta: ' + error.message, 'error');
+                await handleError(error, 'salvarColeta');
                 throw error;
             }
         }
@@ -6327,6 +6668,25 @@
                     }
                 }
                 dataToRender = coletasUnicas;
+                
+                // ✅ PAGINAÇÃO: Armazenar coletas filtradas e aplicar paginação
+                coletasFiltradas = dataToRender;
+                const totalPaginas = Math.ceil(coletasFiltradas.length / itensPorPagina);
+                
+                // Ajustar página atual se necessário
+                if (paginaAtual > totalPaginas && totalPaginas > 0) {
+                    paginaAtual = totalPaginas;
+                }
+                if (paginaAtual < 1) {
+                    paginaAtual = 1;
+                }
+                
+                // Aplicar paginação
+                const inicio = (paginaAtual - 1) * itensPorPagina;
+                const fim = inicio + itensPorPagina;
+                dataToRender = coletasFiltradas.slice(inicio, fim);
+                
+                console.log(`📄 Paginação: Página ${paginaAtual} de ${totalPaginas} (${coletasFiltradas.length} coletas total, mostrando ${dataToRender.length})`);
 
                 // Verificar cards existentes ANTES de limpar o grid
                 const cardsExistentes = grid.querySelectorAll('[data-coleta-id]');
@@ -6399,9 +6759,141 @@
                 });
 
             updateStats(dataToRender);
+                
+                // ✅ PAGINAÇÃO: Adicionar controles de paginação
+                renderizarControlesPaginacao(totalPaginas);
+                
             } finally {
                 renderizandoColetas = false;
             }
+        }
+
+        // ========== FUNÇÕES DE PAGINAÇÃO ==========
+        function renderizarControlesPaginacao(totalPaginas) {
+            // Remover controles anteriores se existirem
+            const controlesAnteriores = document.getElementById('paginacaoControles');
+            if (controlesAnteriores) {
+                controlesAnteriores.remove();
+            }
+            
+            // Se não há necessidade de paginação, não mostrar controles
+            if (totalPaginas <= 1) {
+                return;
+            }
+            
+            const grid = document.getElementById('coletasGrid');
+            if (!grid) return;
+            
+            // Criar container de paginação
+            const paginacaoContainer = document.createElement('div');
+            paginacaoContainer.id = 'paginacaoControles';
+            paginacaoContainer.style.cssText = `
+                grid-column: 1 / -1;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                gap: 0.5rem;
+                padding: 2rem 1rem;
+                margin-top: 1rem;
+                flex-wrap: wrap;
+            `;
+            
+            // Botão Primeira Página
+            const btnPrimeira = criarBotaoPaginacao('Primeira', () => irParaPagina(1), paginaAtual === 1);
+            btnPrimeira.innerHTML = '<i class="fas fa-angle-double-left"></i> Primeira';
+            
+            // Botão Anterior
+            const btnAnterior = criarBotaoPaginacao('Anterior', () => irParaPagina(paginaAtual - 1), paginaAtual === 1);
+            btnAnterior.innerHTML = '<i class="fas fa-angle-left"></i> Anterior';
+            
+            // Informações da página
+            const infoPagina = document.createElement('div');
+            infoPagina.style.cssText = `
+                padding: 0.6rem 1.2rem;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                border-radius: 8px;
+                font-weight: 600;
+                font-size: 0.9rem;
+                box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+            `;
+            const inicio = (paginaAtual - 1) * itensPorPagina + 1;
+            const fim = Math.min(paginaAtual * itensPorPagina, coletasFiltradas.length);
+            infoPagina.textContent = `Página ${paginaAtual} de ${totalPaginas} (${inicio}-${fim} de ${coletasFiltradas.length})`;
+            
+            // Botão Próxima
+            const btnProxima = criarBotaoPaginacao('Próxima', () => irParaPagina(paginaAtual + 1), paginaAtual === totalPaginas);
+            btnProxima.innerHTML = 'Próxima <i class="fas fa-angle-right"></i>';
+            
+            // Botão Última Página
+            const btnUltima = criarBotaoPaginacao('Última', () => irParaPagina(totalPaginas), paginaAtual === totalPaginas);
+            btnUltima.innerHTML = 'Última <i class="fas fa-angle-double-right"></i>';
+            
+            // Adicionar botões ao container
+            paginacaoContainer.appendChild(btnPrimeira);
+            paginacaoContainer.appendChild(btnAnterior);
+            paginacaoContainer.appendChild(infoPagina);
+            paginacaoContainer.appendChild(btnProxima);
+            paginacaoContainer.appendChild(btnUltima);
+            
+            // Adicionar após o grid
+            grid.parentNode.insertBefore(paginacaoContainer, grid.nextSibling);
+        }
+
+        function criarBotaoPaginacao(texto, onClick, desabilitado) {
+            const btn = document.createElement('button');
+            btn.textContent = texto;
+            btn.onclick = onClick;
+            btn.disabled = desabilitado;
+            btn.style.cssText = `
+                padding: 0.6rem 1.2rem;
+                border: 1px solid #667eea;
+                background: ${desabilitado ? '#f0f0f0' : 'white'};
+                color: ${desabilitado ? '#999' : '#667eea'};
+                border-radius: 8px;
+                cursor: ${desabilitado ? 'not-allowed' : 'pointer'};
+                font-weight: 600;
+                font-size: 0.9rem;
+                transition: all 0.3s;
+                display: flex;
+                align-items: center;
+                gap: 0.3rem;
+            `;
+            
+            if (!desabilitado) {
+                btn.onmouseenter = () => {
+                    btn.style.background = '#667eea';
+                    btn.style.color = 'white';
+                    btn.style.transform = 'translateY(-2px)';
+                    btn.style.boxShadow = '0 4px 12px rgba(102, 126, 234, 0.3)';
+                };
+                btn.onmouseleave = () => {
+                    btn.style.background = 'white';
+                    btn.style.color = '#667eea';
+                    btn.style.transform = 'translateY(0)';
+                    btn.style.boxShadow = 'none';
+                };
+            }
+            
+            return btn;
+        }
+
+        function irParaPagina(novaPagina) {
+            const totalPaginas = Math.ceil(coletasFiltradas.length / itensPorPagina);
+            if (novaPagina < 1 || novaPagina > totalPaginas) {
+                return;
+            }
+            
+            paginaAtual = novaPagina;
+            
+            // Scroll suave para o topo do grid
+            const grid = document.getElementById('coletasGrid');
+            if (grid) {
+                grid.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+            
+            // Re-renderizar com a nova página
+            renderColetas();
         }
 
         function createColetaCard(coleta) {
@@ -7992,6 +8484,9 @@
         }
 
         function filterColetas() {
+            // ✅ PAGINAÇÃO: Resetar para primeira página ao filtrar
+            paginaAtual = 1;
+            
             const statusFilter = document.getElementById('statusFilter').value;
             const etapaFilter = document.getElementById('etapaFilter').value;
             const filialFilter = document.getElementById('filialFilter').value;
@@ -8354,9 +8849,10 @@
                 let historico = [];
                 
                 // Buscar histórico da tabela historico_movimentacoes (prioritária)
+                // ✅ OTIMIZAÇÃO: Selecionar apenas campos necessários
                 const { data: dataMov, error: errorMov } = await supabaseClient
                     .from('historico_movimentacoes')
-                    .select('*')
+                    .select('acao, usuario_nome, detalhes, created_at')
                     .eq('coleta_id', coletaId)
                     .order('created_at', { ascending: false });
 
@@ -8377,9 +8873,10 @@
 
                 // Se não encontrou nada, buscar também de historico_coletas (compatibilidade)
                 if (historico.length === 0) {
+                    // ✅ OTIMIZAÇÃO: Selecionar apenas campos necessários
                     const { data: dataColetas, error: errorColetas } = await supabaseClient
                         .from('historico_coletas')
-                        .select('*')
+                        .select('acao, usuario, detalhes, created_at')
                         .eq('coleta_id', coletaId)
                         .order('created_at', { ascending: false });
 
@@ -9024,11 +9521,16 @@
         carregarColetas = async function() {
             await originalCarregarColetas();
             
-            // Adicionar etiquetas às coletas
-            for (let coleta of coletasData) {
-                const { data: etiquetasData } = await supabase
+            // ✅ OTIMIZAÇÃO: Buscar todas as etiquetas de uma vez em vez de loop individual
+            if (coletasData.length > 0) {
+                try {
+                    const coletasIds = coletasData.map(c => c.id);
+                    
+                    // Buscar todas as etiquetas relacionadas às coletas de uma vez
+                    const { data: todasEtiquetas, error: etiquetasError } = await supabase
                     .from('coleta_etiquetas')
                     .select(`
+                            coleta_id,
                         etiqueta_id,
                         etiquetas_coletas:etiqueta_id (
                             id,
@@ -9036,12 +9538,41 @@
                             cor
                         )
                     `)
-                    .eq('coleta_id', coleta.id);
-                
-                if (etiquetasData && etiquetasData.length > 0) {
-                    coleta.etiquetas = etiquetasData.map(e => e.etiquetas_coletas);
+                        .in('coleta_id', coletasIds);
+                    
+                    if (etiquetasError) {
+                        console.warn('⚠️ Erro ao buscar etiquetas:', etiquetasError);
+                        // Continuar sem etiquetas em caso de erro
+                        coletasData.forEach(coleta => {
+                            coleta.etiquetas = [];
+                        });
                 } else {
+                        // Agrupar etiquetas por coleta_id
+                        const etiquetasPorColeta = {};
+                        if (todasEtiquetas) {
+                            todasEtiquetas.forEach(e => {
+                                if (!etiquetasPorColeta[e.coleta_id]) {
+                                    etiquetasPorColeta[e.coleta_id] = [];
+                                }
+                                if (e.etiquetas_coletas) {
+                                    etiquetasPorColeta[e.coleta_id].push(e.etiquetas_coletas);
+                                }
+                            });
+                        }
+                        
+                        // Atribuir etiquetas às coletas
+                        coletasData.forEach(coleta => {
+                            coleta.etiquetas = etiquetasPorColeta[coleta.id] || [];
+                        });
+                        
+                        console.log('✅ Etiquetas carregadas para', Object.keys(etiquetasPorColeta).length, 'coletas');
+                    }
+                } catch (error) {
+                    console.error('❌ Erro ao carregar etiquetas:', error);
+                    // Continuar sem etiquetas em caso de erro
+                    coletasData.forEach(coleta => {
                     coleta.etiquetas = [];
+                    });
                 }
             }
             

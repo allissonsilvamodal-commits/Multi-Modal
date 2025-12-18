@@ -1332,6 +1332,9 @@
         let map = null;
         let markerCluster = null;
         let markers = new Map();
+        let routes = new Map(); // ✅ ROTAS: Armazenar polylines das rotas por motorista
+        let mostrarRotas = true; // ✅ ROTAS: Toggle para mostrar/ocultar rotas
+        let posicoesAnteriores = new Map(); // ✅ ANIMAÇÃO: Armazenar posições anteriores para animação suave
         let selectedColetas = [];
         let updateInterval = null;
         let lastUpdateTime = null;
@@ -1761,37 +1764,29 @@
                     });
                 }
                 
-                // Log informações para debug
-                console.log('📊 Resultado completo da API:', {
-                    success: result.success,
-                    totalPosicoes: result.posicoes?.length || 0,
-                    info: result.info,
-                    coletasSelecionadas: selectedColetas
-                });
+                // ✅ MELHORIA: Log mais inteligente - detalhado apenas quando necessário
+                const totalPosicoes = result.posicoes?.length || 0;
                 
-                if (result.info) {
-                    console.log('📊 Informações detalhadas:', {
-                        multi: result.info.multi,
-                        janelaMinutos: result.info.janelaMinutos,
-                        totalColetas: result.info.totalColetas,
-                        coletas: result.info.coletas
+                if (totalPosicoes > 0) {
+                    // Quando há posições, log resumido
+                    console.log('✅ Posições carregadas:', {
+                        total: totalPosicoes,
+                        coletas: selectedColetas.length,
+                        janelaMinutos: result.info?.janelaMinutos || filtroTempoMinutos
                     });
-                    
-                    // Log para cada coleta
-                    if (result.info.coletas && Array.isArray(result.info.coletas)) {
-                        result.info.coletas.forEach((coletaInfo, index) => {
-                            console.log(`📦 Coleta ${index + 1}:`, {
-                                coletaId: coletaInfo.coletaId,
-                                motoristaId: coletaInfo.motoristaId,
-                                temMotoristaVinculado: coletaInfo.temMotoristaVinculado,
-                                totalPosicoesEncontradas: coletaInfo.totalPosicoesEncontradas,
-                                status: coletaInfo.status
-                            });
-                        });
-                    }
+                } else {
+                    // Quando não há posições, log mais detalhado para debug
+                    console.log('ℹ️ Nenhuma posição encontrada:', {
+                        coletasSelecionadas: selectedColetas,
+                        janelaMinutos: result.info?.janelaMinutos || filtroTempoMinutos,
+                        detalhes: result.info?.coletas?.map(c => ({
+                            coletaId: c.coletaId,
+                            temMotorista: c.temMotoristaVinculado,
+                            motoristaId: c.motoristaId,
+                            posicoesEncontradas: c.totalPosicoesEncontradas
+                        })) || []
+                    });
                 }
-                
-                console.log('📍 Posições recebidas:', result.posicoes?.length || 0);
                 if (result.posicoes && result.posicoes.length > 0) {
                     console.log('📍 Primeira posição:', {
                         motorista: result.posicoes[0].motoristas?.nome,
@@ -1869,10 +1864,34 @@
                         }))
                     });
                 } else {
-                    console.warn('⚠️ Nenhuma posição retornada pela API:', {
-                        coletasSelecionadas: selectedColetas,
-                        info: result.info
-                    });
+                    // ✅ MELHORIA: Log mais informativo e menos alarmante
+                    const motivo = result.info?.coletas?.[0];
+                    if (motivo) {
+                        if (!motivo.temMotoristaVinculado) {
+                            console.log('ℹ️ Coleta sem motorista vinculado:', {
+                                coletaId: selectedColetas[0],
+                                status: 'Aguardando vinculação de motorista'
+                            });
+                        } else if (motivo.totalPosicoesEncontradas === 0) {
+                            console.log('ℹ️ Motorista vinculado, mas sem posições GPS ainda:', {
+                                coletaId: selectedColetas[0],
+                                motoristaId: motivo.motoristaId,
+                                status: 'Aguardando primeira posição GPS',
+                                janelaMinutos: result.info?.janelaMinutos || filtroTempoMinutos
+                            });
+                        } else {
+                            console.log('ℹ️ Nenhuma posição encontrada na janela de tempo:', {
+                                coletasSelecionadas: selectedColetas,
+                                janelaMinutos: result.info?.janelaMinutos || filtroTempoMinutos,
+                                info: result.info
+                            });
+                        }
+                    } else {
+                        console.log('ℹ️ Nenhuma posição retornada pela API:', {
+                            coletasSelecionadas: selectedColetas,
+                            info: result.info
+                        });
+                    }
                 }
                 
                 atualizarMapa(ultimaListaPosicoes, result.info);
@@ -1891,44 +1910,196 @@
             }
         }
 
+        // ✅ FUNÇÕES HELPER PARA ROTAS
+        function calcularDistanciaTotal(coordenadas) {
+            let distanciaTotal = 0;
+            for (let i = 1; i < coordenadas.length; i++) {
+                const lat1 = coordenadas[i - 1][0];
+                const lon1 = coordenadas[i - 1][1];
+                const lat2 = coordenadas[i][0];
+                const lon2 = coordenadas[i][1];
+                distanciaTotal += calcularDistanciaHaversine(lat1, lon1, lat2, lon2);
+            }
+            return distanciaTotal;
+        }
+
+        function calcularDistanciaHaversine(lat1, lon1, lat2, lon2) {
+            const R = 6371; // Raio da Terra em km
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = 
+                Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                Math.sin(dLon / 2) * Math.sin(dLon / 2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            return R * c;
+        }
+
+        function calcularTempoTotal(posicoes) {
+            if (posicoes.length < 2) return 0;
+            const primeiroTimestamp = new Date(posicoes[0].timestamp_gps).getTime();
+            const ultimoTimestamp = new Date(posicoes[posicoes.length - 1].timestamp_gps).getTime();
+            return (ultimoTimestamp - primeiroTimestamp) / 1000 / 3600; // em horas
+        }
+
+        function formatarTempo(horas) {
+            if (horas < 1) {
+                const minutos = Math.floor(horas * 60);
+                return `${minutos} min`;
+            }
+            const horasInt = Math.floor(horas);
+            const minutos = Math.floor((horas - horasInt) * 60);
+            return minutos > 0 ? `${horasInt}h ${minutos}min` : `${horasInt}h`;
+        }
+
         // Atualizar mapa com marcadores
         function atualizarMapa(posicoes, info = null) {
+            // ✅ ROTAS: Limpar rotas antigas
+            routes.forEach((route, motoristaId) => {
+                map.removeLayer(route);
+            });
+            routes.clear();
+            
             // Limpar marcadores antigos
             if (markerCluster) {
                 markerCluster.clearLayers();
             } else {
-            markers.forEach(marker => map.removeLayer(marker));
+                markers.forEach(marker => map.removeLayer(marker));
             }
             markers.clear();
 
             if (posicoes.length === 0) {
                 // Mensagem mais informativa baseada nas informações da coleta
                 let mensagem = 'Nenhum motorista rastreado nesta coleta';
+                let tipoNotificacao = 'info';
                 
                 if (info?.multi) {
                     mensagem = `Nenhuma posição encontrada nas ${info.totalColetas || selectedColetas.length} coletas selecionadas nos últimos ${info.janelaMinutos || filtroTempoMinutos} minutos.`;
+                } else if (info?.coletas && info.coletas.length > 0) {
+                    const coletaInfo = info.coletas[0];
+                    if (!coletaInfo.temMotoristaVinculado) {
+                        mensagem = 'Esta coleta não tem motorista vinculado ainda.';
+                        tipoNotificacao = 'warning';
+                    } else if (coletaInfo.totalPosicoesEncontradas === 0) {
+                        mensagem = 'Motorista vinculado, mas ainda não há posições GPS registradas. O motorista precisa ativar o rastreamento no portal.';
+                        tipoNotificacao = 'warning';
+                    } else {
+                        mensagem = `Nenhuma posição GPS encontrada nos últimos ${info.janelaMinutos || filtroTempoMinutos} minutos. Verifique se o motorista está enviando posições.`;
+                        tipoNotificacao = 'info';
+                    }
                 } else if (info) {
                     if (!info.temMotoristaVinculado) {
                         mensagem = 'Esta coleta não tem motorista vinculado ainda.';
+                        tipoNotificacao = 'warning';
                     } else if (info.totalPosicoesEncontradas === 0) {
                         mensagem = 'Motorista vinculado, mas ainda não há posições GPS registradas. O motorista precisa ativar o rastreamento no portal.';
+                        tipoNotificacao = 'warning';
                     } else {
                         mensagem = `Nenhuma posição GPS encontrada nos últimos ${info.janelaMinutos || filtroTempoMinutos} minutos. Verifique se o motorista está enviando posições.`;
+                        tipoNotificacao = 'info';
                     }
                 }
                 
-                // Log detalhado para debug
-                console.warn('⚠️ Nenhuma posição encontrada:', {
-                    coletasSelecionadas: selectedColetas,
-                    info: info,
-                    janelaMinutos: filtroTempoMinutos
-                });
+                // ✅ MELHORIA: Log mais informativo (apenas em modo debug ou quando necessário)
+                if (window.DEBUG || tipoNotificacao === 'warning') {
+                    console.log('ℹ️ Nenhuma posição encontrada no mapa:', {
+                        coletasSelecionadas: selectedColetas,
+                        info: info,
+                        janelaMinutos: filtroTempoMinutos,
+                        motivo: info?.coletas?.[0]?.temMotoristaVinculado ? 
+                            (info.coletas[0].totalPosicoesEncontradas === 0 ? 'Sem posições GPS ainda' : 'Fora da janela de tempo') : 
+                            'Sem motorista vinculado'
+                    });
+                }
                 
-                mostrarNotificacao(mensagem, 'info');
+                // Mostrar notificação apenas se for warning ou se não houver muitas coletas selecionadas
+                if (tipoNotificacao === 'warning' || selectedColetas.length <= 3) {
+                    mostrarNotificacao(mensagem, tipoNotificacao);
+                }
                 return;
             }
 
+            // ✅ ROTAS: Agrupar posições por motorista
+            const posicoesPorMotorista = new Map();
             posicoes.forEach(pos => {
+                const motoristaId = pos.motorista_id;
+                if (!posicoesPorMotorista.has(motoristaId)) {
+                    posicoesPorMotorista.set(motoristaId, []);
+                }
+                posicoesPorMotorista.get(motoristaId).push(pos);
+            });
+            
+            // Ordenar posições de cada motorista por timestamp (mais antigas primeiro)
+            posicoesPorMotorista.forEach((posicoesMotorista) => {
+                posicoesMotorista.sort((a, b) => 
+                    new Date(a.timestamp_gps).getTime() - new Date(b.timestamp_gps).getTime()
+                );
+            });
+            
+            // ✅ ROTAS: Criar rotas (polylines) para cada motorista
+            if (mostrarRotas) {
+                posicoesPorMotorista.forEach((posicoesMotorista, motoristaId) => {
+                    if (posicoesMotorista.length > 1) {
+                        // Criar array de coordenadas [lat, lng]
+                        const coordenadas = posicoesMotorista.map(pos => [pos.latitude, pos.longitude]);
+                        
+                        // Criar polyline com estilo
+                        const motorista = posicoesMotorista[0].motoristas || {};
+                        const coresRotas = ['#667eea', '#764ba2', '#f093fb', '#4facfe', '#00f2fe', '#43e97b', '#fa709a', '#fee140', '#30cfd0', '#330867'];
+                        const indiceCor = motoristaId ? 
+                            parseInt(motoristaId.substring(0, 2), 16) % coresRotas.length : 0;
+                        const corRota = coresRotas[indiceCor];
+                        
+                        const polyline = L.polyline(coordenadas, {
+                            color: corRota,
+                            weight: 4,
+                            opacity: 0.7,
+                            smoothFactor: 1.0,
+                            lineJoin: 'round',
+                            lineCap: 'round'
+                        });
+                        
+                        // Adicionar popup com informações da rota
+                        const distanciaTotal = calcularDistanciaTotal(coordenadas); // em km
+                        const tempoTotal = calcularTempoTotal(posicoesMotorista); // em horas
+                        const velocidadeMedia = tempoTotal > 0 ? (distanciaTotal / tempoTotal).toFixed(1) : '0'; // km/h
+                        
+                        polyline.bindPopup(`
+                            <div style="min-width: 200px;">
+                                <h4 style="margin: 0 0 0.5rem 0; color: ${corRota}; font-weight: 700;">
+                                    <i class="fas fa-route"></i> Rota - ${motorista.nome || 'Motorista'}
+                                </h4>
+                                <div style="font-size: 0.9rem; line-height: 1.6;">
+                                    <p style="margin: 0.25rem 0;">
+                                        <i class="fas fa-map-marker-alt" style="color: ${corRota};"></i> 
+                                        <strong>${posicoesMotorista.length}</strong> pontos registrados
+                                    </p>
+                                    <p style="margin: 0.25rem 0;">
+                                        <i class="fas fa-route" style="color: ${corRota};"></i> 
+                                        Distância: <strong>${distanciaTotal.toFixed(2)} km</strong>
+                                    </p>
+                                    <p style="margin: 0.25rem 0;">
+                                        <i class="fas fa-clock" style="color: ${corRota};"></i> 
+                                        Tempo: <strong>${formatarTempo(tempoTotal)}</strong>
+                                    </p>
+                                    <p style="margin: 0.25rem 0;">
+                                        <i class="fas fa-tachometer-alt" style="color: ${corRota};"></i> 
+                                        Velocidade média: <strong>${velocidadeMedia} km/h</strong>
+                                    </p>
+                                </div>
+                            </div>
+                        `);
+                        
+                        polyline.addTo(map);
+                        routes.set(motoristaId, polyline);
+                    }
+                });
+            }
+            
+            // Processar marcadores (usar apenas a última posição de cada motorista)
+            posicoesPorMotorista.forEach((posicoesMotorista, motoristaId) => {
+                // Pegar a última posição (mais recente)
+                const pos = posicoesMotorista[posicoesMotorista.length - 1];
                 const motorista = pos.motoristas || {};
                 const isOnline = new Date(pos.timestamp_gps) > new Date(Date.now() - 5 * 60 * 1000);
                 const velocidade = pos.velocidade ? pos.velocidade.toFixed(0) : '0';
@@ -1980,8 +2151,12 @@
                     iconAnchor: [20, 20]
                 });
 
-                const marker = L.marker([pos.latitude, pos.longitude], { icon })
-                    .bindPopup(`
+                const marker = L.marker([pos.latitude, pos.longitude], { 
+                    icon,
+                    // ✅ ANIMAÇÃO: Ativar animação suave
+                    animate: true,
+                    duration: 0.5
+                }).bindPopup(`
                         <div style="min-width: 200px;">
                             <h4 style="margin: 0 0 0.5rem 0; color: #667eea; font-weight: 700;">
                                 <i class="fas fa-user"></i> ${motorista.nome || 'Motorista'}
@@ -1999,6 +2174,12 @@
                                     <i class="fas fa-clock" style="color: #667eea;"></i> 
                                     ${new Date(pos.timestamp_gps).toLocaleString('pt-BR')}
                                 </p>
+                                ${mostrarRotas && posicoesMotorista.length > 1 ? `
+                                <p style="margin: 0.25rem 0;">
+                                    <i class="fas fa-route" style="color: #667eea;"></i> 
+                                    <strong>${posicoesMotorista.length}</strong> pontos na rota
+                                </p>
+                                ` : ''}
                                 <p style="margin: 0.5rem 0 0 0;">
                                     <span style="
                                         display: inline-block;
@@ -2018,7 +2199,7 @@
                         className: 'custom-popup'
                     });
 
-                markers.set(pos.motorista_id, marker);
+                markers.set(motoristaId, marker);
                 if (markerCluster) {
                     markerCluster.addLayer(marker);
                 } else {
@@ -2208,6 +2389,21 @@
                 carregarColetas();
             }
         });
+        
+        // ✅ ROTAS: Toggle para mostrar/ocultar rotas
+        const btnToggleRotas = document.getElementById('btnToggleRotas');
+        const textoToggleRotas = document.getElementById('textoToggleRotas');
+        if (btnToggleRotas) {
+            btnToggleRotas.addEventListener('click', () => {
+                mostrarRotas = !mostrarRotas;
+                textoToggleRotas.textContent = mostrarRotas ? 'Ocultar Rotas' : 'Mostrar Rotas';
+                // Re-renderizar mapa com o novo estado
+                if (ultimaListaPosicoes.length > 0) {
+                    atualizarMapa(ultimaListaPosicoes);
+                }
+                mostrarNotificacao(mostrarRotas ? 'Rotas exibidas' : 'Rotas ocultadas', 'info');
+            });
+        }
 
         const filtroMotoristaInput = document.getElementById('filtroMotorista');
         if (filtroMotoristaInput) {

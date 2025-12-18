@@ -1447,6 +1447,10 @@
                                         <i class="fas fa-rocket me-2"></i>
                                         Iniciar Disparo
                   </button>
+                                    <button class="btn btn-modern btn-modern-warning" id="btnPausarDisparo" style="display: none;" onclick="pausarOuRetomarDisparos()">
+                                        <i class="fas fa-pause me-2"></i>
+                                        <span id="btnPausarDisparoTexto">Pausar Disparos</span>
+                  </button>
                                     <button class="btn btn-modern btn-modern-danger" id="btnPararDisparo" style="display: none;">
                                         <i class="fas fa-stop me-2"></i>
                                         Parar Disparo
@@ -1955,6 +1959,7 @@ async function inicializarSupabase() {
         let currentClass = null;
         let isDisparoAtivo = false;
         let disparoCancelado = false;
+        let disparosPausados = false; // ✅ Estado de pausa dos disparos
         let totalEnviados = 0;
         let totalFalhas = 0;
         
@@ -4598,10 +4603,82 @@ const estados = [
             delayCounterContainer.style.display = 'none';
         }
 
+        // ========== PAUSAR/RETOMAR DISPAROS ==========
+        function pausarOuRetomarDisparos() {
+            if (!isDisparoAtivo) return;
+            
+            disparosPausados = !disparosPausados;
+            
+            if (disparosPausados) {
+                adicionarLog(`⏸️ Disparos pausados pelo usuário`, 'warning');
+                mostrarAviso('Disparos pausados. Clique em "Retomar Disparos" para continuar.');
+            } else {
+                adicionarLog(`▶️ Disparos retomados pelo usuário`, 'info');
+                mostrarAviso('Disparos retomados!');
+            }
+            
+            atualizarBotaoPausa();
+        }
+        
+        function atualizarBotaoPausa() {
+            const btnPausar = document.getElementById('btnPausarDisparo');
+            const btnTexto = document.getElementById('btnPausarDisparoTexto');
+            const btnIcone = btnPausar?.querySelector('i');
+            
+            if (!btnPausar || !btnTexto) return;
+            
+            if (disparosPausados) {
+                btnTexto.textContent = 'Retomar Disparos';
+                if (btnIcone) {
+                    btnIcone.className = 'fas fa-play me-2';
+                }
+                btnPausar.classList.remove('btn-modern-warning');
+                btnPausar.classList.add('btn-modern-success');
+            } else {
+                btnTexto.textContent = 'Pausar Disparos';
+                if (btnIcone) {
+                    btnIcone.className = 'fas fa-pause me-2';
+                }
+                btnPausar.classList.remove('btn-modern-success');
+                btnPausar.classList.add('btn-modern-warning');
+            }
+        }
+        
+        // ========== AGUARDAR COM CONTADOR RESPEITANDO PAUSA ==========
+        async function aguardarComContadorRespeitandoPausa(segundos) {
+            const delayCounterContainer = document.getElementById('delayCounterContainer');
+            const delayCounter = document.getElementById('delayCounter');
+            
+            if (!delayCounterContainer || !delayCounter) {
+                // Fallback: aguardar normalmente se os elementos não existirem
+                await aguardarComContador(segundos);
+                return;
+            }
+            
+            delayCounterContainer.style.display = 'block';
+            let segundosRestantes = segundos;
+            
+            while (segundosRestantes > 0 && !disparoCancelado) {
+                // Se estiver pausado, não contar o tempo
+                if (disparosPausados) {
+                    delayCounter.textContent = '⏸️ PAUSADO - Aguardando retomada...';
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                    continue;
+                }
+                
+                delayCounter.textContent = `⏳ Próximo envio em ${segundosRestantes} segundo(s)...`;
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                segundosRestantes--;
+            }
+            
+            delayCounterContainer.style.display = 'none';
+        }
+        
         // ========== PARAR DISPARO ==========
         function pararDisparo() {
             disparoCancelado = true;
             isDisparoAtivo = false;
+            disparosPausados = false; // ✅ Resetar pausa ao parar
             
             // Ocultar contador se estiver visível
             document.getElementById('delayCounterContainer').style.display = 'none';
@@ -4609,6 +4686,7 @@ const estados = [
             // Atualizar interface
             document.getElementById('btnIniciarDisparo').disabled = false;
             document.getElementById('btnIniciarDisparo').innerHTML = '<i class="fas fa-rocket me-2"></i>Iniciar Disparo';
+            document.getElementById('btnPausarDisparo').style.display = 'none';
             document.getElementById('btnPararDisparo').style.display = 'none';
             
             adicionarLog(`⏹️ Disparo cancelado pelo usuário! Enviados: ${totalEnviados}, Falhas: ${totalFalhas}`, 'warning');
@@ -4723,13 +4801,16 @@ const estados = [
 
             isDisparoAtivo = true;
             disparoCancelado = false;
+            disparosPausados = false; // ✅ Resetar pausa ao iniciar
             totalEnviados = 0;
             totalFalhas = 0;
 
             // Atualizar interface
             document.getElementById('btnIniciarDisparo').disabled = true;
             document.getElementById('btnIniciarDisparo').innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Enviando...';
+            document.getElementById('btnPausarDisparo').style.display = 'block';
             document.getElementById('btnPararDisparo').style.display = 'block';
+            atualizarBotaoPausa();
 
             // Ocultar contador inicialmente
             document.getElementById('delayCounterContainer').style.display = 'none';
@@ -4791,6 +4872,16 @@ const estados = [
                 // Verificar se o disparo foi cancelado
                 if (disparoCancelado) {
                     adicionarLog(`⏹️ Disparo interrompido na iteração ${i + 1}`, 'warning');
+                    break;
+                }
+                
+                // ✅ Verificar se está pausado - aguardar enquanto estiver pausado
+                while (disparosPausados && !disparoCancelado) {
+                    await new Promise(resolve => setTimeout(resolve, 500)); // Aguardar 500ms e verificar novamente
+                }
+                
+                // Se foi cancelado durante a pausa, sair
+                if (disparoCancelado) {
                     break;
                 }
 
@@ -4916,7 +5007,9 @@ const estados = [
                             if (i < motoristasArray.length - 1 && !disparoCancelado) {
                                 const delaySegundos = gerarDelayAleatorio();
                                 adicionarLog(`⏳ Aguardando ${delaySegundos} segundos antes do próximo envio...`, 'info');
-                                await aguardarComContador(delaySegundos);
+                                
+                                // ✅ Aguardar delay respeitando pausa
+                                await aguardarComContadorRespeitandoPausa(delaySegundos);
                                 
                                 // Verificar se foi cancelado durante a espera
                                 if (disparoCancelado) break;
