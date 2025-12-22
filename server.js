@@ -13973,7 +13973,7 @@ app.get('/api/treinamentos/usuarios', async (req, res) => {
       (usuarios || []).map(async (usuario) => {
     const { data: assinaturas, error: assinaturasError } = await supabaseAdmin
       .from('treinamentos_assinaturas')
-          .select('treinamento_slug, data_assinatura')
+          .select('treinamento_slug, data_assinatura, nome, cpf, assinatura_texto')
           .eq('user_id', usuario.id)
       .order('data_assinatura', { ascending: false });
 
@@ -18381,9 +18381,61 @@ app.delete('/api/auth/excluir-usuario/:userId', express.json(), async (req, res)
       console.warn('⚠️ Erro ao verificar se usuário existe:', checkError.message);
     }
     
-    // Excluir usuário do Auth usando Admin API
-    // O método correto do Supabase é deleteUserById
-    const { data, error } = await supabaseAdmin.auth.admin.deleteUserById(userId);
+    // IMPORTANTE: Excluir registros relacionados ANTES de excluir do Auth
+    // Isso evita erros de foreign key constraints
+    console.log(`🧹 Limpando registros relacionados ao usuário ${userId}...`);
+    
+    const tabelasParaLimpar = [
+      { tabela: 'user_evolution_apis', campo: 'user_id' },
+      { tabela: 'evolution_config', campo: 'usuario_id' },
+      { tabela: 'permissoes_portal', campo: 'usuario_id' },
+      { tabela: 'chat_mensagens', campo: 'remetente_id' },
+      { tabela: 'chat_mensagens', campo: 'destinatario_id' },
+      { tabela: 'projetos_qualidade', campo: 'criado_por' },
+      { tabela: 'ferramentas_qualidade', campo: 'criado_por' },
+      { tabela: 'motoristas', campo: 'usuario_id' },
+      { tabela: 'motoristas', campo: 'created_by' },
+      { tabela: 'motoristas', campo: 'auth_user_id' },
+      { tabela: 'disparos_log', campo: 'user_id' }
+    ];
+    
+    for (const { tabela, campo } of tabelasParaLimpar) {
+      try {
+        const { error: deleteError } = await supabaseAdmin
+          .from(tabela)
+          .delete()
+          .eq(campo, userId);
+        
+        if (deleteError) {
+          console.warn(`⚠️ Erro ao excluir registros de ${tabela}.${campo}:`, deleteError.message);
+        } else {
+          console.log(`✅ Registros relacionados em ${tabela}.${campo} limpos`);
+        }
+      } catch (err) {
+        console.warn(`⚠️ Erro ao limpar ${tabela}.${campo}:`, err.message);
+      }
+    }
+    
+    // Excluir do user_profiles ANTES de excluir do Auth
+    try {
+      const { error: profileError } = await supabaseAdmin
+        .from('user_profiles')
+        .delete()
+        .eq('id', userId);
+      
+      if (profileError) {
+        console.warn('⚠️ Erro ao excluir perfil do usuário (pode não existir):', profileError.message);
+      } else {
+        console.log(`✅ Perfil do usuário ${userId} excluído com sucesso`);
+      }
+    } catch (profileErr) {
+      console.warn('⚠️ Erro ao tentar excluir perfil:', profileErr.message);
+    }
+    
+    // Agora excluir usuário do Auth usando Admin API
+    // O método correto do Supabase é deleteUser
+    console.log(`🗑️ Excluindo usuário ${userId} do Auth...`);
+    const { data, error } = await supabaseAdmin.auth.admin.deleteUser(userId);
     
     if (error) {
       console.error('❌ Erro ao excluir usuário do Auth:', error);
@@ -18403,22 +18455,6 @@ app.delete('/api/auth/excluir-usuario/:userId', express.json(), async (req, res)
     }
     
     console.log(`✅ Usuário ${userId} excluído do Auth com sucesso`);
-    
-    // Tentar também excluir do user_profiles se existir
-    try {
-      const { error: profileError } = await supabaseAdmin
-        .from('user_profiles')
-        .delete()
-        .eq('id', userId);
-      
-      if (profileError) {
-        console.warn('⚠️ Erro ao excluir perfil do usuário (pode não existir):', profileError.message);
-      } else {
-        console.log(`✅ Perfil do usuário ${userId} excluído com sucesso`);
-      }
-    } catch (profileErr) {
-      console.warn('⚠️ Erro ao tentar excluir perfil:', profileErr.message);
-    }
     
     return res.json({ 
       success: true, 

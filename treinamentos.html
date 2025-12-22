@@ -380,11 +380,12 @@
                                 <th>Departamento</th>
                                 <th>Treinamentos Concluídos</th>
                                 <th>Última Conclusão</th>
+                                <th>Ações</th>
                             </tr>
                         </thead>
                         <tbody id="usuariosTreinamentosTable">
                             <tr>
-                                <td colspan="5" class="text-center text-muted py-4">
+                                <td colspan="6" class="text-center text-muted py-4">
                                     <i class="fas fa-spinner fa-spin me-2"></i>Carregando...
                                 </td>
                             </tr>
@@ -402,7 +403,35 @@
         </div>
     </div>
     
+    <!-- Modal para Seleção de Treinamento -->
+    <div class="modal fade" id="modalSelecionarTreinamento" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header" style="background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%); color: white;">
+                    <h5 class="modal-title">
+                        <i class="fas fa-file-pdf me-2"></i>Selecionar Treinamento para Download
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="mb-3"><strong>Colaborador:</strong> <span id="modalNomeColaborador"></span></p>
+                    <p class="mb-3">Selecione qual treinamento deseja baixar o comprovante:</p>
+                    <div id="listaTreinamentosModal" class="list-group">
+                        <!-- Treinamentos serão inseridos aqui -->
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" id="btnBaixarTodosTreinamentos" onclick="baixarTodosTreinamentos()">
+                        <i class="fas fa-download me-1"></i>Baixar Todos
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script>
         // Configuração de treinamentos disponíveis
         const TREINAMENTOS_CONFIG = [
@@ -488,6 +517,8 @@
         
         let currentUser = null;
         let userAssinaturas = [];
+        let isAdmin = false;
+        let usuarioSelecionadoComprovante = null; // Armazena dados do usuário para o modal
         
         // Inicializar ao carregar a página
         document.addEventListener('DOMContentLoaded', async function() {
@@ -504,6 +535,23 @@
                     return;
                 }
                 currentUser = await response.json();
+                
+                // Verificar se é admin
+                if (typeof isUserAdmin === 'function') {
+                    const adminCheck = isUserAdmin();
+                    isAdmin = !!adminCheck;
+                } else {
+                    // Verificação alternativa
+                    const loggedInUser = localStorage.getItem('loggedInUser');
+                    if (loggedInUser) {
+                        try {
+                            const userData = JSON.parse(loggedInUser);
+                            isAdmin = (userData.role === 'admin' || userData.isAdmin === true);
+                        } catch (e) {
+                            isAdmin = false;
+                        }
+                    }
+                }
                 
                 // Verificar permissão
                 if (typeof verificarEAplicarPermissao === 'function') {
@@ -618,10 +666,10 @@
             const tbody = document.getElementById('usuariosTreinamentosTable');
             if (!tbody) return;
             
-            if (!usuarios || usuarios.length === 0) {
+                if (!usuarios || usuarios.length === 0) {
                 tbody.innerHTML = `
                     <tr>
-                        <td colspan="5" class="text-center text-muted py-4">
+                        <td colspan="6" class="text-center text-muted py-4">
                             <i class="fas fa-users fa-2x mb-3 d-block"></i>
                             Nenhum usuário encontrado
                         </td>
@@ -666,6 +714,16 @@
                     badgesHtml = '<span class="text-muted">Nenhum treinamento disponível</span>';
                 }
                 
+                // Botão de download do comprovante (só aparece se houver treinamentos concluídos E se for admin)
+                let btnComprovante = '<span class="text-muted">-</span>';
+                if (treinamentosConcluidos.length > 0 && isAdmin) {
+                    btnComprovante = `<button class="btn btn-modern btn-modern-primary btn-modern-sm" onclick="abrirModalSelecionarTreinamento('${usuario.id}')" title="Baixar comprovante de treinamento">
+                        <i class="fas fa-file-pdf me-1"></i>Comprovante
+                    </button>`;
+                } else if (treinamentosConcluidos.length > 0 && !isAdmin) {
+                    btnComprovante = '<span class="text-muted" title="Apenas administradores podem baixar comprovantes">-</span>';
+                }
+                
                 html += `
                     <tr>
                         <td>
@@ -680,6 +738,7 @@
                             </div>
                         </td>
                         <td>${ultimaConclusao}</td>
+                        <td>${btnComprovante}</td>
                     </tr>
                 `;
             });
@@ -823,6 +882,460 @@
             document.getElementById('totalConcluidos').textContent = concluidos;
             document.getElementById('totalPendentes').textContent = pendentes;
             document.getElementById('porcentagemConclusao').textContent = porcentagem + '%';
+        }
+        
+        // Função para abrir modal de seleção de treinamento
+        async function abrirModalSelecionarTreinamento(userId) {
+            // Verificar se é admin
+            if (!isAdmin) {
+                alert('Apenas administradores podem baixar comprovantes.');
+                return;
+            }
+            
+            try {
+                // Buscar dados do usuário
+                let authToken = null;
+                let userEmail = null;
+                
+                if (supabaseClient || window.supabase) {
+                    const sbClient = supabaseClient || window.supabase;
+                    try {
+                        const { data: session } = await sbClient.auth.getSession();
+                        if (session?.session?.access_token) {
+                            authToken = session.session.access_token;
+                        }
+                        if (session?.session?.user?.email) {
+                            userEmail = session.session.user.email;
+                        }
+                    } catch (err) {
+                        console.warn('⚠️ Erro ao obter sessão do Supabase:', err);
+                    }
+                }
+                
+                const headers = {
+                    'Content-Type': 'application/json'
+                };
+                
+                if (authToken) {
+                    headers['Authorization'] = `Bearer ${authToken}`;
+                } else if (userEmail) {
+                    headers['X-User-Email'] = userEmail;
+                }
+                
+                const response = await fetch('/api/treinamentos/usuarios', { 
+                    credentials: 'include',
+                    headers: headers
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Erro ao buscar dados do usuário');
+                }
+                
+                const data = await response.json();
+                if (!data.success || !data.usuarios) {
+                    throw new Error('Dados não encontrados');
+                }
+                
+                const usuario = data.usuarios.find(u => u.id === userId);
+                if (!usuario || !usuario.treinamentos || usuario.treinamentos.length === 0) {
+                    alert('Nenhum treinamento concluído encontrado para este usuário.');
+                    return;
+                }
+                
+                // Armazenar dados do usuário
+                usuarioSelecionadoComprovante = usuario;
+                
+                // Preencher modal
+                document.getElementById('modalNomeColaborador').textContent = usuario.nome || usuario.email || 'Usuário';
+                
+                const listaTreinamentos = document.getElementById('listaTreinamentosModal');
+                listaTreinamentos.innerHTML = '';
+                
+                // Mapear slugs para títulos
+                const treinamentosMap = {};
+                TREINAMENTOS_CONFIG.forEach(t => {
+                    treinamentosMap[t.id] = t.titulo;
+                });
+                
+                // Criar lista de treinamentos
+                usuario.treinamentos.forEach((treinamento, index) => {
+                    const titulo = treinamentosMap[treinamento.treinamento_slug] || treinamento.treinamento_slug;
+                    const dataAssinatura = new Date(treinamento.data_assinatura);
+                    const dataFormatada = dataAssinatura.toLocaleDateString('pt-BR', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                    });
+                    
+                    const item = document.createElement('button');
+                    item.type = 'button';
+                    item.className = 'list-group-item list-group-item-action';
+                    item.innerHTML = `
+                        <div class="d-flex w-100 justify-content-between align-items-center">
+                            <div>
+                                <h6 class="mb-1">${titulo}</h6>
+                                <small class="text-muted">Concluído em: ${dataFormatada}</small>
+                            </div>
+                            <button class="btn btn-sm btn-primary" onclick="baixarComprovanteTreinamentoEspecifico(${index}); event.stopPropagation();">
+                                <i class="fas fa-download me-1"></i>Baixar
+                            </button>
+                        </div>
+                    `;
+                    listaTreinamentos.appendChild(item);
+                });
+                
+                // Mostrar/ocultar botão "Baixar Todos"
+                const btnBaixarTodos = document.getElementById('btnBaixarTodosTreinamentos');
+                if (usuario.treinamentos.length > 1) {
+                    btnBaixarTodos.style.display = 'inline-block';
+                } else {
+                    btnBaixarTodos.style.display = 'none';
+                }
+                
+                // Abrir modal usando Bootstrap
+                const modal = new bootstrap.Modal(document.getElementById('modalSelecionarTreinamento'));
+                modal.show();
+                
+            } catch (error) {
+                console.error('Erro ao abrir modal:', error);
+                alert('Erro ao carregar treinamentos. Tente novamente.');
+            }
+        }
+        
+        // Função para baixar comprovante de um treinamento específico
+        async function baixarComprovanteTreinamentoEspecifico(indexTreinamento) {
+            if (!usuarioSelecionadoComprovante) {
+                alert('Erro: dados do usuário não encontrados.');
+                return;
+            }
+            
+            const treinamentoSelecionado = usuarioSelecionadoComprovante.treinamentos[indexTreinamento];
+            if (!treinamentoSelecionado) {
+                alert('Treinamento não encontrado.');
+                return;
+            }
+            
+            await baixarComprovanteTreinamento(usuarioSelecionadoComprovante, [treinamentoSelecionado]);
+            
+            // Fechar modal
+            const modal = bootstrap.Modal.getInstance(document.getElementById('modalSelecionarTreinamento'));
+            if (modal) {
+                modal.hide();
+            }
+        }
+        
+        // Função para baixar todos os treinamentos
+        async function baixarTodosTreinamentos() {
+            if (!usuarioSelecionadoComprovante) {
+                alert('Erro: dados do usuário não encontrados.');
+                return;
+            }
+            
+            await baixarComprovanteTreinamento(usuarioSelecionadoComprovante, usuarioSelecionadoComprovante.treinamentos);
+            
+            // Fechar modal
+            const modal = bootstrap.Modal.getInstance(document.getElementById('modalSelecionarTreinamento'));
+            if (modal) {
+                modal.hide();
+            }
+        }
+        
+        // Função para baixar comprovante de treinamento (modificada)
+        async function baixarComprovanteTreinamento(usuario, treinamentosParaIncluir) {
+            try {
+                // Verificar se é admin
+                if (!isAdmin) {
+                    alert('Apenas administradores podem baixar comprovantes.');
+                    return;
+                }
+                
+                // Perguntar qual admin está baixando o comprovante
+                const nomeAdmin = prompt('Informe o nome do administrador que está baixando este comprovante:');
+                if (!nomeAdmin || nomeAdmin.trim() === '') {
+                    alert('É necessário informar o nome do administrador para baixar o comprovante.');
+                    return;
+                }
+                
+                // Obter token de autenticação do Supabase
+                let authToken = null;
+                let userEmail = null;
+                
+                if (supabaseClient || window.supabase) {
+                    const sbClient = supabaseClient || window.supabase;
+                    try {
+                        const { data: session } = await sbClient.auth.getSession();
+                        if (session?.session?.access_token) {
+                            authToken = session.session.access_token;
+                        }
+                        if (session?.session?.user?.email) {
+                            userEmail = session.session.user.email;
+                        }
+                    } catch (err) {
+                        console.warn('⚠️ Erro ao obter sessão do Supabase:', err);
+                    }
+                }
+                
+                // Usar dados do usuário já passados como parâmetro
+                const nomeUsuario = usuario.nome || 'Usuário';
+                const emailUsuario = usuario.email || '';
+                const departamentoUsuario = usuario.departamento || '';
+                
+                if (!treinamentosParaIncluir || treinamentosParaIncluir.length === 0) {
+                    alert('Nenhum treinamento selecionado para incluir no comprovante.');
+                    return;
+                }
+                
+                // Gerar PDF usando jsPDF
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF({
+                    orientation: 'portrait',
+                    unit: 'mm',
+                    format: 'a4'
+                });
+                
+                // Cores
+                const primaryColor = [102, 126, 234]; // #667eea
+                const secondaryColor = [118, 75, 162]; // #764ba2
+                const textColor = [31, 41, 55]; // #1f2937
+                const grayColor = [107, 114, 128]; // #6b7280
+                
+                let yPos = 20;
+                
+                // Cabeçalho com gradiente (simulado)
+                doc.setFillColor(...primaryColor);
+                doc.rect(0, 0, 210, 50, 'F');
+                
+                // Logo/Título
+                doc.setTextColor(255, 255, 255);
+                doc.setFontSize(24);
+                doc.setFont('helvetica', 'bold');
+                doc.text('COMPROVANTE DE TREINAMENTO', 105, 20, { align: 'center' });
+                
+                doc.setFontSize(12);
+                doc.setFont('helvetica', 'normal');
+                doc.text('Sistema Multimodal Intranet', 105, 30, { align: 'center' });
+                
+                yPos = 60;
+                
+                // Informações do Colaborador
+                doc.setTextColor(...textColor);
+                doc.setFontSize(16);
+                doc.setFont('helvetica', 'bold');
+                doc.text('DADOS DO COLABORADOR', 20, yPos);
+                
+                yPos += 10;
+                doc.setDrawColor(...primaryColor);
+                doc.setLineWidth(0.5);
+                doc.line(20, yPos, 190, yPos);
+                
+                yPos += 8;
+                doc.setFontSize(11);
+                doc.setFont('helvetica', 'normal');
+                doc.setTextColor(...textColor);
+                
+                doc.setFont('helvetica', 'bold');
+                doc.text('Nome:', 20, yPos);
+                doc.setFont('helvetica', 'normal');
+                doc.text(nomeUsuario || 'Não informado', 50, yPos);
+                
+                yPos += 7;
+                doc.setFont('helvetica', 'bold');
+                doc.text('Email:', 20, yPos);
+                doc.setFont('helvetica', 'normal');
+                doc.text(emailUsuario || 'Não informado', 50, yPos);
+                
+                yPos += 7;
+                doc.setFont('helvetica', 'bold');
+                doc.text('Departamento:', 20, yPos);
+                doc.setFont('helvetica', 'normal');
+                doc.text(departamentoUsuario || 'Não informado', 50, yPos);
+                
+                yPos += 15;
+                
+                // Treinamentos Concluídos
+                doc.setFontSize(16);
+                doc.setFont('helvetica', 'bold');
+                doc.text('TREINAMENTOS CONCLUÍDOS', 20, yPos);
+                
+                yPos += 10;
+                doc.setDrawColor(...primaryColor);
+                doc.line(20, yPos, 190, yPos);
+                
+                yPos += 8;
+                
+                // Mapear slugs para títulos
+                const treinamentosMap = {};
+                TREINAMENTOS_CONFIG.forEach(t => {
+                    treinamentosMap[t.id] = t.titulo;
+                });
+                
+                // Listar apenas os treinamentos selecionados
+                treinamentosParaIncluir.forEach((treinamento, index) => {
+                    if (yPos > 250) {
+                        doc.addPage();
+                        yPos = 20;
+                    }
+                    
+                    const titulo = treinamentosMap[treinamento.treinamento_slug] || treinamento.treinamento_slug;
+                    const dataAssinatura = new Date(treinamento.data_assinatura);
+                    const dataFormatada = dataAssinatura.toLocaleDateString('pt-BR', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                    });
+                    
+                    // Card do treinamento
+                    doc.setFillColor(240, 240, 240);
+                    doc.roundedRect(20, yPos - 8, 170, 25, 3, 3, 'F');
+                    
+                    doc.setFontSize(12);
+                    doc.setFont('helvetica', 'bold');
+                    doc.setTextColor(...primaryColor);
+                    doc.text(`${index + 1}. ${titulo}`, 25, yPos);
+                    
+                    yPos += 6;
+                    doc.setFontSize(10);
+                    doc.setFont('helvetica', 'normal');
+                    doc.setTextColor(...grayColor);
+                    doc.text(`Concluído em: ${dataFormatada}`, 25, yPos);
+                    
+                    // Informações adicionais se disponíveis
+                    if (treinamento.nome || treinamento.cpf) {
+                        yPos += 5;
+                        if (treinamento.nome) {
+                            doc.text(`Assinado por: ${treinamento.nome}`, 25, yPos);
+                            yPos += 5;
+                        }
+                        if (treinamento.cpf) {
+                            doc.text(`CPF: ${treinamento.cpf}`, 25, yPos);
+                        }
+                    }
+                    
+                    yPos += 12;
+                });
+                
+                // Assinatura digital (se disponível)
+                if (treinamentosParaIncluir.some(t => t.assinatura_texto)) {
+                    yPos += 10;
+                    if (yPos > 250) {
+                        doc.addPage();
+                        yPos = 20;
+                    }
+                    
+                    doc.setDrawColor(...primaryColor);
+                    doc.line(20, yPos, 190, yPos);
+                    
+                    yPos += 10;
+                    doc.setFontSize(12);
+                    doc.setFont('helvetica', 'bold');
+                    doc.setTextColor(...textColor);
+                    doc.text('ASSINATURAS DIGITAIS', 20, yPos);
+                    
+                    yPos += 10;
+                    
+                    for (const treinamento of treinamentosParaIncluir) {
+                        if (treinamento.assinatura_texto) {
+                            if (yPos > 250) {
+                                doc.addPage();
+                                yPos = 20;
+                            }
+                            
+                            const titulo = treinamentosMap[treinamento.treinamento_slug] || treinamento.treinamento_slug;
+                            
+                            doc.setFontSize(10);
+                            doc.setFont('helvetica', 'bold');
+                            doc.text(titulo + ':', 20, yPos);
+                            
+                            yPos += 6;
+                            
+                            // Desenhar assinatura (imagem base64 ou texto)
+                            try {
+                                // Tentar renderizar como imagem se for base64
+                                if (treinamento.assinatura_texto.startsWith('data:image')) {
+                                    const img = new Image();
+                                    img.src = treinamento.assinatura_texto;
+                                    
+                                    // Aguardar carregamento da imagem
+                                    await new Promise((resolve) => {
+                                        img.onload = () => {
+                                            const imgWidth = 60;
+                                            const imgHeight = (img.height * imgWidth) / img.width;
+                                            
+                                            if (yPos + imgHeight > 250) {
+                                                doc.addPage();
+                                                yPos = 20;
+                                            }
+                                            
+                                            doc.addImage(treinamento.assinatura_texto, 'PNG', 25, yPos, imgWidth, imgHeight);
+                                            yPos += imgHeight + 8;
+                                            resolve();
+                                        };
+                                        img.onerror = () => {
+                                            doc.setFont('helvetica', 'italic');
+                                            doc.text('Assinatura digital registrada', 25, yPos);
+                                            yPos += 8;
+                                            resolve();
+                                        };
+                                    });
+                                } else {
+                                    // Se for texto, apenas mostrar que foi assinado
+                                    doc.setFont('helvetica', 'italic');
+                                    doc.text('Assinatura digital registrada', 25, yPos);
+                                    yPos += 8;
+                                }
+                            } catch (e) {
+                                doc.setFont('helvetica', 'italic');
+                                doc.text('Assinatura digital registrada', 25, yPos);
+                                yPos += 8;
+                            }
+                        }
+                    }
+                }
+                
+                // Rodapé com informações do admin que baixou
+                const totalPages = doc.internal.pages.length - 1;
+                
+                // Adicionar informações na última página
+                doc.setPage(totalPages);
+                let footerYPos = 260;
+                doc.setDrawColor(...grayColor);
+                doc.setLineWidth(0.3);
+                doc.line(20, footerYPos, 190, footerYPos);
+                
+                footerYPos += 5;
+                doc.setFontSize(9);
+                doc.setFont('helvetica', 'normal');
+                doc.setTextColor(...grayColor);
+                doc.text(`Documento gerado por: ${nomeAdmin.trim()}`, 20, footerYPos);
+                
+                footerYPos += 5;
+                doc.text(`Data de geração: ${new Date().toLocaleString('pt-BR')}`, 20, footerYPos);
+                
+                // Numeração de páginas em todas as páginas
+                for (let i = 1; i <= totalPages; i++) {
+                    doc.setPage(i);
+                    doc.setFontSize(8);
+                    doc.setTextColor(...grayColor);
+                    doc.text(
+                        `Página ${i} de ${totalPages}`,
+                        105,
+                        285,
+                        { align: 'center' }
+                    );
+                }
+                
+                // Salvar PDF
+                const nomeArquivo = `Comprovante_Treinamento_${nomeUsuario.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;
+                doc.save(nomeArquivo);
+                
+            } catch (error) {
+                console.error('Erro ao gerar comprovante:', error);
+                alert('Erro ao gerar comprovante. Tente novamente.');
+            }
         }
         
         // Inicialização já feita acima com Supabase
