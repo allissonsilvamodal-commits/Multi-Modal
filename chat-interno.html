@@ -2250,6 +2250,8 @@
         let usersInterval = null;
         let statusInterval = null;
         let lastMessageId = null;
+        let messagesChannel = null; // Canal Realtime para mensagens
+        let realtimeSubscribed = false; // Flag para controlar subscription
         let replyingToMessage = null;
         let messagesCache = new Map(); // Cache de mensagens para buscar respostas
         let selectedFile = null; // Arquivo selecionado para envio
@@ -2267,6 +2269,10 @@
         let statusUpdateInterval = null; // Intervalo para atualizar status
         let columnsAvailable = { entregue: false, visualizada: false }; // Flag para rastrear se as colunas existem
         let columnsChecked = false; // Flag para evitar verificar múltiplas vezes
+        let usersDataCache = null; // Cache de dados de usuários
+        let lastUsersLoadTime = 0; // Timestamp da última carga de usuários
+        let usersLoadDebounceTimer = null; // Timer para debounce de loadUsers
+        let pendingUsersUpdate = false; // Flag para indicar atualização pendente
 
         // Inicializar Supabase
         async function initSupabase() {
@@ -2610,9 +2616,45 @@ ALTER TABLE chat_mensagens ADD COLUMN IF NOT EXISTS visualizada BOOLEAN DEFAULT 
             }, 60000);
         }
 
+        // Função para atualizar lista de usuários com debounce (otimização)
+        function updateUsersListDebounced(force = false) {
+            // Se já há uma atualização pendente e não é forçada, apenas marcar como pendente
+            if (pendingUsersUpdate && !force) {
+                return;
+            }
+            
+            // Se foi chamada recentemente (menos de 2 segundos) e não é forçada, usar debounce
+            const timeSinceLastLoad = Date.now() - lastUsersLoadTime;
+            if (timeSinceLastLoad < 2000 && !force) {
+                pendingUsersUpdate = true;
+                if (usersLoadDebounceTimer) {
+                    clearTimeout(usersLoadDebounceTimer);
+                }
+                usersLoadDebounceTimer = setTimeout(() => {
+                    pendingUsersUpdate = false;
+                    loadUsers(true); // true = usar cache quando possível
+                }, 2000);
+                return;
+            }
+            
+            // Carregar imediatamente
+            pendingUsersUpdate = false;
+            if (usersLoadDebounceTimer) {
+                clearTimeout(usersLoadDebounceTimer);
+                usersLoadDebounceTimer = null;
+            }
+            loadUsers(force);
+        }
+
         // Carregar lista de usuários
-        async function loadUsers() {
+        async function loadUsers(useCache = false) {
             try {
+                // Se usar cache e dados estão recentes (menos de 5 segundos), atualizar apenas contadores
+                if (useCache && usersDataCache && (Date.now() - lastUsersLoadTime < 5000)) {
+                    await updateUsersUnreadCounts();
+                    return;
+                }
+                
                 // Buscar todos os usuários
                 const { data: users, error } = await supabaseClient
                     .from('user_profiles')
@@ -2778,6 +2820,10 @@ ALTER TABLE chat_mensagens ADD COLUMN IF NOT EXISTS visualizada BOOLEAN DEFAULT 
                 // Carregar grupos do usuário
                 await loadGrupos();
 
+                // Atualizar cache
+                usersDataCache = usersWithConversation;
+                lastUsersLoadTime = Date.now();
+                
                 // Renderizar usuários e grupos
                 renderUsersAndGrupos(usersWithConversation, gruposData);
                 
@@ -2794,6 +2840,59 @@ ALTER TABLE chat_mensagens ADD COLUMN IF NOT EXISTS visualizada BOOLEAN DEFAULT 
                     console.error('Erro ao carregar usuários:', error);
                     document.getElementById('usersList').innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-triangle"></i><p>Erro ao carregar usuários</p></div>';
                 }
+            }
+        }
+
+        // Atualizar apenas contadores de não lidas (otimização)
+        async function updateUsersUnreadCounts() {
+            if (!usersDataCache) return;
+            
+            try {
+                const userIds = usersDataCache.map(u => u.id);
+                
+                // Buscar contadores de não lidas apenas
+                const { data: unreadData } = await supabaseClient
+                    .from('chat_mensagens')
+                    .select('remetente_id')
+                    .eq('destinatario_id', currentUserId)
+                    .in('remetente_id', userIds)
+                    .eq('lida', false)
+                    .limit(1000);
+                
+                const unreadMap = new Map();
+                (unreadData || []).forEach(msg => {
+                    const senderId = msg.remetente_id;
+                    unreadMap.set(senderId, (unreadMap.get(senderId) || 0) + 1);
+                });
+                
+                // Atualizar apenas os contadores no DOM (sem re-renderizar tudo)
+                usersDataCache.forEach(user => {
+                    const newUnreadCount = unreadMap.get(user.id) || 0;
+                    if (user.unreadCount !== newUnreadCount) {
+                        user.unreadCount = newUnreadCount;
+                        
+                        // Atualizar badge no DOM
+                        const userItem = document.querySelector(`[data-user-id="${user.id}"]`);
+                        if (userItem) {
+                            const badge = userItem.querySelector('.unread-badge');
+                            if (newUnreadCount > 0) {
+                                if (!badge) {
+                                    const badgeEl = document.createElement('span');
+                                    badgeEl.className = 'unread-badge';
+                                    badgeEl.style.cssText = 'background: #ef4444; color: white; border-radius: 12px; padding: 0.25rem 0.5rem; font-size: 0.75rem; font-weight: 700; margin-left: 0.5rem; min-width: 20px; text-align: center;';
+                                    badgeEl.textContent = newUnreadCount > 99 ? '99+' : newUnreadCount;
+                                    userItem.querySelector('.user-info').parentElement.appendChild(badgeEl);
+                                } else {
+                                    badge.textContent = newUnreadCount > 99 ? '99+' : newUnreadCount;
+                                }
+                            } else if (badge) {
+                                badge.remove();
+                            }
+                        }
+                    }
+                });
+            } catch (error) {
+                console.warn('⚠️ Erro ao atualizar contadores:', error);
             }
         }
 
@@ -2990,6 +3089,9 @@ ALTER TABLE chat_mensagens ADD COLUMN IF NOT EXISTS visualizada BOOLEAN DEFAULT 
 
         // Selecionar usuário para conversar
         async function selectUser(userId) {
+            // Parar subscription anterior antes de trocar
+            stopMessagesRealtime();
+            
             selectedUserId = userId;
             selectedGrupoId = null;
             isGrupoMode = false;
@@ -3034,7 +3136,7 @@ ALTER TABLE chat_mensagens ADD COLUMN IF NOT EXISTS visualizada BOOLEAN DEFAULT 
             }
 
             await loadMessages();
-            startMessagesPolling();
+            startMessagesRealtime();
         }
 
         // ========== FUNÇÕES DE GRUPOS ==========
@@ -3148,6 +3250,9 @@ ALTER TABLE chat_mensagens ADD COLUMN IF NOT EXISTS visualizada BOOLEAN DEFAULT 
 
         // Selecionar grupo
         async function selectGrupo(grupoId) {
+            // Parar subscription anterior antes de trocar
+            stopMessagesRealtime();
+            
             selectedGrupoId = grupoId;
             selectedUserId = null;
             isGrupoMode = true;
@@ -3187,9 +3292,9 @@ ALTER TABLE chat_mensagens ADD COLUMN IF NOT EXISTS visualizada BOOLEAN DEFAULT 
             // Marcar mensagens como lidas
             await markMessagesAsReadGrupo(grupoId);
 
-            // Atualizar lista
-            await loadUsers();
-            startMessagesPolling();
+            // Atualizar lista (forçar recarregamento completo)
+            await loadUsers(false);
+            startMessagesRealtime();
         }
 
         // Carregar mensagens do grupo
@@ -3868,6 +3973,7 @@ ALTER TABLE chat_mensagens ADD COLUMN IF NOT EXISTS visualizada BOOLEAN DEFAULT 
                     return;
                 }
 
+                // Adicionar mensagens (otimizado para múltiplas mensagens)
                 messages.forEach(msg => {
                     addMessageToUI(msg, false);
                 });
@@ -4040,7 +4146,7 @@ ALTER TABLE chat_mensagens ADD COLUMN IF NOT EXISTS visualizada BOOLEAN DEFAULT 
                     const encodedUrl = encodeURIComponent(message.arquivo_url);
                     fileHtml = `
                         <div class="message-file">
-                            <img src="${message.arquivo_url}" alt="${safeFileName}" 
+                            <img loading="lazy" src="${message.arquivo_url}" alt="${safeFileName}" 
                                  class="message-file-image" 
                                  data-image-url="${message.arquivo_url}"
                                  data-image-name="${safeFileName}"
@@ -4108,6 +4214,10 @@ ALTER TABLE chat_mensagens ADD COLUMN IF NOT EXISTS visualizada BOOLEAN DEFAULT 
             const messageDiv = document.createElement('div');
             messageDiv.className = `message ${isSent ? 'sent' : 'received'}`;
             messageDiv.dataset.messageId = message.id;
+            if (message.temp) {
+                messageDiv.dataset.temp = 'true';
+                messageDiv.style.opacity = '0.7'; // Visual feedback de "enviando"
+            }
             messageDiv.innerHTML = `
                 <div class="message-avatar">${initials}</div>
                 <div class="message-content">
@@ -5461,13 +5571,69 @@ ALTER TABLE chat_mensagens ADD COLUMN IF NOT EXISTS visualizada BOOLEAN DEFAULT 
                     messageData.reply_to_id = replyingToMessage.id;
                 }
 
+                // Criar mensagem temporária para mostrar imediatamente (Optimistic UI)
+                const tempMessageId = `temp_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+                const optimisticMessage = {
+                    id: tempMessageId,
+                    ...messageData,
+                    created_at: new Date().toISOString(),
+                    temp: true, // Flag para identificar como temporária
+                    status: 'sending' // Status de envio
+                };
+
+                // Limpar input ANTES de enviar para melhor UX
+                input.value = '';
+                ajustarAlturaTextarea();
+                clearSelectedFile();
+                cancelAudioRecording();
+                cancelReply();
+
+                // Mostrar mensagem imediatamente na UI (Optimistic UI)
+                addMessageToUI(optimisticMessage, true);
+                scrollToBottom();
+
+                // Enviar ao servidor em background
                 const { data, error } = await supabaseClient
                     .from('chat_mensagens')
                     .insert([messageData])
                     .select()
                     .single();
 
-                if (error) throw error;
+                if (error) {
+                    // Se der erro, remover mensagem temporária e mostrar erro
+                    const tempMsgEl = document.querySelector(`[data-message-id="${tempMessageId}"]`);
+                    if (tempMsgEl) {
+                        tempMsgEl.remove();
+                    }
+                    messagesCache.delete(tempMessageId);
+                    throw error;
+                }
+
+                // Substituir mensagem temporária pela real quando chegar do servidor
+                const tempMsgEl = document.querySelector(`[data-message-id="${tempMessageId}"]`);
+                if (tempMsgEl) {
+                    // Atualizar ID e dados da mensagem
+                    tempMsgEl.dataset.messageId = data.id;
+                    tempMsgEl.setAttribute('data-message-id', data.id);
+                    
+                    // Atualizar cache
+                    messagesCache.delete(tempMessageId);
+                    messagesCache.set(data.id, data);
+                    
+                    // Se o Realtime já adicionou a mensagem, remover a temporária
+                    const realMsgEl = document.querySelector(`[data-message-id="${data.id}"]:not([data-message-id="${tempMessageId}"])`);
+                    if (realMsgEl && realMsgEl !== tempMsgEl) {
+                        tempMsgEl.remove();
+                    }
+                } else {
+                    // Se não encontrou temporária, pode ser que Realtime já adicionou
+                    // Verificar se já existe
+                    const existingMsg = document.querySelector(`[data-message-id="${data.id}"]`);
+                    if (!existingMsg) {
+                        // Adicionar mensagem real se não existir
+                        addMessageToUI(data, true);
+                    }
+                }
 
                 // Marcar como entregue imediatamente após envio (simula entrega instantânea)
                 // Em um sistema real, isso seria feito quando o destinatário recebe a mensagem
@@ -5551,26 +5717,21 @@ ALTER TABLE chat_mensagens ADD COLUMN IF NOT EXISTS visualizada BOOLEAN DEFAULT 
                     });
                 }
 
-                input.value = '';
-                // Resetar altura do textarea após enviar
-                ajustarAlturaTextarea();
-                clearSelectedFile(); // Limpar arquivo selecionado
-                cancelAudioRecording(); // Limpar áudio gravado
-                cancelReply(); // Limpar preview de resposta
-                
-                // Atualizar lastMessageId ANTES de adicionar na UI para evitar duplicatas no polling
+                // Atualizar lastMessageId com ID real
                 lastMessageId = data.id;
                 
-                // Adicionar mensagem na UI
-                addMessageToUI(data, true);
+                // Atualizar opacidade da mensagem temporária para normal (já foi substituída)
+                const finalMsgEl = document.querySelector(`[data-message-id="${data.id}"]`);
+                if (finalMsgEl) {
+                    finalMsgEl.style.opacity = '1';
+                    finalMsgEl.removeAttribute('data-temp');
+                }
                 
                 // Atualizar status do usuário atual (marcar como online)
                 updateCurrentUserStatus();
-                // Verificar status de outros usuários
-                await checkUsersStatus();
-
-                // Atualizar lista de usuários para mostrar última mensagem
-                await loadUsers();
+                
+                // Atualizar lista de usuários para mostrar última mensagem (com debounce)
+                updateUsersListDebounced();
 
             } catch (error) {
                 if (error.message && error.message.includes('does not exist')) {
@@ -5830,8 +5991,200 @@ ALTER TABLE chat_mensagens ADD COLUMN IF NOT EXISTS visualizada BOOLEAN DEFAULT 
             }
         }
 
-        // Polling de novas mensagens
-        function startMessagesPolling() {
+        // Configurar Realtime para mensagens (substitui polling)
+        function startMessagesRealtime() {
+            // Parar polling antigo se ainda existir
+            if (messagesInterval) {
+                clearInterval(messagesInterval);
+                messagesInterval = null;
+            }
+
+            // Remover subscription anterior se existir
+            stopMessagesRealtime();
+
+            if (!selectedUserId && !selectedGrupoId) return;
+            if (!supabaseClient) {
+                console.warn('⚠️ Supabase não inicializado, não é possível configurar Realtime');
+                return;
+            }
+
+            try {
+                let channelName;
+                
+                // Configurar canal baseado no tipo de conversa
+                if (isGrupoMode && selectedGrupoId) {
+                    channelName = `chat-grupo-${selectedGrupoId}`;
+                } else if (selectedUserId) {
+                    // Para conversas individuais, criar canal único baseado nos IDs ordenados
+                    const ids = [currentUserId, selectedUserId].sort();
+                    channelName = `chat-individual-${ids[0]}-${ids[1]}`;
+                } else {
+                    return; // Nenhuma conversa selecionada
+                }
+
+                console.log(`🚀 Configurando Realtime para: ${channelName}`);
+
+                // Criar canal Realtime
+                messagesChannel = supabaseClient.channel(channelName, {
+                    config: {
+                        broadcast: { self: true }
+                    }
+                });
+
+                // Configurar listeners baseado no tipo de conversa
+                if (isGrupoMode && selectedGrupoId) {
+                    // Modo grupo - filtro simples
+                    messagesChannel
+                        .on('postgres_changes', {
+                            event: 'INSERT',
+                            schema: 'public',
+                            table: 'chat_mensagens',
+                            filter: `grupo_id=eq.${selectedGrupoId}`
+                        }, async (payload) => {
+                            await handleNewMessage(payload.new);
+                        })
+                        .on('postgres_changes', {
+                            event: 'UPDATE',
+                            schema: 'public',
+                            table: 'chat_mensagens',
+                            filter: `grupo_id=eq.${selectedGrupoId}`
+                        }, async (payload) => {
+                            await handleMessageUpdate(payload.new);
+                        });
+                } else if (selectedUserId) {
+                    // Modo individual - precisamos de dois listeners (um para cada direção)
+                    // Listener 1: Mensagens enviadas pelo usuário atual para o selecionado
+                    messagesChannel
+                        .on('postgres_changes', {
+                            event: 'INSERT',
+                            schema: 'public',
+                            table: 'chat_mensagens',
+                            filter: `remetente_id=eq.${currentUserId}&destinatario_id=eq.${selectedUserId}`
+                        }, async (payload) => {
+                            await handleNewMessage(payload.new);
+                        })
+                        .on('postgres_changes', {
+                            event: 'INSERT',
+                            schema: 'public',
+                            table: 'chat_mensagens',
+                            filter: `remetente_id=eq.${selectedUserId}&destinatario_id=eq.${currentUserId}`
+                        }, async (payload) => {
+                            await handleNewMessage(payload.new);
+                        })
+                        .on('postgres_changes', {
+                            event: 'UPDATE',
+                            schema: 'public',
+                            table: 'chat_mensagens',
+                            filter: `remetente_id=eq.${currentUserId}&destinatario_id=eq.${selectedUserId}`
+                        }, async (payload) => {
+                            await handleMessageUpdate(payload.new);
+                        })
+                        .on('postgres_changes', {
+                            event: 'UPDATE',
+                            schema: 'public',
+                            table: 'chat_mensagens',
+                            filter: `remetente_id=eq.${selectedUserId}&destinatario_id=eq.${currentUserId}`
+                        }, async (payload) => {
+                            await handleMessageUpdate(payload.new);
+                        });
+                }
+
+                // Função auxiliar para processar nova mensagem
+                async function handleNewMessage(newMessage) {
+                    console.log('📨 Nova mensagem recebida via Realtime:', newMessage);
+                    
+                    // Ignorar mensagens temporárias
+                    if (newMessage.temp || String(newMessage.id).startsWith('temp_')) {
+                        return;
+                    }
+                    
+                    // Verificar se a mensagem já existe (proteção contra duplicatas)
+                    const messagesEl = document.getElementById('chatMessages');
+                    const existsInDOM = messagesEl.querySelector(`[data-message-id="${newMessage.id}"]`);
+                    const existsInCache = messagesCache.has(newMessage.id);
+                    
+                    // Se for mensagem própria que acabamos de enviar, pode já existir como temporária
+                    const isOwnMessage = newMessage.remetente_id === currentUserId;
+                    
+                    if (!existsInDOM && !existsInCache) {
+                        // Adicionar mensagem na UI
+                        addMessageToUI(newMessage, true);
+                        
+                        // Atualizar cache
+                        messagesCache.set(newMessage.id, newMessage);
+                        
+                        // Atualizar lastMessageId
+                        lastMessageId = newMessage.id;
+                        
+                        // Marcar como lida se for para o usuário atual
+                        if (newMessage.destinatario_id === currentUserId || 
+                            (isGrupoMode && newMessage.grupo_id === selectedGrupoId)) {
+                            if (isGrupoMode && selectedGrupoId) {
+                                await markMessagesAsReadGrupo(selectedGrupoId);
+                            } else {
+                                await markMessagesAsRead();
+                            }
+                        }
+                        
+                        // Atualizar lista de usuários para atualizar contadores (com debounce)
+                        updateUsersListDebounced();
+                        
+                        // Atualizar status dos vistos das mensagens enviadas
+                        if (!isGrupoMode) {
+                            await updateMessageStatuses();
+                        }
+                    }
+                }
+
+                // Função auxiliar para processar atualização de mensagem
+                async function handleMessageUpdate(updatedMessage) {
+                    console.log('🔄 Mensagem atualizada via Realtime:', updatedMessage);
+                    
+                    // Atualizar mensagem na UI se existir
+                    const messageEl = document.querySelector(`[data-message-id="${updatedMessage.id}"]`);
+                    if (messageEl) {
+                        // Atualizar status de entrega/visualização
+                        if (updatedMessage.entregue !== undefined || updatedMessage.visualizada !== undefined) {
+                            updateMessageStatus(updatedMessage.id, updatedMessage.entregue, updatedMessage.visualizada);
+                        }
+                        
+                        // Atualizar cache
+                        messagesCache.set(updatedMessage.id, updatedMessage);
+                    }
+                }
+
+                // Subscrever ao canal
+                messagesChannel.subscribe((status) => {
+                        if (status === 'SUBSCRIBED') {
+                            console.log('✅ Realtime conectado com sucesso!');
+                            realtimeSubscribed = true;
+                        } else if (status === 'CHANNEL_ERROR') {
+                            console.error('❌ Erro ao conectar Realtime, voltando para polling');
+                            // Fallback para polling em caso de erro
+                            startMessagesPollingFallback();
+                        }
+                    });
+
+            } catch (error) {
+                console.error('❌ Erro ao configurar Realtime:', error);
+                // Fallback para polling em caso de erro
+                startMessagesPollingFallback();
+            }
+        }
+
+        // Parar Realtime
+        function stopMessagesRealtime() {
+            if (messagesChannel) {
+                console.log('🛑 Parando subscription Realtime');
+                supabaseClient.removeChannel(messagesChannel);
+                messagesChannel = null;
+                realtimeSubscribed = false;
+            }
+        }
+
+        // Fallback para polling (caso Realtime falhe)
+        function startMessagesPollingFallback() {
+            console.warn('⚠️ Usando polling como fallback');
             if (messagesInterval) clearInterval(messagesInterval);
 
             messagesInterval = setInterval(async () => {
@@ -5840,7 +6193,6 @@ ALTER TABLE chat_mensagens ADD COLUMN IF NOT EXISTS visualizada BOOLEAN DEFAULT 
                 try {
                     let query;
                     
-                    // Se estiver em modo grupo
                     if (isGrupoMode && selectedGrupoId) {
                         query = supabaseClient
                             .from('chat_mensagens')
@@ -5849,13 +6201,12 @@ ALTER TABLE chat_mensagens ADD COLUMN IF NOT EXISTS visualizada BOOLEAN DEFAULT 
                             .order('created_at', { ascending: true })
                             .limit(100);
                     } else {
-                        // Modo conversa individual
                         query = supabaseClient
-                        .from('chat_mensagens')
-                        .select('*')
-                        .or(`and(remetente_id.eq.${currentUserId},destinatario_id.eq.${selectedUserId}),and(remetente_id.eq.${selectedUserId},destinatario_id.eq.${currentUserId})`)
-                        .order('created_at', { ascending: true })
-                        .limit(100);
+                            .from('chat_mensagens')
+                            .select('*')
+                            .or(`and(remetente_id.eq.${currentUserId},destinatario_id.eq.${selectedUserId}),and(remetente_id.eq.${selectedUserId},destinatario_id.eq.${currentUserId})`)
+                            .order('created_at', { ascending: true })
+                            .limit(100);
                     }
 
                     if (lastMessageId) {
@@ -5863,47 +6214,39 @@ ALTER TABLE chat_mensagens ADD COLUMN IF NOT EXISTS visualizada BOOLEAN DEFAULT 
                     }
 
                     const { data: newMessages, error } = await query;
-
                     if (error) throw error;
 
                     if (newMessages && newMessages.length > 0) {
-                        // Filtrar mensagens que já existem no DOM ou no cache (proteção adicional)
                         const messagesEl = document.getElementById('chatMessages');
                         const newUniqueMessages = newMessages.filter(msg => {
-                            // Verificar se já existe no DOM
                             const existsInDOM = messagesEl.querySelector(`[data-message-id="${msg.id}"]`);
-                            // Verificar se já está no cache
                             const existsInCache = messagesCache.has(msg.id);
                             return !existsInDOM && !existsInCache;
                         });
 
                         if (newUniqueMessages.length > 0) {
-                            // Atualizar lastMessageId com a mensagem mais recente ANTES de adicionar na UI
                             const mostRecentMessage = newUniqueMessages[newUniqueMessages.length - 1];
                             lastMessageId = mostRecentMessage.id;
                             
                             newUniqueMessages.forEach(msg => {
-                            addMessageToUI(msg, true);
-                        });
+                                addMessageToUI(msg, true);
+                            });
 
                             if (isGrupoMode && selectedGrupoId) {
                                 await markMessagesAsReadGrupo(selectedGrupoId);
                             } else {
-                        await markMessagesAsRead();
+                                await markMessagesAsRead();
                             }
-                        await loadUsers(); // Atualizar contadores
+                            await loadUsers();
                         }
                     }
 
-                    // Atualizar status dos vistos das mensagens enviadas
                     if (!isGrupoMode) {
                         await updateMessageStatuses();
                     }
                 } catch (error) {
-                    // Ignorar erros de coluna não existente (será corrigido após migração SQL)
                     if (error.message && error.message.includes('does not exist')) {
-                        console.warn('⚠️ Colunas não existem ainda. Execute a migração SQL primeiro.');
-                        // Parar o polling até que as colunas sejam criadas
+                        console.warn('⚠️ Colunas não existem ainda.');
                         if (messagesInterval) {
                             clearInterval(messagesInterval);
                             messagesInterval = null;
@@ -5912,24 +6255,36 @@ ALTER TABLE chat_mensagens ADD COLUMN IF NOT EXISTS visualizada BOOLEAN DEFAULT 
                         console.error('Erro ao buscar novas mensagens:', error);
                     }
                 }
-            }, 2000); // Polling a cada 2 segundos
+            }, 3000); // Polling a cada 3 segundos (fallback)
         }
 
-        // Atualizar lista de usuários periodicamente
+        // Atualizar lista de usuários periodicamente (otimizado com cache)
         function startUsersPolling() {
             if (usersInterval) clearInterval(usersInterval);
 
             usersInterval = setInterval(() => {
-                loadUsers();
-            }, 10000); // A cada 10 segundos
+                // Usar cache quando possível (atualiza apenas contadores se dados são recentes)
+                updateUsersListDebounced(false);
+            }, 15000); // A cada 15 segundos (aumentado de 10s para reduzir carga)
         }
 
-        // Scroll para baixo
-        function scrollToBottom() {
+        // Scroll para baixo (otimizado com requestAnimationFrame)
+        function scrollToBottom(smooth = false) {
             const messagesEl = document.getElementById('chatMessages');
-            setTimeout(() => {
-                messagesEl.scrollTop = messagesEl.scrollHeight;
-            }, 100);
+            if (!messagesEl) return;
+            
+            // Usar requestAnimationFrame para melhor performance
+            requestAnimationFrame(() => {
+                if (smooth) {
+                    messagesEl.scrollTo({
+                        top: messagesEl.scrollHeight,
+                        behavior: 'smooth'
+                    });
+                } else {
+                    // Scroll instantâneo (mais rápido)
+                    messagesEl.scrollTop = messagesEl.scrollHeight;
+                }
+            });
         }
 
         // Escape HTML
@@ -6087,6 +6442,9 @@ ALTER TABLE chat_mensagens ADD COLUMN IF NOT EXISTS visualizada BOOLEAN DEFAULT 
 
         // Limpar intervalos e marcar como offline ao sair
         window.addEventListener('beforeunload', () => {
+            // Parar Realtime
+            stopMessagesRealtime();
+            // Parar polling (fallback)
             if (messagesInterval) clearInterval(messagesInterval);
             if (usersInterval) clearInterval(usersInterval);
             if (statusUpdateInterval) clearInterval(statusUpdateInterval);

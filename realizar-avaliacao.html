@@ -338,6 +338,23 @@
             <!-- Lista de avaliações será carregada aqui -->
         </div>
 
+            <div class="row mt-4">
+                <div class="col-12">
+                    <div class="card-modern" style="padding: 1.5rem;">
+                        <div class="d-flex align-items-center justify-content-between mb-2">
+                            <div class="d-flex align-items-center gap-2">
+                                <i class="fas fa-th-large text-info"></i>
+                                <h5 class="mb-0">Avaliações NineBox pendentes</h5>
+                            </div>
+                            <span class="text-muted small">Apenas avaliações onde você é o responsável</span>
+                        </div>
+                        <div id="nineboxPendentes" class="row g-3">
+                            <!-- Avaliações NineBox pendentes serão carregadas aqui -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
         <div id="formularioAvaliacao" style="display: none;">
             <!-- Formulário de resposta será carregado aqui -->
         </div>
@@ -798,6 +815,121 @@
             }
         }
 
+        // Avaliações NineBox pendentes para responsáveis
+        async function loadNineboxPendentes() {
+            const container = document.getElementById('nineboxPendentes');
+            if (!container || !supabaseClient || !currentUserId) return;
+
+            try {
+                const { data, error } = await supabaseClient
+                    .from('ninebox_avaliacoes')
+                    .select('*')
+                    .eq('avaliado_por', currentUserId)
+                    .or('potencial.eq.Pendente,desempenho.eq.Pendente')
+                    .order('created_at', { ascending: false });
+
+                if (error) throw error;
+
+                if (!data || data.length === 0) {
+                    container.innerHTML = `
+                        <div class="col-12">
+                            <div class="empty-state">
+                                <i class="fas fa-clipboard-check"></i>
+                                <h5>Nenhuma avaliação NineBox pendente</h5>
+                                <p>Quando você for definido como responsável, as avaliações aparecerão aqui.</p>
+                            </div>
+                        </div>
+                    `;
+                    return;
+                }
+
+                container.innerHTML = data.map(av => {
+                    const potId = `potencial-${av.id}`;
+                    const desId = `desempenho-${av.id}`;
+                    return `
+                        <div class="col-12 col-lg-6 col-xl-4">
+                            <div class="card-modern" style="padding: 1.25rem;">
+                                <div class="d-flex align-items-start justify-content-between mb-2">
+                                    <div>
+                                        <div class="fw-bold text-white">${av.nome_colaborador || 'Colaborador'}</div>
+                                        <div class="text-muted small">${av.cargo || 'Cargo não informado'} • ${av.departamento || 'Departamento'}</div>
+                                    </div>
+                                    <span class="badge bg-warning text-dark">Pendente</span>
+                                </div>
+                                <div class="mb-2 text-white-50 small">Avaliação NineBox • Preencha Potencial e Desempenho</div>
+                                <div class="row g-2">
+                                    <div class="col-6">
+                                        <label class="form-label text-white-50 small mb-1">Potencial</label>
+                                        <select class="form-select form-select-sm" id="${potId}">
+                                            <option value="Pendente" ${av.potencial === 'Pendente' ? 'selected' : ''}>Selecione...</option>
+                                            <option value="Abaixo da Expectativa" ${av.potencial === 'Abaixo da Expectativa' ? 'selected' : ''}>Abaixo da Expectativa</option>
+                                            <option value="Dentro da Expectativa" ${av.potencial === 'Dentro da Expectativa' ? 'selected' : ''}>Dentro da Expectativa</option>
+                                            <option value="Acima da Expectativa" ${av.potencial === 'Acima da Expectativa' ? 'selected' : ''}>Acima da Expectativa</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-6">
+                                        <label class="form-label text-white-50 small mb-1">Desempenho</label>
+                                        <select class="form-select form-select-sm" id="${desId}">
+                                            <option value="Pendente" ${av.desempenho === 'Pendente' ? 'selected' : ''}>Selecione...</option>
+                                            <option value="Abaixo da Expectativa" ${av.desempenho === 'Abaixo da Expectativa' ? 'selected' : ''}>Abaixo da Expectativa</option>
+                                            <option value="Dentro da Expectativa" ${av.desempenho === 'Dentro da Expectativa' ? 'selected' : ''}>Dentro da Expectativa</option>
+                                            <option value="Acima da Expectativa" ${av.desempenho === 'Acima da Expectativa' ? 'selected' : ''}>Acima da Expectativa</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <button class="btn btn-primary w-100 mt-3" onclick="salvarNineboxAvaliacao('${av.id}')">
+                                    <i class="fas fa-save me-2"></i>Salvar avaliação
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            } catch (error) {
+                console.error('❌ Erro ao carregar NineBox:', error);
+                container.innerHTML = `
+                    <div class="col-12">
+                        <div class="empty-state">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            <h5>Erro ao carregar NineBox</h5>
+                            <p>${error.message || 'Tente novamente em instantes.'}</p>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+
+        async function salvarNineboxAvaliacao(id) {
+            try {
+                const potSelect = document.getElementById(`potencial-${id}`);
+                const desSelect = document.getElementById(`desempenho-${id}`);
+
+                const potencial = potSelect?.value;
+                const desempenho = desSelect?.value;
+
+                if (!potencial || !desempenho || potencial === 'Pendente' || desempenho === 'Pendente') {
+                    showNotification('Selecione Potencial e Desempenho para salvar.', 'warning');
+                    return;
+                }
+
+                const { error } = await supabaseClient
+                    .from('ninebox_avaliacoes')
+                    .update({
+                        potencial,
+                        desempenho,
+                        updated_at: new Date().toISOString()
+                    })
+                    .eq('id', id);
+
+                if (error) throw error;
+
+                showNotification('Avaliação NineBox salva com sucesso!', 'success');
+                await loadNineboxPendentes();
+            } catch (error) {
+                console.error('❌ Erro ao salvar NineBox:', error);
+                showNotification('Erro ao salvar avaliação NineBox', 'error');
+            }
+        }
+
         // Inicialização
         async function init() {
             try {
@@ -857,6 +989,7 @@
                 
                 // Carregar avaliações pendentes
                 await loadAvaliacoesPendentes();
+                await loadNineboxPendentes();
             } catch (error) {
                 console.error('❌ Erro na inicialização:', error);
                 showNotification('Erro ao inicializar página', 'error');

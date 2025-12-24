@@ -158,6 +158,7 @@
             justify-content: center;
             align-items: center;
             text-align: center;
+            min-height: auto;
         }
 
         .ninebox-cell.label-cell {
@@ -170,10 +171,12 @@
             text-align: center;
             writing-mode: vertical-rl;
             text-orientation: mixed;
+            min-height: auto;
         }
 
         .ninebox-cell.empty {
             background: #f8f9fa;
+            min-height: auto;
         }
 
         /* Cores dos blocos */
@@ -533,15 +536,25 @@
                         </div>
 
                         <div id="infoResponsavel" class="alert alert-warning" style="display: none;">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <div>
-                                    <i class="fas fa-user-tie me-2"></i>
-                                    <strong>Responsável:</strong> <span id="nomeResponsavel">-</span>
-                                    <br><small>Clique no responsável para gerar avaliações onde ele avaliará todos os colaboradores da filial.</small>
+                            <div class="mb-2">
+                                <label class="form-label fw-bold">
+                                    <i class="fas fa-user-tie me-2"></i>Selecionar Responsável/Avaliador *
+                                </label>
+                                <select id="selectResponsavelFilial" class="form-select" onchange="atualizarResponsavelSelecionado()">
+                                    <option value="">Selecione o responsável que irá avaliar...</option>
+                                </select>
+                                <small class="text-muted">O responsável selecionado avaliará todos os colaboradores da filial.</small>
+                            </div>
+                            <div id="infoResponsavelSelecionado" style="display: none;">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <strong>Responsável selecionado:</strong> <span id="nomeResponsavel">-</span>
+                                        <br><small>Clique no botão abaixo para criar avaliações onde este responsável avaliará todos os colaboradores da filial.</small>
+                                    </div>
+                                    <button type="button" class="btn btn-sm btn-primary" id="btnSelecionarResponsavel" onclick="selecionarResponsavelComoAvaliador()">
+                                        <i class="fas fa-hand-pointer me-1"></i>Gerar Avaliações
+                                    </button>
                                 </div>
-                                <button type="button" class="btn btn-sm btn-primary" id="btnSelecionarResponsavel" onclick="selecionarResponsavelComoAvaliador()" style="display: none;">
-                                    <i class="fas fa-hand-pointer me-1"></i>Selecionar como Avaliador
-                                </button>
                             </div>
                         </div>
 
@@ -741,8 +754,9 @@
             `;
 
             avaliacoesFiltradas.forEach((av, index) => {
+                const isPendente = av.potencial === 'Pendente' || av.desempenho === 'Pendente';
                 const key = `${av.potencial}-${av.desempenho}`;
-                const classificacao = classificacaoMap[key] || { nome: 'N/A', box: '', class: '' };
+                const classificacao = isPendente ? { nome: 'Pendente', box: '', class: '' } : (classificacaoMap[key] || { nome: 'N/A', box: '', class: '' });
                 
                 html += `
                     <tr>
@@ -750,9 +764,24 @@
                         <td><strong>${av.nome_colaborador}</strong></td>
                         <td>${av.cargo}</td>
                         <td>${av.departamento}</td>
-                        <td><span class="badge bg-info">${av.potencial}</span></td>
-                        <td><span class="badge bg-success">${av.desempenho}</span></td>
-                        <td><span class="badge-category ${classificacao.class}">${classificacao.nome}</span></td>
+                        <td>
+                            ${isPendente && av.potencial === 'Pendente' ? 
+                                '<span class="badge bg-secondary">Pendente</span>' : 
+                                `<span class="badge bg-info">${av.potencial}</span>`
+                            }
+                        </td>
+                        <td>
+                            ${isPendente && av.desempenho === 'Pendente' ? 
+                                '<span class="badge bg-secondary">Pendente</span>' : 
+                                `<span class="badge bg-success">${av.desempenho}</span>`
+                            }
+                        </td>
+                        <td>
+                            ${isPendente ? 
+                                '<span class="badge bg-warning">Pendente - Aguardando preenchimento</span>' : 
+                                `<span class="badge-category ${classificacao.class}">${classificacao.nome}</span>`
+                            }
+                        </td>
                         <td>
                             <button class="btn btn-sm btn-warning" onclick="editarAvaliacao('${av.id}')" title="Editar">
                                 <i class="fas fa-edit"></i>
@@ -822,8 +851,12 @@
                         const boxClass = boxInfo ? boxInfo.class : '';
                         const boxNome = boxInfo ? boxInfo.nome : '';
                         
-                        // Buscar colaboradores nesta categoria
+                        // Buscar colaboradores nesta categoria (excluir pendentes)
                         const colaboradores = todasAvaliacoes.filter(av => {
+                            // Não mostrar avaliações pendentes na matriz
+                            if (av.potencial === 'Pendente' || av.desempenho === 'Pendente') {
+                                return false;
+                            }
                             const key = `${av.potencial}-${av.desempenho}`;
                             const classif = classificacaoMap[key];
                             return classif && classif.box === boxId;
@@ -929,6 +962,13 @@
         function atualizarPreview() {
             const potencial = document.getElementById('potencialAvaliacao').value;
             const desempenho = document.getElementById('desempenhoAvaliacao').value;
+            
+            // Verificar se é pendente
+            if (potencial === 'Pendente' || desempenho === 'Pendente') {
+                document.getElementById('previewClassificacao').textContent = 'Pendente';
+                document.getElementById('previewDescricao').textContent = 'Avaliação pendente de preenchimento. Não será exibida na matriz até ser completada.';
+                return;
+            }
             
             if (potencial && desempenho) {
                 const key = `${potencial}-${desempenho}`;
@@ -1226,8 +1266,7 @@
             try {
                 if (!supabaseClient) await inicializarSupabase();
 
-                // Buscar colaboradores da filial (por departamento ou filial)
-                // Primeiro, tentar buscar por departamento que corresponde à filial
+                // Buscar todos os usuários da filial (por departamento ou filial)
                 const { data: usuarios, error } = await supabaseClient
                     .from('user_profiles')
                     .select('id, nome, email, cargo, departamento, role')
@@ -1237,20 +1276,35 @@
 
                 if (error) throw error;
 
+                // Separar colaboradores (para exibir na tabela) e possíveis responsáveis
                 colaboradoresFilial = (usuarios || []).filter(u => 
-                    u.role !== 'admin' && u.nome // Excluir admins e sem nome
+                    u.role !== 'admin' && u.nome // Excluir admins e sem nome para a lista de colaboradores
                 );
 
-                // Buscar responsável da filial (gerente/manager do departamento)
-                const { data: responsaveis } = await supabaseClient
-                    .from('user_profiles')
-                    .select('id, nome, email, cargo, departamento')
-                    .eq('active', true)
-                    .or(`departamento.eq.${filial},departamento.ilike.%${filial}%`)
-                    .in('role', ['admin', 'manager'])
-                    .limit(1);
+                // Buscar possíveis responsáveis da filial (gerentes/managers/admins do departamento)
+                // Usar os mesmos usuários já buscados
+                const possiveisResponsaveis = (usuarios || []).filter(u => 
+                    u.nome && ['admin', 'manager'].includes(u.role)
+                );
 
-                responsavelFilial = responsaveis && responsaveis.length > 0 ? responsaveis[0] : null;
+                // Preencher dropdown de responsáveis com TODOS os usuários da filial
+                const selectResponsavel = document.getElementById('selectResponsavelFilial');
+                if (selectResponsavel && usuarios) {
+                    // Sempre mostrar todos os usuários da filial como opção
+                    selectResponsavel.innerHTML = '<option value="">Selecione o responsável que irá avaliar...</option>' +
+                        usuarios.filter(u => u.nome).map(u => 
+                            `<option value="${u.id}" data-nome="${u.nome || u.email || 'Sem nome'}" data-cargo="${u.cargo || ''}">
+                                ${u.nome || u.email || 'Sem nome'}${u.cargo ? ' - ' + u.cargo : ''}${u.role ? ' (' + u.role + ')' : ''}
+                            </option>`
+                        ).join('');
+                    
+                    // Se houver apenas um gerente/manager, selecionar automaticamente
+                    if (possiveisResponsaveis && possiveisResponsaveis.length === 1) {
+                        responsavelFilial = possiveisResponsaveis[0];
+                        selectResponsavel.value = responsavelFilial.id;
+                        atualizarResponsavelSelecionado();
+                    }
+                }
 
                 // Atualizar UI
                 const listaContainer = document.getElementById('listaColaboradoresFilial');
@@ -1281,6 +1335,9 @@
                         a.departamento === colab.departamento
                     );
 
+                    const isPendente = avaliacaoExistente && 
+                        (avaliacaoExistente.potencial === 'Pendente' || avaliacaoExistente.desempenho === 'Pendente');
+
                     return `
                         <tr>
                             <td><strong>${colab.nome || colab.email || 'Sem nome'}</strong></td>
@@ -1288,13 +1345,19 @@
                             <td>${colab.departamento || '-'}</td>
                             <td>
                                 ${avaliacaoExistente ? 
-                                    `<span class="badge bg-info">${avaliacaoExistente.potencial}</span>` : 
+                                    (avaliacaoExistente.potencial === 'Pendente' ? 
+                                        '<span class="badge bg-secondary">Pendente</span>' : 
+                                        `<span class="badge bg-info">${avaliacaoExistente.potencial}</span>`
+                                    ) : 
                                     '<span class="text-muted">-</span>'
                                 }
                             </td>
                             <td>
                                 ${avaliacaoExistente ? 
-                                    `<span class="badge bg-success">${avaliacaoExistente.desempenho}</span>` : 
+                                    (avaliacaoExistente.desempenho === 'Pendente' ? 
+                                        '<span class="badge bg-secondary">Pendente</span>' : 
+                                        `<span class="badge bg-success">${avaliacaoExistente.desempenho}</span>`
+                                    ) : 
                                     '<span class="text-muted">-</span>'
                                 }
                             </td>
@@ -1302,25 +1365,71 @@
                     `;
                 }).join('');
 
-                // Mostrar info do responsável
-                if (responsavelFilial) {
-                    nomeResponsavel.textContent = `${responsavelFilial.nome || responsavelFilial.email} (${responsavelFilial.cargo || 'Responsável'})`;
-                    infoResponsavel.style.display = 'block';
-                    btnGerar.disabled = false;
-                } else {
-                    infoResponsavel.innerHTML = `
-                        <i class="fas fa-exclamation-triangle me-2"></i>
-                        <strong>Atenção:</strong> Nenhum responsável encontrado para esta filial.
-                        <br><small>Um administrador precisará preencher as avaliações manualmente.</small>
-                    `;
-                    infoResponsavel.className = 'alert alert-warning';
-                    infoResponsavel.style.display = 'block';
-                    btnGerar.disabled = true;
-                }
+                // Mostrar seção de seleção de responsável
+                infoResponsavel.style.display = 'block';
+                btnGerar.disabled = true; // Desabilitar até selecionar responsável
 
             } catch (error) {
                 console.error('Erro ao carregar colaboradores da filial:', error);
                 mostrarErro('Erro ao carregar colaboradores: ' + (error.message || 'Erro desconhecido'));
+            }
+        }
+
+        async function atualizarResponsavelSelecionado() {
+            const select = document.getElementById('selectResponsavelFilial');
+            const option = select.options[select.selectedIndex];
+            const infoSelecionado = document.getElementById('infoResponsavelSelecionado');
+            const nomeResponsavel = document.getElementById('nomeResponsavel');
+            const btnSelecionar = document.getElementById('btnSelecionarResponsavel');
+            
+            if (option.value) {
+                // Buscar dados do responsável selecionado
+                const responsavelId = option.value;
+                const responsavelNome = option.dataset.nome || option.text;
+                const responsavelCargo = option.dataset.cargo || '';
+                
+                // Buscar dados completos do responsável (pode estar em colaboradoresFilial ou ser um gerente/admin)
+                // Buscar novamente na lista completa de usuários se necessário
+                let responsavelCompleto = colaboradoresFilial.find(c => c.id === responsavelId);
+                
+                if (!responsavelCompleto) {
+                    // Se não encontrou, pode ser um gerente/admin, buscar nos usuários originais
+                    const filial = document.getElementById('filialSelecionada')?.value;
+                    if (filial && supabaseClient) {
+                        try {
+                            const { data: usuario } = await supabaseClient
+                                .from('user_profiles')
+                                .select('id, nome, email, cargo, departamento, role')
+                                .eq('id', responsavelId)
+                                .maybeSingle();
+                            
+                            if (usuario) {
+                                responsavelCompleto = usuario;
+                            }
+                        } catch (e) {
+                            console.warn('Erro ao buscar dados do responsável:', e);
+                        }
+                    }
+                }
+                
+                // Se ainda não encontrou, criar objeto básico
+                if (!responsavelCompleto) {
+                    responsavelCompleto = { id: responsavelId, nome: responsavelNome, email: '', cargo: responsavelCargo };
+                }
+                
+                responsavelFilial = responsavelCompleto;
+                
+                nomeResponsavel.textContent = `${responsavelNome}${responsavelCargo ? ' (' + responsavelCargo + ')' : ''}`;
+                infoSelecionado.style.display = 'block';
+                if (btnSelecionar) {
+                    btnSelecionar.disabled = false;
+                }
+            } else {
+                responsavelFilial = null;
+                infoSelecionado.style.display = 'none';
+                if (btnSelecionar) {
+                    btnSelecionar.disabled = true;
+                }
             }
         }
 
@@ -1330,12 +1439,106 @@
             if (filialSelect) {
                 filialSelect.value = '';
             }
+            const selectResponsavel = document.getElementById('selectResponsavelFilial');
+            if (selectResponsavel) {
+                selectResponsavel.innerHTML = '<option value="">Selecione o responsável que irá avaliar...</option>';
+            }
             document.getElementById('listaColaboradoresFilial').style.display = 'none';
             document.getElementById('infoResponsavel').style.display = 'none';
+            document.getElementById('infoResponsavelSelecionado').style.display = 'none';
             document.getElementById('avisoSemColaboradores').style.display = 'none';
             document.getElementById('btnGerarAvaliacaoFilial').disabled = true;
             colaboradoresFilial = [];
             responsavelFilial = null;
+        }
+
+        async function selecionarResponsavelComoAvaliador() {
+            const filial = document.getElementById('filialSelecionada')?.value;
+            if (!filial || !responsavelFilial || colaboradoresFilial.length === 0) {
+                mostrarErro('Selecione uma filial e aguarde o carregamento dos colaboradores.');
+                return;
+            }
+
+            // Filtrar colaboradores excluindo o próprio responsável
+            const colaboradoresParaAvaliar = colaboradoresFilial.filter(c => c.id !== responsavelFilial.id);
+
+            if (colaboradoresParaAvaliar.length === 0) {
+                mostrarErro('Não há colaboradores para avaliar (todos são o próprio responsável).');
+                return;
+            }
+
+            const confirmar = confirm(
+                `Deseja criar avaliações onde "${responsavelFilial.nome}" avaliará ${colaboradoresParaAvaliar.length} colaborador(es) da filial "${filial}"?\n\n` +
+                `O responsável será marcado como avaliador e todos os outros colaboradores serão os avaliados.\n\n` +
+                `As avaliações serão criadas como PENDENTES e não aparecerão na matriz até que o responsável preencha os valores de Potencial e Desempenho.`
+            );
+
+            if (!confirmar) return;
+
+            try {
+                if (!supabaseClient) await inicializarSupabase();
+
+                // Criar avaliações para cada colaborador (exceto o responsável)
+                const avaliacoesParaCriar = colaboradoresParaAvaliar.map(colab => ({
+                    nome_colaborador: colab.nome || colab.email || 'Sem nome',
+                    cargo: colab.cargo || 'Não informado',
+                    departamento: colab.departamento || filial,
+                    potencial: 'Pendente', // Fica pendente até o responsável preencher
+                    desempenho: 'Pendente', // Fica pendente até o responsável preencher
+                    avaliado_por: responsavelFilial.id // O responsável é quem vai avaliar
+                }));
+
+                // Verificar quais já existem para evitar duplicatas
+                const avaliacoesExistentes = [];
+                for (const aval of avaliacoesParaCriar) {
+                    const { data: existente } = await supabaseClient
+                        .from('ninebox_avaliacoes')
+                        .select('id')
+                        .eq('nome_colaborador', aval.nome_colaborador)
+                        .eq('departamento', aval.departamento)
+                        .eq('avaliado_por', responsavelFilial.id)
+                        .maybeSingle();
+
+                    if (existente) {
+                        avaliacoesExistentes.push(aval.nome_colaborador);
+                    }
+                }
+
+                // Filtrar apenas as novas
+                const novasAvaliacoes = avaliacoesParaCriar.filter(aval => 
+                    !avaliacoesExistentes.includes(aval.nome_colaborador)
+                );
+
+                if (novasAvaliacoes.length === 0) {
+                    mostrarErro('Todas as avaliações para esta filial já foram criadas com este responsável como avaliador.');
+                    return;
+                }
+
+                // Inserir novas avaliações
+                const { data, error } = await supabaseClient
+                    .from('ninebox_avaliacoes')
+                    .insert(novasAvaliacoes)
+                    .select();
+
+                if (error) throw error;
+
+                mostrarSucesso(
+                    `${novasAvaliacoes.length} avaliação(ões) criada(s) com sucesso!\n\n` +
+                    `O responsável "${responsavelFilial.nome}" foi atribuído como avaliador de ${novasAvaliacoes.length} colaborador(es).\n` +
+                    `As avaliações foram criadas como PENDENTES e não aparecerão na matriz até que o responsável preencha os valores de Potencial e Desempenho.` +
+                    (avaliacoesExistentes.length > 0 ? 
+                        `\n\nNota: ${avaliacoesExistentes.length} avaliação(ões) já existiam e foram mantidas.` : '')
+                );
+
+                // Fechar modal e recarregar
+                bootstrap.Modal.getInstance(document.getElementById('modalAvaliacao')).hide();
+                resetarFormularioFilial();
+                await carregarAvaliacoes();
+
+            } catch (error) {
+                console.error('Erro ao selecionar responsável como avaliador:', error);
+                mostrarErro('Erro ao criar avaliações: ' + (error.message || 'Erro desconhecido'));
+            }
         }
 
         async function gerarAvaliacaoFilial() {
@@ -1353,7 +1556,7 @@
             const confirmar = confirm(
                 `Deseja gerar avaliações para o responsável "${responsavelFilial.nome}"?\n\n` +
                 `Serão criadas ${colaboradoresFilial.length} avaliação(ões) para a filial "${filial}".\n\n` +
-                `As avaliações serão criadas com valores padrão (Dentro da Expectativa) e o responsável deverá editar cada uma para preencher corretamente os valores de Potencial e Desempenho.`
+                `As avaliações serão criadas como PENDENTES e não aparecerão na matriz até que o responsável preencha os valores de Potencial e Desempenho.`
             );
 
             if (!confirmar) return;
@@ -1362,14 +1565,13 @@
                 if (!supabaseClient) await inicializarSupabase();
 
                 // Criar avaliações pendentes para cada colaborador
-                // Nota: Como a tabela exige valores não-null, vamos criar com valores placeholder
-                // O responsável precisará editar cada avaliação para preencher corretamente
+                // As avaliações são criadas como 'Pendente' e não aparecem na matriz até serem preenchidas
                 const avaliacoesParaCriar = colaboradoresFilial.map(colab => ({
                     nome_colaborador: colab.nome || colab.email || 'Sem nome',
                     cargo: colab.cargo || 'Não informado',
                     departamento: colab.departamento || filial,
-                    potencial: 'Dentro da Expectativa', // Placeholder - responsável deve editar
-                    desempenho: 'Dentro da Expectativa', // Placeholder - responsável deve editar
+                    potencial: 'Pendente', // Fica pendente até o responsável preencher
+                    desempenho: 'Pendente', // Fica pendente até o responsável preencher
                     avaliado_por: responsavelFilial.id
                 }));
 
@@ -1408,8 +1610,7 @@
 
                 mostrarSucesso(
                     `${novasAvaliacoes.length} avaliação(ões) criada(s) com sucesso!\n\n` +
-                    `As avaliações foram criadas com valores padrão (Dentro da Expectativa).\n` +
-                    `O responsável "${responsavelFilial.nome}" deve editar cada avaliação para preencher corretamente os valores de Potencial e Desempenho.` +
+                    `As avaliações foram criadas como PENDENTES e não aparecerão na matriz até que o responsável "${responsavelFilial.nome}" preencha os valores de Potencial e Desempenho.` +
                     (avaliacoesExistentes.length > 0 ? 
                         `\n\nNota: ${avaliacoesExistentes.length} avaliação(ões) já existiam e foram mantidas.` : '')
                 );

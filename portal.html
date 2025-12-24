@@ -1701,33 +1701,45 @@
                     return;
                 }
 
-                const { data: notificacoes, error } = await supabaseClient
-                    .from('avaliacao_360_notificacoes')
-                    .select('id')
-                    .eq('usuario_id', currentUser.id)
-                    .eq('lida', false);
+                let totalCount = 0;
 
-                if (error) {
-                    // Ignorar erros de coluna não existente
-                    if (error.message && error.message.includes('does not exist')) {
-                        return;
+                // Contar avaliações 360º pendentes onde o usuário é avaliador
+                try {
+                    const { data: avaliadores, error: errAvaliadores } = await supabaseClient
+                        .from('avaliacao_360_avaliadores')
+                        .select('id')
+                        .eq('avaliador_id', currentUser.id)
+                        .in('status', ['pendente', 'em_andamento']);
+
+                    if (!errAvaliadores && avaliadores) {
+                        totalCount += avaliadores.length;
                     }
-                    throw error;
+                } catch (error) {
+                    // Ignorar erros silenciosamente (tabela pode não existir ainda)
+                    console.debug('Erro ao contar avaliações 360º:', error.message);
                 }
 
-                // Contar avaliações pendentes onde o usuário é avaliador
-                const { data: avaliadores, error: errAvaliadores } = await supabaseClient
-                    .from('avaliacao_360_avaliadores')
-                    .select('id')
-                    .eq('avaliador_id', currentUser.id)
-                    .in('status', ['pendente', 'em_andamento']);
+                // Contar avaliações NineBox pendentes onde o usuário é o responsável (avaliado_por)
+                try {
+                    const { data: nineboxAvaliacoes, error: errNinebox } = await supabaseClient
+                        .from('ninebox_avaliacoes')
+                        .select('id')
+                        .eq('avaliado_por', currentUser.id)
+                        .or('potencial.eq.Pendente,desempenho.eq.Pendente');
 
-                const unreadCount = avaliadores ? avaliadores.length : 0;
+                    if (!errNinebox && nineboxAvaliacoes) {
+                        totalCount += nineboxAvaliacoes.length;
+                    }
+                } catch (error) {
+                    // Ignorar erros silenciosamente (tabela pode não existir ainda)
+                    console.debug('Erro ao contar avaliações NineBox:', error.message);
+                }
+
                 const badgeElement = document.getElementById('badgeRealizarAvaliacao');
                 
                 if (badgeElement) {
-                    if (unreadCount > 0) {
-                        badgeElement.textContent = unreadCount > 99 ? '99+' : unreadCount;
+                    if (totalCount > 0) {
+                        badgeElement.textContent = totalCount > 99 ? '99+' : totalCount;
                         badgeElement.style.display = 'inline-block';
                     } else {
                         badgeElement.style.display = 'none';
