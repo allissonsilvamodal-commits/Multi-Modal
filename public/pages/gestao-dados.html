@@ -1,0 +1,2079 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Painel de Lançamento de Dados - Gestão</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="../js/permissions.js"></script>
+  <style>
+    :root {
+      --primary: #667eea;
+      --primary-dark: #5a6fd8;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --info: #3b82f6;
+      --dark: #1f2937;
+      --light: #f8fafc;
+    }
+    
+    body { 
+      padding: 0;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+    }
+    
+    .app-container {
+      background: white;
+      min-height: 100vh;
+      border-radius: 0;
+      box-shadow: 0 0 50px rgba(0,0,0,0.1);
+    }
+    
+    /* Header Moderno */
+    .app-header {
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+      color: white;
+      padding: 0.75rem 0;
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+    }
+    
+    .header-content {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .header-title {
+      font-size: 1.25rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    
+    .header-actions {
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+    }
+    
+    .user-badge {
+      background: rgba(255,255,255,0.2);
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255,255,255,0.3);
+    }
+    
+    /* Cards Modernos */
+    .modern-card {
+      background: white;
+      border: none;
+      border-radius: 12px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      overflow: hidden;
+      border: 1px solid rgba(0,0,0,0.03);
+      margin-bottom: 1rem;
+    }
+    
+    .modern-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(0,0,0,0.12);
+    }
+    
+    .modern-card .card-header {
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+      color: white;
+      border: none;
+      padding: 0.75rem 1.25rem;
+      font-weight: 700;
+      font-size: 0.95rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    
+    .card-body {
+      padding: 1.25rem;
+    }
+    
+    /* Formulário */
+    .form-section {
+      margin-bottom: 1rem;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid #e5e7eb;
+    }
+    
+    .form-section:last-child {
+      border-bottom: none;
+      margin-bottom: 0;
+      padding-bottom: 0;
+    }
+    
+    .section-title {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--dark);
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    
+    .form-label-modern {
+      font-weight: 600;
+      color: var(--dark);
+      margin-bottom: 0.35rem;
+      font-size: 0.85rem;
+    }
+    
+    .form-control-modern,
+    .form-select-modern {
+      border: 2px solid #e5e7eb;
+      border-radius: 8px;
+      padding: 0.5rem 0.75rem;
+      transition: all 0.3s;
+      font-size: 0.875rem;
+    }
+    
+    .form-control-modern:focus,
+    .form-select-modern:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+      outline: none;
+    }
+    
+    /* Botões */
+    .btn-modern {
+      border-radius: 8px;
+      padding: 0.5rem 1.25rem;
+      font-weight: 600;
+      transition: all 0.3s;
+      border: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.875rem;
+    }
+    
+    .btn-primary-modern {
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+      color: white;
+    }
+    
+    .btn-primary-modern:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
+      color: white;
+    }
+    
+    .btn-success-modern {
+      background: linear-gradient(135deg, var(--success) 0%, #059669 100%);
+      color: white;
+    }
+    
+    .btn-success-modern:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(16, 185, 129, 0.3);
+      color: white;
+    }
+    
+    .btn-secondary-modern {
+      background: #6b7280;
+      color: white;
+    }
+    
+    .btn-secondary-modern:hover {
+      background: #4b5563;
+      color: white;
+    }
+    
+    /* Tabela */
+    .table-modern {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+    }
+    
+    .table-modern thead {
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+      color: white;
+    }
+    
+    .table-modern thead th {
+      padding: 0.6rem 0.75rem;
+      font-weight: 600;
+      text-align: left;
+      border: none;
+      font-size: 0.8rem;
+    }
+    
+    .table-modern tbody tr {
+      transition: all 0.2s;
+      border-bottom: 1px solid #e5e7eb;
+    }
+    
+    .table-modern tbody tr:hover {
+      background: #f9fafb;
+    }
+    
+    .table-modern tbody td {
+      padding: 0.6rem 0.75rem;
+      vertical-align: middle;
+      font-size: 0.8rem;
+      word-wrap: break-word;
+      overflow-wrap: break-word;
+      white-space: normal;
+      overflow: visible;
+    }
+    
+    /* Célula com badge de tipo de erro (4ª coluna) */
+    .table-modern tbody td:nth-child(4) {
+      min-width: 200px;
+      max-width: 350px;
+      overflow: visible;
+    }
+    
+    /* Filtros */
+    .filters-section {
+      background: #f9fafb;
+      padding: 1rem;
+      border-radius: 8px;
+      margin-bottom: 1rem;
+    }
+    
+    /* Badges */
+    .badge-modern {
+      padding: 0.4rem 0.75rem;
+      border-radius: 12px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      display: inline-block;
+      white-space: normal;
+      word-wrap: break-word;
+      overflow-wrap: break-word;
+      max-width: 100%;
+      line-height: 1.3;
+    }
+    
+    /* Alerts */
+    .alert-modern {
+      border-radius: 8px;
+      border: none;
+      padding: 0.75rem 1rem;
+      margin-bottom: 1rem;
+      font-size: 0.875rem;
+    }
+    
+    /* Loading */
+    .loading-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.5);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+    }
+    
+    .loading-spinner {
+      width: 50px;
+      height: 50px;
+      border: 5px solid rgba(255,255,255,0.3);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+    
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    
+    /* Responsive */
+    @media (max-width: 768px) {
+      .header-content {
+        flex-direction: column;
+        gap: 1rem;
+      }
+      
+      .card-body {
+        padding: 1.5rem;
+      }
+      
+      .table-modern {
+        font-size: 0.85rem;
+      }
+      
+      .table-modern thead th,
+      .table-modern tbody td {
+        padding: 0.75rem 0.5rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app-container">
+    <!-- Header -->
+    <header class="app-header">
+      <div class="container-fluid">
+        <div class="header-content">
+          <div class="header-title">
+            <i class="fas fa-database"></i>
+            <span>Painel de Lançamento de Dados</span>
+          </div>
+          <div class="header-actions">
+            <div class="user-badge" id="userBadge">
+              <i class="fas fa-user"></i>
+              <span id="userName">Carregando...</span>
+            </div>
+            <a href="portal.html" class="btn btn-light btn-sm">
+              <i class="fas fa-arrow-left"></i> Voltar
+            </a>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Conteúdo Principal -->
+    <main class="container-fluid" style="padding: 1rem;">
+      <!-- Upload em Massa via CSV -->
+      <div class="modern-card">
+        <div class="card-header">
+          <i class="fas fa-file-csv"></i>
+          <span>Importação em Massa (CSV)</span>
+        </div>
+        <div class="card-body">
+          <div class="row align-items-center">
+            <div class="col-md-8">
+              <p class="mb-2"><strong>Importe múltiplos lançamentos de uma vez</strong></p>
+              <p class="text-muted mb-3">Faça o download do template CSV, preencha com os dados e faça o upload.</p>
+              <div class="d-flex gap-2">
+                <button type="button" class="btn btn-success-modern btn-modern" onclick="baixarTemplateCSV()">
+                  <i class="fas fa-download"></i> Baixar Template CSV
+                </button>
+                <label for="csvFile" class="btn btn-primary-modern btn-modern mb-0" style="cursor: pointer;">
+                  <i class="fas fa-upload"></i> Selecionar Arquivo CSV
+                </label>
+                <input type="file" id="csvFile" accept=".csv" style="display: none;" onchange="processarCSV(event)">
+                <button type="button" class="btn btn-secondary-modern btn-modern" id="btnImportarCSV" onclick="importarCSV()" disabled>
+                  <i class="fas fa-file-import"></i> Importar CSV
+                </button>
+              </div>
+              <div id="csvInfo" class="mt-3" style="display: none;">
+                <div class="alert alert-info alert-modern">
+                  <i class="fas fa-info-circle"></i>
+                  <span id="csvFileName"></span> selecionado. Clique em "Importar CSV" para processar.
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Formulário de Lançamento -->
+      <div class="modern-card">
+        <div class="card-header">
+          <i class="fas fa-plus-circle"></i>
+          <span>Novo Lançamento</span>
+        </div>
+        <div class="card-body">
+          <form id="formLancamento">
+            <div class="row g-3">
+              <div class="col-md-3">
+                <label class="form-label-modern">Data *</label>
+                <input type="date" id="data" class="form-control form-control-modern" required>
+              </div>
+              <div class="col-md-3">
+                <label class="form-label-modern">OC (Ordem de Coleta) *</label>
+                <input type="text" id="oc" class="form-control form-control-modern" required placeholder="Ex: OC-12345" maxlength="50">
+              </div>
+              <div class="col-md-3">
+                <label class="form-label-modern">Operação *</label>
+                <select id="operacao" class="form-select form-select-modern" required>
+                  <option value="">Selecione a operação...</option>
+                  <option value="Jaboatão">Jaboatão</option>
+                  <option value="Usinas">Usinas</option>
+                  <option value="Paraíba">Paraíba</option>
+                  <option value="Alagoas">Alagoas</option>
+                  <option value="Bahia">Bahia</option>
+                  <option value="Ambev">Ambev</option>
+                  <option value="Cabo">Cabo</option>
+                  <option value="São paulo">São paulo</option>
+                  <option value="Célula de documentação">Célula de documentação</option>
+                  <option value="Contas a pagar">Contas a pagar</option>
+                  <option value="Controladoria">Controladoria</option>
+                  <option value="Price">Price</option>
+                  <option value="Ti">Ti</option>
+                  <option value="Célula contratação">Célula contratação</option>
+                  <option value="Projetos">Projetos</option>
+                  <option value="GR">GR</option>
+                  <option value="Comercial">Comercial</option>
+                  <option value="Customer Service">Customer Service</option>
+                </select>
+              </div>
+              <div class="col-md-3">
+                <label class="form-label-modern">Tipo de Erro *</label>
+                <select id="tipo_erro" class="form-select form-select-modern" required>
+                  <option value="">Selecione...</option>
+                  <option value="Erro de Tabela">Erro de Tabela</option>
+                  <option value="Informações Incompletas ou Incorretas">Informações Incompletas ou Incorretas</option>
+                  <option value="Falta de Documentação / Anexo Ausente">Falta de Documentação / Anexo Ausente</option>
+                  <option value="Divergência Financeira">Divergência Financeira</option>
+                  <option value="Erro operacional">Erro operacional</option>
+                  <option value="Erro de Peso / Quantidade / Medidas">Erro de Peso / Quantidade / Medidas</option>
+                  <option value="Erro de Classificação e produto">Erro de Classificação e produto</option>
+                  <option value="Erro em Documentos Fiscais e Regulatórios">Erro em Documentos Fiscais e Regulatórios</option>
+                  <option value="Erro de Nomeclatura de Arquivos">Erro de Nomeclatura de Arquivos</option>
+                  <option value="Problema Operacional / Autorização / Procedimento">Problema Operacional / Autorização / Procedimento</option>
+                  <option value="Erro de Sistema / Integração / Processamento">Erro de Sistema / Integração / Processamento</option>
+                </select>
+              </div>
+              <div class="col-md-3">
+                <label class="form-label-modern">Sistema *</label>
+                <select id="sistema" class="form-select form-select-modern" required>
+                  <option value="">Selecione o sistema...</option>
+                  <option value="B2">B2</option>
+                  <option value="GW">GW</option>
+                </select>
+              </div>
+            </div>
+            
+            <div class="row g-3 mt-2">
+              <div class="col-md-6">
+                <label class="form-label-modern">Motivo da Devolução *</label>
+                <textarea id="motivo_devolucao" class="form-control form-control-modern" required rows="3" placeholder="Descreva o motivo da devolução..." maxlength="500"></textarea>
+              </div>
+              <div class="col-md-3">
+                <label class="form-label-modern">Hora que Enviou a Demanda *</label>
+                <input type="time" id="hora_envio" class="form-control form-control-modern" min="00:00" max="23:59" required>
+              </div>
+              <div class="col-md-3">
+                <label class="form-label-modern">Hora que Retornou a Demanda *</label>
+                <input type="time" id="hora_retorno" class="form-control form-control-modern" min="00:00" max="23:59" required>
+              </div>
+            </div>
+            
+            <div class="row g-3 mt-2">
+              <div class="col-md-6">
+                <label class="form-label-modern">Responsável *</label>
+                <select id="responsavel" class="form-select form-select-modern" required>
+                  <option value="">Selecione o responsável...</option>
+                  <option value="Allisson silva">Allisson silva</option>
+                  <option value="Aline oliveira">Aline oliveira</option>
+                  <option value="Aguida Oliveira">Aguida Oliveira</option>
+                  <option value="Josiane Santos">Josiane Santos</option>
+                  <option value="Kauan silva">Kauan silva</option>
+                  <option value="Elaine Cristina">Elaine Cristina</option>
+                  <option value="Sandra oliveira">Sandra oliveira</option>
+                  <option value="Lucili Moraes">Lucili Moraes</option>
+                  <option value="Andre oliveira">Andre oliveira</option>
+                  <option value="Catarina franca">Catarina franca</option>
+                  <option value="Edcleide silva">Edcleide silva</option>
+                  <option value="Anderson silva">Anderson silva</option>
+                  <option value="Paulo alencar">Paulo alencar</option>
+                  <option value="Tarciana borba">Tarciana borba</option>
+                  <option value="Mario victor">Mario victor</option>
+                  <option value="Alessandro silva">Alessandro silva</option>
+                  <option value="Douglas silva">Douglas silva</option>
+                  <option value="Arisvaldo Junior">Arisvaldo Junior</option>
+                  <option value="Sebastião">Sebastião</option>
+                  <option value="Sidney">Sidney</option>
+                  <option value="Artur ribeiro">Artur ribeiro</option>
+                  <option value="Wendel lima">Wendel lima</option>
+                  <option value="Cleberson santos">Cleberson santos</option>
+                  <option value="Analice gabriela">Analice gabriela</option>
+                  <option value="Emyllien barreto">Emyllien barreto</option>
+                  <option value="Marcos">Marcos</option>
+                  <option value="Glaucivan.santos">Glaucivan.santos</option>
+                  <option value="Lethicia.silva">Lethicia.silva</option>
+                  <option value="Iran brito">Iran brito</option>
+                  <option value="Adao campos">Adao campos</option>
+                  <option value="Matheus nascimento">Matheus nascimento</option>
+                  <option value="Daniel Alisonn">Daniel Alisonn</option>
+                  <option value="Felipe Barbosa">Felipe Barbosa</option>
+                  <option value="Thomaz menezes">Thomaz menezes</option>
+                  <option value="Roberto rocha">Roberto rocha</option>
+                  <option value="Manoel Henrique">Manoel Henrique</option>
+                  <option value="Luciano claudino">Luciano claudino</option>
+                  <option value="Pedro santos">Pedro santos</option>
+                  <option value="Luan silva">Luan silva</option>
+                  <option value="Natan nascimento">Natan nascimento</option>
+                  <option value="Alex Vilanova">Alex Vilanova</option>
+                  <option value="Leonardo Souza">Leonardo Souza</option>
+                  <option value="Amanda maria">Amanda maria</option>
+                  <option value="Erica melo">Erica melo</option>
+                  <option value="Suenildo junior">Suenildo junior</option>
+                  <option value="Arthur neves">Arthur neves</option>
+                  <option value="Ismael Coutinho">Ismael Coutinho</option>
+                  <option value="Emile passos">Emile passos</option>
+                </select>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label-modern">Evidências (Opcional)</label>
+                <input type="file" id="evidencia" class="form-control form-control-modern" accept="image/*,.pdf,.doc,.docx" multiple>
+                <small class="text-muted">Formatos aceitos: Imagens (JPG, PNG, GIF, WEBP, BMP) ou PDF, DOC, DOCX (máx. 10MB cada, múltiplos arquivos permitidos)</small>
+                <div id="previewEvidencias" class="mt-2"></div>
+              </div>
+            </div>
+            
+            <div class="row mt-4">
+              <div class="col-12">
+                <button type="submit" class="btn btn-primary-modern btn-modern">
+                  <i class="fas fa-save"></i>
+                  Salvar Lançamento
+                </button>
+                <button type="reset" class="btn btn-secondary-modern btn-modern ms-2">
+                  <i class="fas fa-redo"></i>
+                  Limpar Formulário
+                </button>
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- Filtros e Busca -->
+      <div class="filters-section">
+        <div class="row g-3 align-items-end">
+          <div class="col-md-2">
+            <label class="form-label-modern">Filtrar por Data</label>
+            <input type="date" id="filtroData" class="form-control form-control-modern">
+          </div>
+          <div class="col-md-2">
+            <label class="form-label-modern">Filtrar por OC</label>
+            <input type="text" id="filtroOC" class="form-control form-control-modern" placeholder="Digite a OC...">
+          </div>
+          <div class="col-md-3">
+            <label class="form-label-modern">Filtrar por Tipo de Erro</label>
+            <select id="filtroTipoErro" class="form-select form-select-modern">
+              <option value="">Todos</option>
+              <option value="Erro de Tabela">Erro de Tabela</option>
+              <option value="Informações Incompletas ou Incorretas">Informações Incompletas ou Incorretas</option>
+              <option value="Falta de Documentação / Anexo Ausente">Falta de Documentação / Anexo Ausente</option>
+              <option value="Divergência Financeira">Divergência Financeira</option>
+              <option value="Erro operacional">Erro operacional</option>
+              <option value="Erro de Peso / Quantidade / Medidas">Erro de Peso / Quantidade / Medidas</option>
+              <option value="Erro de Classificação e produto">Erro de Classificação e produto</option>
+              <option value="Erro em Documentos Fiscais e Regulatórios">Erro em Documentos Fiscais e Regulatórios</option>
+              <option value="Erro de Nomeclatura de Arquivos">Erro de Nomeclatura de Arquivos</option>
+              <option value="Problema Operacional / Autorização / Procedimento">Problema Operacional / Autorização / Procedimento</option>
+              <option value="Erro de Sistema / Integração / Processamento">Erro de Sistema / Integração / Processamento</option>
+            </select>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label-modern">Filtrar por Operação/Filial</label>
+            <select id="filtroOperacao" class="form-select form-select-modern">
+              <option value="">Todas</option>
+              <option value="Jaboatão">Jaboatão</option>
+              <option value="Usinas">Usinas</option>
+              <option value="Paraíba">Paraíba</option>
+              <option value="Alagoas">Alagoas</option>
+              <option value="Bahia">Bahia</option>
+              <option value="Ambev">Ambev</option>
+              <option value="Cabo">Cabo</option>
+              <option value="São paulo">São paulo</option>
+              <option value="Célula de documentação">Célula de documentação</option>
+              <option value="Contas a pagar">Contas a pagar</option>
+              <option value="Controladoria">Controladoria</option>
+              <option value="Price">Price</option>
+              <option value="Ti">Ti</option>
+              <option value="Célula contratação">Célula contratação</option>
+              <option value="Projetos">Projetos</option>
+              <option value="GR">GR</option>
+              <option value="Comercial">Comercial</option>
+              <option value="Customer Service">Customer Service</option>
+            </select>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label-modern">Filtrar por Responsável</label>
+            <select id="filtroResponsavel" class="form-select form-select-modern">
+              <option value="">Todos</option>
+              <option value="Allisson silva">Allisson silva</option>
+              <option value="Aline oliveira">Aline oliveira</option>
+              <option value="Aguida Oliveira">Aguida Oliveira</option>
+              <option value="Josiane Santos">Josiane Santos</option>
+              <option value="Kauan silva">Kauan silva</option>
+              <option value="Elaine Cristina">Elaine Cristina</option>
+              <option value="Sandra oliveira">Sandra oliveira</option>
+              <option value="Lucili Moraes">Lucili Moraes</option>
+              <option value="Andre oliveira">Andre oliveira</option>
+              <option value="Catarina franca">Catarina franca</option>
+              <option value="Edcleide silva">Edcleide silva</option>
+              <option value="Anderson silva">Anderson silva</option>
+              <option value="Paulo alencar">Paulo alencar</option>
+              <option value="Tarciana borba">Tarciana borba</option>
+              <option value="Mario victor">Mario victor</option>
+              <option value="Alessandro silva">Alessandro silva</option>
+              <option value="Douglas silva">Douglas silva</option>
+              <option value="Arisvaldo Junior">Arisvaldo Junior</option>
+              <option value="Sebastião">Sebastião</option>
+              <option value="Sidney">Sidney</option>
+              <option value="Artur ribeiro">Artur ribeiro</option>
+              <option value="Wendel lima">Wendel lima</option>
+              <option value="Cleberson santos">Cleberson santos</option>
+              <option value="Analice gabriela">Analice gabriela</option>
+              <option value="Emyllien barreto">Emyllien barreto</option>
+              <option value="Marcos">Marcos</option>
+              <option value="Glaucivan.santos">Glaucivan.santos</option>
+              <option value="Lethicia.silva">Lethicia.silva</option>
+              <option value="Iran brito">Iran brito</option>
+              <option value="Adao campos">Adao campos</option>
+              <option value="Matheus nascimento">Matheus nascimento</option>
+              <option value="Daniel Alisonn">Daniel Alisonn</option>
+              <option value="Felipe Barbosa">Felipe Barbosa</option>
+              <option value="Thomaz menezes">Thomaz menezes</option>
+              <option value="Roberto rocha">Roberto rocha</option>
+              <option value="Manoel Henrique">Manoel Henrique</option>
+              <option value="Luciano claudino">Luciano claudino</option>
+              <option value="Pedro santos">Pedro santos</option>
+              <option value="Luan silva">Luan silva</option>
+              <option value="Natan nascimento">Natan nascimento</option>
+              <option value="Alex Vilanova">Alex Vilanova</option>
+              <option value="Leonardo Souza">Leonardo Souza</option>
+              <option value="Amanda maria">Amanda maria</option>
+              <option value="Erica melo">Erica melo</option>
+              <option value="Suenildo junior">Suenildo junior</option>
+              <option value="Arthur neves">Arthur neves</option>
+              <option value="Ismael Coutinho">Ismael Coutinho</option>
+              <option value="Emile passos">Emile passos</option>
+            </select>
+          </div>
+          <div class="col-md-2">
+            <button type="button" class="btn btn-primary-modern btn-modern w-100" onclick="aplicarFiltros()">
+              <i class="fas fa-filter"></i>
+              Aplicar Filtros
+            </button>
+          </div>
+          <div class="col-md-2">
+            <button type="button" class="btn btn-success-modern btn-modern w-100" onclick="exportarParaExcel()">
+              <i class="fas fa-file-excel"></i>
+              Exportar Excel
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tabela de Dados -->
+      <div class="modern-card">
+        <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+          <div>
+            <i class="fas fa-table"></i>
+            <span>Registros Lançados</span>
+            <span class="badge bg-light text-dark ms-2" id="totalRegistros">0</span>
+          </div>
+          <button type="button" class="btn btn-danger btn-sm" id="btnExcluirTodos" onclick="excluirTodosRegistros()" style="display: none;">
+            <i class="fas fa-trash-alt"></i> Excluir Todos (Admin)
+          </button>
+        </div>
+        <div class="card-body">
+          <div class="table-responsive">
+            <table class="table-modern">
+              <thead>
+                <tr>
+                  <th>Data</th>
+                  <th>OC</th>
+                  <th>Operação</th>
+                  <th>Tipo de Erro</th>
+                  <th>Sistema</th>
+                  <th>Motivo da Devolução</th>
+                  <th>Hora Envio</th>
+                  <th>Hora Retorno</th>
+                  <th>Responsável</th>
+                  <th>Evidência</th>
+                  <th>Criado por</th>
+                  <th>Editado por</th>
+                  <th>Ações</th>
+                </tr>
+              </thead>
+              <tbody id="tabelaDados">
+                <tr>
+                  <td colspan="12" class="text-center py-4">
+                    <div class="spinner-border text-primary" role="status">
+                      <span class="visually-hidden">Carregando...</span>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Loading Overlay -->
+  <div class="loading-overlay" id="loadingOverlay">
+    <div class="loading-spinner"></div>
+  </div>
+
+  <!-- Modal de Edição -->
+  <div class="modal fade" id="modalEdicao" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header" style="background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%); color: white;">
+          <h5 class="modal-title">
+            <i class="fas fa-edit me-2"></i>
+            Editar Lançamento
+          </h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <form id="formEdicao">
+            <input type="hidden" id="editarId">
+            <div class="row g-3">
+              <div class="col-md-3">
+                <label class="form-label-modern">Data *</label>
+                <input type="date" id="editarData" class="form-control form-control-modern" required>
+              </div>
+              <div class="col-md-3">
+                <label class="form-label-modern">OC (Ordem de Coleta) *</label>
+                <input type="text" id="editarOC" class="form-control form-control-modern" required placeholder="Ex: OC-12345" maxlength="50">
+              </div>
+              <div class="col-md-3">
+                <label class="form-label-modern">Operação *</label>
+                <select id="editarOperacao" class="form-select form-select-modern" required>
+                  <option value="">Selecione a operação...</option>
+                  <option value="Jaboatão">Jaboatão</option>
+                  <option value="Usinas">Usinas</option>
+                  <option value="Paraíba">Paraíba</option>
+                  <option value="Alagoas">Alagoas</option>
+                  <option value="Bahia">Bahia</option>
+                  <option value="Ambev">Ambev</option>
+                  <option value="Cabo">Cabo</option>
+                  <option value="São paulo">São paulo</option>
+                  <option value="Célula de documentação">Célula de documentação</option>
+                  <option value="Contas a pagar">Contas a pagar</option>
+                  <option value="Controladoria">Controladoria</option>
+                  <option value="Price">Price</option>
+                  <option value="Ti">Ti</option>
+                  <option value="Célula contratação">Célula contratação</option>
+                  <option value="Projetos">Projetos</option>
+                  <option value="GR">GR</option>
+                  <option value="Comercial">Comercial</option>
+                  <option value="Customer Service">Customer Service</option>
+                </select>
+              </div>
+              <div class="col-md-3">
+                <label class="form-label-modern">Tipo de Erro *</label>
+                <select id="editarTipoErro" class="form-select form-select-modern" required>
+                  <option value="">Selecione...</option>
+                  <option value="Erro de Tabela">Erro de Tabela</option>
+                  <option value="Informações Incompletas ou Incorretas">Informações Incompletas ou Incorretas</option>
+                  <option value="Falta de Documentação / Anexo Ausente">Falta de Documentação / Anexo Ausente</option>
+                  <option value="Divergência Financeira">Divergência Financeira</option>
+                  <option value="Erro operacional">Erro operacional</option>
+                  <option value="Erro de Peso / Quantidade / Medidas">Erro de Peso / Quantidade / Medidas</option>
+                  <option value="Erro de Classificação e produto">Erro de Classificação e produto</option>
+                  <option value="Erro em Documentos Fiscais e Regulatórios">Erro em Documentos Fiscais e Regulatórios</option>
+                  <option value="Erro de Nomeclatura de Arquivos">Erro de Nomeclatura de Arquivos</option>
+                  <option value="Problema Operacional / Autorização / Procedimento">Problema Operacional / Autorização / Procedimento</option>
+                  <option value="Erro de Sistema / Integração / Processamento">Erro de Sistema / Integração / Processamento</option>
+                </select>
+              </div>
+              <div class="col-md-3">
+                <label class="form-label-modern">Sistema *</label>
+                <select id="editarSistema" class="form-select form-select-modern" required>
+                  <option value="">Selecione o sistema...</option>
+                  <option value="B2">B2</option>
+                  <option value="GW">GW</option>
+                </select>
+              </div>
+            </div>
+            
+            <div class="row g-3 mt-2">
+              <div class="col-md-6">
+                <label class="form-label-modern">Motivo da Devolução *</label>
+                <textarea id="editarMotivoDevolucao" class="form-control form-control-modern" required rows="3" placeholder="Descreva o motivo da devolução..." maxlength="500"></textarea>
+              </div>
+              <div class="col-md-3">
+                <label class="form-label-modern">Hora que Enviou a Demanda *</label>
+                <input type="time" id="editarHoraEnvio" class="form-control form-control-modern" min="00:00" max="23:59" required>
+              </div>
+              <div class="col-md-3">
+                <label class="form-label-modern">Hora que Retornou a Demanda *</label>
+                <input type="time" id="editarHoraRetorno" class="form-control form-control-modern" min="00:00" max="23:59" required>
+              </div>
+            </div>
+            
+            <div class="row g-3 mt-2">
+              <div class="col-md-6">
+                <label class="form-label-modern">Responsável *</label>
+                <select id="editarResponsavel" class="form-select form-select-modern" required>
+                  <option value="">Selecione o responsável...</option>
+                  <option value="Allisson silva">Allisson silva</option>
+                  <option value="Aline oliveira">Aline oliveira</option>
+                  <option value="Aguida Oliveira">Aguida Oliveira</option>
+                  <option value="Josiane Santos">Josiane Santos</option>
+                  <option value="Kauan silva">Kauan silva</option>
+                  <option value="Elaine Cristina">Elaine Cristina</option>
+                  <option value="Sandra oliveira">Sandra oliveira</option>
+                  <option value="Lucili Moraes">Lucili Moraes</option>
+                  <option value="Andre oliveira">Andre oliveira</option>
+                  <option value="Catarina franca">Catarina franca</option>
+                  <option value="Edcleide silva">Edcleide silva</option>
+                  <option value="Anderson silva">Anderson silva</option>
+                  <option value="Paulo alencar">Paulo alencar</option>
+                  <option value="Tarciana borba">Tarciana borba</option>
+                  <option value="Mario victor">Mario victor</option>
+                  <option value="Alessandro silva">Alessandro silva</option>
+                  <option value="Douglas silva">Douglas silva</option>
+                  <option value="Arisvaldo Junior">Arisvaldo Junior</option>
+                  <option value="Sebastião">Sebastião</option>
+                  <option value="Sidney">Sidney</option>
+                  <option value="Artur ribeiro">Artur ribeiro</option>
+                  <option value="Wendel lima">Wendel lima</option>
+                  <option value="Cleberson santos">Cleberson santos</option>
+                  <option value="Analice gabriela">Analice gabriela</option>
+                  <option value="Emyllien barreto">Emyllien barreto</option>
+                  <option value="Marcos">Marcos</option>
+                  <option value="Glaucivan.santos">Glaucivan.santos</option>
+                  <option value="Lethicia.silva">Lethicia.silva</option>
+                  <option value="Iran brito">Iran brito</option>
+                  <option value="Adao campos">Adao campos</option>
+                  <option value="Matheus nascimento">Matheus nascimento</option>
+                  <option value="Daniel Alisonn">Daniel Alisonn</option>
+                  <option value="Felipe Barbosa">Felipe Barbosa</option>
+                  <option value="Thomaz menezes">Thomaz menezes</option>
+                  <option value="Roberto rocha">Roberto rocha</option>
+                  <option value="Manoel Henrique">Manoel Henrique</option>
+                  <option value="Luciano claudino">Luciano claudino</option>
+                  <option value="Pedro santos">Pedro santos</option>
+                  <option value="Luan silva">Luan silva</option>
+                  <option value="Natan nascimento">Natan nascimento</option>
+                  <option value="Alex Vilanova">Alex Vilanova</option>
+                  <option value="Leonardo Souza">Leonardo Souza</option>
+                  <option value="Amanda maria">Amanda maria</option>
+                  <option value="Erica melo">Erica melo</option>
+                  <option value="Suenildo junior">Suenildo junior</option>
+                  <option value="Arthur neves">Arthur neves</option>
+                  <option value="Ismael Coutinho">Ismael Coutinho</option>
+                  <option value="Emile passos">Emile passos</option>
+                </select>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label-modern">Adicionar Evidências (Opcional)</label>
+                <input type="file" id="editarEvidencias" class="form-control form-control-modern" accept="image/*,.pdf,.doc,.docx" multiple>
+                <small class="text-muted">Selecione novos arquivos para adicionar</small>
+                <div id="previewEvidenciasEdicao" class="mt-2"></div>
+              </div>
+            </div>
+            
+            <div class="row g-3 mt-2">
+              <div class="col-md-12">
+                <label class="form-label-modern">Evidências Existentes</label>
+                <div id="evidenciasExistentes" class="border rounded p-3" style="min-height: 50px;">
+                  <p class="text-muted mb-0">Nenhuma evidência anexada</p>
+                </div>
+              </div>
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+            <i class="fas fa-times"></i> Cancelar
+          </button>
+          <button type="button" class="btn btn-primary-modern btn-modern" onclick="salvarEdicao()">
+            <i class="fas fa-save"></i> Salvar Alterações
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bootstrap JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+  <script>
+    let supabaseClient = null; // Renomeado para evitar conflito com possível variável global do Supabase
+    let currentUser = null;
+    let dadosCarregados = [];
+    let isAdmin = false;
+
+    // ========== INICIALIZAÇÃO ==========
+    document.addEventListener('DOMContentLoaded', async () => {
+      // Verificar permissão antes de carregar a página
+      const temPermissao = await verificarEAplicarPermissao('gestao-dados');
+      if (!temPermissao) {
+        return; // A função já redireciona se não tiver permissão
+      }
+      
+      await inicializarSupabase();
+      await verificarAutenticacao();
+      await verificarSeAdmin();
+      await carregarDados();
+      configurarEventos();
+      definirDataPadrao();
+    });
+
+    // ========== DEFINIR DATA PADRÃO ==========
+    function definirDataPadrao() {
+      const campoData = document.getElementById('data');
+      if (campoData && !campoData.value) {
+        // Obter data atual no formato YYYY-MM-DD
+        const hoje = new Date();
+        const ano = hoje.getFullYear();
+        const mes = String(hoje.getMonth() + 1).padStart(2, '0');
+        const dia = String(hoje.getDate()).padStart(2, '0');
+        const dataFormatada = `${ano}-${mes}-${dia}`;
+        campoData.value = dataFormatada;
+      }
+    }
+
+    // ========== SUPABASE ==========
+    async function inicializarSupabase() {
+      try {
+        const response = await fetch('/api/supabase-config');
+        if (!response.ok) throw new Error('Erro ao buscar configurações');
+        
+        const config = await response.json();
+        supabaseClient = window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey);
+        window.supabase = supabaseClient; // Manter compatibilidade com código que usa window.supabase
+        
+        console.log('✅ Supabase inicializado');
+        return true;
+      } catch (error) {
+        console.error('❌ Erro ao inicializar Supabase:', error);
+        mostrarAlerta('Erro ao conectar com o banco de dados', 'danger');
+        return false;
+      }
+    }
+
+    // ========== AUTENTICAÇÃO ==========
+    async function verificarAutenticacao() {
+      try {
+        const { data: { session } } = await supabaseClient.auth.getSession();
+        
+        if (!session) {
+          window.location.href = 'login.html';
+          return;
+        }
+        
+        currentUser = session.user;
+        document.getElementById('userName').textContent = currentUser.email || 'Usuário';
+        
+        return true;
+      } catch (error) {
+        console.error('❌ Erro ao verificar autenticação:', error);
+        window.location.href = 'login.html';
+        return false;
+      }
+    }
+
+    // ========== VERIFICAR SE É ADMIN ==========
+    async function verificarSeAdmin() {
+      try {
+        // Verificar no localStorage
+        const loggedInUserData = localStorage.getItem('loggedInUser');
+        if (loggedInUserData) {
+          const userData = JSON.parse(loggedInUserData);
+          if (userData.isAdmin === true || userData.role === 'admin') {
+            isAdmin = true;
+            document.getElementById('btnExcluirTodos').style.display = 'block';
+            console.log('✅ Usuário é admin');
+            return;
+          }
+        }
+
+        // Verificar no Supabase
+        if (currentUser && currentUser.id) {
+          const { data: profile, error } = await supabase
+            .from('user_profiles')
+            .select('role')
+            .eq('id', currentUser.id)
+            .maybeSingle();
+          
+          if (!error && profile && (profile.role === 'admin' || profile.role === 'projetos')) {
+            isAdmin = true;
+            document.getElementById('btnExcluirTodos').style.display = 'block';
+            console.log('✅ Usuário é admin (verificado via Supabase)');
+            return;
+          }
+        }
+
+        console.log('❌ Usuário não é admin');
+        isAdmin = false;
+      } catch (error) {
+        console.error('❌ Erro ao verificar se é admin:', error);
+        isAdmin = false;
+      }
+    }
+
+    // ========== FORMULÁRIO ==========
+    function configurarEventos() {
+      const form = document.getElementById('formLancamento');
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        await salvarLancamento();
+      });
+
+      // Preview de múltiplas evidências (formulário de criação)
+      document.getElementById('evidencia').addEventListener('change', function(e) {
+        const files = Array.from(e.target.files);
+        const previewContainer = document.getElementById('previewEvidencias');
+        previewContainer.innerHTML = '';
+        
+        if (files.length > 0) {
+          files.forEach((file, index) => {
+            const previewItem = document.createElement('div');
+            previewItem.className = 'mb-2 p-2 border rounded';
+            previewItem.id = `preview-item-${index}`;
+            
+            if (file.type.startsWith('image/')) {
+              const reader = new FileReader();
+              reader.onload = function(e) {
+                previewItem.innerHTML = `
+                  <div class="d-flex align-items-center">
+                    <img src="${e.target.result}" alt="Preview" style="max-width: 100px; max-height: 100px; border-radius: 8px; border: 2px solid #e5e7eb; margin-right: 10px;">
+                    <div class="flex-grow-1">
+                      <small class="d-block text-muted">${file.name}</small>
+                      <small class="text-muted">${(file.size / 1024).toFixed(2)} KB</small>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-danger" onclick="removerEvidenciaPreview(${index})">
+                      <i class="fas fa-times"></i>
+                    </button>
+                  </div>
+                `;
+              };
+              reader.readAsDataURL(file);
+            } else {
+              previewItem.innerHTML = `
+                <div class="d-flex align-items-center">
+                  <i class="fas fa-file fa-2x text-primary me-2"></i>
+                  <div class="flex-grow-1">
+                    <small class="d-block">${file.name}</small>
+                    <small class="text-muted">${(file.size / 1024).toFixed(2)} KB</small>
+                  </div>
+                  <button type="button" class="btn btn-sm btn-danger" onclick="removerEvidenciaPreview(${index})">
+                    <i class="fas fa-times"></i>
+                  </button>
+                </div>
+              `;
+            }
+            
+            previewContainer.appendChild(previewItem);
+          });
+        }
+      });
+    }
+
+    // Remover evidência do preview
+    function removerEvidenciaPreview(index) {
+      const input = document.getElementById('evidencia');
+      const files = Array.from(input.files);
+      files.splice(index, 1);
+      
+      // Criar novo FileList (não é possível modificar diretamente)
+      const dt = new DataTransfer();
+      files.forEach(file => dt.items.add(file));
+      input.files = dt.files;
+      
+      // Disparar evento change para atualizar preview
+      input.dispatchEvent(new Event('change'));
+    }
+
+    // Remover todas as evidências
+    function removerEvidencias() {
+      document.getElementById('evidencia').value = '';
+      document.getElementById('previewEvidencias').innerHTML = '';
+    }
+
+    async function salvarLancamento() {
+      const form = document.getElementById('formLancamento');
+      
+      // Upload de múltiplas evidências se houver
+      let evidenciasUrls = [];
+      const arquivosEvidencia = document.getElementById('evidencia').files;
+      
+      if (arquivosEvidencia && arquivosEvidencia.length > 0) {
+        try {
+          mostrarLoading(true);
+          
+          // Upload de cada arquivo
+          for (let i = 0; i < arquivosEvidencia.length; i++) {
+            const arquivo = arquivosEvidencia[i];
+            const uploadFormData = new FormData();
+            uploadFormData.append('evidencia', arquivo);
+            
+            const uploadResponse = await fetch('/api/gestao-dados/upload-evidencia', {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session.access_token}`
+              },
+              credentials: 'include',
+              body: uploadFormData
+            });
+            
+            const uploadResult = await uploadResponse.json();
+            if (uploadResult.success) {
+              evidenciasUrls.push(uploadResult.url);
+            } else {
+              throw new Error(uploadResult.error || `Erro ao fazer upload da evidência ${i + 1}`);
+            }
+          }
+        } catch (error) {
+          console.error('Erro ao fazer upload das evidências:', error);
+          mostrarAlerta('Erro ao fazer upload das evidências: ' + error.message, 'warning');
+          mostrarLoading(false);
+          return;
+        }
+      }
+      
+      // Validar horas (deve estar entre 00:00 e 23:59)
+      const horaEnvio = document.getElementById('hora_envio').value;
+      const horaRetorno = document.getElementById('hora_retorno').value;
+      
+      if (horaEnvio) {
+        const [hora, minuto] = horaEnvio.split(':').map(Number);
+        if (hora < 0 || hora > 23 || minuto < 0 || minuto > 59) {
+          mostrarAlerta('A hora de envio deve estar entre 00:00 e 23:59', 'warning');
+          return;
+        }
+      }
+      
+      if (horaRetorno) {
+        const [hora, minuto] = horaRetorno.split(':').map(Number);
+        if (hora < 0 || hora > 23 || minuto < 0 || minuto > 59) {
+          mostrarAlerta('A hora de retorno deve estar entre 00:00 e 23:59', 'warning');
+          return;
+        }
+      }
+      
+      // Validar sistema
+      const sistema = document.getElementById('sistema').value;
+      if (!sistema || sistema.trim() === '') {
+        mostrarAlerta('Por favor, selecione o sistema', 'warning');
+        return;
+      }
+      
+      const dados = {
+        data: document.getElementById('data').value,
+        oc: document.getElementById('oc').value.trim(),
+        operacao: document.getElementById('operacao').value.trim(),
+        tipo_erro: document.getElementById('tipo_erro').value,
+        sistema: sistema.trim(),
+        motivo_devolucao: document.getElementById('motivo_devolucao').value.trim(),
+        hora_envio: horaEnvio,
+        hora_retorno: horaRetorno,
+        responsavel: document.getElementById('responsavel').value.trim(),
+        evidencia_url: evidenciasUrls.length > 0 ? evidenciasUrls : null,
+        usuario_id: currentUser.id,
+        usuario_nome: currentUser.email || 'Usuário'
+      };
+
+      mostrarLoading(true);
+
+      try {
+        const response = await fetch('/api/gestao-dados', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session.access_token}`
+          },
+          credentials: 'include',
+          body: JSON.stringify(dados)
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+          throw new Error(result.error || 'Erro ao salvar lançamento');
+        }
+
+        mostrarAlerta('Lançamento salvo com sucesso!', 'success');
+        form.reset();
+        removerEvidencias();
+        await carregarDados();
+        
+      } catch (error) {
+        console.error('❌ Erro ao salvar lançamento:', error);
+        mostrarAlerta(error.message || 'Erro ao salvar lançamento', 'danger');
+      } finally {
+        mostrarLoading(false);
+      }
+    }
+
+    // ========== CARREGAR DADOS ==========
+    async function carregarDados() {
+      mostrarLoading(true);
+
+      try {
+        const response = await fetch('/api/gestao-dados', {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session.access_token}`
+          },
+          credentials: 'include'
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+          throw new Error(result.error || 'Erro ao carregar dados');
+        }
+
+        dadosCarregados = result.data || [];
+        dadosFiltradosAtuais = [...dadosCarregados]; // Inicializar dados filtrados
+        preencherFiltroOperacao();
+        preencherFiltroResponsavel();
+        renderizarTabela(dadosCarregados);
+        
+      } catch (error) {
+        console.error('❌ Erro ao carregar dados:', error);
+        mostrarAlerta(error.message || 'Erro ao carregar dados', 'danger');
+        renderizarTabela([]);
+      } finally {
+        mostrarLoading(false);
+      }
+    }
+
+    // Preencher filtro de operação com valores únicos dos dados carregados
+    function preencherFiltroOperacao() {
+      const select = document.getElementById('filtroOperacao');
+      if (!select) return;
+      
+      // Obter valores únicos de operações dos dados carregados
+      const operacoesUnicas = [...new Set(dadosCarregados
+        .map(d => d.operacao)
+        .filter(o => o && o.trim())
+        .sort()
+      )];
+      
+      // Manter a opção "Todas" e adicionar as operações encontradas
+      const opcaoTodas = select.querySelector('option[value=""]');
+      if (opcaoTodas) {
+        // Limpar opções existentes (exceto "Todas")
+        Array.from(select.options).forEach(opt => {
+          if (opt.value !== '') opt.remove();
+        });
+        
+        // Adicionar operações encontradas
+        operacoesUnicas.forEach(operacao => {
+          const option = document.createElement('option');
+          option.value = operacao;
+          option.textContent = operacao;
+          select.appendChild(option);
+        });
+      }
+    }
+    
+    // Preencher filtro de responsável com valores únicos dos dados carregados
+    function preencherFiltroResponsavel() {
+      const select = document.getElementById('filtroResponsavel');
+      if (!select) return;
+      
+      // Obter valores únicos de responsáveis dos dados carregados
+      const responsaveisUnicos = [...new Set(dadosCarregados
+        .map(d => d.responsavel)
+        .filter(r => r && r.trim() && r !== 'Não informado')
+        .sort()
+      )];
+      
+      // Manter a opção "Todos" e adicionar os responsáveis encontrados
+      const opcaoTodos = select.querySelector('option[value=""]');
+      select.innerHTML = '';
+      if (opcaoTodos) {
+        select.appendChild(opcaoTodos);
+      } else {
+        const optionTodos = document.createElement('option');
+        optionTodos.value = '';
+        optionTodos.textContent = 'Todos';
+        select.appendChild(optionTodos);
+      }
+      
+      // Adicionar responsáveis únicos encontrados nos dados
+      responsaveisUnicos.forEach(responsavel => {
+        const option = document.createElement('option');
+        option.value = responsavel;
+        option.textContent = responsavel;
+        select.appendChild(option);
+      });
+    }
+
+    function renderizarTabela(dados) {
+      const tbody = document.getElementById('tabelaDados');
+      document.getElementById('totalRegistros').textContent = dados.length;
+
+      if (dados.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="13" class="text-center py-4 text-muted">
+              <i class="fas fa-inbox fa-2x mb-3 d-block"></i>
+              Nenhum registro encontrado
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      tbody.innerHTML = dados.map(dado => {
+        // Formatar informações de criação
+        const criadoPor = dado.criado_por_nome || dado.usuario_nome || 'Não informado';
+        const criadoEm = dado.criado_em ? formatarDataHora(dado.criado_em) : (dado.created_at ? formatarDataHora(dado.created_at) : '-');
+        
+        // Formatar informações de edição
+        const editadoPor = dado.editado_por_nome || null;
+        const editadoEm = dado.editado_em ? formatarDataHora(dado.editado_em) : null;
+        
+        return `
+        <tr>
+          <td>${formatarData(dado.data)}</td>
+          <td><strong>${dado.oc}</strong></td>
+          <td>${dado.operacao}</td>
+          <td><span class="badge-modern bg-warning text-dark">${dado.tipo_erro}</span></td>
+          <td><span class="badge-modern ${dado.sistema === 'B2' ? 'bg-info' : 'bg-primary'}">${dado.sistema || '-'}</span></td>
+          <td>${dado.motivo_devolucao}</td>
+          <td>${dado.hora_envio}</td>
+          <td>${dado.hora_retorno}</td>
+          <td>${dado.responsavel}</td>
+          <td>
+            ${dado.evidencia_url && dado.evidencia_url.length > 0 ? `
+              <div class="d-flex flex-wrap gap-1">
+                ${Array.isArray(dado.evidencia_url) 
+                  ? dado.evidencia_url.map((url, idx) => `
+                    <a href="${url}" target="_blank" class="btn btn-sm btn-info" title="Ver evidência ${idx + 1}">
+                      <i class="fas fa-eye"></i> ${idx + 1}
+                    </a>
+                  `).join('')
+                  : `<a href="${dado.evidencia_url}" target="_blank" class="btn btn-sm btn-info" title="Ver evidência">
+                      <i class="fas fa-eye"></i> Ver
+                    </a>`
+                }
+              </div>
+            ` : '<span class="text-muted">-</span>'}
+          </td>
+          <td>
+            <small class="d-block text-muted">
+              <i class="fas fa-user-plus text-success"></i> ${criadoPor}
+            </small>
+            <small class="text-muted">
+              <i class="fas fa-clock"></i> ${criadoEm}
+            </small>
+          </td>
+          <td>
+            ${editadoPor ? `
+              <small class="d-block text-muted">
+                <i class="fas fa-user-edit text-primary"></i> ${editadoPor}
+              </small>
+              <small class="text-muted">
+                <i class="fas fa-clock"></i> ${editadoEm}
+              </small>
+            ` : '<span class="text-muted"><i class="fas fa-minus"></i> Nunca editado</span>'}
+          </td>
+          <td>
+            <button class="btn btn-sm btn-primary me-1" onclick="editarRegistro('${dado.id}')" title="Editar">
+              <i class="fas fa-edit"></i>
+            </button>
+            <button class="btn btn-sm btn-danger" onclick="excluirRegistro('${dado.id}')" title="Excluir">
+              <i class="fas fa-trash"></i>
+            </button>
+          </td>
+        </tr>
+      `;
+      }).join('');
+    }
+
+    // ========== FILTROS ==========
+    let dadosFiltradosAtuais = []; // Variável global para armazenar dados filtrados atuais
+
+    function aplicarFiltros() {
+      const filtroData = document.getElementById('filtroData').value;
+      const filtroOC = document.getElementById('filtroOC').value.toLowerCase();
+      const filtroTipoErro = document.getElementById('filtroTipoErro').value;
+      const filtroOperacao = document.getElementById('filtroOperacao').value;
+      const filtroResponsavel = document.getElementById('filtroResponsavel').value;
+
+      let dadosFiltrados = [...dadosCarregados];
+
+      if (filtroData) {
+        dadosFiltrados = dadosFiltrados.filter(d => d.data === filtroData);
+      }
+
+      if (filtroOC) {
+        dadosFiltrados = dadosFiltrados.filter(d => d.oc.toLowerCase().includes(filtroOC));
+      }
+
+      if (filtroTipoErro) {
+        dadosFiltrados = dadosFiltrados.filter(d => d.tipo_erro === filtroTipoErro);
+      }
+
+      if (filtroOperacao) {
+        dadosFiltrados = dadosFiltrados.filter(d => d.operacao === filtroOperacao);
+      }
+
+      if (filtroResponsavel) {
+        dadosFiltrados = dadosFiltrados.filter(d => d.responsavel === filtroResponsavel);
+      }
+
+      dadosFiltradosAtuais = dadosFiltrados; // Armazenar dados filtrados
+      renderizarTabela(dadosFiltrados);
+    }
+
+    // ========== EXPORTAÇÃO EXCEL ==========
+    function exportarParaExcel() {
+      // Usar dados filtrados se existirem, senão usar todos os dados carregados
+      const dadosParaExportar = dadosFiltradosAtuais.length > 0 ? dadosFiltradosAtuais : dadosCarregados;
+      
+      if (!dadosParaExportar || dadosParaExportar.length === 0) {
+        mostrarAlerta('Não há dados para exportar. Carregue os registros primeiro.', 'warning');
+        return;
+      }
+
+      const dataAtual = new Date().toISOString().split('T')[0];
+      const nomeArquivo = `gestao_dados_${dataAtual}`;
+
+      // Cabeçalhos
+      const headers = [
+        'Data',
+        'OC',
+        'Operação',
+        'Tipo de Erro',
+        'Sistema',
+        'Motivo da Devolução',
+        'Hora Envio',
+        'Hora Retorno',
+        'Responsável',
+        'Evidências',
+        'Criado por',
+        'Data Criação',
+        'Editado por',
+        'Data Edição'
+      ];
+
+      // Criar conteúdo HTML para Excel (formato que Excel entende)
+      let htmlContent = `
+        <html>
+          <head>
+            <meta charset="UTF-8">
+            <style>
+              table {
+                border-collapse: collapse;
+                width: 100%;
+              }
+              th {
+                background-color: #667eea;
+                color: white;
+                font-weight: bold;
+                padding: 8px;
+                text-align: left;
+                border: 1px solid #ddd;
+              }
+              td {
+                padding: 8px;
+                border: 1px solid #ddd;
+              }
+              tr:nth-child(even) {
+                background-color: #f9fafb;
+              }
+            </style>
+          </head>
+          <body>
+            <table>
+              <thead>
+                <tr>
+                  ${headers.map(h => `<th>${escaparHTML(h)}</th>`).join('')}
+                </tr>
+              </thead>
+              <tbody>
+      `;
+
+      // Adicionar linhas de dados
+      dadosParaExportar.forEach(dado => {
+        // Formatar informações de criação
+        const criadoPor = dado.criado_por_nome || dado.usuario_nome || 'Não informado';
+        const criadoEm = dado.criado_em ? formatarDataHora(dado.criado_em) : (dado.created_at ? formatarDataHora(dado.created_at) : '-');
+        
+        // Formatar informações de edição
+        const editadoPor = dado.editado_por_nome || 'Não editado';
+        const editadoEm = dado.editado_em ? formatarDataHora(dado.editado_em) : '-';
+        
+        // Formatar evidências (juntar URLs separadas por vírgula)
+        let evidencias = '-';
+        if (dado.evidencia_url) {
+          if (Array.isArray(dado.evidencia_url)) {
+            evidencias = dado.evidencia_url.join(', ');
+          } else if (typeof dado.evidencia_url === 'string' && dado.evidencia_url.trim()) {
+            evidencias = dado.evidencia_url.trim();
+          }
+        }
+
+        htmlContent += '<tr>';
+        htmlContent += `<td>${escaparHTML(formatarData(dado.data))}</td>`;
+        htmlContent += `<td>${escaparHTML(dado.oc || '')}</td>`;
+        htmlContent += `<td>${escaparHTML(dado.operacao || '')}</td>`;
+        htmlContent += `<td>${escaparHTML(dado.tipo_erro || '')}</td>`;
+        htmlContent += `<td>${escaparHTML(dado.sistema || '-')}</td>`;
+        htmlContent += `<td>${escaparHTML(dado.motivo_devolucao || '')}</td>`;
+        htmlContent += `<td>${escaparHTML(dado.hora_envio || '')}</td>`;
+        htmlContent += `<td>${escaparHTML(dado.hora_retorno || '')}</td>`;
+        htmlContent += `<td>${escaparHTML(dado.responsavel || '')}</td>`;
+        htmlContent += `<td>${escaparHTML(evidencias)}</td>`;
+        htmlContent += `<td>${escaparHTML(criadoPor)}</td>`;
+        htmlContent += `<td>${escaparHTML(criadoEm)}</td>`;
+        htmlContent += `<td>${escaparHTML(editadoPor)}</td>`;
+        htmlContent += `<td>${escaparHTML(editadoEm)}</td>`;
+        htmlContent += '</tr>';
+      });
+
+      htmlContent += `
+              </tbody>
+            </table>
+          </body>
+        </html>
+      `;
+
+      // Criar arquivo e fazer download
+      const blob = new Blob(['\ufeff' + htmlContent], { type: 'application/vnd.ms-excel;charset=utf-8;' });
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+
+      link.setAttribute('href', url);
+      link.setAttribute('download', `${nomeArquivo}.xls`);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      mostrarAlerta(`✅ Arquivo Excel exportado com sucesso!\n\nTotal de registros: ${dadosParaExportar.length}`, 'success');
+    }
+
+    function escaparHTML(texto) {
+      if (texto === null || texto === undefined) return '';
+      const textoStr = String(texto);
+      return textoStr
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    // ========== EDITAR ==========
+    let evidenciasExistentes = []; // Array para armazenar evidências existentes
+    let evidenciasParaRemover = []; // Array para armazenar URLs das evidências a remover
+
+    async function editarRegistro(id) {
+      const registro = dadosCarregados.find(d => d.id === id);
+      
+      if (!registro) {
+        mostrarAlerta('Registro não encontrado', 'danger');
+        return;
+      }
+
+      // Preencher formulário de edição
+      document.getElementById('editarId').value = registro.id;
+      document.getElementById('editarData').value = registro.data;
+      document.getElementById('editarOC').value = registro.oc;
+      document.getElementById('editarOperacao').value = registro.operacao;
+      document.getElementById('editarTipoErro').value = registro.tipo_erro;
+      document.getElementById('editarSistema').value = registro.sistema || '';
+      document.getElementById('editarMotivoDevolucao').value = registro.motivo_devolucao;
+      document.getElementById('editarHoraEnvio').value = registro.hora_envio;
+      document.getElementById('editarHoraRetorno').value = registro.hora_retorno;
+      document.getElementById('editarResponsavel').value = registro.responsavel;
+
+      // Carregar evidências existentes
+      evidenciasExistentes = [];
+      evidenciasParaRemover = [];
+      
+      if (registro.evidencia_url) {
+        if (Array.isArray(registro.evidencia_url)) {
+          evidenciasExistentes = [...registro.evidencia_url];
+        } else if (typeof registro.evidencia_url === 'string' && registro.evidencia_url.trim()) {
+          evidenciasExistentes = [registro.evidencia_url.trim()];
+        }
+      }
+      
+      renderizarEvidenciasExistentes();
+      
+      // Limpar preview de novos arquivos
+      document.getElementById('editarEvidencias').value = '';
+      document.getElementById('previewEvidenciasEdicao').innerHTML = '';
+
+      // Abrir modal
+      const modal = new bootstrap.Modal(document.getElementById('modalEdicao'));
+      modal.show();
+    }
+
+    function renderizarEvidenciasExistentes() {
+      const container = document.getElementById('evidenciasExistentes');
+      
+      if (evidenciasExistentes.length === 0) {
+        container.innerHTML = '<p class="text-muted mb-0">Nenhuma evidência anexada</p>';
+        return;
+      }
+      
+      container.innerHTML = evidenciasExistentes.map((url, index) => {
+        const fileName = url.split('/').pop() || `Evidência ${index + 1}`;
+        const isImage = /\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(fileName);
+        
+        return `
+          <div class="d-flex align-items-center mb-2 p-2 border rounded" id="evidencia-existente-${index}">
+            ${isImage ? `
+              <img src="${url}" alt="Preview" style="max-width: 80px; max-height: 80px; border-radius: 8px; border: 2px solid #e5e7eb; margin-right: 10px;" onerror="this.style.display='none'">
+            ` : `
+              <i class="fas fa-file fa-2x text-primary me-2"></i>
+            `}
+            <div class="flex-grow-1">
+              <a href="${url}" target="_blank" class="text-decoration-none">
+                <small class="d-block">${fileName}</small>
+              </a>
+              <small class="text-muted">Evidência ${index + 1}</small>
+            </div>
+            <button type="button" class="btn btn-sm btn-danger" onclick="removerEvidenciaExistente(${index})" title="Remover evidência">
+              <i class="fas fa-trash"></i>
+            </button>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function removerEvidenciaExistente(index) {
+      if (confirm('Deseja realmente remover esta evidência?')) {
+        const urlRemovida = evidenciasExistentes[index];
+        evidenciasParaRemover.push(urlRemovida);
+        evidenciasExistentes.splice(index, 1);
+        renderizarEvidenciasExistentes();
+      }
+    }
+
+    async function salvarEdicao() {
+      const id = document.getElementById('editarId').value;
+      
+      if (!id) {
+        mostrarAlerta('ID do registro não encontrado', 'danger');
+        return;
+      }
+
+      // Upload de novas evidências se houver
+      let novasEvidenciasUrls = [];
+      const arquivosNovos = document.getElementById('editarEvidencias').files;
+      
+      if (arquivosNovos && arquivosNovos.length > 0) {
+        try {
+          mostrarLoading(true);
+          
+          // Upload de cada arquivo novo
+          for (let i = 0; i < arquivosNovos.length; i++) {
+            const arquivo = arquivosNovos[i];
+            const uploadFormData = new FormData();
+            uploadFormData.append('evidencia', arquivo);
+            
+            const uploadResponse = await fetch('/api/gestao-dados/upload-evidencia', {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session.access_token}`
+              },
+              credentials: 'include',
+              body: uploadFormData
+            });
+            
+            const uploadResult = await uploadResponse.json();
+            if (uploadResult.success) {
+              novasEvidenciasUrls.push(uploadResult.url);
+            } else {
+              throw new Error(uploadResult.error || `Erro ao fazer upload da evidência ${i + 1}`);
+            }
+          }
+        } catch (error) {
+          console.error('Erro ao fazer upload das novas evidências:', error);
+          mostrarAlerta('Erro ao fazer upload das novas evidências: ' + error.message, 'warning');
+          mostrarLoading(false);
+          return;
+        }
+      }
+
+      // Combinar evidências existentes (não removidas) com novas
+      const evidenciasFinais = [...evidenciasExistentes, ...novasEvidenciasUrls];
+
+      // Validar horas (deve estar entre 00:00 e 23:59)
+      const horaEnvio = document.getElementById('editarHoraEnvio').value;
+      const horaRetorno = document.getElementById('editarHoraRetorno').value;
+      
+      if (horaEnvio) {
+        const [hora, minuto] = horaEnvio.split(':').map(Number);
+        if (hora < 0 || hora > 23 || minuto < 0 || minuto > 59) {
+          mostrarAlerta('A hora de envio deve estar entre 00:00 e 23:59', 'warning');
+          return;
+        }
+      }
+      
+      if (horaRetorno) {
+        const [hora, minuto] = horaRetorno.split(':').map(Number);
+        if (hora < 0 || hora > 23 || minuto < 0 || minuto > 59) {
+          mostrarAlerta('A hora de retorno deve estar entre 00:00 e 23:59', 'warning');
+          return;
+        }
+      }
+      
+      // Validar sistema
+      const sistema = document.getElementById('editarSistema').value;
+      if (!sistema || sistema.trim() === '') {
+        mostrarAlerta('Por favor, selecione o sistema', 'warning');
+        return;
+      }
+      
+      const dados = {
+        data: document.getElementById('editarData').value,
+        oc: document.getElementById('editarOC').value.trim(),
+        operacao: document.getElementById('editarOperacao').value,
+        tipo_erro: document.getElementById('editarTipoErro').value,
+        sistema: sistema.trim(),
+        motivo_devolucao: document.getElementById('editarMotivoDevolucao').value.trim(),
+        hora_envio: horaEnvio,
+        hora_retorno: horaRetorno,
+        responsavel: document.getElementById('editarResponsavel').value,
+        evidencia_url: evidenciasFinais.length > 0 ? evidenciasFinais : null
+      };
+
+      // Validação
+      if (!dados.data || !dados.oc || !dados.operacao || !dados.tipo_erro || !dados.sistema ||
+          !dados.motivo_devolucao || !dados.hora_envio || !dados.hora_retorno || !dados.responsavel) {
+        mostrarAlerta('Preencha todos os campos obrigatórios', 'warning');
+        return;
+      }
+
+      mostrarLoading(true);
+
+      try {
+        // Obter token de forma segura
+        let authHeader = {};
+        try {
+          const session = await supabase.auth.getSession();
+          if (session?.data?.session?.access_token) {
+            authHeader['Authorization'] = `Bearer ${session.data.session.access_token}`;
+          }
+        } catch (authError) {
+          console.warn('⚠️ Não foi possível obter token, usando autenticação via cookie:', authError);
+        }
+
+        const response = await fetch(`/api/gestao-dados/${id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            ...authHeader
+          },
+          credentials: 'include',
+          body: JSON.stringify(dados)
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+          // Mostrar erro detalhado
+          const errorMsg = result.error || `Erro ${response.status}: ${response.statusText}`;
+          console.error('❌ Erro na resposta:', {
+            status: response.status,
+            statusText: response.statusText,
+            error: result.error,
+            result: result
+          });
+          throw new Error(errorMsg);
+        }
+
+        mostrarAlerta('Lançamento atualizado com sucesso!', 'success');
+        
+        // Limpar arrays de evidências
+        evidenciasExistentes = [];
+        evidenciasParaRemover = [];
+        
+        // Fechar modal
+        const modal = bootstrap.Modal.getInstance(document.getElementById('modalEdicao'));
+        if (modal) {
+          modal.hide();
+        }
+        
+        // Recarregar dados
+        await carregarDados();
+        
+      } catch (error) {
+        console.error('❌ Erro ao atualizar lançamento:', error);
+        const errorMessage = error.message || 'Erro ao atualizar lançamento. Verifique o console para mais detalhes.';
+        mostrarAlerta(errorMessage, 'danger');
+      } finally {
+        mostrarLoading(false);
+      }
+    }
+
+    // ========== EXCLUIR ==========
+    async function excluirRegistro(id) {
+      if (!confirm('Tem certeza que deseja excluir este registro?')) {
+        return;
+      }
+
+      mostrarLoading(true);
+
+      try {
+        const response = await fetch(`/api/gestao-dados/${id}`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session.access_token}`
+          },
+          credentials: 'include'
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+          throw new Error(result.error || 'Erro ao excluir registro');
+        }
+
+        mostrarAlerta('Registro excluído com sucesso!', 'success');
+        await carregarDados();
+        
+      } catch (error) {
+        console.error('❌ Erro ao excluir registro:', error);
+        mostrarAlerta(error.message || 'Erro ao excluir registro', 'danger');
+      } finally {
+        mostrarLoading(false);
+      }
+    }
+
+    // ========== UTILITÁRIOS ==========
+    function formatarDataHora(dataHora) {
+      if (!dataHora) return '-';
+      try {
+        const data = new Date(dataHora);
+        const dia = String(data.getDate()).padStart(2, '0');
+        const mes = String(data.getMonth() + 1).padStart(2, '0');
+        const ano = data.getFullYear();
+        const horas = String(data.getHours()).padStart(2, '0');
+        const minutos = String(data.getMinutes()).padStart(2, '0');
+        return `${dia}/${mes}/${ano} ${horas}:${minutos}`;
+      } catch (e) {
+        return dataHora;
+      }
+    }
+
+    function formatarData(data) {
+      if (!data) return '-';
+      const date = new Date(data);
+      return date.toLocaleDateString('pt-BR');
+    }
+
+    function mostrarAlerta(mensagem, tipo) {
+      const alertDiv = document.createElement('div');
+      alertDiv.className = `alert alert-${tipo} alert-modern alert-dismissible fade show`;
+      alertDiv.innerHTML = `
+        ${mensagem}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+      `;
+      
+      const main = document.querySelector('main');
+      main.insertBefore(alertDiv, main.firstChild);
+      
+      setTimeout(() => {
+        alertDiv.remove();
+      }, 5000);
+    }
+
+    function mostrarLoading(mostrar) {
+      const overlay = document.getElementById('loadingOverlay');
+      overlay.style.display = mostrar ? 'flex' : 'none';
+    }
+
+    // ========== EXCLUIR TODOS OS REGISTROS (ADMIN) ==========
+    async function excluirTodosRegistros() {
+      if (!isAdmin) {
+        mostrarAlerta('Apenas administradores podem excluir todos os registros', 'danger');
+        return;
+      }
+
+      const total = dadosCarregados.length;
+      if (total === 0) {
+        mostrarAlerta('Não há registros para excluir', 'info');
+        return;
+      }
+
+      const confirmacao = prompt(
+        `⚠️ ATENÇÃO: Esta ação é IRREVERSÍVEL!\n\n` +
+        `Você está prestes a excluir TODOS os ${total} registro(s).\n\n` +
+        `Digite "EXCLUIR TUDO" para confirmar:`
+      );
+
+      if (confirmacao !== 'EXCLUIR TUDO') {
+        mostrarAlerta('Exclusão cancelada', 'info');
+        return;
+      }
+
+      mostrarLoading(true);
+
+      try {
+        const response = await fetch('/api/gestao-dados/excluir-todos', {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session.access_token}`
+          },
+          credentials: 'include'
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+          throw new Error(result.error || 'Erro ao excluir registros');
+        }
+
+        mostrarAlerta(`✅ ${result.excluidos || total} registro(s) excluído(s) com sucesso!`, 'success');
+        await carregarDados();
+        
+      } catch (error) {
+        console.error('❌ Erro ao excluir todos os registros:', error);
+        mostrarAlerta(error.message || 'Erro ao excluir registros', 'danger');
+      } finally {
+        mostrarLoading(false);
+      }
+    }
+
+    // ========== IMPORTAÇÃO CSV ==========
+    let arquivoCSVSelecionado = null;
+
+    function processarCSV(event) {
+      const file = event.target.files[0];
+      if (!file) {
+        arquivoCSVSelecionado = null;
+        document.getElementById('btnImportarCSV').disabled = true;
+        document.getElementById('csvInfo').style.display = 'none';
+        return;
+      }
+
+      if (!file.name.toLowerCase().endsWith('.csv')) {
+        mostrarAlerta('Por favor, selecione um arquivo CSV válido', 'warning');
+        event.target.value = '';
+        return;
+      }
+
+      arquivoCSVSelecionado = file;
+      document.getElementById('btnImportarCSV').disabled = false;
+      document.getElementById('csvFileName').textContent = file.name;
+      document.getElementById('csvInfo').style.display = 'block';
+    }
+
+    async function importarCSV() {
+      if (!arquivoCSVSelecionado) {
+        mostrarAlerta('Nenhum arquivo selecionado', 'warning');
+        return;
+      }
+
+      const btnImportar = document.getElementById('btnImportarCSV');
+      btnImportar.disabled = true;
+      btnImportar.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Importando...';
+      mostrarLoading(true);
+
+      try {
+        const formData = new FormData();
+        formData.append('csv', arquivoCSVSelecionado);
+
+        const { data: { session } } = await supabaseClient.auth.getSession();
+        const authToken = session?.access_token;
+
+        const headers = {};
+        if (authToken) {
+          headers['Authorization'] = `Bearer ${authToken}`;
+        }
+
+        const response = await fetch('/api/gestao-dados/importar-csv', {
+          method: 'POST',
+          headers,
+          credentials: 'include',
+          body: formData
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+          throw new Error(result.error || 'Erro ao importar CSV');
+        }
+
+        mostrarAlerta(`✅ ${result.importados || 0} registro(s) importado(s) com sucesso!${result.erros && result.erros.length > 0 ? ` ${result.erros.length} erro(s) encontrado(s).` : ''}`, 'success');
+        
+        // Limpar seleção
+        document.getElementById('csvFile').value = '';
+        arquivoCSVSelecionado = null;
+        document.getElementById('csvInfo').style.display = 'none';
+        
+        // Recarregar dados
+        await carregarDados();
+        
+      } catch (error) {
+        console.error('❌ Erro ao importar CSV:', error);
+        mostrarAlerta(error.message || 'Erro ao importar CSV', 'danger');
+      } finally {
+        btnImportar.disabled = false;
+        btnImportar.innerHTML = '<i class="fas fa-file-import"></i> Importar CSV';
+        mostrarLoading(false);
+      }
+    }
+
+    function baixarTemplateCSV() {
+      const headers = [
+        'Data',
+        'OC',
+        'Operação',
+        'Tipo de Erro',
+        'Motivo da Devolução',
+        'Hora Envio',
+        'Hora Retorno',
+        'Responsável'
+      ];
+
+      const exemplo = [
+        [
+          '2024-01-15',
+          'OC-12345',
+          'Jaboatão',
+          'Erro de Tabela',
+          'Tabela de preços desatualizada',
+          '08:30',
+          '10:45',
+          'Allisson silva'
+        ],
+        [
+          '2024-01-15',
+          'OC-12346',
+          'Usinas',
+          'Informações Incompletas ou Incorretas',
+          'Faltam dados do cliente',
+          '09:00',
+          '11:30',
+          'Aline oliveira'
+        ]
+      ];
+
+      // Criar CSV com BOM UTF-8 e aspas nos campos que contêm vírgulas
+      let csvContent = headers.map(h => `"${h}"`).join(',') + '\n';
+      exemplo.forEach(row => {
+        csvContent += row.map(cell => {
+          // Escapar aspas duplas dentro do campo
+          const escaped = String(cell).replace(/"/g, '""');
+          return `"${escaped}"`;
+        }).join(',') + '\n';
+      });
+
+      // BOM UTF-8 para Excel reconhecer corretamente
+      const BOM = '\uFEFF';
+      const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      link.setAttribute('download', 'template_gestao_dados.csv');
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+  </script>
+</body>
+</html>
+

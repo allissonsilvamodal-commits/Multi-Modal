@@ -1,0 +1,1120 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Treinamento – Disparador de Mensagens</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- QR Code Library -->
+    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+    <!-- HTML to PDF Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <style>
+        :root {
+            --primary:#6759ff;
+            --secondary:#8b5cf6;
+            --bg-page:#edf2ff;
+            --bg-card:#ffffff;
+            --text:#1f2937;
+        }
+        body{
+            font-family:"Segoe UI",system-ui,-apple-system,BlinkMacSystemFont,sans-serif;
+            background:var(--bg-page);
+            padding:2rem 0;
+            color:var(--text);
+        }
+        .container-training{max-width:960px;margin:0 auto;}
+        .hero{
+            background:linear-gradient(135deg,var(--primary),var(--secondary));
+            color:#fff;border-radius:20px;padding:2rem;
+            box-shadow:0 18px 40px rgba(103,89,255,.25);
+        }
+        .hero h1{font-weight:800;margin-bottom:.4rem;}
+        .hero p{opacity:.9;margin:0;}
+        .hero .tag{display:inline-flex;align-items:center;gap:.4rem;background:rgba(0,0,0,.25);padding:.2rem .8rem;border-radius:999px;font-weight:600;}
+        a.btn-back{
+            display:inline-flex;align-items:center;gap:.5rem;
+            padding:.55rem 1rem;border-radius:999px;
+            background:#111827;color:#fff;text-decoration:none;
+            margin-bottom:1.25rem;font-weight:600;
+        }
+        section.training-block{
+            margin-top:1.5rem;
+            background:var(--bg-card);
+            border-radius:18px;
+            padding:1.75rem;
+            box-shadow:0 16px 35px rgba(31,41,55,.08);
+        }
+        section.training-block h2{
+            font-size:1.2rem;
+            font-weight:800;
+            margin-bottom:1rem;
+            display:flex;
+            align-items:center;
+            gap:.5rem;
+        }
+        .step-card{
+            border-left:4px solid var(--primary);
+            background:#f8fafc;
+            padding:1rem 1.25rem;
+            border-radius:12px;
+            margin:.8rem 0;
+            box-shadow:0 8px 18px rgba(0,0,0,.05);
+        }
+        .media-figure{
+            margin:1.5rem 0;
+            text-align:center;
+        }
+        .media-figure img{
+            width:100%;
+            border-radius:16px;
+            border:3px solid #e5e7eb;
+            box-shadow:0 20px 45px rgba(15,23,42,.18);
+        }
+        .media-figure figcaption{
+            margin-top:.6rem;font-size:.9rem;color:#4b5563;
+            background:#f3f4f6;border-radius:10px;padding:.75rem 1rem;
+        }
+        .info-box,.warning-box,.tip-box{
+            padding:1rem 1.2rem;border-radius:12px;margin:1rem 0;
+        }
+        .info-box{background:#e0f2fe;border-left:5px solid #0284c7;}
+        .warning-box{background:#fee2e2;border-left:5px solid #dc2626;}
+        .tip-box{background:#fef3c7;border-left:5px solid #f59e0b;}
+        .signature-card{
+            border:2px dashed #cbd5f5;
+            padding:1.25rem;
+            border-radius:16px;
+            background:#f8fafc;
+        }
+        .signature-card label{font-weight:600;color:#111827;margin-top:.75rem;}
+        canvas.signature-canvas{
+            width:100%;height:200px;
+            border:2px solid #e2e8f0;
+            border-radius:12px;
+            background:#fff;
+        }
+        
+        /* Estilos para impressão/PDF */
+        @media print {
+            body { background: white !important; color: #1f2937 !important; }
+            .btn-back, button, .signature-card, canvas { display: none !important; }
+        }
+        
+        /* Estilos específicos para PDF - reduzir espaçamentos */
+        .pdf-optimized .training-block {
+            margin-top: 1rem !important;
+            margin-bottom: 1rem !important;
+            padding: 1.25rem !important;
+            page-break-inside: avoid !important;
+        }
+        
+        .pdf-optimized .step-card {
+            margin-top: 0.5rem !important;
+            margin-bottom: 0.5rem !important;
+            page-break-inside: avoid !important;
+        }
+        
+        .pdf-optimized .media-figure {
+            margin-top: 0.75rem !important;
+            margin-bottom: 0.75rem !important;
+            page-break-inside: avoid !important;
+        }
+        
+        .pdf-optimized .hero {
+            margin-bottom: 1.5rem !important;
+            padding: 1.5rem !important;
+        }
+        
+        .pdf-optimized h1,
+        .pdf-optimized h2,
+        .pdf-optimized h3 {
+            page-break-after: avoid !important;
+            page-break-inside: avoid !important;
+            margin-top: 0.75rem !important;
+            margin-bottom: 0.5rem !important;
+        }
+        
+        .pdf-optimized p {
+            margin-top: 0.5rem !important;
+            margin-bottom: 0.5rem !important;
+        }
+        
+        .pdf-optimized ul,
+        .pdf-optimized ol {
+            margin-top: 0.5rem !important;
+            margin-bottom: 0.5rem !important;
+        }
+        
+        /* Estilos para o botão de download PDF */
+        #btnBaixarPDF {
+            transition: all 0.3s ease;
+        }
+        #btnBaixarPDF:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(16, 185, 129, 0.4) !important;
+        }
+        #btnBaixarPDF:active {
+            transform: translateY(0);
+        }
+    </style>
+</head>
+<body>
+<main class="container-training">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <a class="btn-back" href="treinamentos.html"><i class="fas fa-chevron-left"></i>Voltar para Treinamentos</a>
+        <button type="button" class="btn btn-success" onclick="baixarTreinamentoPDF()" id="btnBaixarPDF" style="display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.55rem 1rem; border-radius: 999px; background: #10b981; color: #fff; border: none; font-weight: 600; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3); transition: all 0.3s ease;">
+            <i class="fas fa-file-pdf"></i>
+            Baixar PDF
+        </button>
+    </div>
+    <header class="hero">
+        <span class="tag"><i class="fas fa-user-graduate"></i> Treinamento obrigatório</span>
+        <h1><i class="fas fa-paper-plane me-2"></i>Disparador de Mensagens WhatsApp</h1>
+        <p>Este guia mostra, em detalhes, como sair do “painel vazio” até o preenchimento da declaração final, evitando erros que podem bloquear a linha ou gerar disparos incorretos.</p>
+        <ul style="margin-top:1rem;padding-left:1.25rem;list-style:disc;opacity:.9">
+            <li><strong>Tempo estimado:</strong> 15 minutos para ler + 5 minutos para assinar.</li>
+            <li><strong>Público:</strong> times Operacional, Comercial e Monitoramento que utilizam o disparador.</li>
+            <li><strong>Objetivo:</strong> garantir envios rastreáveis, seguros e relevantes para motoristas.</li>
+        </ul>
+    </header>
+
+    <section class="training-block" id="preparacao">
+        <h2><i class="fas fa-filter"></i>1. Preparação e leitura do painel</h2>
+        <p>Antes de clicar em qualquer botão, reserve 30 segundos para entender o cenário do dia. As decisões tomadas na preparação evitam retrabalho, mensagens fora do contexto e disparos para motoristas errados.</p>
+        <div class="step-card">
+            <strong>1.1 Acesso inicial</strong>
+            <ul>
+                <li>Abra <strong>Dashboard ▸ Disparador</strong> e confirme se você está logado com um usuário autorizado.</li>
+                <li>Leia os indicadores do topo (Total, Ativos, Categoria ativa) para entender o contexto antes de qualquer filtro.</li>
+                <li>Escolha a categoria operacional do dia (leve, médio ou pesado). Todo o restante do fluxo partirá dessa escolha.</li>
+            </ul>
+            <p class="mb-0">Se algum indicador estiver com valor incoerente (ex.: “Motoristas ativos = 0”), acione o time de dados antes de continuar.</p>
+    </div>
+        <figure class="media-figure">
+            <img src="../images/treinamento-imagens/painel-inicial.png?v=20251124T03" alt="Tela inicial do painel">
+            <figcaption>IMAGEM 1 – Painel com cards de categoria e indicadores principais.</figcaption>
+        </figure>
+        <div class="step-card">
+            <strong>1.2 Cards de categoria</strong>
+            <p>Cada card dispara a atualização da base e dos indicadores. Aguarde a animação de carregamento terminar antes de aplicar filtros adicionais para evitar consultas duplicadas.</p>
+            <p class="mb-0">Use a legenda da linha superior (“Categoria ativa”) para validar se você está disparando para o público correto.</p>
+                </div>
+        <figure class="media-figure">
+            <img src="../images/treinamento-imagens/cards-categorias.png?v=20251124T03" alt="Cards de categorias">
+            <figcaption>IMAGEM 2 – Destaque visual de um card selecionado.</figcaption>
+        </figure>
+        <div class="step-card">
+            <strong>1.3 Filtros combinados</strong>
+            <p>Recomendações para cada filtro:</p>
+            <ul>
+                <li><strong>Tipo de veículo</strong>: restringe o porte (Truck, Carreta etc.). Combine com categoria para listas menores.</li>
+                <li><strong>Carroceria</strong>: útil para operações específicas (Sider, Baú, Plataforma).</li>
+                <li><strong>Estado + Status</strong>: identifique motoristas disponíveis na região da coleta.</li>
+                <li><strong>Busca livre</strong>: aceita nome, telefone ou parte do e-mail.</li>
+                <li><strong>Apenas favoritos</strong>: reduz para motoristas previamente homologados.</li>
+            </ul>
+            <p>Preencha os filtros de cima para baixo; cada alteração executa uma nova consulta. Se precisar trocar tudo, clique primeiro em “Limpar filtros” para não herdar parâmetros antigos.</p>
+            <p class="mb-0"><strong>Boa prática:</strong> anote em um bloco quais filtros foram usados. Isso facilita replicar o disparo ou explicar a estratégia posteriormente.</p>
+            </div>
+        <figure class="media-figure">
+            <img src="../images/treinamento-imagens/filtros.png?v=20251124T03" alt="Seção de filtros">
+            <figcaption>IMAGEM 3 – Área completa de filtros com ações rápidas.</figcaption>
+        </figure>
+        <figure class="media-figure">
+            <img src="../images/treinamento-imagens/favoritos-lista.png?v=20251124T03" alt="Botão de favoritos na lista">
+            <figcaption>IMAGEM 4 – Estrelar motoristas cria uma curadoria própria por usuário.</figcaption>
+        </figure>
+        <figure class="media-figure">
+            <img src="../images/treinamento-imagens/filtro-favoritos.png?v=20251124T03" alt="Filtro apenas favoritos">
+            <figcaption>IMAGEM 5 – Ative “Apenas favoritos” quando precisar disparar somente para motoristas validados.</figcaption>
+        </figure>
+        <div class="tip-box mb-0">Dica: combine “Categoria pesada + Carreta + Estado SP + Favoritos” para disparos cirúrgicos em operações urgentes.</div>
+    </section>
+
+    <section class="training-block" id="selecao">
+        <h2><i class="fas fa-users"></i>2. Seleção de motoristas</h2>
+        <div class="step-card">
+            <strong>2.1 Seleção individual</strong>
+            <p>Ao clicar em um motorista, o card fica azul e o contador “X selecionados” sobe. Essa confirmação visual evita disparos para perfis indevidos.</p>
+            <p class="mb-0">Passe o mouse sobre o card para ver telefone, classe e carroceria antes de confirmar a seleção.</p>
+            </div>
+        <figure class="media-figure">
+            <img src="../images/treinamento-imagens/motoristas-selecionados.png?v=20251124T03" alt="Motoristas selecionados">
+            <figcaption>IMAGEM 6 – Destaque e contador “X selecionados”.</figcaption>
+        </figure>
+        <div class="step-card">
+            <strong>2.2 Seleção em massa</strong>
+            <ul>
+                <li><strong>Selecionar Todos:</strong> aplica-se a todos os resultados filtrados (use somente após revisar o filtro).</li>
+                <li><strong>Selecionar Página:</strong> marca apenas os itens visíveis. Ideal para lotes menores ou validação por páginas.</li>
+                <li><strong>Limpar Seleção:</strong> remove tudo para reiniciar o processo com segurança.</li>
+            </ul>
+            <p class="mb-0">Regra de ouro: nunca clique em “Selecionar Todos” sem antes testar a mensagem em alguns contatos.</p>
+        </div>
+        <figure class="media-figure">
+            <img src="../images/treinamento-imagens/botoes-selecao.png?v=20251124T03" alt="Botões de seleção">
+            <figcaption>IMAGEM 7 – Botões de seleção em massa.</figcaption>
+        </figure>
+        <div class="info-box">
+            <strong>Checklist rápido antes de seguir para a mensagem:</strong>
+            <ul class="mb-0">
+                <li>O contador “X selecionados” corresponde ao que você pretende disparar?</li>
+                <li>Há pelo menos um favorito na seleção? (Evite listas totalmente frias).</li>
+                <li>Os motoristas selecionados fazem sentido para o filtro/região? Revise se necessário.</li>
+            </ul>
+        </div>
+        <div class="warning-box mb-0">Atenção: sempre valide se os números possuem DDI + DDD antes de disparar.</div>
+    </section>
+
+    <section class="training-block" id="mensagem">
+        <h2><i class="fas fa-comment-dots"></i>3. Composição da mensagem</h2>
+        <div class="step-card">
+            <strong>Variáveis suportadas</strong>
+            <p>Use variáveis para personalizar o texto automaticamente:</p>
+            <p class="mb-2"><code>{{name}}</code>, <code>{{telefone}}</code>, <code>{{estado}}</code>, <code>{{classe_veiculo}}</code>, <code>{{tipo_veiculo}}</code>, <code>{{tipo_carroceria}}</code></p>
+            <p class="mb-0">Exemplo: <code>Olá {{name}}, temos vaga urgente para {{classe_veiculo}} em {{estado}}.</code></p>
+                </div>
+        <figure class="media-figure">
+            <img src="../images/treinamento-imagens/composicao-mensagem.png?v=20251124T03" alt="Composição de mensagem">
+            <figcaption>IMAGEM 8 – Campo de mensagem com variáveis e exemplo.</figcaption>
+        </figure>
+        <div class="step-card">
+            <strong>Boas práticas</strong>
+            <ul>
+                <li>Seja direto e respeitoso; evite letras maiúsculas em excesso.</li>
+                <li>Compartilhe links apenas de domínios confiáveis (site institucional, formulários oficiais).</li>
+                <li>Evite prometer valores ou vantagens que não estejam confirmados.</li>
+                <li>Teste a mensagem após cada ajuste para ver como as variáveis serão renderizadas.</li>
+            </ul>
+            <p class="mb-0"><strong>Modelo sugerido:</strong> “{{name}}, a Multimodal tem carga para {{classe_veiculo}} com carroceria {{tipo_carroceria}} saindo de {{estado}}. Interesse? Responda SIM.”</p>
+            </div>
+        <div class="tip-box mb-0">Use emoji com moderação (até 2). Eles ajudam a humanizar, mas excesso pode aumentar taxa de bloqueio.</div>
+    </section>
+
+    <section class="training-block" id="evolution-api">
+        <h2><i class="fas fa-plug"></i>4. Configuração da Evolution API</h2>
+        <p>Antes de iniciar os disparos, é essencial garantir que sua instância Evolution API esteja conectada e funcionando corretamente. A Evolution API é responsável pelo envio das mensagens via WhatsApp.</p>
+        <div class="step-card">
+            <strong>4.1 Verificar Status da Instância</strong>
+            <p>No painel do disparador, você encontrará um card "Status Evolution API" que mostra o estado atual da sua conexão:</p>
+            <ul>
+                <li><strong>Conectado:</strong> Instância ativa e pronta para envios</li>
+                <li><strong>Desconectado:</strong> É necessário gerar um novo QR Code</li>
+                <li><strong>Erro:</strong> Verifique as configurações em Settings</li>
+            </ul>
+            <p class="mb-0">Sempre verifique o status antes de iniciar um disparo para evitar falhas.</p>
+        </div>
+        <div class="step-card">
+            <strong>4.2 Gerar QR Code para Conectar</strong>
+            <p>Se sua instância estiver desconectada, você precisará gerar um novo QR Code:</p>
+            <ol>
+                <li>Clique no botão <strong>"Gerar QR Code"</strong> no card de Status Evolution API</li>
+                <li>Um modal será aberto com o QR Code e instruções detalhadas</li>
+                <li>Abra o WhatsApp no seu celular</li>
+                <li>Vá em <strong>Menu (⋮)</strong> → <strong>Aparelhos conectados</strong> → <strong>Conectar um aparelho</strong></li>
+                <li>Escaneie o QR Code exibido no modal</li>
+                <li>Aguarde a confirmação de conexão</li>
+            </ol>
+            <p class="mb-0"><strong>Importante:</strong> O QR Code expira em alguns minutos. Se expirar, gere um novo clicando em "Atualizar QR Code".</p>
+        </div>
+        <div class="step-card">
+            <strong>4.3 Desconectar Instância</strong>
+            <p>Se precisar desconectar sua instância (por exemplo, para conectar em outro dispositivo):</p>
+            <ol>
+                <li>Clique no botão <strong>"Deslogar"</strong> no card de Status Evolution API</li>
+                <li>Confirme a ação no diálogo</li>
+                <li>A instância será desconectada e você precisará gerar um novo QR Code para reconectar</li>
+            </ol>
+            <p class="mb-0"><strong>Atenção:</strong> Ao desconectar, todos os envios serão interrompidos até que você reconecte.</p>
+        </div>
+        <div class="info-box">
+            <strong><i class="fas fa-lightbulb me-2"></i>Dicas importantes:</strong>
+            <ul class="mb-0">
+                <li>Mantenha o celular com WhatsApp conectado próximo ao computador durante os disparos</li>
+                <li>Se o QR Code não aparecer, verifique se sua instância está configurada em <strong>Settings > Evolution API</strong></li>
+                <li>Em caso de problemas persistentes, entre em contato com o administrador do sistema</li>
+            </ul>
+        </div>
+        <div class="warning-box mb-3">
+            <strong><i class="fas fa-exclamation-triangle me-2"></i>Atenção:</strong> Nunca compartilhe seu QR Code ou credenciais da Evolution API. Cada usuário deve ter sua própria instância configurada.
+        </div>
+        
+        <!-- Botões de teste (MODO SIMULAÇÃO) -->
+        <div class="step-card" style="background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); border-left: 4px solid #667eea;">
+            <div class="alert alert-warning border-0 mb-3" style="border-radius: 12px; background: #fff3cd;">
+                <i class="fas fa-graduation-cap me-2"></i>
+                <strong>Modo Treinamento:</strong> Os botões abaixo são apenas para demonstração. Nenhuma ação real será executada.
+            </div>
+            <strong><i class="fas fa-flask me-2"></i>Teste as funcionalidades (Simulação):</strong>
+            <p class="mb-3">Use os botões abaixo para ver como funcionam as funcionalidades de QR Code e logout. Estas são simulações seguras que não afetam sua instância real:</p>
+            <div class="d-flex gap-2 flex-wrap">
+                <button type="button" class="btn btn-primary" onclick="gerarQRCodeEvolution()">
+                    <i class="fas fa-qrcode me-2"></i>Gerar QR Code (Simulação)
+                </button>
+                <button type="button" class="btn btn-danger" onclick="deslogarInstanciaEvolution()">
+                    <i class="fas fa-sign-out-alt me-2"></i>Deslogar Instância (Simulação)
+                </button>
+            </div>
+            <p class="mt-3 mb-0 text-muted" style="font-size: 0.9rem;">
+                <i class="fas fa-shield-alt me-1"></i>
+                <strong>Segurança:</strong> Estas são simulações que mostram como as funcionalidades funcionam, mas não executam ações reais. No painel principal, os botões executam ações reais.
+            </p>
+        </div>
+    </section>
+
+    <section class="training-block" id="seguranca">
+        <h2><i class="fas fa-user-shield"></i>5. Parâmetros de segurança</h2>
+        <figure class="media-figure">
+            <img src="../images/treinamento-imagens/configuracoes-seguranca.png?v=20251124T03" alt="Modal de configurações de segurança">
+            <figcaption>IMAGEM 9 – Limites, intervalos e simulação de digitação.</figcaption>
+        </figure>
+        <div class="step-card">
+            <strong>Checklist obrigatório</strong>
+            <ul>
+                <li>Intervalo aleatório ≥ 3 segundos para manter ritmo humano.</li>
+                <li>Limite por janela: máximo 50 mensagens a cada 5 minutos.</li>
+                <li>Cooldown: respeite de 15 a 30 minutos quando atingir o limite.</li>
+                <li>Simulação de digitação: mantenha ativa para reduzir bloqueios.</li>
+            </ul>
+            <p class="mb-0">Antes de salvar, verbalize os valores em voz alta. Parece exagero, mas ajuda a evitar números errados.</p>
+            <div class="warning-box mt-3 mb-0">Alterações agressivas são responsabilidade do operador e podem bloquear a linha definitivamente.</div>
+            </div>
+    </section>
+
+    <section class="training-block" id="teste-disparo">
+        <h2><i class="fas fa-clipboard-check"></i>6. Testes e disparo</h2>
+        <figure class="media-figure">
+            <img src="../images/treinamento-imagens/area-testes.png?v=20251124T03" alt="Área de testes">
+            <figcaption>IMAGEM 10 – Telefone de teste e botões “Enviar teste” / “Testar mensagem”.</figcaption>
+        </figure>
+        <figure class="media-figure">
+            <img src="../images/treinamento-imagens/disparo-progresso.png?v=20251124T03" alt="Progresso do disparo">
+            <figcaption>IMAGEM 11 – Botões Iniciar/Parar e contadores.</figcaption>
+        </figure>
+        <div class="step-card">
+            <strong>Fluxo recomendado para disparar</strong>
+            <ol class="mb-0">
+                <li>Preencha o campo “Telefone para teste” e clique em <strong>Enviar teste</strong>.</li>
+                <li>Use o botão <strong>Testar mensagem</strong> para revisar a formatação e variáveis.</li>
+                <li>Valide manualmente o retorno dos três primeiros contatos reais.</li>
+                <li>Só então clique em <strong>Iniciar disparo</strong>. Durante o envio, monitore “Enviados, Falhas, Total”.</li>
+                <li>Caso precise pausar, use o botão <strong>Parar disparo</strong>; retomar manualmente evita filas duplicadas.</li>
+            </ol>
+                </div>
+        <div class="tip-box">Sempre que reiniciar o disparo, revise se os mesmos motoristas ainda estão selecionados para evitar mensagens repetidas.</div>
+    </section>
+
+    <section class="training-block" id="logs">
+        <h2><i class="fas fa-database"></i>7. Logs e BI</h2>
+        <p>Todos os envios são registrados na tabela <strong>disparos_log</strong> com usuário, horário, telefone e status. Isso permite auditoria completa em caso de dúvidas.</p>
+        <div class="step-card">
+            <strong>Como consultar os registros</strong>
+            <ul class="mb-0">
+                <li>Acesse o painel de BI ou solicite o export no menu “Logs”.</li>
+                <li>Filtre por data, usuário e departamento para encontrar disparos específicos.</li>
+                <li>Analise os campos “status” (sucesso/falha) e “mensagem” para entender eventuais retornos do WhatsApp.</li>
+            </ul>
+            </div>
+        <figure class="media-figure">
+            <img src="../images/treinamento-imagens/bi-disparos.png?v=20251124T03" alt="Painel BI Disparos">
+            <figcaption>IMAGEM 12 – KPIs e filtros do BI.</figcaption>
+        </figure>
+        <div class="info-box mb-0">Use o BI semanalmente para acompanhar tendência de falhas, horários de maior volume e necessidade de ajustar os parâmetros de segurança.</div>
+    </section>
+
+    <section class="training-block" id="assinatura">
+        <h2><i class="fas fa-signature"></i>8. Declaração de conclusão</h2>
+        <p>Finalize o treinamento registrando seu aceite. Esse registro comprova que você compreendeu as responsabilidades e boas práticas do disparador.</p>
+        <div class="signature-card">
+            <label for="sigNome">Nome completo</label>
+            <input id="sigNome" class="form-control" placeholder="Digite seu nome">
+            <label for="sigCPF" class="mt-3">CPF</label>
+            <input id="sigCPF" class="form-control" placeholder="000.000.000-00">
+            <label for="sigData" class="mt-3">Data</label>
+            <input id="sigData" type="date" class="form-control">
+            <label class="mt-3">Assinatura digital *</label>
+            <canvas id="signatureCanvas" class="signature-canvas"></canvas>
+            <div class="d-flex gap-2 mt-3 flex-wrap">
+                <button class="btn btn-secondary btn-sm" type="button" onclick="limparAssinatura()">
+                    <i class="fas fa-eraser me-2"></i>Limpar assinatura
+                </button>
+                <button id="btnAssinar" class="btn btn-primary btn-sm" type="button">
+                    <i class="fas fa-file-signature me-2"></i>Salvar declaração
+            </button>
+        </div>
+            <p class="mt-3 mb-0 text-secondary" style="font-size:.9rem">Os registros ficam disponíveis para auditoria. Sempre que houver atualização do treinamento, um novo aceite será solicitado.</p>
+    </div>
+    </section>
+</main>
+
+<!-- Modal QR Code Evolution -->
+<div class="modal fade" id="modalQRCodeEvolution" tabindex="-1" aria-labelledby="modalQRCodeEvolutionLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content" style="border-radius: 16px; overflow: hidden; box-shadow: 0 10px 40px rgba(0,0,0,0.2);">
+      <div class="modal-header" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 1.5rem;">
+        <h5 class="modal-title" id="modalQRCodeEvolutionLabel" style="font-weight: 600;">
+          <i class="fas fa-qrcode me-2"></i>Conectar Instância Evolution
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fechar"></button>
+      </div>
+      <div class="modal-body" style="padding: 2rem; background: #f8f9fa;">
+        <!-- Instruções -->
+        <div class="alert alert-info border-0 shadow-sm mb-4" style="border-radius: 12px; background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);">
+          <div class="d-flex align-items-start">
+            <i class="fas fa-info-circle fa-2x me-3 mt-1" style="color: #1976d2;"></i>
+            <div>
+              <h6 class="alert-heading mb-2" style="color: #1565c0; font-weight: 600;">
+                <i class="fas fa-mobile-alt me-2"></i>Como conectar:
+              </h6>
+              <ol class="mb-0 ps-3" style="color: #424242; line-height: 1.8;">
+                <li>Abra o <strong>WhatsApp</strong> no seu celular</li>
+                <li>Toque em <strong>Menu (⋮)</strong> ou <strong>Configurações</strong></li>
+                <li>Vá em <strong>Aparelhos conectados</strong></li>
+                <li>Toque em <strong>Conectar um aparelho</strong></li>
+                <li>Escaneie o QR Code abaixo</li>
+              </ol>
+            </div>
+          </div>
+        </div>
+
+        <!-- Container do QR Code -->
+        <div class="text-center mb-4">
+          <div id="qrcodeEvolutionContainer" class="d-flex justify-content-center align-items-center" 
+               style="min-height: 320px; background: white; border-radius: 16px; padding: 2rem; box-shadow: 0 4px 20px rgba(0,0,0,0.1); position: relative;">
+            <div class="text-muted w-100">
+              <div class="loading-spinner mb-3" style="width: 50px; height: 50px; margin: 0 auto;"></div>
+              <p class="mb-0" style="font-size: 1.1rem; font-weight: 500;">Gerando QR Code...</p>
+            </div>
+          </div>
+          
+          <!-- Informações adicionais -->
+          <div class="mt-3">
+            <p class="mb-2" id="qrcodeEvolutionInfo" style="color: #666; font-size: 0.95rem;">
+              <i class="fas fa-sync-alt me-2"></i>Use o aplicativo WhatsApp para escanear o código.
+            </p>
+            <small class="text-muted d-block" id="qrcodeEvolutionStatus" style="font-size: 0.85rem;"></small>
+          </div>
+        </div>
+
+        <!-- Dica -->
+        <div class="alert alert-warning border-0 shadow-sm mb-0" style="border-radius: 12px; background: #fff3cd;">
+          <div class="d-flex align-items-center">
+            <i class="fas fa-lightbulb me-2" style="color: #856404;"></i>
+            <small class="mb-0" style="color: #856404;">
+              <strong>Dica:</strong> Certifique-se de que a tela do celular está com brilho máximo para facilitar a leitura do QR Code.
+            </small>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer" style="background: #f8f9fa; border-top: 1px solid #e0e0e0; padding: 1rem 1.5rem;">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+          <i class="fas fa-times me-2"></i>Fechar
+        </button>
+        <button type="button" class="btn btn-primary" id="btnAtualizarQRCode" style="display: none;">
+          <i class="fas fa-sync-alt me-2"></i>Atualizar QR Code
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+(function preloadImages(){
+    const VERSION = '20251124T03';
+    document.querySelectorAll('.media-figure img').forEach(img => {
+        const baseSrc = img.getAttribute('src').split('?')[0];
+        img.src = `${baseSrc}?v=${VERSION}`;
+    });
+})();
+</script>
+<script>
+(function signaturePad(){
+  const canvas = document.getElementById('signatureCanvas');
+  const ctx = canvas.getContext('2d');
+  let drawing = false;
+  let lastX = 0, lastY = 0;
+  
+  function resizeCanvas() {
+    const rect = canvas.getBoundingClientRect();
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    canvas.width = rect.width;
+    canvas.height = 200;
+    ctx.putImageData(imageData, 0, 0);
+    ctx.lineWidth = 2;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.strokeStyle = '#111827';
+  }
+
+  function startDraw(e){
+    drawing = true;
+    const rect = canvas.getBoundingClientRect();
+    lastX = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
+    lastY = (e.touches ? e.touches[0].clientY : e.clientY) - rect.top;
+  }
+  
+  function draw(e){
+    if(!drawing) return;
+    e.preventDefault();
+    const rect = canvas.getBoundingClientRect();
+    const x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
+    const y = (e.touches ? e.touches[0].clientY : e.clientY) - rect.top;
+    ctx.beginPath();
+    ctx.moveTo(lastX,lastY);
+    ctx.lineTo(x,y);
+    ctx.stroke();
+    lastX = x; lastY = y;
+  }
+
+  function stopDraw(){ drawing = false; }
+
+  canvas.addEventListener('mousedown', startDraw);
+  canvas.addEventListener('mousemove', draw);
+  canvas.addEventListener('mouseup', stopDraw);
+  canvas.addEventListener('mouseout', stopDraw);
+  canvas.addEventListener('touchstart', startDraw, {passive:false});
+  canvas.addEventListener('touchmove', draw, {passive:false});
+  canvas.addEventListener('touchend', stopDraw);
+
+  window.addEventListener('resize', resizeCanvas);
+  resizeCanvas();
+
+  document.getElementById('sigData').value = new Date().toISOString().slice(0,10);
+
+  document.getElementById('sigCPF').addEventListener('input', e => {
+    let value = e.target.value.replace(/\D/g,'');
+    if(value.length <= 11){
+      value = value.replace(/(\d{3})(\d)/, '$1.$2');
+      value = value.replace(/(\d{3})(\d)/, '$1.$2');
+      value = value.replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+      e.target.value = value;
+    }
+  });
+
+  window.limparAssinatura = () => ctx.clearRect(0,0,canvas.width,canvas.height);
+})();
+</script>
+<script>
+document.getElementById('btnAssinar').addEventListener('click', async () => {
+  const nome = document.getElementById('sigNome').value.trim();
+  const cpf = document.getElementById('sigCPF').value.trim();
+  const data = document.getElementById('sigData').value;
+  const canvas = document.getElementById('signatureCanvas');
+    const assinatura = canvas.toDataURL();
+    
+  if(!nome || !cpf || !data){
+    alert('Preencha nome, CPF e data.');
+      return; 
+    }
+    
+  const pixels = canvas.getContext('2d').getImageData(0,0,canvas.width,canvas.height).data;
+  const hasTrace = pixels.some(channel => channel !== 0);
+  if(!hasTrace){
+    alert('Faça a assinatura digital antes de salvar.');
+      return;
+    }
+
+  try{
+      const cfg = await (await fetch('/api/supabase-config')).json();
+    const supabase = window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey);
+    const { data: session } = await supabase.auth.getSession();
+    
+    // Capturar user_id da sessão
+    let userId = null;
+    if (session?.session?.user) {
+      userId = session.session.user.id;
+      console.log('✅ User ID capturado:', userId);
+    } else {
+      // Tentar obter via getUser se getSession não retornar
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          userId = user.id;
+          console.log('✅ User ID obtido via getUser:', userId);
+        }
+      } catch (e) {
+        console.warn('⚠️ Não foi possível obter user_id:', e);
+      }
+    }
+
+    const headers = {
+      'Content-Type': 'application/json',
+      ...(session?.session?.access_token ? { Authorization: `Bearer ${session.session.access_token}` } : {})
+    };
+    
+    // Incluir credentials para enviar cookies de sessão
+    const resp = await fetch('/api/treinamentos/assinaturas', {
+      method:'POST',
+      headers: headers,
+      credentials: 'include',
+      body:JSON.stringify({
+          treinamento_slug:'disparador_mensagens', 
+          user_id: userId, // Enviar user_id explicitamente
+          nome, 
+          cpf, 
+          assinatura_texto: assinatura,
+          data_assinatura: new Date().toISOString(),
+          user_agent: navigator.userAgent
+        })
+      });
+
+    if(!resp.ok) {
+      const errorText = await resp.text();
+      console.error('❌ Erro na resposta:', errorText);
+      throw new Error(errorText || 'Erro ao salvar assinatura');
+    }
+    
+    const result = await resp.json();
+    console.log('✅ Assinatura salva:', result);
+    
+    if (result.user_id) {
+      alert('✅ Declaração registrada com sucesso!');
+    } else {
+      console.warn('⚠️ Assinatura salva mas user_id não foi preenchido');
+      alert('⚠️ Declaração registrada, mas houve um problema ao associar ao seu usuário. Entre em contato com o administrador.');
+    }
+  }catch(err){
+    console.error('❌ Erro ao salvar assinatura:', err);
+    alert('Erro ao salvar assinatura: ' + err.message);
+  }
+});
+    </script>
+<section class="training-block" id="faq">
+    <h2><i class="fas fa-question-circle"></i>FAQ rápido</h2>
+    <div class="step-card">
+        <strong>O que fazer se uma mensagem falhar?</strong>
+        <p>Verifique o status no painel de progresso e nos logs. Se for erro 401, faça login novamente; se for bloqueio do WhatsApp, revise os parâmetros de segurança antes de tentar de novo.</p>
+    </div>
+    <div class="step-card">
+        <strong>Posso disparar para a mesma lista no mesmo dia?</strong>
+        <p>Sim, mas alterne o texto e respeite o cooldown. Disparos repetidos com a mesma mensagem elevam a chance de bloqueio.</p>
+    </div>
+    <div class="step-card mb-0">
+        <strong>Quem aprovou este treinamento?</strong>
+        <p>Operações (GR), Comercial e Monitoramento. Dúvidas podem ser abertas no canal interno #disparador.</p>
+    </div>
+</section>
+
+<link rel="stylesheet" href="../css/chat-ia.css">
+<script src="../js/chat-ia.js"></script>
+<script>
+// Funções Evolution API (MODO TREINAMENTO - Simulação)
+function getEvolutionModalInstance() {
+    const modalElement = document.getElementById('modalQRCodeEvolution');
+    if (!modalElement) return null;
+    return bootstrap.Modal.getInstance(modalElement) || new bootstrap.Modal(modalElement);
+}
+
+function renderQRCodeEvolution(value) {
+    const container = document.getElementById('qrcodeEvolutionContainer');
+    if (!container) return;
+    
+    if (!value || value.trim() === '') {
+        container.innerHTML = '<div class="text-muted w-100">QR Code não disponível. Tente novamente.</div>';
+        return;
+    }
+
+    const sanitizedValue = value.trim();
+    const isBase64 = sanitizedValue.startsWith('data:image') ||
+        /^[A-Za-z0-9+/=]+$/.test(sanitizedValue.replace(/[\r\n]+/g, '')) && sanitizedValue.length > 200;
+
+    // Limpar container
+    container.innerHTML = '';
+    
+    // Criar wrapper com animação
+    const wrapper = document.createElement('div');
+    wrapper.style.cssText = 'position: relative; display: inline-block; padding: 20px; background: white; border-radius: 16px; box-shadow: 0 8px 32px rgba(0,0,0,0.1); animation: fadeInScale 0.5s ease-out;';
+    
+    if (sanitizedValue.startsWith('data:image') || isBase64) {
+        const img = document.createElement('img');
+        img.alt = 'QR Code Evolution';
+        img.className = 'img-fluid';
+        img.style.cssText = 'max-width: 300px; max-height: 300px; width: 100%; height: auto; border-radius: 12px;';
+        img.src = sanitizedValue.startsWith('data:image') ? sanitizedValue : `data:image/png;base64,${sanitizedValue}`;
+        wrapper.appendChild(img);
+    } else {
+        const qrElement = document.createElement('div');
+        qrElement.style.cssText = 'padding: 10px; background: white; border-radius: 12px;';
+        wrapper.appendChild(qrElement);
+        new QRCode(qrElement, {
+            text: sanitizedValue,
+            width: 300,
+            height: 300,
+            colorDark: '#000000',
+            colorLight: '#ffffff',
+            correctLevel: QRCode.CorrectLevel.H,
+            margin: 2
+        });
+    }
+    
+    container.appendChild(wrapper);
+    
+    // Adicionar animação CSS se não existir
+    if (!document.getElementById('qrcodeAnimationStyle')) {
+        const style = document.createElement('style');
+        style.id = 'qrcodeAnimationStyle';
+        style.textContent = `
+            @keyframes fadeInScale {
+                from {
+                    opacity: 0;
+                    transform: scale(0.9);
+                }
+                to {
+                    opacity: 1;
+                    transform: scale(1);
+                }
+            }
+        `;
+        document.head.appendChild(style);
+    }
+}
+
+async function gerarQRCodeEvolution() {
+    // ⚠️ MODO TREINAMENTO: Função simulada, não executa ações reais
+    const modal = getEvolutionModalInstance();
+    const container = document.getElementById('qrcodeEvolutionContainer');
+    const info = document.getElementById('qrcodeEvolutionInfo');
+    const status = document.getElementById('qrcodeEvolutionStatus');
+
+    if (container) {
+        container.innerHTML = '<div class="text-muted w-100"><div class="loading-spinner mb-3" style="width: 50px; height: 50px; margin: 0 auto;"></div><p class="mb-0" style="font-size: 1.1rem; font-weight: 500;">Gerando QR Code...</p></div>';
+    }
+    if (info) {
+        info.textContent = 'Gerando QR Code...';
+    }
+    if (status) {
+        status.textContent = '';
+    }
+
+    if (modal) {
+        modal.show();
+    }
+
+    // Simular delay de geração
+    setTimeout(() => {
+        // QR Code de exemplo (não funcional)
+        const qrCodeExemplo = 'https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=EXEMPLO_QR_CODE_TREINAMENTO';
+        
+        if (container) {
+            const img = document.createElement('img');
+            img.src = qrCodeExemplo;
+            img.alt = 'QR Code de Exemplo (Treinamento)';
+            img.className = 'img-fluid';
+            img.style.cssText = 'max-width: 300px; max-height: 300px; width: 100%; height: auto; border-radius: 12px; border: 3px dashed #667eea; padding: 20px; background: white; box-shadow: 0 8px 32px rgba(0,0,0,0.1);';
+            container.innerHTML = '';
+            container.appendChild(img);
+        }
+        
+        if (info) {
+            info.innerHTML = `
+                <div class="d-flex align-items-center justify-content-center flex-column">
+                    <div class="alert alert-warning border-0 mb-2" style="border-radius: 12px; background: #fff3cd;">
+                        <i class="fas fa-graduation-cap me-2"></i>
+                        <strong>Modo Treinamento:</strong> Este é um QR Code de exemplo.
+                    </div>
+                    <div class="d-flex align-items-center">
+                        <i class="fas fa-server me-2" style="color: #667eea;"></i>
+                        <strong style="color: #333;">Instância:</strong>
+                        <span class="ms-2 badge bg-primary">exemplo_treinamento</span>
+                    </div>
+                </div>
+            `;
+        }
+        
+        if (status) {
+            status.innerHTML = `
+                <i class="fas fa-info-circle me-2" style="color: #0284c7;"></i>
+                <strong>Em produção:</strong> Este QR Code expiraria em aproximadamente 60 segundos.
+            `;
+        }
+    }, 1500);
+}
+
+async function deslogarInstanciaEvolution() {
+    // ⚠️ MODO TREINAMENTO: Função simulada, não executa ações reais
+    const mensagem = 'Deseja desconectar sua instância da Evolution? Será necessário ler o QR Code novamente.\n\n⚠️ MODO TREINAMENTO: Esta é uma simulação. Nenhuma ação real será executada.';
+    
+    if (!confirm(mensagem)) {
+        return;
+    }
+
+    // Simular delay de processamento
+    setTimeout(() => {
+        alert('✅ Simulação: Instância desconectada com sucesso!\n\n⚠️ MODO TREINAMENTO: Em produção, você precisaria gerar um novo QR Code para reconectar.\n\nEsta é apenas uma demonstração. No painel real, esta ação desconectaria sua instância.');
+    }, 500);
+}
+
+// Disponibilizar funções globalmente para uso no treinamento
+window.gerarQRCodeEvolution = gerarQRCodeEvolution;
+window.deslogarInstanciaEvolution = deslogarInstanciaEvolution;
+
+// ========== FUNÇÃO PARA BAIXAR TREINAMENTO EM PDF ==========
+async function baixarTreinamentoPDF() {
+    const btn = document.getElementById('btnBaixarPDF');
+    const originalHtml = btn ? btn.innerHTML : '';
+    
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Gerando PDF...';
+    }
+
+    try {
+        // Elemento principal do treinamento
+        const elemento = document.querySelector('main.container-training');
+        
+        if (!elemento) {
+            throw new Error('Conteúdo do treinamento não encontrado');
+        }
+
+        console.log('📄 Iniciando geração de PDF...');
+        console.log('📦 Elemento encontrado:', elemento);
+
+        // Criar uma cópia profunda do elemento
+        const elementoClone = elemento.cloneNode(true);
+        
+        // Remover elementos interativos e não necessários
+        const elementosParaRemover = elementoClone.querySelectorAll('button, .btn-back, .signature-card, canvas, #btnBaixarPDF, .modal, .d-flex.justify-content-between');
+        elementosParaRemover.forEach(el => {
+            if (el && el.parentNode) {
+                el.remove();
+            }
+        });
+        
+        console.log('🧹 Elementos removidos:', elementosParaRemover.length);
+        
+        // Garantir que o clone tenha conteúdo visível
+        elementoClone.style.cssText = 'background: white !important; color: #1f2937 !important; padding: 2rem !important; max-width: 100% !important;';
+        
+        // Ajustar estilos de elementos filhos para garantir visibilidade
+        elementoClone.querySelectorAll('.hero').forEach(el => {
+            el.style.cssText = 'background: linear-gradient(135deg, #6759ff, #8b5cf6) !important; color: white !important; border-radius: 20px !important; padding: 2rem !important; margin-bottom: 2rem !important; display: block !important;';
+        });
+        
+        elementoClone.querySelectorAll('.training-block').forEach(el => {
+            el.style.cssText = 'background: white !important; border: 1px solid #e5e7eb !important; border-radius: 18px !important; padding: 1.75rem !important; margin-top: 1.5rem !important; display: block !important;';
+        });
+        
+        elementoClone.querySelectorAll('.step-card').forEach(el => {
+            el.style.cssText = 'border-left: 4px solid #6759ff !important; background: #f8fafc !important; padding: 1rem 1.25rem !important; border-radius: 12px !important; margin: 0.8rem 0 !important; display: block !important;';
+        });
+        
+        // Garantir que todas as imagens sejam visíveis e carregadas
+        const imagens = elementoClone.querySelectorAll('img');
+        console.log(`📸 Encontradas ${imagens.length} imagens para processar`);
+        
+        // Processar imagens
+        const promessasImagens = Array.from(imagens).map((img, index) => {
+            return new Promise((resolve) => {
+                // Garantir que a imagem seja visível
+                img.style.cssText = 'max-width: 100% !important; height: auto !important; display: block !important;';
+                
+                if (img.complete && img.naturalWidth > 0) {
+                    console.log(`✅ Imagem ${index + 1}/${imagens.length} já carregada`);
+                    resolve();
+                    return;
+                }
+                
+                const timeout = setTimeout(() => {
+                    console.warn(`⏱️ Timeout imagem ${index + 1}`);
+                    resolve();
+                }, 3000);
+                
+                img.onload = () => {
+                    clearTimeout(timeout);
+                    console.log(`✅ Imagem ${index + 1} carregada`);
+                    resolve();
+                };
+                
+                img.onerror = () => {
+                    clearTimeout(timeout);
+                    console.warn(`❌ Erro ao carregar imagem ${index + 1}`);
+                    resolve();
+                };
+            });
+        });
+        
+        await Promise.all(promessasImagens);
+        console.log('✅ Todas as imagens processadas');
+        
+        // Verificar se há conteúdo antes de continuar
+        const texto = elementoClone.innerText || elementoClone.textContent || '';
+        if (texto.trim().length === 0) {
+            throw new Error('O conteúdo está vazio após clonagem. Verifique o elemento original.');
+        }
+        
+        console.log('📝 Conteúdo encontrado:', texto.substring(0, 200) + '...');
+        
+        // Criar container temporário VISÍVEL na tela (será removido depois)
+        const containerTemp = document.createElement('div');
+        containerTemp.id = 'pdf-temp-container';
+        containerTemp.style.cssText = `
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            width: 100vw !important;
+            min-height: 100vh !important;
+            background: white !important;
+            padding: 2rem !important;
+            z-index: 999999 !important;
+            overflow: auto !important;
+        `;
+        
+        // Adicionar o clone ao container
+        containerTemp.appendChild(elementoClone);
+        document.body.appendChild(containerTemp);
+        
+        console.log('📦 Container temporário criado e adicionado ao DOM');
+        
+        // Forçar reflow e aguardar renderização completa
+        void containerTemp.offsetHeight; // Força reflow
+        await new Promise(resolve => setTimeout(resolve, 1500));
+        
+        // Verificar dimensões após inserção no DOM
+        const rect = elementoClone.getBoundingClientRect();
+        console.log('📏 Dimensões após inserção:', {
+            offsetWidth: elementoClone.offsetWidth,
+            offsetHeight: elementoClone.offsetHeight,
+            scrollWidth: elementoClone.scrollWidth,
+            scrollHeight: elementoClone.scrollHeight,
+            boundingRect: rect
+        });
+        
+        // Verificar se o elemento está visível
+        if (rect.width === 0 || rect.height === 0) {
+            throw new Error('Elemento não está visível. Dimensões: ' + rect.width + 'x' + rect.height);
+        }
+        
+        // Adicionar classe para otimização de PDF
+        elementoClone.classList.add('pdf-optimized');
+        
+        // Ajustar espaçamentos para reduzir espaços em branco
+        elementoClone.querySelectorAll('.training-block').forEach(el => {
+            el.style.marginTop = '1rem !important';
+            el.style.marginBottom = '1rem !important';
+            el.style.padding = '1.25rem !important';
+            el.style.pageBreakInside = 'avoid !important';
+        });
+        
+        elementoClone.querySelectorAll('.step-card').forEach(el => {
+            el.style.marginTop = '0.5rem !important';
+            el.style.marginBottom = '0.5rem !important';
+            el.style.pageBreakInside = 'avoid !important';
+        });
+        
+        elementoClone.querySelectorAll('.media-figure').forEach(el => {
+            el.style.marginTop = '0.75rem !important';
+            el.style.marginBottom = '0.75rem !important';
+            el.style.pageBreakInside = 'avoid !important';
+        });
+        
+        elementoClone.querySelectorAll('.hero').forEach(el => {
+            el.style.marginBottom = '1.5rem !important';
+            el.style.padding = '1.5rem !important';
+        });
+        
+        elementoClone.querySelectorAll('h1, h2, h3').forEach(el => {
+            el.style.pageBreakAfter = 'avoid !important';
+            el.style.pageBreakInside = 'avoid !important';
+            el.style.marginTop = '0.75rem !important';
+            el.style.marginBottom = '0.5rem !important';
+        });
+        
+        elementoClone.querySelectorAll('p').forEach(el => {
+            el.style.marginTop = '0.5rem !important';
+            el.style.marginBottom = '0.5rem !important';
+        });
+        
+        elementoClone.querySelectorAll('ul, ol').forEach(el => {
+            el.style.marginTop = '0.5rem !important';
+            el.style.marginBottom = '0.5rem !important';
+        });
+        
+        // Configurações do PDF com margens reduzidas
+        const opcoes = {
+            margin: [8, 8, 8, 8], // Margens reduzidas (antes: 15mm)
+            filename: `Treinamento_Disparador_Mensagens_${new Date().toISOString().split('T')[0]}.pdf`,
+            image: { type: 'jpeg', quality: 0.98 },
+            html2canvas: { 
+                scale: 2,
+                useCORS: true,
+                logging: false, // Desativar logs para melhor performance
+                letterRendering: true,
+                allowTaint: true,
+                backgroundColor: '#ffffff',
+                width: elementoClone.scrollWidth || rect.width,
+                height: elementoClone.scrollHeight || rect.height,
+                windowWidth: elementoClone.scrollWidth || rect.width,
+                windowHeight: elementoClone.scrollHeight || rect.height,
+                x: 0,
+                y: 0,
+                scrollX: 0,
+                scrollY: 0
+            },
+            jsPDF: { 
+                unit: 'mm', 
+                format: 'a4', 
+                orientation: 'portrait',
+                compress: true
+            },
+            pagebreak: { 
+                mode: ['avoid-all', 'css', 'legacy'],
+                before: '.training-block',
+                after: ['.training-block', '.media-figure'],
+                avoid: ['.step-card', 'h1', 'h2', 'h3', '.info-box', '.warning-box', '.tip-box']
+            }
+        };
+
+        console.log('🖨️ Iniciando geração do PDF com opções:', opcoes);
+        
+        // Gerar PDF diretamente do elemento clone
+        await html2pdf().set(opcoes).from(elementoClone).save();
+        
+        console.log('✅ PDF gerado com sucesso!');
+        
+        // Remover container temporário imediatamente após gerar
+        setTimeout(() => {
+            const temp = document.getElementById('pdf-temp-container');
+            if (temp && temp.parentNode) {
+                console.log('🗑️ Removendo container temporário');
+                temp.remove();
+            }
+        }, 500);
+        
+        // Feedback de sucesso
+        if (btn) {
+            btn.innerHTML = '<i class="fas fa-check me-2"></i>PDF Gerado!';
+            btn.style.background = '#10b981';
+            setTimeout(() => {
+                btn.disabled = false;
+                btn.innerHTML = originalHtml;
+                btn.style.background = '#10b981';
+            }, 2000);
+        }
+    } catch (error) {
+        console.error('❌ Erro ao gerar PDF:', error);
+        console.error('Stack:', error.stack);
+        alert('Erro ao gerar PDF: ' + error.message + '\n\nVerifique o console para mais detalhes.\n\nTente novamente ou use a função de impressão do navegador (Ctrl+P).');
+        
+        // Remover container temporário em caso de erro
+        const temp = document.getElementById('pdf-temp-container');
+        if (temp && temp.parentNode) {
+            temp.remove();
+        }
+        
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = originalHtml;
+        }
+    }
+}
+
+// Disponibilizar função globalmente
+window.baixarTreinamentoPDF = baixarTreinamentoPDF;
+</script>
+</body>
+</html>
+

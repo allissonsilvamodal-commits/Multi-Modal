@@ -1,0 +1,851 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vendas - Multimodal Logística</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../js/permissions.js"></script>
+    <style>
+        :root {
+            --primary: #667eea;
+            --secondary: #764ba2;
+            --success: #11998e;
+            --warning: #ffc107;
+            --danger: #dc3545;
+            --info: #17a2b8;
+            --light: #f8f9fa;
+            --dark: #343a40;
+            --white: #ffffff;
+            --border-radius: 12px;
+            --box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            --transition: all 0.3s ease;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            min-height: 100vh;
+            color: var(--dark);
+        }
+
+        .navbar {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: var(--box-shadow);
+        }
+
+        .navbar-brand {
+            font-weight: 700;
+            color: var(--primary) !important;
+            font-size: 1.5rem;
+        }
+
+        .main-container {
+            padding: 2rem 0;
+            min-height: calc(100vh - 76px);
+        }
+
+        .card {
+            border: none;
+            border-radius: var(--border-radius);
+            box-shadow: var(--box-shadow);
+            background: var(--white);
+            transition: var(--transition);
+            margin-bottom: 1.5rem;
+        }
+
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+        }
+
+        .card-header {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: var(--white);
+            border-radius: var(--border-radius) var(--border-radius) 0 0 !important;
+            padding: 1.5rem;
+            border: none;
+        }
+
+        .metric-card {
+            background: linear-gradient(135deg, var(--success), #11998e);
+            color: var(--white);
+            border-radius: var(--border-radius);
+            padding: 1.5rem;
+            text-align: center;
+            transition: var(--transition);
+        }
+
+        .metric-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(17, 153, 142, 0.3);
+        }
+
+        .metric-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        .metric-label {
+            font-size: 1rem;
+            opacity: 0.9;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            border: none;
+            border-radius: 8px;
+            padding: 0.75rem 1.5rem;
+            font-weight: 600;
+            transition: var(--transition);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .table-modern {
+            background: var(--white);
+            border-radius: var(--border-radius);
+            overflow: hidden;
+            box-shadow: var(--box-shadow);
+        }
+
+        .table-modern th {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: var(--white);
+            border: none;
+            font-weight: 600;
+            padding: 1rem;
+        }
+
+        .table-modern td {
+            padding: 1rem;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+            vertical-align: middle;
+        }
+
+        .table-modern tbody tr:hover {
+            background-color: rgba(102, 126, 234, 0.05);
+        }
+
+        .badge-modern {
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 0.875rem;
+        }
+
+        .badge-success {
+            background: linear-gradient(135deg, var(--success), #11998e);
+            color: var(--white);
+        }
+
+        .badge-danger {
+            background: linear-gradient(135deg, var(--danger), #c82333);
+            color: var(--white);
+        }
+
+        .badge-warning {
+            background: linear-gradient(135deg, var(--warning), #e0a800);
+            color: var(--dark);
+        }
+
+        .badge-info {
+            background: linear-gradient(135deg, var(--info), #138496);
+            color: var(--white);
+        }
+
+        .chart-container {
+            position: relative;
+            height: 300px;
+            margin: 1rem 0;
+        }
+
+        .alert-modern {
+            border: none;
+            border-radius: var(--border-radius);
+            padding: 1rem 1.5rem;
+            margin-bottom: 1rem;
+            font-weight: 500;
+        }
+
+        .alert-success {
+            background: linear-gradient(135deg, #d4edda, #c3e6cb);
+            color: #155724;
+        }
+
+        .alert-danger {
+            background: linear-gradient(135deg, #f8d7da, #f5c6cb);
+            color: #721c24;
+        }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: var(--white);
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Dark Mode */
+        body.dark-mode {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: #ffffff;
+        }
+
+        body.dark-mode .navbar {
+            background: rgba(10, 10, 10, 0.95);
+        }
+
+        body.dark-mode .navbar * {
+            color: #ffffff !important;
+        }
+
+        body.dark-mode .card {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        body.dark-mode .table-modern {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+        }
+
+        body.dark-mode .table-modern td {
+            color: #ffffff;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        body.dark-mode .table-modern tbody tr:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+    </style>
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-light">
+        <div class="container">
+            <a class="navbar-brand" href="portal.html">
+                <i class="fas fa-chart-line me-2"></i>
+                Vendas - Multimodal
+            </a>
+            <div class="navbar-nav ms-auto">
+                <div class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                        <i class="fas fa-user me-2"></i>
+                        <span id="currentUser">Carregando...</span>
+                    </a>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="portal.html"><i class="fas fa-home me-2"></i>Portal</a></li>
+                        <li><a class="dropdown-item" href="crm.html"><i class="fas fa-users me-2"></i>CRM</a></li>
+                        <li><a class="dropdown-item" href="painel.html"><i class="fas fa-tachometer-alt me-2"></i>Painel</a></li>
+                        <li><a class="dropdown-item" href="relatorios.html"><i class="fas fa-chart-bar me-2"></i>Relatórios</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" href="#" onclick="logout()"><i class="fas fa-sign-out-alt me-2"></i>Sair</a></li>
+                    </ul>
+                </div>
+                <button class="btn btn-outline-primary ms-2" id="themeToggle" onclick="toggleTheme()">
+                    <i class="fas fa-moon"></i>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Container -->
+    <div class="main-container">
+        <div class="container">
+            <!-- Alertas -->
+            <div id="alertContainer"></div>
+
+            <!-- Métricas de Vendas -->
+            <div class="row mb-4">
+                <div class="col-md-3">
+                    <div class="metric-card">
+                        <div class="metric-value" id="vendasMes">R$ 0</div>
+                        <div class="metric-label">Vendas do Mês</div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="metric-card" style="background: linear-gradient(135deg, var(--info), #17a2b8);">
+                        <div class="metric-value" id="propostasAtivas">0</div>
+                        <div class="metric-label">Propostas Ativas</div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="metric-card" style="background: linear-gradient(135deg, var(--warning), #ffc107); color: var(--dark);">
+                        <div class="metric-value" id="taxaConversao">0%</div>
+                        <div class="metric-label">Taxa de Conversão</div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="metric-card" style="background: linear-gradient(135deg, var(--danger), #dc3545);">
+                        <div class="metric-value" id="metaMes">0%</div>
+                        <div class="metric-label">Meta do Mês</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Gráficos -->
+            <div class="row mb-4">
+                <div class="col-md-8">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="fas fa-chart-line me-2"></i>
+                                Vendas por Período
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="chart-container">
+                                <canvas id="vendasChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="fas fa-chart-pie me-2"></i>
+                                Vendas por Segmento
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="chart-container">
+                                <canvas id="segmentosChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Propostas e Oportunidades -->
+            <div class="row mb-4">
+                <div class="col-md-8">
+                    <div class="card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">
+                                <i class="fas fa-file-contract me-2"></i>
+                                Propostas em Andamento
+                            </h5>
+                            <button class="btn btn-primary btn-sm" onclick="novaProposta()">
+                                <i class="fas fa-plus me-1"></i>Nova Proposta
+                            </button>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-modern">
+                                    <thead>
+                                        <tr>
+                                            <th>Cliente</th>
+                                            <th>Valor</th>
+                                            <th>Status</th>
+                                            <th>Data</th>
+                                            <th>Vendedor</th>
+                                            <th>Ações</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="propostasTable">
+                                        <tr>
+                                            <td>
+                                                <div>
+                                                    <strong>Empresa ABC Ltda</strong><br>
+                                                    <small class="text-muted">Transporte de carga</small>
+                                                </div>
+                                            </td>
+                                            <td><strong>R$ 15.000</strong></td>
+                                            <td><span class="badge badge-modern badge-warning">Em Análise</span></td>
+                                            <td>15/12/2024</td>
+                                            <td>João Silva</td>
+                                            <td>
+                                                <div class="btn-group btn-group-sm">
+                                                    <button class="btn btn-outline-primary" onclick="editarProposta(1)">
+                                                        <i class="fas fa-edit"></i>
+                                                    </button>
+                                                    <button class="btn btn-outline-info" onclick="verProposta(1)">
+                                                        <i class="fas fa-eye"></i>
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td>
+                                                <div>
+                                                    <strong>Distribuidora XYZ</strong><br>
+                                                    <small class="text-muted">Logística completa</small>
+                                                </div>
+                                            </td>
+                                            <td><strong>R$ 25.000</strong></td>
+                                            <td><span class="badge badge-modern badge-success">Aprovada</span></td>
+                                            <td>10/12/2024</td>
+                                            <td>Maria Santos</td>
+                                            <td>
+                                                <div class="btn-group btn-group-sm">
+                                                    <button class="btn btn-outline-primary" onclick="editarProposta(2)">
+                                                        <i class="fas fa-edit"></i>
+                                                    </button>
+                                                    <button class="btn btn-outline-info" onclick="verProposta(2)">
+                                                        <i class="fas fa-eye"></i>
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td>
+                                                <div>
+                                                    <strong>Indústria DEF S.A.</strong><br>
+                                                    <small class="text-muted">Armazenagem</small>
+                                                </div>
+                                            </td>
+                                            <td><strong>R$ 8.500</strong></td>
+                                            <td><span class="badge badge-modern badge-info">Negociação</span></td>
+                                            <td>20/12/2024</td>
+                                            <td>Carlos Oliveira</td>
+                                            <td>
+                                                <div class="btn-group btn-group-sm">
+                                                    <button class="btn btn-outline-primary" onclick="editarProposta(3)">
+                                                        <i class="fas fa-edit"></i>
+                                                    </button>
+                                                    <button class="btn btn-outline-info" onclick="verProposta(3)">
+                                                        <i class="fas fa-eye"></i>
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="fas fa-trophy me-2"></i>
+                                Ranking de Vendedores
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-modern">
+                                    <thead>
+                                        <tr>
+                                            <th>Vendedor</th>
+                                            <th>Vendas</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td>
+                                                <div>
+                                                    <strong>João Silva</strong><br>
+                                                    <small class="text-muted">Vendedor Sênior</small>
+                                                </div>
+                                            </td>
+                                            <td><strong>R$ 45.000</strong></td>
+                                        </tr>
+                                        <tr>
+                                            <td>
+                                                <div>
+                                                    <strong>Maria Santos</strong><br>
+                                                    <small class="text-muted">Vendedora Pleno</small>
+                                                </div>
+                                            </td>
+                                            <td><strong>R$ 38.500</strong></td>
+                                        </tr>
+                                        <tr>
+                                            <td>
+                                                <div>
+                                                    <strong>Carlos Oliveira</strong><br>
+                                                    <small class="text-muted">Vendedor Júnior</small>
+                                                </div>
+                                            </td>
+                                            <td><strong>R$ 22.000</strong></td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Metas e Objetivos -->
+            <div class="row">
+                <div class="col-md-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="fas fa-target me-2"></i>
+                                Metas e Objetivos
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <div class="text-center">
+                                        <h4>Meta Mensal</h4>
+                                        <div class="progress mb-2" style="height: 20px;">
+                                            <div class="progress-bar bg-success" role="progressbar" style="width: 75%">
+                                                75%
+                                            </div>
+                                        </div>
+                                        <small class="text-muted">R$ 75.000 de R$ 100.000</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="text-center">
+                                        <h4>Meta Trimestral</h4>
+                                        <div class="progress mb-2" style="height: 20px;">
+                                            <div class="progress-bar bg-info" role="progressbar" style="width: 60%">
+                                                60%
+                                            </div>
+                                        </div>
+                                        <small class="text-muted">R$ 180.000 de R$ 300.000</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="text-center">
+                                        <h4>Meta Anual</h4>
+                                        <div class="progress mb-2" style="height: 20px;">
+                                            <div class="progress-bar bg-warning" role="progressbar" style="width: 45%">
+                                                45%
+                                            </div>
+                                        </div>
+                                        <small class="text-muted">R$ 540.000 de R$ 1.200.000</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script>
+        // ========== CONFIGURAÇÕES SUPABASE ==========
+        let supabase = null;
+        let currentUser = null;
+        let vendasChart = null;
+        let segmentosChart = null;
+
+        // ========== INICIALIZAÇÃO ==========
+        document.addEventListener('DOMContentLoaded', async function() {
+            console.log('🚀 Vendas inicializando...');
+            
+            // 🔐 Verificar permissão de acesso
+            const temPermissao = await verificarEAplicarPermissao('vendas');
+            if (!temPermissao) {
+                console.log('❌ Sem permissão para acessar vendas');
+                return; // A função verificarEAplicarPermissao já redireciona
+            }
+            
+            await inicializarSupabase();
+            await verificarAutenticacao();
+            await carregarDados();
+            inicializarCharts();
+            
+            console.log('✅ Vendas carregado com sucesso!');
+        });
+
+        // ========== SUPABASE ==========
+        async function inicializarSupabase() {
+            try {
+                const response = await fetch('/api/supabase-config');
+                if (!response.ok) {
+                    throw new Error('Erro ao buscar configurações');
+                }
+                
+                const config = await response.json();
+                supabaseClient = window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey);
+                window.supabase = supabaseClient; // Manter compatibilidade com código que usa window.supabase
+                
+                console.log('✅ Supabase inicializado no vendas');
+                
+                // Inicializar chat IA após Supabase estar pronto
+                if (window.inicializarChatIA) {
+                    window.inicializarChatIA();
+                }
+                
+                return true;
+            } catch (error) {
+                console.error('❌ Erro ao inicializar Supabase:', error);
+                mostrarAlerta('Erro ao conectar com o banco de dados', 'danger');
+                return false;
+            }
+        }
+
+        // ========== AUTENTICAÇÃO ==========
+        async function verificarAutenticacao() {
+            try {
+                console.log('🔐 Verificando autenticação...');
+                
+                const loggedInUserData = localStorage.getItem('loggedInUser');
+                if (loggedInUserData) {
+                    const userData = JSON.parse(loggedInUserData);
+                    const now = Date.now();
+                    const sessionAge = now - userData.loginTimestamp;
+                    const SESSION_TIMEOUT = 12 * 60 * 60 * 1000;
+                    
+                    if (sessionAge < SESSION_TIMEOUT && userData.authenticated) {
+                        currentUser = {
+                            id: userData.id,
+                            email: userData.email,
+                            username: userData.username,
+                            nome: userData.username,
+                            isAdmin: userData.isAdmin || userData.role === 'admin',
+                            role: userData.role || 'user'
+                        };
+                        
+                        const currentUserElement = document.getElementById('currentUser');
+                        if (currentUserElement) {
+                            currentUserElement.textContent = currentUser.username;
+                        }
+                        
+                        console.log('✅ Usuário autenticado:', currentUser.username);
+                        return currentUser;
+                    } else {
+                        localStorage.removeItem('loggedInUser');
+                    }
+                }
+                
+                console.log('❌ Usuário não autenticado, redirecionando...');
+                window.location.href = 'login.html';
+                return null;
+                
+            } catch (error) {
+                console.error('❌ Erro na verificação de autenticação:', error);
+                window.location.href = 'login.html';
+                return null;
+            }
+        }
+
+        // ========== CARREGAR DADOS ==========
+        async function carregarDados() {
+            try {
+                await carregarMetricas();
+                await carregarPropostas();
+            } catch (error) {
+                console.error('❌ Erro ao carregar dados:', error);
+                mostrarAlerta('Erro ao carregar dados de vendas', 'danger');
+            }
+        }
+
+        async function carregarMetricas() {
+            try {
+                // Simular dados - em produção, buscar do Supabase
+                document.getElementById('vendasMes').textContent = 'R$ 75.000';
+                document.getElementById('propostasAtivas').textContent = '12';
+                document.getElementById('taxaConversao').textContent = '68%';
+                document.getElementById('metaMes').textContent = '75%';
+                
+                console.log('✅ Métricas de vendas carregadas');
+            } catch (error) {
+                console.error('❌ Erro ao carregar métricas:', error);
+            }
+        }
+
+        async function carregarPropostas() {
+            try {
+                // Simular dados - em produção, buscar do Supabase
+                console.log('✅ Propostas carregadas');
+            } catch (error) {
+                console.error('❌ Erro ao carregar propostas:', error);
+            }
+        }
+
+        // ========== CHARTS ==========
+        function inicializarCharts() {
+            inicializarVendasChart();
+            inicializarSegmentosChart();
+        }
+
+        function inicializarVendasChart() {
+            const ctx = document.getElementById('vendasChart').getContext('2d');
+            
+            vendasChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'],
+                    datasets: [{
+                        label: 'Vendas (R$)',
+                        data: [45000, 52000, 48000, 61000, 55000, 67000, 59000, 72000, 68000, 75000, 71000, 75000],
+                        borderColor: '#667eea',
+                        backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                        borderWidth: 3,
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.1)'
+                            }
+                        },
+                        x: {
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.1)'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function inicializarSegmentosChart() {
+            const ctx = document.getElementById('segmentosChart').getContext('2d');
+            
+            segmentosChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Varejo', 'Atacado', 'Indústria', 'Serviços'],
+                    datasets: [{
+                        data: [35, 25, 30, 10],
+                        backgroundColor: [
+                            '#667eea',
+                            '#764ba2',
+                            '#11998e',
+                            '#ffc107'
+                        ],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+        }
+
+        // ========== FUNÇÕES DE VENDAS ==========
+        function novaProposta() {
+            console.log('➕ Nova proposta');
+            mostrarAlerta('Funcionalidade de nova proposta em desenvolvimento', 'info');
+        }
+
+        function editarProposta(id) {
+            console.log('✏️ Editando proposta:', id);
+            mostrarAlerta('Funcionalidade de edição em desenvolvimento', 'info');
+        }
+
+        function verProposta(id) {
+            console.log('👁️ Ver proposta:', id);
+            mostrarAlerta('Funcionalidade de visualização em desenvolvimento', 'info');
+        }
+
+        // ========== UTILITÁRIOS ==========
+        function mostrarAlerta(mensagem, tipo = 'info') {
+            const alertContainer = document.getElementById('alertContainer');
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `alert alert-modern alert-${tipo} alert-dismissible fade show`;
+            alertDiv.innerHTML = `
+                <i class="fas fa-${tipo === 'success' ? 'check-circle' : tipo === 'danger' ? 'exclamation-circle' : 'info-circle'} me-2"></i>
+                ${mensagem}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            alertContainer.appendChild(alertDiv);
+            
+            setTimeout(() => {
+                if (alertDiv.parentNode) {
+                    alertDiv.parentNode.removeChild(alertDiv);
+                }
+            }, 5000);
+        }
+
+        function toggleTheme() {
+            const body = document.body;
+            const themeIcon = document.querySelector('#themeToggle i');
+            
+            if (body.classList.contains('dark-mode')) {
+                body.classList.remove('dark-mode');
+                themeIcon.className = 'fas fa-moon';
+                localStorage.setItem('theme', 'light');
+            } else {
+                body.classList.add('dark-mode');
+                themeIcon.className = 'fas fa-sun';
+                localStorage.setItem('theme', 'dark');
+            }
+        }
+
+        async function logout() {
+            try {
+                console.log('🚪 Fazendo logout...');
+                
+                if (window.supabase) {
+                    await window.supabase.auth.signOut();
+                }
+                
+                localStorage.removeItem('loggedInUser');
+                localStorage.removeItem('lastActivity');
+                localStorage.removeItem('permissoesData');
+                
+                console.log('✅ Logout realizado com sucesso');
+                window.location.href = 'login.html';
+            } catch (error) {
+                console.error('❌ Erro no logout:', error);
+                localStorage.removeItem('loggedInUser');
+                localStorage.removeItem('lastActivity');
+                window.location.href = 'login.html';
+            }
+        }
+
+        // ========== CARREGAR TEMA SALVO ==========
+        document.addEventListener('DOMContentLoaded', function() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            document.body.setAttribute('data-theme', savedTheme);
+            
+            if (savedTheme === 'dark') {
+                document.body.classList.add('dark-mode');
+                const themeIcon = document.querySelector('#themeToggle i');
+                if (themeIcon) {
+                    themeIcon.className = 'fas fa-sun';
+                }
+            }
+        });
+    </script>
+<!-- Chat IA -->
+<link rel="stylesheet" href="../css/chat-ia.css">
+<script src="../js/chat-ia.js"></script>
+</body>
+</html>

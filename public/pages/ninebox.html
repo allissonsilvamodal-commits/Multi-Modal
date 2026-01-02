@@ -1,0 +1,1661 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NineBox - Avaliação de Potencial x Desempenho - Multimodal</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../js/permissions.js"></script>
+    <style>
+        :root {
+            --primary: #667eea;
+            --secondary: #764ba2;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --info: #3b82f6;
+            --dark: #1f2937;
+            --light: #f8fafc;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .app-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            margin: 0;
+            font-size: 2.5rem;
+            font-weight: 700;
+        }
+
+        .header p {
+            margin: 10px 0 0;
+            opacity: 0.9;
+        }
+
+        .content {
+            padding: 30px;
+        }
+
+        .section-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 20px;
+            color: var(--dark);
+            border-bottom: 3px solid var(--primary);
+            padding-bottom: 10px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            padding: 12px 30px;
+            border-radius: 10px;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .table-modern {
+            background: white;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .table-modern thead {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .table-modern th {
+            border: none;
+            padding: 15px;
+            font-weight: 600;
+        }
+
+        .table-modern td {
+            padding: 15px;
+            vertical-align: middle;
+        }
+
+        .table-modern tbody tr {
+            transition: all 0.2s;
+        }
+
+        .table-modern tbody tr:hover {
+            background: #f8f9fa;
+            transform: scale(1.01);
+        }
+
+        /* Cards de seleção de tipo de avaliação */
+        .card[style*="cursor: pointer"] {
+            transition: all 0.3s ease;
+        }
+
+        .card[style*="cursor: pointer"]:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+        }
+
+        .card.border-primary.border-3,
+        .card.border-info.border-3 {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        /* Matriz 9-Box */
+        .ninebox-grid {
+            display: grid;
+            grid-template-columns: 150px repeat(3, 1fr);
+            grid-template-rows: 40px repeat(3, 1fr);
+            gap: 2px;
+            background: #ddd;
+            border: 2px solid #333;
+            margin: 30px 0;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .ninebox-cell {
+            background: white;
+            padding: 15px;
+            min-height: 150px;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        .ninebox-cell.header-cell {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            font-weight: 700;
+            font-size: 0.9rem;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            min-height: auto;
+        }
+
+        .ninebox-cell.label-cell {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            font-weight: 700;
+            font-size: 0.85rem;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            writing-mode: vertical-rl;
+            text-orientation: mixed;
+            min-height: auto;
+        }
+
+        .ninebox-cell.empty {
+            background: #f8f9fa;
+            min-height: auto;
+        }
+
+        /* Cores dos blocos */
+        .box-a1 { background: #fff3cd; } /* Enigma - amarelo claro */
+        .box-a2 { background: #d1ecf1; } /* Em crescimento - azul claro */
+        .box-a3 { background: #d4edda; } /* Destaque - verde claro */
+        .box-m1 { background: #f8d7da; } /* Questionável - vermelho claro */
+        .box-m2 { background: #fff3cd; } /* Mantenedor - amarelo claro */
+        .box-m3 { background: #d1ecf1; } /* Forte desempenho - azul claro */
+        .box-b1 { background: #dc3545; color: white; } /* Insuficiente - vermelho */
+        .box-b2 { background: #ffc107; } /* Eficaz - amarelo */
+        .box-b3 { background: #ffc107; } /* Comprometido - amarelo */
+
+        .box-title {
+            font-weight: 700;
+            font-size: 0.9rem;
+            margin-bottom: 10px;
+            padding-bottom: 5px;
+            border-bottom: 2px solid rgba(0,0,0,0.1);
+        }
+
+        .box-names {
+            flex: 1;
+            overflow-y: auto;
+            font-size: 0.85rem;
+        }
+
+        .box-name {
+            padding: 5px 8px;
+            margin: 3px 0;
+            background: rgba(255,255,255,0.7);
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .box-name:hover {
+            background: rgba(255,255,255,0.9);
+            transform: translateX(5px);
+        }
+
+        .box-b1 .box-name,
+        .box-b1 .box-title {
+            color: white;
+        }
+
+        .box-b1 .box-name {
+            background: rgba(255,255,255,0.2);
+        }
+
+        .filters {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+        }
+
+        .form-control, .form-select {
+            border-radius: 10px;
+            border: 2px solid #e0e0e0;
+            padding: 10px 15px;
+            transition: all 0.3s;
+        }
+
+        .form-control:focus, .form-select:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+        }
+
+        .badge-category {
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 0.85rem;
+        }
+
+        .alert-floating {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 9999;
+            min-width: 300px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            animation: slideIn 0.3s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+        }
+
+        .spinner-border {
+            width: 3rem;
+            height: 3rem;
+        }
+
+        .card {
+            border: none;
+            border-radius: 15px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            transition: all 0.3s;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 15px rgba(0,0,0,0.2);
+        }
+
+        .card-title {
+            font-size: 2rem;
+            font-weight: 700;
+            margin: 0;
+        }
+
+        .header .btn-light {
+            background: rgba(255,255,255,0.2);
+            border: 2px solid rgba(255,255,255,0.3);
+            color: white;
+            backdrop-filter: blur(10px);
+            transition: all 0.3s;
+        }
+
+        .header .btn-light:hover {
+            background: rgba(255,255,255,0.3);
+            border-color: rgba(255,255,255,0.5);
+            transform: translateY(-2px);
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <div class="header">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1><i class="fas fa-th me-2"></i>NineBox</h1>
+                    <p>Avaliação de Potencial x Desempenho</p>
+                </div>
+                <div>
+                    <a href="portal.html" class="btn btn-light btn-sm">
+                        <i class="fas fa-arrow-left me-2"></i>Voltar ao Portal
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="content">
+            <!-- Filtros -->
+            <div class="filters">
+                <div class="row g-3">
+                    <div class="col-md-3">
+                        <label class="form-label fw-bold">Buscar Colaborador</label>
+                        <input type="text" id="buscaColaborador" class="form-control" placeholder="Nome, cargo ou departamento...">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label fw-bold">Departamento</label>
+                        <select id="filtroDepartamento" class="form-select">
+                            <option value="">Todos</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label fw-bold">Cargo</label>
+                        <select id="filtroCargo" class="form-select">
+                            <option value="">Todos</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3 d-flex align-items-end gap-2">
+                        <button class="btn btn-primary flex-grow-1" onclick="abrirModalAvaliacao()">
+                            <i class="fas fa-plus me-2"></i>Nova Avaliação
+                        </button>
+                        <button class="btn btn-success" onclick="exportarDados()" title="Exportar dados">
+                            <i class="fas fa-download"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Estatísticas Rápidas -->
+            <div class="row mb-4" id="estatisticasContainer" style="display: none;">
+                <div class="col-md-3">
+                    <div class="card text-center">
+                        <div class="card-body">
+                            <h5 class="card-title text-primary" id="totalAvaliacoes">0</h5>
+                            <p class="card-text text-muted">Total de Avaliações</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card text-center">
+                        <div class="card-body">
+                            <h5 class="card-title text-success" id="totalDestaques">0</h5>
+                            <p class="card-text text-muted">Profissionais Destaque (A3)</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card text-center">
+                        <div class="card-body">
+                            <h5 class="card-title text-warning" id="totalCrescimento">0</h5>
+                            <p class="card-text text-muted">Em Crescimento (A2)</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card text-center">
+                        <div class="card-body">
+                            <h5 class="card-title text-danger" id="totalInsuficientes">0</h5>
+                            <p class="card-text text-muted">Insuficientes (B1)</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tabela de Avaliações -->
+            <div class="section-title">
+                <i class="fas fa-list me-2"></i>Avaliações Realizadas
+            </div>
+            <div id="tabelaContainer" class="table-modern">
+                <div class="loading">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Carregando...</span>
+                    </div>
+                    <p class="mt-3 text-muted">Carregando avaliações...</p>
+                </div>
+            </div>
+
+            <!-- Matriz 9-Box -->
+            <div class="section-title mt-5">
+                <i class="fas fa-th me-2"></i>Matriz Potencial x Desempenho
+            </div>
+            <div id="nineboxContainer">
+                <div id="nineboxGrid" class="ninebox-grid">
+                    <!-- Grid será gerado dinamicamente -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Avaliação -->
+    <div class="modal fade" id="modalAvaliacao" tabindex="-1">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title">
+                        <i class="fas fa-user-check me-2"></i>Nova Avaliação NineBox
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <!-- Seleção de Tipo de Avaliação -->
+                    <div class="mb-4">
+                        <label class="form-label fw-bold">Tipo de Avaliação *</label>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <div class="card border-primary" style="cursor: pointer;" id="cardTipoIndividual" onclick="selecionarTipoAvaliacao('individual')">
+                                    <div class="card-body text-center">
+                                        <i class="fas fa-user fa-2x text-primary mb-2"></i>
+                                        <h6 class="card-title">Avaliação Individual</h6>
+                                        <p class="card-text text-muted small">Avaliar um colaborador específico</p>
+                                        <i class="fas fa-check-circle text-success" id="checkIndividual" style="display: none;"></i>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="card border-info" style="cursor: pointer;" id="cardTipoFilial" onclick="selecionarTipoAvaliacao('filial')">
+                                    <div class="card-body text-center">
+                                        <i class="fas fa-building fa-2x text-info mb-2"></i>
+                                        <h6 class="card-title">Avaliação por Filial</h6>
+                                        <p class="card-text text-muted small">Gerar avaliações para todos os colaboradores de uma filial</p>
+                                        <i class="fas fa-check-circle text-success" id="checkFilial" style="display: none;"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Formulário de Avaliação Individual -->
+                    <div id="formAvaliacaoIndividual">
+                        <form id="formAvaliacao">
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Selecionar Colaborador do Sistema</label>
+                                <select id="selectUsuarioSistema" class="form-select" onchange="preencherDadosUsuario()">
+                                    <option value="">-- Ou selecione um colaborador do sistema --</option>
+                                </select>
+                                <small class="text-muted">Selecione um colaborador para preencher automaticamente os dados</small>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Nome do Colaborador *</label>
+                                <input type="text" id="nomeColaborador" class="form-control" required 
+                                       placeholder="Digite o nome do colaborador" autocomplete="off">
+                            </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-bold">Cargo *</label>
+                                <input type="text" id="cargoColaborador" class="form-control" required 
+                                       placeholder="Ex: Supervisor de TI" autocomplete="off">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-bold">Departamento *</label>
+                                <input type="text" id="departamentoColaborador" class="form-control" required 
+                                       placeholder="Ex: Administrativo" autocomplete="off">
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-bold">Potencial *</label>
+                                <select id="potencialAvaliacao" class="form-select" required>
+                                    <option value="">Selecione...</option>
+                                    <option value="Abaixo da Expectativa">Abaixo da Expectativa</option>
+                                    <option value="Dentro da Expectativa">Dentro da Expectativa</option>
+                                    <option value="Acima da Expectativa">Acima da Expectativa</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-bold">Desempenho *</label>
+                                <select id="desempenhoAvaliacao" class="form-select" required>
+                                    <option value="">Selecione...</option>
+                                    <option value="Abaixo da Expectativa">Abaixo da Expectativa</option>
+                                    <option value="Dentro da Expectativa">Dentro da Expectativa</option>
+                                    <option value="Acima da Expectativa">Acima da Expectativa</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="alert alert-info">
+                            <strong>Classificação:</strong> <span id="previewClassificacao" class="fw-bold text-primary">-</span>
+                            <br><small class="text-muted" id="previewDescricao"></small>
+                        </div>
+                            <div class="alert alert-warning" id="alertaDuplicata" style="display: none;">
+                                <i class="fas fa-exclamation-triangle me-2"></i>
+                                <strong>Atenção:</strong> Já existe uma avaliação para este colaborador. Ao salvar, a avaliação existente será atualizada.
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Formulário de Avaliação por Filial -->
+                    <div id="formAvaliacaoFilial" style="display: none;">
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle me-2"></i>
+                            <strong>Como funciona:</strong> Selecione uma filial e o responsável da filial receberá avaliações para preencher todos os colaboradores da filial de uma vez.
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Selecionar Filial *</label>
+                            <select id="filialSelecionada" class="form-select" onchange="carregarColaboradoresFilial()" required>
+                                <option value="">Selecione uma filial...</option>
+                            </select>
+                        </div>
+
+                        <div id="infoResponsavel" class="alert alert-warning" style="display: none;">
+                            <div class="mb-2">
+                                <label class="form-label fw-bold">
+                                    <i class="fas fa-user-tie me-2"></i>Selecionar Responsável/Avaliador *
+                                </label>
+                                <select id="selectResponsavelFilial" class="form-select" onchange="atualizarResponsavelSelecionado()">
+                                    <option value="">Selecione o responsável que irá avaliar...</option>
+                                </select>
+                                <small class="text-muted">O responsável selecionado avaliará todos os colaboradores da filial.</small>
+                            </div>
+                            <div id="infoResponsavelSelecionado" style="display: none;">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <strong>Responsável selecionado:</strong> <span id="nomeResponsavel">-</span>
+                                        <br><small>Clique no botão abaixo para criar avaliações onde este responsável avaliará todos os colaboradores da filial.</small>
+                                    </div>
+                                    <button type="button" class="btn btn-sm btn-primary" id="btnSelecionarResponsavel" onclick="selecionarResponsavelComoAvaliador()">
+                                        <i class="fas fa-hand-pointer me-1"></i>Gerar Avaliações
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="listaColaboradoresFilial" style="display: none;">
+                            <h6 class="fw-bold mb-3">
+                                <i class="fas fa-users me-2"></i>Colaboradores da Filial (<span id="totalColaboradores">0</span>)
+                            </h6>
+                            <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                                <table class="table table-sm table-hover">
+                                    <thead class="table-light sticky-top">
+                                        <tr>
+                                            <th>Nome</th>
+                                            <th>Cargo</th>
+                                            <th>Departamento</th>
+                                            <th>Potencial</th>
+                                            <th>Desempenho</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="tabelaColaboradoresFilial">
+                                        <!-- Preenchido dinamicamente -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <div id="avisoSemColaboradores" class="alert alert-warning" style="display: none;">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            Nenhum colaborador encontrado para esta filial.
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" id="btnSalvarAvaliacao" onclick="salvarAvaliacao()">
+                        <i class="fas fa-save me-2"></i>Salvar Avaliação
+                    </button>
+                    <button type="button" class="btn btn-info" id="btnGerarAvaliacaoFilial" onclick="gerarAvaliacaoFilial()" style="display: none;" disabled>
+                        <i class="fas fa-paper-plane me-2"></i>Gerar Avaliação para Responsável
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Usar nome diferente para evitar conflito com possível variável global do Supabase
+        // Verificar se já existe antes de declarar
+        if (typeof supabaseClient === 'undefined') {
+            var supabaseClient = null;
+        }
+        let todasAvaliacoes = [];
+        let avaliacoesFiltradas = [];
+        let currentAvaliacaoId = null;
+
+        // Mapeamento de classificação
+        const classificacaoMap = {
+            'Abaixo da Expectativa-Abaixo da Expectativa': { box: 'B1', nome: 'Insuficiente', class: 'box-b1' },
+            'Abaixo da Expectativa-Dentro da Expectativa': { box: 'B2', nome: 'Eficaz', class: 'box-b2' },
+            'Abaixo da Expectativa-Acima da Expectativa': { box: 'B3', nome: 'Comprometido', class: 'box-b3' },
+            'Dentro da Expectativa-Abaixo da Expectativa': { box: 'M1', nome: 'Questionável', class: 'box-m1' },
+            'Dentro da Expectativa-Dentro da Expectativa': { box: 'M2', nome: 'Mantenedor', class: 'box-m2' },
+            'Dentro da Expectativa-Acima da Expectativa': { box: 'M3', nome: 'Forte desempenho', class: 'box-m3' },
+            'Acima da Expectativa-Abaixo da Expectativa': { box: 'A1', nome: 'Profissional enigma', class: 'box-a1' },
+            'Acima da Expectativa-Dentro da Expectativa': { box: 'A2', nome: 'Profissional em crescimento', class: 'box-a2' },
+            'Acima da Expectativa-Acima da Expectativa': { box: 'A3', nome: 'Profissional destaque', class: 'box-a3' }
+        };
+
+        // Variáveis para avaliação por filial
+        let colaboradoresFilial = [];
+        let responsavelFilial = null;
+        let tipoAvaliacaoSelecionado = 'individual'; // 'individual' ou 'filial'
+
+        // Inicialização
+        document.addEventListener('DOMContentLoaded', async () => {
+            await inicializarSupabase();
+            await carregarAvaliacoes();
+            await carregarFiliais();
+            await carregarUsuariosSistema();
+            configurarEventos();
+        });
+
+        async function inicializarSupabase() {
+            try {
+                const response = await fetch('/api/supabase-config');
+                if (!response.ok) throw new Error('Erro ao buscar configuração');
+                const config = await response.json();
+                supabaseClient = window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey);
+                window.supabase = supabaseClient; // Manter compatibilidade
+                console.log('✅ Supabase inicializado com sucesso');
+            } catch (error) {
+                console.error('Erro ao inicializar Supabase:', error);
+                mostrarErro('Erro ao conectar com o banco de dados');
+            }
+        }
+
+        async function carregarAvaliacoes() {
+            try {
+                if (!supabaseClient) await inicializarSupabase();
+
+                const { data, error } = await supabaseClient
+                    .from('ninebox_avaliacoes')
+                    .select('*')
+                    .order('created_at', { ascending: false });
+
+                if (error) throw error;
+
+                todasAvaliacoes = data || [];
+                aplicarFiltros();
+                atualizarMatriz();
+                atualizarEstatisticas();
+            } catch (error) {
+                console.error('Erro ao carregar avaliações:', error);
+                
+                // Verificar se é erro de tabela não encontrada
+                if (error.code === 'PGRST205' || error.message?.includes('Could not find the table')) {
+                    document.getElementById('tabelaContainer').innerHTML = `
+                        <div class="alert alert-warning m-3">
+                            <h5><i class="fas fa-exclamation-triangle me-2"></i>Tabela não encontrada</h5>
+                            <p>A tabela <strong>ninebox_avaliacoes</strong> ainda não foi criada no banco de dados.</p>
+                            <hr>
+                            <p><strong>Para criar a tabela:</strong></p>
+                            <ol>
+                                <li>Acesse o <a href="https://supabase.com/dashboard" target="_blank">Supabase Dashboard</a></li>
+                                <li>Vá em <strong>SQL Editor</strong> → <strong>New Query</strong></li>
+                                <li>Cole o SQL do arquivo <code>sql/criar-tabela-ninebox.sql</code></li>
+                                <li>Execute o SQL (Run ou Ctrl+Enter)</li>
+                                <li>Recarregue esta página</li>
+                            </ol>
+                            <p class="mb-0">
+                                <small class="text-muted">
+                                    <i class="fas fa-info-circle me-1"></i>
+                                    Consulte o arquivo <code>INSTRUCOES-CRIAR-TABELA-NINEBOX.md</code> para instruções detalhadas.
+                                </small>
+                            </p>
+                        </div>
+                    `;
+                } else {
+                    mostrarErro('Erro ao carregar avaliações: ' + (error.message || 'Erro desconhecido'));
+                    document.getElementById('tabelaContainer').innerHTML = `
+                        <div class="alert alert-danger m-3">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            Erro ao carregar avaliações: ${error.message || 'Erro desconhecido'}
+                        </div>
+                    `;
+                }
+            }
+        }
+
+        function aplicarFiltros() {
+            const busca = document.getElementById('buscaColaborador')?.value.toLowerCase() || '';
+            const dept = document.getElementById('filtroDepartamento')?.value || '';
+            const cargo = document.getElementById('filtroCargo')?.value || '';
+
+            avaliacoesFiltradas = todasAvaliacoes.filter(av => {
+                const matchBusca = !busca || 
+                    av.nome_colaborador.toLowerCase().includes(busca) ||
+                    av.cargo.toLowerCase().includes(busca) ||
+                    av.departamento.toLowerCase().includes(busca);
+                const matchDept = !dept || av.departamento === dept;
+                const matchCargo = !cargo || av.cargo === cargo;
+                return matchBusca && matchDept && matchCargo;
+            });
+
+            atualizarTabela();
+            atualizarFiltros();
+        }
+
+        function atualizarTabela() {
+            const container = document.getElementById('tabelaContainer');
+            
+            if (avaliacoesFiltradas.length === 0) {
+                container.innerHTML = `
+                    <div class="alert alert-info m-3">
+                        <i class="fas fa-info-circle me-2"></i>
+                        Nenhuma avaliação encontrada.
+                    </div>
+                `;
+                return;
+            }
+
+            let html = `
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Nome do Colaborador</th>
+                            <th>Cargo</th>
+                            <th>Departamento</th>
+                            <th>Potencial</th>
+                            <th>Desempenho</th>
+                            <th>Classificação</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            avaliacoesFiltradas.forEach((av, index) => {
+                const isPendente = av.potencial === 'Pendente' || av.desempenho === 'Pendente';
+                const key = `${av.potencial}-${av.desempenho}`;
+                const classificacao = isPendente ? { nome: 'Pendente', box: '', class: '' } : (classificacaoMap[key] || { nome: 'N/A', box: '', class: '' });
+                
+                html += `
+                    <tr>
+                        <td>${index + 1}</td>
+                        <td><strong>${av.nome_colaborador}</strong></td>
+                        <td>${av.cargo}</td>
+                        <td>${av.departamento}</td>
+                        <td>
+                            ${isPendente && av.potencial === 'Pendente' ? 
+                                '<span class="badge bg-secondary">Pendente</span>' : 
+                                `<span class="badge bg-info">${av.potencial}</span>`
+                            }
+                        </td>
+                        <td>
+                            ${isPendente && av.desempenho === 'Pendente' ? 
+                                '<span class="badge bg-secondary">Pendente</span>' : 
+                                `<span class="badge bg-success">${av.desempenho}</span>`
+                            }
+                        </td>
+                        <td>
+                            ${isPendente ? 
+                                '<span class="badge bg-warning">Pendente - Aguardando preenchimento</span>' : 
+                                `<span class="badge-category ${classificacao.class}">${classificacao.nome}</span>`
+                            }
+                        </td>
+                        <td>
+                            <button class="btn btn-sm btn-warning" onclick="editarAvaliacao('${av.id}')" title="Editar">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="btn btn-sm btn-danger" onclick="excluirAvaliacao('${av.id}')" title="Excluir">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            html += `
+                    </tbody>
+                </table>
+            `;
+
+            container.innerHTML = html;
+        }
+
+        function atualizarFiltros() {
+            // Atualizar opções de departamento
+            const deptSelect = document.getElementById('filtroDepartamento');
+            const depts = [...new Set(todasAvaliacoes.map(a => a.departamento))].sort();
+            deptSelect.innerHTML = '<option value="">Todos</option>' + 
+                depts.map(d => `<option value="${d}">${d}</option>`).join('');
+
+            // Atualizar opções de cargo
+            const cargoSelect = document.getElementById('filtroCargo');
+            const cargos = [...new Set(todasAvaliacoes.map(a => a.cargo))].sort();
+            cargoSelect.innerHTML = '<option value="">Todos</option>' + 
+                cargos.map(c => `<option value="${c}">${c}</option>`).join('');
+        }
+
+        function atualizarMatriz() {
+            const grid = document.getElementById('nineboxGrid');
+            
+            // Estrutura da matriz
+            const estrutura = [
+                ['', 'Abaixo das expectativas', 'Dentro das expectativas', 'Acima das expectativas'],
+                ['Acima das expectativas', 'A1', 'A2', 'A3'],
+                ['Dentro das expectativas', 'M1', 'M2', 'M3'],
+                ['Abaixo das expectativas', 'B1', 'B2', 'B3']
+            ];
+
+            let html = '';
+
+            // Cabeçalho superior
+            estrutura[0].forEach((cell, colIndex) => {
+                if (colIndex === 0) {
+                    html += `<div class="ninebox-cell empty"></div>`;
+                } else {
+                    html += `<div class="ninebox-cell header-cell">${cell}</div>`;
+                }
+            });
+
+            // Linhas da matriz
+            for (let row = 1; row < estrutura.length; row++) {
+                estrutura[row].forEach((cell, colIndex) => {
+                    if (colIndex === 0) {
+                        // Label lateral
+                        html += `<div class="ninebox-cell label-cell">${cell}</div>`;
+                    } else {
+                        // Célula da matriz
+                        const boxId = cell;
+                        const boxInfo = Object.values(classificacaoMap).find(b => b.box === boxId);
+                        const boxClass = boxInfo ? boxInfo.class : '';
+                        const boxNome = boxInfo ? boxInfo.nome : '';
+                        
+                        // Buscar colaboradores nesta categoria (excluir pendentes)
+                        const colaboradores = todasAvaliacoes.filter(av => {
+                            // Não mostrar avaliações pendentes na matriz
+                            if (av.potencial === 'Pendente' || av.desempenho === 'Pendente') {
+                                return false;
+                            }
+                            const key = `${av.potencial}-${av.desempenho}`;
+                            const classif = classificacaoMap[key];
+                            return classif && classif.box === boxId;
+                        });
+
+                        html += `
+                            <div class="ninebox-cell ${boxClass}">
+                                <div class="box-title">${boxId} - ${boxNome}</div>
+                                <div class="box-names">
+                                    ${colaboradores.length > 0 
+                                        ? colaboradores.map(c => 
+                                            `<div class="box-name" title="${c.cargo} - ${c.departamento}">${c.nome_colaborador}</div>`
+                                          ).join('')
+                                        : '<div class="text-muted small">Nenhum colaborador</div>'
+                                    }
+                                </div>
+                            </div>
+                        `;
+                    }
+                });
+            }
+
+            grid.innerHTML = html;
+        }
+
+        function selecionarTipoAvaliacao(tipo) {
+            tipoAvaliacaoSelecionado = tipo;
+            
+            // Atualizar visual dos cards
+            const cardIndividual = document.getElementById('cardTipoIndividual');
+            const cardFilial = document.getElementById('cardTipoFilial');
+            const checkIndividual = document.getElementById('checkIndividual');
+            const checkFilial = document.getElementById('checkFilial');
+            const formIndividual = document.getElementById('formAvaliacaoIndividual');
+            const formFilial = document.getElementById('formAvaliacaoFilial');
+            const btnSalvar = document.getElementById('btnSalvarAvaliacao');
+            const btnGerar = document.getElementById('btnGerarAvaliacaoFilial');
+
+            if (!cardIndividual || !cardFilial) {
+                console.warn('Cards de seleção de tipo não encontrados');
+                return;
+            }
+
+            if (tipo === 'individual') {
+                cardIndividual.classList.add('border-primary', 'border-3');
+                cardIndividual.classList.remove('border-secondary');
+                cardFilial.classList.remove('border-info', 'border-3');
+                cardFilial.classList.add('border-secondary');
+                if (checkIndividual) checkIndividual.style.display = 'block';
+                if (checkFilial) checkFilial.style.display = 'none';
+                if (formIndividual) formIndividual.style.display = 'block';
+                if (formFilial) formFilial.style.display = 'none';
+                if (btnSalvar) btnSalvar.style.display = 'inline-block';
+                if (btnGerar) btnGerar.style.display = 'none';
+            } else {
+                cardFilial.classList.add('border-info', 'border-3');
+                cardFilial.classList.remove('border-secondary');
+                cardIndividual.classList.remove('border-primary', 'border-3');
+                cardIndividual.classList.add('border-secondary');
+                if (checkFilial) checkFilial.style.display = 'block';
+                if (checkIndividual) checkIndividual.style.display = 'none';
+                if (formIndividual) formIndividual.style.display = 'none';
+                if (formFilial) formFilial.style.display = 'block';
+                if (btnSalvar) btnSalvar.style.display = 'none';
+                if (btnGerar) btnGerar.style.display = 'inline-block';
+                
+                // Carregar filiais se ainda não foram carregadas
+                const filialSelect = document.getElementById('filialSelecionada');
+                if (filialSelect && filialSelect.options.length <= 1) {
+                    carregarFiliais();
+                }
+            }
+        }
+
+        function abrirModalAvaliacao(id = null) {
+            currentAvaliacaoId = id;
+            
+            // Sempre começar com avaliação individual
+            selecionarTipoAvaliacao('individual');
+            
+            const form = document.getElementById('formAvaliacao');
+            form.reset();
+            document.getElementById('previewClassificacao').textContent = '-';
+            document.getElementById('previewDescricao').textContent = '';
+            document.getElementById('alertaDuplicata').style.display = 'none';
+            resetarFormularioFilial();
+
+            if (id) {
+                const av = todasAvaliacoes.find(a => a.id === id);
+                if (av) {
+                    document.getElementById('nomeColaborador').value = av.nome_colaborador;
+                    document.getElementById('cargoColaborador').value = av.cargo;
+                    document.getElementById('departamentoColaborador').value = av.departamento;
+                    document.getElementById('potencialAvaliacao').value = av.potencial;
+                    document.getElementById('desempenhoAvaliacao').value = av.desempenho;
+                    atualizarPreview();
+                }
+            }
+
+            new bootstrap.Modal(document.getElementById('modalAvaliacao')).show();
+        }
+
+        function atualizarPreview() {
+            const potencial = document.getElementById('potencialAvaliacao').value;
+            const desempenho = document.getElementById('desempenhoAvaliacao').value;
+            
+            // Verificar se é pendente
+            if (potencial === 'Pendente' || desempenho === 'Pendente') {
+                document.getElementById('previewClassificacao').textContent = 'Pendente';
+                document.getElementById('previewDescricao').textContent = 'Avaliação pendente de preenchimento. Não será exibida na matriz até ser completada.';
+                return;
+            }
+            
+            if (potencial && desempenho) {
+                const key = `${potencial}-${desempenho}`;
+                const classificacao = classificacaoMap[key];
+                if (classificacao) {
+                    document.getElementById('previewClassificacao').textContent = 
+                        `${classificacao.box} - ${classificacao.nome}`;
+                    
+                    // Adicionar descrição baseada na classificação
+                    const descricoes = {
+                        'B1': 'Colaborador com potencial e desempenho abaixo do esperado. Requer atenção imediata e plano de desenvolvimento.',
+                        'B2': 'Colaborador com potencial limitado, mas desempenho dentro do esperado. Pode ser mantido na função atual.',
+                        'B3': 'Colaborador comprometido, com desempenho acima do esperado apesar do potencial limitado. Valorizar e reconhecer.',
+                        'M1': 'Colaborador com potencial, mas desempenho abaixo do esperado. Investigar causas e desenvolver.',
+                        'M2': 'Colaborador mantenedor, com potencial e desempenho dentro do esperado. Estável na função.',
+                        'M3': 'Colaborador com forte desempenho, acima do esperado. Potencial dentro do esperado. Considerar promoção.',
+                        'A1': 'Colaborador enigma: alto potencial, mas desempenho abaixo do esperado. Investigar barreiras e desenvolver.',
+                        'A2': 'Colaborador em crescimento: alto potencial com desempenho dentro do esperado. Investir em desenvolvimento.',
+                        'A3': 'Colaborador destaque: alto potencial e desempenho acima do esperado. Priorizar para desenvolvimento e promoção.'
+                    };
+                    
+                    document.getElementById('previewDescricao').textContent = descricoes[classificacao.box] || '';
+                }
+            } else {
+                document.getElementById('previewClassificacao').textContent = '-';
+                document.getElementById('previewDescricao').textContent = '';
+            }
+        }
+
+        async function salvarAvaliacao() {
+            const form = document.getElementById('formAvaliacao');
+            if (!form.checkValidity()) {
+                form.reportValidity();
+                return;
+            }
+
+            const dados = {
+                nome_colaborador: document.getElementById('nomeColaborador').value.trim(),
+                cargo: document.getElementById('cargoColaborador').value.trim(),
+                departamento: document.getElementById('departamentoColaborador').value.trim(),
+                potencial: document.getElementById('potencialAvaliacao').value,
+                desempenho: document.getElementById('desempenhoAvaliacao').value
+            };
+
+            try {
+                if (!supabaseClient) await inicializarSupabase();
+
+                // Verificar duplicatas (mesmo nome, cargo e departamento) - apenas para novos registros
+                if (!currentAvaliacaoId) {
+                    const { data: duplicatas } = await supabaseClient
+                        .from('ninebox_avaliacoes')
+                        .select('id, nome_colaborador, cargo, departamento')
+                        .eq('nome_colaborador', dados.nome_colaborador)
+                        .eq('cargo', dados.cargo)
+                        .eq('departamento', dados.departamento);
+
+                    if (duplicatas && duplicatas.length > 0) {
+                        const confirmar = confirm(
+                            `Já existe uma avaliação para "${dados.nome_colaborador}" ` +
+                            `(${dados.cargo} - ${dados.departamento}).\n\n` +
+                            `Deseja atualizar a avaliação existente ou criar uma nova?`
+                        );
+                        
+                        if (confirmar) {
+                            // Atualizar a existente
+                            currentAvaliacaoId = duplicatas[0].id;
+                        } else {
+                            return; // Cancelar
+                        }
+                    }
+                }
+
+                let result;
+                if (currentAvaliacaoId) {
+                    // Atualizar
+                    const { data, error } = await supabaseClient
+                        .from('ninebox_avaliacoes')
+                        .update(dados)
+                        .eq('id', currentAvaliacaoId)
+                        .select();
+                    result = { data, error };
+                } else {
+                    // Criar
+                    const { data, error } = await supabaseClient
+                        .from('ninebox_avaliacoes')
+                        .insert([dados])
+                        .select();
+                    result = { data, error };
+                }
+
+                if (result.error) throw result.error;
+
+                mostrarSucesso(currentAvaliacaoId ? 'Avaliação atualizada com sucesso!' : 'Avaliação criada com sucesso!');
+                bootstrap.Modal.getInstance(document.getElementById('modalAvaliacao')).hide();
+                await carregarAvaliacoes();
+            } catch (error) {
+                console.error('Erro ao salvar avaliação:', error);
+                mostrarErro('Erro ao salvar avaliação: ' + (error.message || 'Erro desconhecido'));
+            }
+        }
+
+        function editarAvaliacao(id) {
+            abrirModalAvaliacao(id);
+        }
+
+        async function excluirAvaliacao(id) {
+            if (!confirm('Tem certeza que deseja excluir esta avaliação?')) return;
+
+            try {
+                if (!supabaseClient) await inicializarSupabase();
+
+                const { error } = await supabaseClient
+                    .from('ninebox_avaliacoes')
+                    .delete()
+                    .eq('id', id);
+
+                if (error) throw error;
+
+                mostrarSucesso('Avaliação excluída com sucesso!');
+                await carregarAvaliacoes();
+            } catch (error) {
+                console.error('Erro ao excluir avaliação:', error);
+                mostrarErro('Erro ao excluir avaliação: ' + (error.message || 'Erro desconhecido'));
+            }
+        }
+
+        function configurarEventos() {
+            document.getElementById('buscaColaborador')?.addEventListener('input', aplicarFiltros);
+            document.getElementById('filtroDepartamento')?.addEventListener('change', aplicarFiltros);
+            document.getElementById('filtroCargo')?.addEventListener('change', aplicarFiltros);
+            
+            document.getElementById('potencialAvaliacao')?.addEventListener('change', atualizarPreview);
+            document.getElementById('desempenhoAvaliacao')?.addEventListener('change', atualizarPreview);
+        }
+
+        function mostrarSucesso(mensagem) {
+            mostrarMensagem(mensagem, 'success');
+        }
+
+        function mostrarErro(mensagem) {
+            mostrarMensagem(mensagem, 'danger');
+        }
+
+        function mostrarMensagem(mensagem, tipo) {
+            const alert = document.createElement('div');
+            alert.className = `alert alert-${tipo} alert-floating alert-dismissible fade show`;
+            alert.innerHTML = `${mensagem}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>`;
+            document.body.appendChild(alert);
+            setTimeout(() => alert.remove(), 5000);
+        }
+
+        function atualizarEstatisticas() {
+            if (todasAvaliacoes.length === 0) {
+                document.getElementById('estatisticasContainer').style.display = 'none';
+                return;
+            }
+
+            document.getElementById('estatisticasContainer').style.display = 'flex';
+            
+            const total = todasAvaliacoes.length;
+            const destaques = todasAvaliacoes.filter(av => {
+                const key = `${av.potencial}-${av.desempenho}`;
+                return classificacaoMap[key]?.box === 'A3';
+            }).length;
+            
+            const crescimento = todasAvaliacoes.filter(av => {
+                const key = `${av.potencial}-${av.desempenho}`;
+                return classificacaoMap[key]?.box === 'A2';
+            }).length;
+            
+            const insuficientes = todasAvaliacoes.filter(av => {
+                const key = `${av.potencial}-${av.desempenho}`;
+                return classificacaoMap[key]?.box === 'B1';
+            }).length;
+
+            document.getElementById('totalAvaliacoes').textContent = total;
+            document.getElementById('totalDestaques').textContent = destaques;
+            document.getElementById('totalCrescimento').textContent = crescimento;
+            document.getElementById('totalInsuficientes').textContent = insuficientes;
+        }
+
+        // ========== FUNÇÕES DE AVALIAÇÃO POR FILIAL ==========
+        
+        async function carregarFiliais() {
+            try {
+                if (!supabaseClient) await inicializarSupabase();
+
+                const filiaisSet = new Set();
+
+                // 1. Buscar filiais únicas das coletas
+                try {
+                    const { data: coletas, error: coletasError } = await supabaseClient
+                        .from('coletas')
+                        .select('filial')
+                        .not('filial', 'is', null);
+
+                    if (!coletasError && coletas) {
+                        coletas.forEach(c => {
+                            if (c.filial) filiaisSet.add(c.filial);
+                        });
+                    }
+                } catch (e) {
+                    console.warn('Erro ao buscar filiais de coletas:', e);
+                }
+
+                // 2. Buscar departamentos de user_profiles (podem ser usados como filiais)
+                try {
+                    const { data: usuarios, error: usuariosError } = await supabaseClient
+                        .from('user_profiles')
+                        .select('departamento')
+                        .not('departamento', 'is', null)
+                        .eq('active', true);
+
+                    if (!usuariosError && usuarios) {
+                        usuarios.forEach(u => {
+                            if (u.departamento) filiaisSet.add(u.departamento);
+                        });
+                    }
+                } catch (e) {
+                    console.warn('Erro ao buscar departamentos:', e);
+                }
+
+                const filiais = Array.from(filiaisSet).sort();
+                
+                const selectFilial = document.getElementById('filialSelecionada');
+                if (selectFilial) {
+                    selectFilial.innerHTML = '<option value="">Selecione uma filial...</option>' +
+                        filiais.map(f => `<option value="${f}">${f}</option>`).join('');
+                }
+
+                console.log(`✅ ${filiais.length} filial(is) carregada(s):`, filiais);
+            } catch (error) {
+                console.error('Erro ao carregar filiais:', error);
+            }
+        }
+
+        async function carregarUsuariosSistema() {
+            try {
+                if (!supabaseClient) await inicializarSupabase();
+
+                // Buscar IDs de motoristas para excluir
+                const { data: motoristas } = await supabaseClient
+                    .from('motoristas')
+                    .select('auth_user_id')
+                    .not('auth_user_id', 'is', null);
+
+                const motoristaIds = new Set((motoristas || []).map(m => m.auth_user_id));
+
+                // Buscar usuários ativos
+                const { data: usuarios, error } = await supabaseClient
+                    .from('user_profiles')
+                    .select('id, nome, email, cargo, departamento')
+                    .eq('active', true)
+                    .order('nome');
+
+                if (error) throw error;
+
+                // Filtrar motoristas
+                const usuariosFiltrados = (usuarios || []).filter(u => !motoristaIds.has(u.id));
+
+                const selectUsuario = document.getElementById('selectUsuarioSistema');
+                if (selectUsuario) {
+                    selectUsuario.innerHTML = '<option value="">-- Ou selecione um colaborador do sistema --</option>' +
+                        usuariosFiltrados.map(u => 
+                            `<option value="${u.id}" data-nome="${u.nome || u.email || 'Sem nome'}" data-cargo="${u.cargo || ''}" data-departamento="${u.departamento || ''}">
+                                ${u.nome || u.email || 'Sem nome'}${u.cargo ? ' - ' + u.cargo : ''}${u.departamento ? ' (' + u.departamento + ')' : ''}
+                            </option>`
+                        ).join('');
+                }
+            } catch (error) {
+                console.error('Erro ao carregar usuários do sistema:', error);
+            }
+        }
+
+        function preencherDadosUsuario() {
+            const select = document.getElementById('selectUsuarioSistema');
+            const option = select.options[select.selectedIndex];
+            
+            if (option.value) {
+                document.getElementById('nomeColaborador').value = option.dataset.nome || '';
+                document.getElementById('cargoColaborador').value = option.dataset.cargo || '';
+                document.getElementById('departamentoColaborador').value = option.dataset.departamento || '';
+            }
+        }
+
+        async function carregarColaboradoresFilial() {
+            const filial = document.getElementById('filialSelecionada')?.value;
+            if (!filial) {
+                document.getElementById('listaColaboradoresFilial').style.display = 'none';
+                document.getElementById('infoResponsavel').style.display = 'none';
+                document.getElementById('btnGerarAvaliacaoFilial').disabled = true;
+                return;
+            }
+
+            try {
+                if (!supabaseClient) await inicializarSupabase();
+
+                // Buscar todos os usuários da filial (por departamento ou filial)
+                const { data: usuarios, error } = await supabaseClient
+                    .from('user_profiles')
+                    .select('id, nome, email, cargo, departamento, role')
+                    .eq('active', true)
+                    .or(`departamento.eq.${filial},departamento.ilike.%${filial}%`)
+                    .order('nome');
+
+                if (error) throw error;
+
+                // Separar colaboradores (para exibir na tabela) e possíveis responsáveis
+                colaboradoresFilial = (usuarios || []).filter(u => 
+                    u.role !== 'admin' && u.nome // Excluir admins e sem nome para a lista de colaboradores
+                );
+
+                // Buscar possíveis responsáveis da filial (gerentes/managers/admins do departamento)
+                // Usar os mesmos usuários já buscados
+                const possiveisResponsaveis = (usuarios || []).filter(u => 
+                    u.nome && ['admin', 'manager'].includes(u.role)
+                );
+
+                // Preencher dropdown de responsáveis com TODOS os usuários da filial
+                const selectResponsavel = document.getElementById('selectResponsavelFilial');
+                if (selectResponsavel && usuarios) {
+                    // Sempre mostrar todos os usuários da filial como opção
+                    selectResponsavel.innerHTML = '<option value="">Selecione o responsável que irá avaliar...</option>' +
+                        usuarios.filter(u => u.nome).map(u => 
+                            `<option value="${u.id}" data-nome="${u.nome || u.email || 'Sem nome'}" data-cargo="${u.cargo || ''}">
+                                ${u.nome || u.email || 'Sem nome'}${u.cargo ? ' - ' + u.cargo : ''}${u.role ? ' (' + u.role + ')' : ''}
+                            </option>`
+                        ).join('');
+                    
+                    // Se houver apenas um gerente/manager, selecionar automaticamente
+                    if (possiveisResponsaveis && possiveisResponsaveis.length === 1) {
+                        responsavelFilial = possiveisResponsaveis[0];
+                        selectResponsavel.value = responsavelFilial.id;
+                        atualizarResponsavelSelecionado();
+                    }
+                }
+
+                // Atualizar UI
+                const listaContainer = document.getElementById('listaColaboradoresFilial');
+                const tabelaBody = document.getElementById('tabelaColaboradoresFilial');
+                const infoResponsavel = document.getElementById('infoResponsavel');
+                const nomeResponsavel = document.getElementById('nomeResponsavel');
+                const totalColaboradores = document.getElementById('totalColaboradores');
+                const avisoSemColaboradores = document.getElementById('avisoSemColaboradores');
+                const btnGerar = document.getElementById('btnGerarAvaliacaoFilial');
+
+                if (colaboradoresFilial.length === 0) {
+                    listaContainer.style.display = 'none';
+                    avisoSemColaboradores.style.display = 'block';
+                    infoResponsavel.style.display = 'none';
+                    btnGerar.disabled = true;
+                    return;
+                }
+
+                avisoSemColaboradores.style.display = 'none';
+                listaContainer.style.display = 'block';
+                totalColaboradores.textContent = colaboradoresFilial.length;
+
+                // Preencher tabela
+                tabelaBody.innerHTML = colaboradoresFilial.map(colab => {
+                    // Verificar se já existe avaliação
+                    const avaliacaoExistente = todasAvaliacoes.find(a => 
+                        a.nome_colaborador === colab.nome && 
+                        a.departamento === colab.departamento
+                    );
+
+                    const isPendente = avaliacaoExistente && 
+                        (avaliacaoExistente.potencial === 'Pendente' || avaliacaoExistente.desempenho === 'Pendente');
+
+                    return `
+                        <tr>
+                            <td><strong>${colab.nome || colab.email || 'Sem nome'}</strong></td>
+                            <td>${colab.cargo || '-'}</td>
+                            <td>${colab.departamento || '-'}</td>
+                            <td>
+                                ${avaliacaoExistente ? 
+                                    (avaliacaoExistente.potencial === 'Pendente' ? 
+                                        '<span class="badge bg-secondary">Pendente</span>' : 
+                                        `<span class="badge bg-info">${avaliacaoExistente.potencial}</span>`
+                                    ) : 
+                                    '<span class="text-muted">-</span>'
+                                }
+                            </td>
+                            <td>
+                                ${avaliacaoExistente ? 
+                                    (avaliacaoExistente.desempenho === 'Pendente' ? 
+                                        '<span class="badge bg-secondary">Pendente</span>' : 
+                                        `<span class="badge bg-success">${avaliacaoExistente.desempenho}</span>`
+                                    ) : 
+                                    '<span class="text-muted">-</span>'
+                                }
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
+
+                // Mostrar seção de seleção de responsável
+                infoResponsavel.style.display = 'block';
+                btnGerar.disabled = true; // Desabilitar até selecionar responsável
+
+            } catch (error) {
+                console.error('Erro ao carregar colaboradores da filial:', error);
+                mostrarErro('Erro ao carregar colaboradores: ' + (error.message || 'Erro desconhecido'));
+            }
+        }
+
+        async function atualizarResponsavelSelecionado() {
+            const select = document.getElementById('selectResponsavelFilial');
+            const option = select.options[select.selectedIndex];
+            const infoSelecionado = document.getElementById('infoResponsavelSelecionado');
+            const nomeResponsavel = document.getElementById('nomeResponsavel');
+            const btnSelecionar = document.getElementById('btnSelecionarResponsavel');
+            
+            if (option.value) {
+                // Buscar dados do responsável selecionado
+                const responsavelId = option.value;
+                const responsavelNome = option.dataset.nome || option.text;
+                const responsavelCargo = option.dataset.cargo || '';
+                
+                // Buscar dados completos do responsável (pode estar em colaboradoresFilial ou ser um gerente/admin)
+                // Buscar novamente na lista completa de usuários se necessário
+                let responsavelCompleto = colaboradoresFilial.find(c => c.id === responsavelId);
+                
+                if (!responsavelCompleto) {
+                    // Se não encontrou, pode ser um gerente/admin, buscar nos usuários originais
+                    const filial = document.getElementById('filialSelecionada')?.value;
+                    if (filial && supabaseClient) {
+                        try {
+                            const { data: usuario } = await supabaseClient
+                                .from('user_profiles')
+                                .select('id, nome, email, cargo, departamento, role')
+                                .eq('id', responsavelId)
+                                .maybeSingle();
+                            
+                            if (usuario) {
+                                responsavelCompleto = usuario;
+                            }
+                        } catch (e) {
+                            console.warn('Erro ao buscar dados do responsável:', e);
+                        }
+                    }
+                }
+                
+                // Se ainda não encontrou, criar objeto básico
+                if (!responsavelCompleto) {
+                    responsavelCompleto = { id: responsavelId, nome: responsavelNome, email: '', cargo: responsavelCargo };
+                }
+                
+                responsavelFilial = responsavelCompleto;
+                
+                nomeResponsavel.textContent = `${responsavelNome}${responsavelCargo ? ' (' + responsavelCargo + ')' : ''}`;
+                infoSelecionado.style.display = 'block';
+                if (btnSelecionar) {
+                    btnSelecionar.disabled = false;
+                }
+            } else {
+                responsavelFilial = null;
+                infoSelecionado.style.display = 'none';
+                if (btnSelecionar) {
+                    btnSelecionar.disabled = true;
+                }
+            }
+        }
+
+        function resetarFormularioFilial() {
+            // Resetar campos do formulário de filial
+            const filialSelect = document.getElementById('filialSelecionada');
+            if (filialSelect) {
+                filialSelect.value = '';
+            }
+            const selectResponsavel = document.getElementById('selectResponsavelFilial');
+            if (selectResponsavel) {
+                selectResponsavel.innerHTML = '<option value="">Selecione o responsável que irá avaliar...</option>';
+            }
+            document.getElementById('listaColaboradoresFilial').style.display = 'none';
+            document.getElementById('infoResponsavel').style.display = 'none';
+            document.getElementById('infoResponsavelSelecionado').style.display = 'none';
+            document.getElementById('avisoSemColaboradores').style.display = 'none';
+            document.getElementById('btnGerarAvaliacaoFilial').disabled = true;
+            colaboradoresFilial = [];
+            responsavelFilial = null;
+        }
+
+        async function selecionarResponsavelComoAvaliador() {
+            const filial = document.getElementById('filialSelecionada')?.value;
+            if (!filial || !responsavelFilial || colaboradoresFilial.length === 0) {
+                mostrarErro('Selecione uma filial e aguarde o carregamento dos colaboradores.');
+                return;
+            }
+
+            // Filtrar colaboradores excluindo o próprio responsável
+            const colaboradoresParaAvaliar = colaboradoresFilial.filter(c => c.id !== responsavelFilial.id);
+
+            if (colaboradoresParaAvaliar.length === 0) {
+                mostrarErro('Não há colaboradores para avaliar (todos são o próprio responsável).');
+                return;
+            }
+
+            const confirmar = confirm(
+                `Deseja criar avaliações onde "${responsavelFilial.nome}" avaliará ${colaboradoresParaAvaliar.length} colaborador(es) da filial "${filial}"?\n\n` +
+                `O responsável será marcado como avaliador e todos os outros colaboradores serão os avaliados.\n\n` +
+                `As avaliações serão criadas como PENDENTES e não aparecerão na matriz até que o responsável preencha os valores de Potencial e Desempenho.`
+            );
+
+            if (!confirmar) return;
+
+            try {
+                if (!supabaseClient) await inicializarSupabase();
+
+                // Criar avaliações para cada colaborador (exceto o responsável)
+                const avaliacoesParaCriar = colaboradoresParaAvaliar.map(colab => ({
+                    nome_colaborador: colab.nome || colab.email || 'Sem nome',
+                    cargo: colab.cargo || 'Não informado',
+                    departamento: colab.departamento || filial,
+                    potencial: 'Pendente', // Fica pendente até o responsável preencher
+                    desempenho: 'Pendente', // Fica pendente até o responsável preencher
+                    avaliado_por: responsavelFilial.id // O responsável é quem vai avaliar
+                }));
+
+                // Verificar quais já existem para evitar duplicatas
+                const avaliacoesExistentes = [];
+                for (const aval of avaliacoesParaCriar) {
+                    const { data: existente } = await supabaseClient
+                        .from('ninebox_avaliacoes')
+                        .select('id')
+                        .eq('nome_colaborador', aval.nome_colaborador)
+                        .eq('departamento', aval.departamento)
+                        .eq('avaliado_por', responsavelFilial.id)
+                        .maybeSingle();
+
+                    if (existente) {
+                        avaliacoesExistentes.push(aval.nome_colaborador);
+                    }
+                }
+
+                // Filtrar apenas as novas
+                const novasAvaliacoes = avaliacoesParaCriar.filter(aval => 
+                    !avaliacoesExistentes.includes(aval.nome_colaborador)
+                );
+
+                if (novasAvaliacoes.length === 0) {
+                    mostrarErro('Todas as avaliações para esta filial já foram criadas com este responsável como avaliador.');
+                    return;
+                }
+
+                // Inserir novas avaliações
+                const { data, error } = await supabaseClient
+                    .from('ninebox_avaliacoes')
+                    .insert(novasAvaliacoes)
+                    .select();
+
+                if (error) throw error;
+
+                mostrarSucesso(
+                    `${novasAvaliacoes.length} avaliação(ões) criada(s) com sucesso!\n\n` +
+                    `O responsável "${responsavelFilial.nome}" foi atribuído como avaliador de ${novasAvaliacoes.length} colaborador(es).\n` +
+                    `As avaliações foram criadas como PENDENTES e não aparecerão na matriz até que o responsável preencha os valores de Potencial e Desempenho.` +
+                    (avaliacoesExistentes.length > 0 ? 
+                        `\n\nNota: ${avaliacoesExistentes.length} avaliação(ões) já existiam e foram mantidas.` : '')
+                );
+
+                // Fechar modal e recarregar
+                bootstrap.Modal.getInstance(document.getElementById('modalAvaliacao')).hide();
+                resetarFormularioFilial();
+                await carregarAvaliacoes();
+
+            } catch (error) {
+                console.error('Erro ao selecionar responsável como avaliador:', error);
+                mostrarErro('Erro ao criar avaliações: ' + (error.message || 'Erro desconhecido'));
+            }
+        }
+
+        async function gerarAvaliacaoFilial() {
+            const filial = document.getElementById('filialSelecionada')?.value;
+            if (!filial || colaboradoresFilial.length === 0) {
+                mostrarErro('Selecione uma filial e aguarde o carregamento dos colaboradores.');
+                return;
+            }
+
+            if (!responsavelFilial) {
+                mostrarErro('Nenhum responsável encontrado para esta filial.');
+                return;
+            }
+
+            const confirmar = confirm(
+                `Deseja gerar avaliações para o responsável "${responsavelFilial.nome}"?\n\n` +
+                `Serão criadas ${colaboradoresFilial.length} avaliação(ões) para a filial "${filial}".\n\n` +
+                `As avaliações serão criadas como PENDENTES e não aparecerão na matriz até que o responsável preencha os valores de Potencial e Desempenho.`
+            );
+
+            if (!confirmar) return;
+
+            try {
+                if (!supabaseClient) await inicializarSupabase();
+
+                // Criar avaliações pendentes para cada colaborador
+                // As avaliações são criadas como 'Pendente' e não aparecem na matriz até serem preenchidas
+                const avaliacoesParaCriar = colaboradoresFilial.map(colab => ({
+                    nome_colaborador: colab.nome || colab.email || 'Sem nome',
+                    cargo: colab.cargo || 'Não informado',
+                    departamento: colab.departamento || filial,
+                    potencial: 'Pendente', // Fica pendente até o responsável preencher
+                    desempenho: 'Pendente', // Fica pendente até o responsável preencher
+                    avaliado_por: responsavelFilial.id
+                }));
+
+                // Verificar quais já existem para evitar duplicatas
+                const avaliacoesExistentes = [];
+                for (const aval of avaliacoesParaCriar) {
+                    const { data: existente } = await supabaseClient
+                        .from('ninebox_avaliacoes')
+                        .select('id')
+                        .eq('nome_colaborador', aval.nome_colaborador)
+                        .eq('departamento', aval.departamento)
+                        .maybeSingle();
+
+                    if (existente) {
+                        avaliacoesExistentes.push(aval.nome_colaborador);
+                    }
+                }
+
+                // Filtrar apenas as novas
+                const novasAvaliacoes = avaliacoesParaCriar.filter(aval => 
+                    !avaliacoesExistentes.includes(aval.nome_colaborador)
+                );
+
+                if (novasAvaliacoes.length === 0) {
+                    mostrarErro('Todas as avaliações para esta filial já foram criadas.');
+                    return;
+                }
+
+                // Inserir novas avaliações
+                const { data, error } = await supabaseClient
+                    .from('ninebox_avaliacoes')
+                    .insert(novasAvaliacoes)
+                    .select();
+
+                if (error) throw error;
+
+                mostrarSucesso(
+                    `${novasAvaliacoes.length} avaliação(ões) criada(s) com sucesso!\n\n` +
+                    `As avaliações foram criadas como PENDENTES e não aparecerão na matriz até que o responsável "${responsavelFilial.nome}" preencha os valores de Potencial e Desempenho.` +
+                    (avaliacoesExistentes.length > 0 ? 
+                        `\n\nNota: ${avaliacoesExistentes.length} avaliação(ões) já existiam e foram mantidas.` : '')
+                );
+
+                // Fechar modal e recarregar
+                bootstrap.Modal.getInstance(document.getElementById('modalAvaliacao')).hide();
+                resetarFormularioFilial();
+                await carregarAvaliacoes();
+
+            } catch (error) {
+                console.error('Erro ao gerar avaliação por filial:', error);
+                mostrarErro('Erro ao gerar avaliações: ' + (error.message || 'Erro desconhecido'));
+            }
+        }
+
+        function exportarDados() {
+            if (avaliacoesFiltradas.length === 0) {
+                mostrarErro('Não há dados para exportar');
+                return;
+            }
+
+            // Criar CSV
+            let csv = 'Nome do Colaborador,Cargo,Departamento,Potencial,Desempenho,Classificação\n';
+            
+            avaliacoesFiltradas.forEach(av => {
+                const key = `${av.potencial}-${av.desempenho}`;
+                const classificacao = classificacaoMap[key] || { nome: 'N/A' };
+                
+                csv += `"${av.nome_colaborador}","${av.cargo}","${av.departamento}","${av.potencial}","${av.desempenho}","${classificacao.nome}"\n`;
+            });
+
+            // Criar blob e download
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            link.setAttribute('href', url);
+            link.setAttribute('download', `ninebox_avaliacoes_${new Date().toISOString().split('T')[0]}.csv`);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            mostrarSucesso('Dados exportados com sucesso!');
+        }
+    </script>
+</body>
+</html>
+

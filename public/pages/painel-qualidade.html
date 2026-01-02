@@ -1,0 +1,1927 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel de Qualidade - Intranet</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../js/permissions.js"></script>
+    <style>
+        body {
+            background: #f8f9fa;
+            font-family: Arial, sans-serif;
+        }
+        
+        .header-section {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 2rem 0;
+            margin-bottom: 2rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .ferramenta-card {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            border: 1px solid #dee2e6;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+        
+        .ferramenta-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+            border-color: #667eea;
+        }
+        
+        .ferramenta-card .ferramenta-content {
+            cursor: pointer;
+        }
+        
+        .ferramenta-card .ferramenta-actions {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            display: flex;
+            gap: 0.5rem;
+            z-index: 10;
+        }
+        
+        .ferramenta-card .ferramenta-actions button {
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        
+        .ferramenta-card:hover .ferramenta-actions button {
+            opacity: 1;
+        }
+        
+        .ferramenta-card.prioridade-alta {
+            border-left: 4px solid #dc3545;
+        }
+        
+        .ferramenta-card.prioridade-media {
+            border-left: 4px solid #ffc107;
+        }
+        
+        .ferramenta-card.prioridade-baixa {
+            border-left: 4px solid #28a745;
+        }
+        
+        .ferramenta-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 1rem;
+        }
+        
+        .ferramenta-tipo {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            background: #667eea;
+            color: white;
+        }
+        
+        .ferramenta-tipo.plano_acao {
+            background: #dc3545;
+        }
+        
+        .ferramenta-tipo.ishikawa {
+            background: #17a2b8;
+        }
+        
+        .ferramenta-tipo.5w2h {
+            background: #28a745;
+        }
+        
+        .ferramenta-tipo.pdca {
+            background: #ffc107;
+            color: #333;
+        }
+        
+        .ferramenta-tipo.brainstorm {
+            background: #6f42c1;
+        }
+        
+        .ferramenta-titulo {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #333;
+            margin: 0.5rem 0;
+        }
+        
+        .ferramenta-info {
+            display: flex;
+            gap: 1.5rem;
+            flex-wrap: wrap;
+            margin-top: 1rem;
+            color: #6c757d;
+            font-size: 0.9rem;
+        }
+        
+        .ferramenta-info-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .badge-alerta {
+            background: #dc3545;
+            color: white;
+            padding: 0.25rem 0.75rem;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+        
+        .badge-pendente {
+            background: #ffc107;
+            color: #333;
+        }
+        
+        .badge-em-alerta {
+            background: #fd7e14;
+            color: white;
+        }
+        
+        .badge-vencido {
+            background: #dc3545;
+            color: white;
+        }
+        
+        .badge-finalizado {
+            background: #28a745;
+            color: white;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        
+        .stat-card {
+            background: linear-gradient(135deg, #ffffff 0%, #f8f9ff 100%);
+            padding: 2rem 1.5rem;
+            border-radius: 16px;
+            text-align: center;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            border: 2px solid #e9ecef;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            transform: scaleX(0);
+            transition: transform 0.3s ease;
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-6px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.15);
+            border-color: #667eea;
+        }
+        
+        .stat-card:hover::before {
+            transform: scaleX(1);
+        }
+        
+        .stat-card h3 {
+            font-size: 2.5rem;
+            font-weight: 800;
+            margin: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            line-height: 1.2;
+        }
+        
+        .stat-card p {
+            margin: 0.75rem 0 0 0;
+            color: #64748b;
+            font-size: 0.95rem;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .filters-section {
+            background: linear-gradient(135deg, #ffffff 0%, #f8f9ff 100%);
+            padding: 2rem;
+            border-radius: 16px;
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            border: 2px solid #e9ecef;
+        }
+        
+        .modal-content {
+            border-radius: 12px;
+        }
+        
+        .acao-item {
+            background: #f8f9fa;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            border-left: 4px solid #667eea;
+        }
+        
+        .acao-item.vencido {
+            border-left-color: #dc3545;
+            background: #fff5f5;
+        }
+        
+        .acao-item.em-alerta {
+            border-left-color: #fd7e14;
+            background: #fff8f0;
+        }
+        
+        .projeto-card {
+            background: linear-gradient(135deg, #ffffff 0%, #f8f9ff 100%);
+            border-radius: 16px;
+            padding: 2rem;
+            margin-bottom: 1.5rem;
+            border: 2px solid #e9ecef;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+        
+        .projeto-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 5px;
+            height: 100%;
+            background: linear-gradient(180deg, #667eea 0%, #764ba2 100%);
+            transition: width 0.4s ease;
+        }
+        
+        .projeto-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 24px rgba(102, 126, 234, 0.15);
+            border-color: #667eea;
+        }
+        
+        .projeto-card:hover::before {
+            width: 8px;
+        }
+        
+        .projeto-card.expandido {
+            border-color: #667eea;
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.2);
+            background: linear-gradient(135deg, #ffffff 0%, #f0f4ff 100%);
+        }
+        
+        .projeto-card.expandido::before {
+            width: 8px;
+        }
+        
+        .projeto-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 1rem;
+        }
+        
+        .projeto-titulo {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #2d3748;
+            margin: 0 0 0.5rem 0;
+            line-height: 1.3;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .projeto-info {
+            display: flex;
+            gap: 1.5rem;
+            margin-top: 1rem;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        
+        .projeto-info span {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: #64748b;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+        
+        .projeto-info i {
+            color: #667eea;
+        }
+        
+        .projeto-expand-icon {
+            transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            font-size: 1.5rem;
+            color: #667eea;
+            background: rgba(102, 126, 234, 0.1);
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+        
+        .projeto-card.expandido .projeto-expand-icon {
+            transform: rotate(180deg);
+            background: rgba(102, 126, 234, 0.2);
+        }
+        
+        .projeto-ferramentas {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            margin-top: 1.5rem;
+            padding-top: 0;
+            border-top: 2px dashed #e2e8f0;
+            opacity: 0;
+        }
+        
+        .projeto-card.expandido .projeto-ferramentas {
+            max-height: 5000px;
+            padding-top: 1.5rem;
+            opacity: 1;
+        }
+        
+        .ferramenta-item {
+            background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+            border-radius: 12px;
+            padding: 1.25rem 1.5rem;
+            margin-bottom: 1rem;
+            border-left: 5px solid #667eea;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .ferramenta-item::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 0;
+            background: linear-gradient(180deg, #667eea 0%, #764ba2 100%);
+            transition: width 0.3s ease;
+        }
+        
+        .ferramenta-item:hover {
+            background: linear-gradient(135deg, #ffffff 0%, #f0f4ff 100%);
+            transform: translateX(8px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
+            border-left-color: #764ba2;
+        }
+        
+        .ferramenta-item:hover::before {
+            width: 4px;
+        }
+        
+        .ferramenta-item h6 {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #2d3748;
+            margin: 0.5rem 0;
+        }
+        
+        .ferramenta-item small {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: #64748b;
+            font-size: 0.85rem;
+        }
+        
+        .ferramenta-item small i {
+            color: #667eea;
+        }
+        
+        .status-badge {
+            padding: 0.4rem 1rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .status-em_andamento {
+            background: linear-gradient(135deg, #ffc107 0%, #ff9800 100%);
+            color: #fff;
+        }
+        
+        .status-concluido {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            color: white;
+        }
+        
+        .status-pausado {
+            background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
+            color: white;
+        }
+        
+        .ferramenta-tipo {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.4rem 1rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+            transition: all 0.3s ease;
+        }
+        
+        .ferramenta-tipo:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+        
+        .ferramenta-tipo.plano_acao {
+            background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+            color: white;
+        }
+        
+        .ferramenta-tipo.ishikawa {
+            background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
+            color: white;
+        }
+        
+        .ferramenta-tipo.5w2h {
+            background: linear-gradient(135deg, #28a745 0%, #218838 100%);
+            color: white;
+        }
+        
+        .ferramenta-tipo.pdca {
+            background: linear-gradient(135deg, #ffc107 0%, #e0a800 100%);
+            color: #333;
+        }
+        
+        .ferramenta-tipo.brainstorm {
+            background: linear-gradient(135deg, #6f42c1 0%, #5a32a3 100%);
+            color: white;
+        }
+        
+        .ferramenta-tipo.swot {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .ferramenta-tipo.5porques {
+            background: linear-gradient(135deg, #fd7e14 0%, #e8650e 100%);
+            color: white;
+        }
+        
+        /* Animações de entrada */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .projeto-card {
+            animation: fadeInUp 0.5s ease-out;
+        }
+        
+        .ferramenta-item {
+            animation: fadeInUp 0.4s ease-out;
+        }
+        
+        /* Melhorias no modal */
+        .modal-content {
+            border: none;
+            border-radius: 16px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        }
+        
+        .modal-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 16px 16px 0 0;
+            padding: 1.5rem;
+        }
+        
+        .modal-header .btn-close {
+            filter: brightness(0) invert(1);
+        }
+        
+        /* Scrollbar personalizada */
+        .projeto-ferramentas::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        .projeto-ferramentas::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+        
+        .projeto-ferramentas::-webkit-scrollbar-thumb {
+            background: linear-gradient(180deg, #667eea 0%, #764ba2 100%);
+            border-radius: 10px;
+        }
+        
+        .projeto-ferramentas::-webkit-scrollbar-thumb:hover {
+            background: linear-gradient(180deg, #764ba2 0%, #667eea 100%);
+        }
+        
+        /* Melhorias no empty state */
+        .alert-info {
+            border-radius: 12px;
+            border: none;
+            background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+            color: #1565c0;
+            padding: 1.5rem;
+        }
+        
+        /* Melhorias específicas para tabela 5W2H */
+        .table-hover tbody tr:hover {
+            background-color: #f0f4ff !important;
+            transform: scale(1.01);
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.1);
+        }
+        
+        .table-hover tbody tr {
+            transition: all 0.2s ease;
+        }
+        
+        /* Badge de status melhorado */
+        .badge {
+            font-weight: 600;
+            letter-spacing: 0.3px;
+            padding: 0.5rem 1rem;
+        }
+        
+        /* Responsividade para tabela 5W2H */
+        @media (max-width: 768px) {
+            .table-responsive {
+                font-size: 0.85rem;
+            }
+            
+            .table-responsive th,
+            .table-responsive td {
+                padding: 0.75rem 0.5rem !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <div class="header-section">
+        <div class="container">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="mb-0"><i class="fas fa-chart-line me-2"></i>Painel de Qualidade</h1>
+                    <p class="mb-0 mt-2">Visualize e gerencie todas as ferramentas de qualidade</p>
+                </div>
+                <div>
+                    <a href="ferramentas-qualidade.html" class="btn btn-light">
+                        <i class="fas fa-plus me-2"></i>Criar Nova Ferramenta
+                    </a>
+                    <a href="portal.html" class="btn btn-outline-light ms-2">
+                        <i class="fas fa-home me-2"></i>Portal
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- Estatísticas -->
+        <div class="stats-grid" id="statsGrid">
+            <div class="stat-card">
+                <h3 id="totalProjetos">0</h3>
+                <p>Total de Projetos</p>
+            </div>
+            <div class="stat-card">
+                <h3 id="totalFerramentas">0</h3>
+                <p>Total de Ferramentas</p>
+            </div>
+            <div class="stat-card">
+                <h3 id="totalAcoes">0</h3>
+                <p>Total de Ações</p>
+            </div>
+            <div class="stat-card">
+                <h3 id="acoesPendentes">0</h3>
+                <p>Ações Pendentes</p>
+            </div>
+            <div class="stat-card">
+                <h3 id="acoesVencidas">0</h3>
+                <p>Ações Vencidas</p>
+            </div>
+        </div>
+
+        <!-- Filtros -->
+        <div class="filters-section">
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label">Buscar</label>
+                    <input type="text" class="form-control" id="inputBusca" placeholder="Título ou descrição...">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Status do Projeto</label>
+                    <select class="form-select" id="filtroStatus">
+                        <option value="">Todos</option>
+                        <option value="em_andamento">Em Andamento</option>
+                        <option value="concluido">Concluído</option>
+                        <option value="pausado">Pausado</option>
+                    </select>
+                </div>
+                <div class="col-md-1 d-flex align-items-end">
+                    <button class="btn btn-primary w-100" onclick="aplicarFiltros()">
+                        <i class="fas fa-filter"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Lista de Projetos -->
+        <div id="listaProjetos">
+            <div class="text-center py-5">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Carregando...</span>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Modal de Detalhes -->
+    <div class="modal fade" id="modalDetalhes" tabindex="-1">
+        <div class="modal-dialog modal-lg" id="modalDetalhesDialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalDetalhesTitulo">Detalhes da Ferramenta</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" id="modalDetalhesBody" style="max-height: 70vh; overflow-y: auto;">
+                    <div class="text-center py-5">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Carregando...</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" id="btnEditarFerramenta" style="display: none;" onclick="editarFerramentaModal()">
+                        <i class="fas fa-edit me-2"></i>Editar
+                    </button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <style>
+        /* Modal maior para 5W2H */
+        .modal-5w2h .modal-dialog {
+            max-width: 95vw;
+            width: 95vw;
+            margin: 1rem auto;
+        }
+        
+        .modal-5w2h .modal-body {
+            max-height: 85vh !important;
+            overflow-y: auto;
+            padding: 1.5rem;
+        }
+        
+        .modal-5w2h .modal-content {
+            height: 90vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .modal-5w2h .modal-header {
+            flex-shrink: 0;
+        }
+        
+        .modal-5w2h .modal-footer {
+            flex-shrink: 0;
+        }
+        
+        /* Scrollbar customizada para o modal */
+        .modal-body::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        .modal-body::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+        
+        .modal-body::-webkit-scrollbar-thumb {
+            background: #667eea;
+            border-radius: 10px;
+        }
+        
+        .modal-body::-webkit-scrollbar-thumb:hover {
+            background: #764ba2;
+        }
+    </style>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let supabaseClient = null; // Renomeado para evitar conflito com possível variável global do Supabase
+        let currentUser = null;
+        let projetos = [];
+        let projetosExpandidos = new Set();
+        let ferramentasPorProjeto = {};
+        let usuarios = [];
+        let filtros = {
+            status: '',
+            busca: ''
+        };
+        let totalProjetos = 0;
+        let totalFerramentas = 0;
+
+        // Inicialização
+        document.addEventListener('DOMContentLoaded', async function() {
+            console.log('🚀 Iniciando Painel de Qualidade...');
+            
+            await inicializarSupabase();
+            await verificarAutenticacao();
+            await carregarUsuarios();
+            await carregarProjetos();
+        });
+
+        // Inicializar Supabase
+        async function inicializarSupabase() {
+            try {
+                const response = await fetch('/api/supabase-config');
+                if (!response.ok) {
+                    throw new Error('Erro ao buscar configuração do Supabase');
+                }
+                
+                const config = await response.json();
+                
+                // Usar os campos corretos (supabaseUrl e supabaseAnonKey)
+                const url = config.supabaseUrl || config.url;
+                const key = config.supabaseAnonKey || config.key;
+                
+                if (url && key) {
+                    supabaseClient = window.supabase.createClient(url, key);
+                    window.supabase = supabaseClient; // Manter compatibilidade com código que usa window.supabase
+                    console.log('✅ Supabase inicializado');
+                } else {
+                    console.error('❌ Configuração do Supabase não encontrada');
+                    console.log('Config recebido:', config);
+                }
+            } catch (error) {
+                console.error('❌ Erro ao inicializar Supabase:', error);
+            }
+        }
+
+        // Verificar autenticação
+        async function verificarAutenticacao() {
+            try {
+                // Verificar se há usuário logado no localStorage
+                const loggedInUserData = localStorage.getItem('loggedInUser');
+                if (!loggedInUserData) {
+                    console.log('❌ Nenhum usuário logado encontrado');
+                    window.location.href = 'login.html';
+                    return;
+                }
+
+                const userData = JSON.parse(loggedInUserData);
+                if (!userData.authenticated) {
+                    console.log('❌ Usuário não autenticado');
+                    window.location.href = 'login.html';
+                    return;
+                }
+
+                // Verificar se Supabase está disponível
+                if (!supabaseClient) {
+                    await inicializarSupabase();
+                }
+                
+                if (supabaseClient) {
+                    const { data: { session } } = await supabaseClient.auth.getSession();
+                    if (!session) {
+                        console.log('❌ Sessão Supabase não encontrada');
+                        window.location.href = 'login.html';
+                        return;
+                    }
+                    currentUser = session.user;
+                    console.log('✅ Usuário autenticado:', currentUser.email);
+                } else {
+                    console.warn('⚠️ Supabase não disponível, usando autenticação via localStorage');
+                    currentUser = { id: userData.id, email: userData.email };
+                }
+            } catch (error) {
+                console.error('❌ Erro ao verificar autenticação:', error);
+                window.location.href = 'login.html';
+            }
+        }
+
+        // Obter headers de autenticação
+        async function getAuthHeaders() {
+            const headers = {
+                'Content-Type': 'application/json'
+            };
+            
+            // Tentar obter token do Supabase
+            if (supabaseClient) {
+                try {
+                    const { data: { session } } = await supabaseClient.auth.getSession();
+                    if (session && session.access_token) {
+                        headers['Authorization'] = `Bearer ${session.access_token}`;
+                    }
+                } catch (error) {
+                    console.warn('⚠️ Erro ao obter sessão:', error);
+                }
+            }
+            
+            // Tentar obter email do localStorage (loggedInUser primeiro, depois userData como fallback)
+            try {
+                let userEmail = null;
+                let userId = null;
+
+                // Tentar loggedInUser primeiro
+                const loggedInUserData = localStorage.getItem('loggedInUser');
+                if (loggedInUserData) {
+                    const parsed = JSON.parse(loggedInUserData);
+                    userEmail = parsed.email;
+                    userId = parsed.id;
+                }
+
+                // Fallback para userData
+                if (!userEmail) {
+                    const userData = localStorage.getItem('userData');
+                    if (userData) {
+                        const parsed = JSON.parse(userData);
+                        userEmail = parsed.email;
+                        userId = parsed.id;
+                    }
+                }
+
+                if (userEmail) {
+                    headers['X-User-Email'] = userEmail;
+                }
+                if (userId) {
+                    headers['X-User-Id'] = userId;
+                }
+            } catch (error) {
+                console.warn('⚠️ Erro ao obter email do localStorage:', error);
+            }
+            
+            return headers;
+        }
+
+        // Carregar usuários
+        async function carregarUsuarios() {
+            try {
+                const headers = await getAuthHeaders();
+                const response = await fetch('/api/ferramentas-qualidade/usuarios', {
+                    headers: headers,
+                    credentials: 'include'
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    usuarios = data.usuarios || [];
+                    
+                    // Verificar se o elemento existe antes de tentar adicionar opções
+                    const select = document.getElementById('filtroResponsavel');
+                    if (select) {
+                    usuarios.forEach(usuario => {
+                        const option = document.createElement('option');
+                        option.value = usuario.id;
+                        option.textContent = usuario.nome || usuario.email;
+                        select.appendChild(option);
+                    });
+                    }
+                }
+            } catch (error) {
+                console.error('❌ Erro ao carregar usuários:', error);
+            }
+        }
+
+        // Carregar projetos
+        async function carregarProjetos() {
+            try {
+                const headers = await getAuthHeaders();
+                
+                const params = new URLSearchParams();
+                
+                if (filtros.status) {
+                    params.append('status', filtros.status);
+                }
+                
+                if (filtros.busca) {
+                    params.append('busca', filtros.busca);
+                }
+
+                const response = await fetch(`/api/projetos-qualidade?${params}`, {
+                    headers: headers,
+                    credentials: 'include'
+                });
+
+                if (response.status === 401) {
+                    console.error('❌ Não autenticado');
+                    alert('Sessão expirada. Faça login novamente.');
+                    window.location.href = 'login.html';
+                    return;
+                }
+
+                if (response.status === 403) {
+                    alert('Você não tem permissão para acessar o painel de qualidade');
+                    window.location.href = 'portal.html';
+                    return;
+                }
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error('❌ Erro na resposta:', errorText);
+                    throw new Error(`Erro ${response.status}: ${errorText}`);
+                }
+
+                const data = await response.json();
+                projetos = data.projetos || [];
+                totalProjetos = projetos.length;
+                
+                // Calcular total de ferramentas
+                totalFerramentas = projetos.reduce((sum, p) => sum + (p.total_ferramentas || 0), 0);
+
+                atualizarEstatisticas();
+                renderizarProjetos();
+            } catch (error) {
+                console.error('❌ Erro ao carregar projetos:', error);
+                document.getElementById('listaProjetos').innerHTML = `
+                    <div class="alert alert-danger">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        Erro ao carregar projetos: ${error.message}
+                        <br><small>Verifique o console para mais detalhes.</small>
+                    </div>
+                `;
+            }
+        }
+
+        // Atualizar estatísticas
+        function atualizarEstatisticas() {
+            document.getElementById('totalProjetos').textContent = totalProjetos;
+            document.getElementById('totalFerramentas').textContent = totalFerramentas;
+            
+            // Calcular ações de todas as ferramentas de todos os projetos
+            let totalAcoes = 0;
+            let acoesPendentes = 0;
+            let acoesVencidas = 0;
+
+            // Iterar sobre projetos expandidos e suas ferramentas
+            Object.values(ferramentasPorProjeto).forEach(ferramentas => {
+            ferramentas.forEach(ferramenta => {
+                if (ferramenta.tipo_ferramenta === 'plano_acao') {
+                    totalAcoes += ferramenta.total_acoes || 0;
+                    acoesPendentes += ferramenta.acoes_pendentes || 0;
+                    acoesVencidas += ferramenta.acoes_vencidas || 0;
+                }
+                });
+            });
+
+            document.getElementById('totalAcoes').textContent = totalAcoes;
+            document.getElementById('acoesPendentes').textContent = acoesPendentes;
+            document.getElementById('acoesVencidas').textContent = acoesVencidas;
+        }
+
+        // Renderizar projetos
+        function renderizarProjetos() {
+            const container = document.getElementById('listaProjetos');
+            
+            if (projetos.length === 0) {
+                container.innerHTML = `
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        Nenhum projeto encontrado com os filtros aplicados.
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = projetos.map(projeto => {
+                const isExpandido = projetosExpandidos.has(projeto.id);
+                const statusLabels = {
+                    'em_andamento': 'Em Andamento',
+                    'concluido': 'Concluído',
+                    'pausado': 'Pausado'
+                };
+                const statusLabel = statusLabels[projeto.status] || projeto.status;
+                const statusClass = `status-${projeto.status}`;
+                const dataCriacao = new Date(projeto.criado_em).toLocaleDateString('pt-BR');
+                const ferramentas = ferramentasPorProjeto[projeto.id] || [];
+                
+                let ferramentasHTML = '';
+                if (isExpandido && ferramentas.length > 0) {
+                const tipoLabels = {
+                    '5porques': '5 Porquês',
+                    '5w2h': '5W2H',
+                    'plano_acao': 'Plano de Ação',
+                    'ishikawa': 'Ishikawa',
+                    'pdca': 'PDCA',
+                    'brainstorm': 'Brainstorming'
+                };
+
+                    const tipoIcons = {
+                        '5porques': 'fas fa-question-circle',
+                        '5w2h': 'fas fa-clipboard-question',
+                        'plano_acao': 'fas fa-tasks',
+                        'ishikawa': 'fas fa-project-diagram',
+                        'pdca': 'fas fa-sync-alt',
+                        'brainstorm': 'fas fa-lightbulb',
+                        'swot': 'fas fa-th'
+                    };
+                    
+                    ferramentasHTML = ferramentas.map(ferramenta => {
+                const tipoLabel = tipoLabels[ferramenta.tipo_ferramenta] || ferramenta.tipo_ferramenta;
+                        const dataCriacaoFerramenta = new Date(ferramenta.criado_em).toLocaleDateString('pt-BR');
+                        const tipoIcon = tipoIcons[ferramenta.tipo_ferramenta] || 'fas fa-toolbox';
+                        
+                        return `
+                            <div class="ferramenta-item" onclick="event.stopPropagation(); abrirDetalhes('${ferramenta.id}')">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div class="flex-grow-1">
+                                        <div class="d-flex align-items-center gap-2 mb-2">
+                                            <i class="${tipoIcon}" style="color: #667eea; font-size: 1.2rem;"></i>
+                                            <span class="ferramenta-tipo ${ferramenta.tipo_ferramenta}">${tipoLabel}</span>
+                                        </div>
+                                        <h6 class="mb-2">${escapeHtml(ferramenta.titulo)}</h6>
+                                        <div class="d-flex align-items-center gap-3 flex-wrap">
+                                            <small>
+                                                <i class="fas fa-calendar-alt"></i> ${dataCriacaoFerramenta}
+                                            </small>
+                                            ${ferramenta.tipo_ferramenta === 'plano_acao' && ferramenta.total_acoes ? `
+                                                <small>
+                                                    <i class="fas fa-tasks"></i> ${ferramenta.total_acoes} ação(ões)
+                                                </small>
+                                            ` : ''}
+                                            ${ferramenta.tipo_ferramenta === '5w2h' && ferramenta.dados?.status ? `
+                                                <span class="badge bg-${ferramenta.dados.status === 'pendente' ? 'warning' : ferramenta.dados.status === 'em_andamento' ? 'info' : ferramenta.dados.status === 'finalizado' ? 'success' : 'danger'}">
+                                                    ${ferramenta.dados.status === 'pendente' ? 'Pendente' : ferramenta.dados.status === 'em_andamento' ? 'Em andamento' : ferramenta.dados.status === 'finalizado' ? 'Finalizado' : 'Atrasado'}
+                                                </span>
+                                            ` : ''}
+                                        </div>
+                                    </div>
+                                    <div class="ms-2">
+                                        <i class="fas fa-chevron-right text-muted" style="font-size: 1.2rem;"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    }).join('');
+                } else if (isExpandido && ferramentas.length === 0) {
+                    ferramentasHTML = `
+                        <div class="alert alert-info mb-0">
+                            <i class="fas fa-info-circle me-2"></i>
+                            Este projeto ainda não possui ferramentas vinculadas.
+                            </div>
+                        `;
+                }
+
+                return `
+                    <div class="projeto-card ${isExpandido ? 'expandido' : ''}" onclick="toggleProjeto('${projeto.id}')">
+                        <div class="projeto-header">
+                            <div class="flex-grow-1">
+                                <div class="d-flex align-items-center gap-2 mb-2">
+                                    <i class="fas fa-folder-open" style="color: #667eea; font-size: 1.5rem;"></i>
+                                    <h5 class="projeto-titulo mb-0">${escapeHtml(projeto.titulo)}</h5>
+                        </div>
+                                <div class="projeto-info">
+                                    <span class="status-badge ${statusClass}">${statusLabel}</span>
+                                    <span><i class="fas fa-tools"></i> ${projeto.total_ferramentas || 0} ferramenta(s)</span>
+                                    <span><i class="fas fa-calendar-alt"></i> ${dataCriacao}</span>
+                                </div>
+                                ${projeto.descricao ? `
+                                    <p class="text-muted mt-3 mb-0" style="line-height: 1.6;">${escapeHtml(projeto.descricao.substring(0, 150))}${projeto.descricao.length > 150 ? '...' : ''}</p>
+                                ` : ''}
+                            </div>
+                            <div class="ms-3">
+                                <i class="fas fa-chevron-down projeto-expand-icon"></i>
+                                </div>
+                                </div>
+                        <div class="projeto-ferramentas">
+                            ${isExpandido ? `
+                                <div class="mb-3">
+                                    <h6 class="mb-0" style="color: #667eea; font-weight: 600;">
+                                        <i class="fas fa-tools me-2"></i>Ferramentas do Projeto
+                                    </h6>
+                                    </div>
+                                ${ferramentasHTML}
+                            ` : ''}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Toggle projeto (expandir/colapsar)
+        async function toggleProjeto(projetoId) {
+            const isExpandido = projetosExpandidos.has(projetoId);
+            
+            if (isExpandido) {
+                // Colapsar
+                projetosExpandidos.delete(projetoId);
+            } else {
+                // Expandir - carregar ferramentas se ainda não foram carregadas
+                projetosExpandidos.add(projetoId);
+                
+                if (!ferramentasPorProjeto[projetoId]) {
+                    await carregarFerramentasProjeto(projetoId);
+                }
+            }
+            
+            renderizarProjetos();
+            atualizarEstatisticas();
+        }
+        
+        // Carregar ferramentas de um projeto
+        async function carregarFerramentasProjeto(projetoId) {
+            try {
+                const headers = await getAuthHeaders();
+                const response = await fetch(`/api/projetos-qualidade/${projetoId}`, {
+                    headers: headers,
+                    credentials: 'include'
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`Erro ${response.status}`);
+                }
+                
+                const data = await response.json();
+                ferramentasPorProjeto[projetoId] = data.projeto.ferramentas || [];
+                
+                // Atualizar estatísticas após carregar ferramentas
+                atualizarEstatisticas();
+            } catch (error) {
+                console.error('❌ Erro ao carregar ferramentas do projeto:', error);
+                ferramentasPorProjeto[projetoId] = [];
+            }
+        }
+
+
+        // Aplicar filtros
+        function aplicarFiltros() {
+            filtros.status = document.getElementById('filtroStatus').value;
+            filtros.busca = document.getElementById('inputBusca').value.trim();
+            
+            carregarProjetos();
+        }
+
+        // Abrir detalhes
+        async function abrirDetalhes(id) {
+            const modalElement = document.getElementById('modalDetalhes');
+            const modal = new bootstrap.Modal(modalElement);
+            
+            // Limpar classe de tamanho grande ao fechar o modal
+            modalElement.addEventListener('hidden.bs.modal', function onModalHidden() {
+                modalElement.classList.remove('modal-5w2h');
+                const modalBody = document.getElementById('modalDetalhesBody');
+                if (modalBody) {
+                    modalBody.style.maxHeight = '70vh';
+                }
+                modalElement.removeEventListener('hidden.bs.modal', onModalHidden);
+            }, { once: true });
+            
+            document.getElementById('modalDetalhesTitulo').textContent = 'Carregando...';
+            document.getElementById('modalDetalhesBody').innerHTML = `
+                <div class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Carregando...</span>
+                    </div>
+                </div>
+            `;
+            modal.show();
+
+            try {
+                const headers = await getAuthHeaders();
+                const response = await fetch(`/api/ferramentas-qualidade/painel/${id}`, {
+                    headers: headers,
+                    credentials: 'include'
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Erro ${response.status}`);
+                }
+
+                const data = await response.json();
+                const ferramenta = data.ferramenta;
+
+                document.getElementById('modalDetalhesTitulo').textContent = ferramenta.titulo;
+                
+                // Ajustar tamanho do modal para 5W2H
+                const modalElement = document.getElementById('modalDetalhes');
+                const modalDialog = document.getElementById('modalDetalhesDialog');
+                const modalBody = document.getElementById('modalDetalhesBody');
+                
+                if (ferramenta.tipo_ferramenta === '5w2h') {
+                    // Adicionar classe para modal maior
+                    modalElement.classList.add('modal-5w2h');
+                    modalBody.style.maxHeight = '85vh';
+                } else {
+                    // Remover classe e resetar tamanho
+                    modalElement.classList.remove('modal-5w2h');
+                    modalBody.style.maxHeight = '70vh';
+                }
+                
+                // Carregar usuários se necessário (especialmente para 5W2H que precisa mostrar nomes)
+                if (usuarios.length === 0) {
+                    await carregarUsuarios();
+                }
+                
+                // Mostrar botão de editar
+                const btnEditar = document.getElementById('btnEditarFerramenta');
+                btnEditar.style.display = 'inline-block';
+                btnEditar.setAttribute('data-id', ferramenta.id);
+                
+                let html = `
+                    <div class="mb-3">
+                        <span class="badge bg-primary">${ferramenta.tipo_ferramenta.toUpperCase()}</span>
+                        <span class="badge bg-secondary ms-2">Criado em ${new Date(ferramenta.criado_em).toLocaleDateString('pt-BR')}</span>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <strong>Criado por:</strong> ${ferramenta.criado_por_user?.nome || ferramenta.criado_por_user?.email || 'Desconhecido'}
+                        ${ferramenta.criado_por_user?.departamento ? `<br><small class="text-muted">${ferramenta.criado_por_user.departamento}</small>` : ''}
+                    </div>
+                `;
+
+                // Renderizar dados formatados baseado no tipo
+                html += renderizarDadosFerramenta(ferramenta);
+
+                if (ferramenta.observacoes) {
+                    html += `
+                        <div class="mt-3">
+                            <strong>Observações:</strong>
+                            <p class="text-muted">${escapeHtml(ferramenta.observacoes)}</p>
+                        </div>
+                    `;
+                }
+
+                document.getElementById('modalDetalhesBody').innerHTML = html;
+            } catch (error) {
+                console.error('❌ Erro ao carregar detalhes:', error);
+                document.getElementById('modalDetalhesBody').innerHTML = `
+                    <div class="alert alert-danger">
+                        Erro ao carregar detalhes: ${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        // Editar ferramenta do modal
+        function editarFerramentaModal() {
+            const btnEditar = document.getElementById('btnEditarFerramenta');
+            const id = btnEditar.getAttribute('data-id');
+            if (id) {
+                editarFerramenta(id);
+            }
+        }
+        
+        // Editar ferramenta
+        function editarFerramenta(id) {
+            // Redirecionar para a página de ferramentas com o ID na URL
+            window.location.href = `ferramentas-qualidade.html?id=${id}`;
+        }
+        
+        // Excluir ferramenta
+        async function excluirFerramenta(id, titulo) {
+            if (!confirm(`Tem certeza que deseja excluir a ferramenta "${titulo}"?\n\nEsta ação não pode ser desfeita.`)) {
+                return;
+            }
+            
+            try {
+                const headers = await getAuthHeaders();
+                const response = await fetch(`/api/ferramentas-qualidade/${id}`, {
+                    method: 'DELETE',
+                    headers: headers,
+                    credentials: 'include'
+                });
+                
+                if (response.status === 401) {
+                    alert('Sessão expirada. Faça login novamente.');
+                    window.location.href = 'login.html';
+                    return;
+                }
+                
+                if (response.status === 403) {
+                    alert('Você não tem permissão para excluir esta ferramenta.');
+                    return;
+                }
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert('✅ Ferramenta excluída com sucesso!');
+                    // Recarregar a lista
+                    carregarFerramentas();
+                } else {
+                    alert('❌ Erro ao excluir: ' + (data.error || 'Erro desconhecido'));
+                }
+            } catch (error) {
+                console.error('❌ Erro ao excluir ferramenta:', error);
+                alert('❌ Erro ao excluir ferramenta: ' + error.message);
+            }
+        }
+        
+        // Renderizar dados formatados da ferramenta
+        // Funções para filtros do 5W2H no painel
+        function aplicarFiltros5W2HPainel(ferramentaId) {
+            // Recarregar os detalhes da ferramenta para aplicar os filtros
+            abrirDetalhes(ferramentaId);
+        }
+        
+        function limparFiltros5W2HPainel(ferramentaId) {
+            if (window.filtros5W2HPainel && window.filtros5W2HPainel[ferramentaId]) {
+                window.filtros5W2HPainel[ferramentaId] = {
+                    what: '',
+                    why: '',
+                    where: '',
+                    when: '',
+                    who: '',
+                    how: '',
+                    status: ''
+                };
+            }
+            aplicarFiltros5W2HPainel(ferramentaId);
+        }
+        
+        function renderizarDadosFerramenta(ferramenta) {
+            const tipo = ferramenta.tipo_ferramenta;
+            const dados = ferramenta.dados || {};
+            
+            let html = '';
+            
+            switch(tipo) {
+                case 'plano_acao':
+                    if (dados.acoes && dados.acoes.length > 0) {
+                        html += '<h6 class="mt-4 mb-3"><i class="fas fa-tasks me-2"></i>Ações do Plano:</h6>';
+                        html += '<div class="list-group">';
+                        
+                        dados.acoes.forEach((acao, index) => {
+                            const alerta = ferramenta.alertas?.find(a => a.acao_id === acao.id) || null;
+                            let statusClass = '';
+                            let statusBadge = '';
+                            
+                            if (alerta) {
+                                if (alerta.status === 'vencido') {
+                                    statusClass = 'vencido';
+                                    statusBadge = '<span class="badge bg-danger ms-2">Vencido</span>';
+                                } else if (alerta.status === 'em_alerta') {
+                                    statusClass = 'em-alerta';
+                                    statusBadge = '<span class="badge bg-warning text-dark ms-2">Em Alerta</span>';
+                                } else {
+                                    statusBadge = '<span class="badge bg-info ms-2">Pendente</span>';
+                                }
+                            }
+
+                            const responsavel = usuarios.find(u => u.id === acao.responsavel) || null;
+                            const responsavelNome = responsavel ? responsavel.nome || responsavel.email : 'Não definido';
+
+                            html += `
+                                <div class="acao-item ${statusClass}">
+                                    <div class="d-flex justify-content-between align-items-start">
+                                        <div class="flex-grow-1">
+                                            <strong>${index + 1}. ${escapeHtml(acao.acao || 'Sem descrição')}</strong>
+                                            ${statusBadge}
+                                            <div class="mt-2">
+                                                <small class="text-muted">
+                                                    <strong>Responsável:</strong> ${escapeHtml(responsavelNome)}<br>
+                                                    ${acao.prioridade ? `<strong>Prioridade:</strong> ${acao.prioridade}<br>` : ''}
+                                                    ${acao.finalizacao ? `<strong>Prazo:</strong> ${new Date(acao.finalizacao).toLocaleDateString('pt-BR')}<br>` : ''}
+                                                    ${acao.progresso ? `<strong>Progresso:</strong> ${acao.progresso}%<br>` : ''}
+                                                </small>
+                                            </div>
+                                            ${acao.obs ? `<div class="mt-2"><small>${escapeHtml(acao.obs)}</small></div>` : ''}
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                        });
+                        
+                        html += '</div>';
+                    } else {
+                        html += '<div class="alert alert-info"><i class="fas fa-info-circle me-2"></i>Nenhuma ação cadastrada neste plano.</div>';
+                    }
+                    break;
+                    
+                case 'swot':
+                    html += '<div class="mt-4">';
+                    if (dados.contexto) {
+                        html += `<div class="mb-3"><strong>Contexto:</strong> <p class="text-muted mb-0">${escapeHtml(dados.contexto)}</p></div>`;
+                    }
+                    
+                    const itens = dados.itens || {};
+                    html += '<div class="row g-3">';
+                    
+                    // Forças
+                    html += '<div class="col-md-6">';
+                    html += '<div class="card border-success h-100">';
+                    html += '<div class="card-header bg-success text-white"><strong><i class="fas fa-check-circle me-2"></i>Forças</strong></div>';
+                    html += '<div class="card-body">';
+                    if (itens.forcas && itens.forcas.length > 0) {
+                        html += '<ul class="mb-0">';
+                        itens.forcas.forEach(f => {
+                            html += `<li>${escapeHtml(f)}</li>`;
+                        });
+                        html += '</ul>';
+                    } else {
+                        html += '<p class="text-muted mb-0">Nenhuma força registrada</p>';
+                    }
+                    html += '</div></div></div>';
+                    
+                    // Fraquezas
+                    html += '<div class="col-md-6">';
+                    html += '<div class="card border-danger h-100">';
+                    html += '<div class="card-header bg-danger text-white"><strong><i class="fas fa-times-circle me-2"></i>Fraquezas</strong></div>';
+                    html += '<div class="card-body">';
+                    if (itens.fraquezas && itens.fraquezas.length > 0) {
+                        html += '<ul class="mb-0">';
+                        itens.fraquezas.forEach(f => {
+                            html += `<li>${escapeHtml(f)}</li>`;
+                        });
+                        html += '</ul>';
+                    } else {
+                        html += '<p class="text-muted mb-0">Nenhuma fraqueza registrada</p>';
+                    }
+                    html += '</div></div></div>';
+                    
+                    // Oportunidades
+                    html += '<div class="col-md-6">';
+                    html += '<div class="card border-info h-100">';
+                    html += '<div class="card-header bg-info text-white"><strong><i class="fas fa-lightbulb me-2"></i>Oportunidades</strong></div>';
+                    html += '<div class="card-body">';
+                    if (itens.oportunidades && itens.oportunidades.length > 0) {
+                        html += '<ul class="mb-0">';
+                        itens.oportunidades.forEach(o => {
+                            html += `<li>${escapeHtml(o)}</li>`;
+                        });
+                        html += '</ul>';
+                    } else {
+                        html += '<p class="text-muted mb-0">Nenhuma oportunidade registrada</p>';
+                    }
+                    html += '</div></div></div>';
+                    
+                    // Ameaças
+                    html += '<div class="col-md-6">';
+                    html += '<div class="card border-warning h-100">';
+                    html += '<div class="card-header bg-warning text-dark"><strong><i class="fas fa-exclamation-triangle me-2"></i>Ameaças</strong></div>';
+                    html += '<div class="card-body">';
+                    if (itens.ameacas && itens.ameacas.length > 0) {
+                        html += '<ul class="mb-0">';
+                        itens.ameacas.forEach(a => {
+                            html += `<li>${escapeHtml(a)}</li>`;
+                        });
+                        html += '</ul>';
+                    } else {
+                        html += '<p class="text-muted mb-0">Nenhuma ameaça registrada</p>';
+                    }
+                    html += '</div></div></div>';
+                    
+                    html += '</div></div>';
+                    break;
+                    
+                case '5w2h':
+                    console.log('📊 Renderizando 5W2H - dados:', dados);
+                    console.log('📊 Status disponível:', dados.status);
+                    console.log('📊 Linhas disponíveis:', dados.linhas?.length || 0);
+                    
+                    // Garantir que todas as linhas tenham o campo observacao (compatibilidade com dados antigos)
+                    if (dados.linhas && Array.isArray(dados.linhas)) {
+                        dados.linhas = dados.linhas.map(linha => ({
+                            ...linha,
+                            observacao: linha.observacao || ''
+                        }));
+                    }
+                    
+                    html += '<div class="mt-4">';
+                    
+                    // Header com status destacado
+                    const statusLabels = {
+                        'pendente': { label: 'Pendente', class: 'warning', icon: 'clock' },
+                        'em_andamento': { label: 'Em andamento', class: 'info', icon: 'spinner' },
+                        'finalizado': { label: 'Finalizado', class: 'success', icon: 'check-circle' },
+                        'atrasado': { label: 'Atrasado', class: 'danger', icon: 'exclamation-triangle' }
+                    };
+                    const statusInfo = dados.status ? statusLabels[dados.status] || { label: dados.status, class: 'secondary', icon: 'circle' } : null;
+                    
+                    html += '<div class="d-flex justify-content-between align-items-center mb-4 p-4" style="background: linear-gradient(135deg, #f8f9ff 0%, #e8edff 100%); border-radius: 12px; border-left: 5px solid #28a745; box-shadow: 0 4px 12px rgba(0,0,0,0.08);">';
+                    html += '<div class="d-flex align-items-center gap-3">';
+                    html += '<div style="background: rgba(40, 167, 69, 0.1); padding: 1rem; border-radius: 12px;">';
+                    html += '<i class="fas fa-clipboard-question" style="color: #28a745; font-size: 2rem;"></i>';
+                    html += '</div>';
+                    html += '<div>';
+                    html += '<h5 class="mb-1" style="color: #2d3748; font-weight: 700;">Análise 5W2H</h5>';
+                    html += '<small class="text-muted">Ferramenta de planejamento e organização</small>';
+                    html += '</div>';
+                    html += '</div>';
+                    
+                    // Exibir status se disponível - sempre visível
+                    if (statusInfo) {
+                        html += `<div class="text-end">`;
+                        html += `<span class="badge bg-${statusInfo.class} px-4 py-2" style="font-size: 1rem; font-weight: 700; box-shadow: 0 2px 8px rgba(0,0,0,0.15);">`;
+                        html += `<i class="fas fa-${statusInfo.icon} me-2"></i>${statusInfo.label}`;
+                        html += `</span>`;
+                        html += `</div>`;
+                    } else {
+                        // Exibir status padrão se não houver
+                        html += `<div class="text-end">`;
+                        html += `<span class="badge bg-secondary px-4 py-2" style="font-size: 1rem; font-weight: 700;">`;
+                        html += `<i class="fas fa-circle me-2"></i>Status não definido`;
+                        html += `</span>`;
+                        html += `</div>`;
+                    }
+                    html += '</div>';
+                    
+                    // Criar ID único para os filtros desta visualização
+                    const filtrosId = `filtros5w2h_${ferramenta.id}`;
+                    const planilhaId = `planilha5w2h_${ferramenta.id}`;
+                    
+                    // Inicializar filtros se não existirem
+                    if (!window.filtros5W2HPainel) {
+                        window.filtros5W2HPainel = {};
+                    }
+                    if (!window.filtros5W2HPainel[ferramenta.id]) {
+                        window.filtros5W2HPainel[ferramenta.id] = {
+                            what: '',
+                            why: '',
+                            where: '',
+                            when: '',
+                            who: '',
+                            how: '',
+                            status: ''
+                        };
+                    }
+                    const filtros = window.filtros5W2HPainel[ferramenta.id];
+                    
+                    // Filtrar linhas
+                    let linhasFiltradas = (dados.linhas || []).filter(linha => {
+                        const matchWhat = !filtros.what || (linha.what || '').toLowerCase().includes(filtros.what.toLowerCase());
+                        const matchWhy = !filtros.why || (linha.why || '').toLowerCase().includes(filtros.why.toLowerCase());
+                        const matchWhere = !filtros.where || (linha.where || '').toLowerCase().includes(filtros.where.toLowerCase());
+                        const matchWhen = !filtros.when || (linha.when || '').includes(filtros.when);
+                        const matchWho = !filtros.who || (linha.who || '').toLowerCase().includes(filtros.who.toLowerCase());
+                        const matchHow = !filtros.how || (linha.how || '').toLowerCase().includes(filtros.how.toLowerCase());
+                        const matchStatus = !filtros.status || (linha.status || 'pendente') === filtros.status;
+                        
+                        return matchWhat && matchWhy && matchWhere && matchWhen && matchWho && matchHow && matchStatus;
+                    });
+                    
+                    if (dados.linhas && dados.linhas.length > 0) {
+                        html += `
+                            <style>
+                                .planilha-5w2h-painel {
+                                    background: white;
+                                    border-radius: 12px;
+                                    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+                                    overflow: hidden;
+                                }
+                                .planilha-5w2h-painel table {
+                                    margin: 0;
+                                    border-collapse: separate;
+                                    border-spacing: 0;
+                                }
+                                .planilha-5w2h-painel thead th {
+                                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                                    color: white;
+                                    font-weight: 600;
+                                    padding: 0.75rem;
+                                    border: 1px solid rgba(255,255,255,0.2);
+                                    position: sticky;
+                                    top: 0;
+                                    z-index: 10;
+                                    white-space: nowrap;
+                                }
+                                .planilha-5w2h-painel tbody td {
+                                    padding: 0.75rem;
+                                    border: 1px solid #e9ecef;
+                                    vertical-align: middle;
+                                }
+                                .planilha-5w2h-painel tbody tr:hover {
+                                    background-color: #f8f9fa;
+                                }
+                                .planilha-5w2h-painel tbody tr:nth-child(even) {
+                                    background-color: #f8f9fa;
+                                }
+                                .filtros-5w2h-painel {
+                                    background: linear-gradient(135deg, #f8f9ff 0%, #e8edff 100%);
+                                    padding: 1rem;
+                                    border-radius: 12px;
+                                    margin-bottom: 1rem;
+                                    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+                                }
+                                .filtros-5w2h-painel input, .filtros-5w2h-painel select {
+                                    border: 1px solid #dee2e6;
+                                    border-radius: 6px;
+                                    padding: 0.5rem;
+                                    font-size: 0.875rem;
+                                }
+                            </style>
+                            
+                            <!-- Filtros -->
+                            <div id="${filtrosId}" class="filtros-5w2h-painel">
+                                <div class="d-flex justify-content-between align-items-center mb-3">
+                                    <h6 class="mb-0"><i class="fas fa-filter me-2"></i>Filtros</h6>
+                                    <button class="btn btn-sm btn-outline-secondary" onclick="limparFiltros5W2HPainel('${ferramenta.id}')">
+                                        <i class="fas fa-times me-1"></i>Limpar
+                                    </button>
+                                </div>
+                                <div class="row g-2">
+                                    <div class="col-md-3 col-lg-2">
+                                        <input type="text" class="form-control form-control-sm" 
+                                               placeholder="Filtrar What..." 
+                                               value="${filtros.what}"
+                                               oninput="window.filtros5W2HPainel['${ferramenta.id}'].what = this.value; aplicarFiltros5W2HPainel('${ferramenta.id}');">
+                                    </div>
+                                    <div class="col-md-3 col-lg-2">
+                                        <input type="text" class="form-control form-control-sm" 
+                                               placeholder="Filtrar Why..." 
+                                               value="${filtros.why}"
+                                               oninput="window.filtros5W2HPainel['${ferramenta.id}'].why = this.value; aplicarFiltros5W2HPainel('${ferramenta.id}');">
+                                    </div>
+                                    <div class="col-md-3 col-lg-2">
+                                        <input type="text" class="form-control form-control-sm" 
+                                               placeholder="Filtrar Where..." 
+                                               value="${filtros.where}"
+                                               oninput="window.filtros5W2HPainel['${ferramenta.id}'].where = this.value; aplicarFiltros5W2HPainel('${ferramenta.id}');">
+                                    </div>
+                                    <div class="col-md-3 col-lg-2">
+                                        <input type="date" class="form-control form-control-sm" 
+                                               placeholder="Filtrar When..." 
+                                               value="${filtros.when}"
+                                               onchange="window.filtros5W2HPainel['${ferramenta.id}'].when = this.value; aplicarFiltros5W2HPainel('${ferramenta.id}');">
+                                    </div>
+                                    <div class="col-md-3 col-lg-2">
+                                        <input type="text" class="form-control form-control-sm" 
+                                               placeholder="Filtrar Who..." 
+                                               value="${filtros.who}"
+                                               oninput="window.filtros5W2HPainel['${ferramenta.id}'].who = this.value; aplicarFiltros5W2HPainel('${ferramenta.id}');">
+                                    </div>
+                                    <div class="col-md-3 col-lg-2">
+                                        <input type="text" class="form-control form-control-sm" 
+                                               placeholder="Filtrar How..." 
+                                               value="${filtros.how}"
+                                               oninput="window.filtros5W2HPainel['${ferramenta.id}'].how = this.value; aplicarFiltros5W2HPainel('${ferramenta.id}');">
+                                    </div>
+                                    <div class="col-md-3 col-lg-2">
+                                        <select class="form-select form-select-sm" 
+                                                onchange="window.filtros5W2HPainel['${ferramenta.id}'].status = this.value; aplicarFiltros5W2HPainel('${ferramenta.id}');">
+                                            <option value="">Todos os status</option>
+                                            <option value="pendente" ${filtros.status === 'pendente' ? 'selected' : ''}>Pendente</option>
+                                            <option value="em_andamento" ${filtros.status === 'em_andamento' ? 'selected' : ''}>Em andamento</option>
+                                            <option value="finalizado" ${filtros.status === 'finalizado' ? 'selected' : ''}>Finalizado</option>
+                                            <option value="atrasado" ${filtros.status === 'atrasado' ? 'selected' : ''}>Atrasado</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="mt-2 text-muted small">
+                                    <i class="fas fa-info-circle me-1"></i>
+                                    Mostrando ${linhasFiltradas.length} de ${dados.linhas.length} linha(s)
+                                </div>
+                            </div>
+                            
+                            <!-- Planilha -->
+                            <div id="${planilhaId}" class="planilha-5w2h-painel">
+                                <div class="table-responsive" style="max-height: 600px; overflow-y: auto;">
+                                    <table class="table table-sm mb-0">
+                                        <thead>
+                                            <tr>
+                                                <th style="min-width: 50px; width: 50px;">#</th>
+                                                <th style="min-width: 200px;"><i class="fas fa-question-circle me-1"></i>What</th>
+                                                <th style="min-width: 200px;"><i class="fas fa-lightbulb me-1"></i>Why</th>
+                                                <th style="min-width: 150px;"><i class="fas fa-map-marker-alt me-1"></i>Where</th>
+                                                <th style="min-width: 120px;"><i class="fas fa-calendar-alt me-1"></i>When</th>
+                                                <th style="min-width: 180px;"><i class="fas fa-user me-1"></i>Who</th>
+                                                <th style="min-width: 200px;"><i class="fas fa-cogs me-1"></i>How</th>
+                                                <th style="min-width: 120px;"><i class="fas fa-dollar-sign me-1"></i>How Much</th>
+                                                <th style="min-width: 100px;"><i class="fas fa-hashtag me-1"></i>How Many</th>
+                                                <th style="min-width: 150px;"><i class="fas fa-flag me-1"></i>Status</th>
+                                                <th style="min-width: 200px;"><i class="fas fa-comment me-1"></i>Observação</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                        `;
+                        
+                        // Garantir que todas as linhas tenham o campo observacao (compatibilidade com dados antigos)
+                        linhasFiltradas = linhasFiltradas.map(linha => ({
+                            ...linha,
+                            observacao: linha.observacao || ''
+                        }));
+                        
+                        linhasFiltradas.forEach((linha, index) => {
+                            const rowClass = index % 2 === 0 ? '' : 'bg-light';
+                            
+                            // Buscar nome do usuário
+                            let whoDisplay = linha.who || '-';
+                            if (linha.who) {
+                                if (typeof linha.who === 'string' && linha.who.length > 10) {
+                                    const usuario = usuarios.find(u => u.id === linha.who);
+                                    if (usuario) {
+                                        whoDisplay = usuario.nome || usuario.email || linha.who;
+                                    }
+                                } else if (typeof linha.who === 'string') {
+                                    const usuario = usuarios.find(u => u.email === linha.who || u.nome === linha.who || u.id === linha.who);
+                                    if (usuario) {
+                                        whoDisplay = usuario.nome || usuario.email || linha.who;
+                                    }
+                                }
+                            }
+                            
+                            // Formatar How Much
+                            let howMuchDisplay = '-';
+                            if (linha.howMuch !== undefined && linha.howMuch !== null && linha.howMuch !== '') {
+                                const valor = parseFloat(linha.howMuch.toString().replace(/[^\d,.-]/g, '').replace(',', '.'));
+                                if (!isNaN(valor)) {
+                                    howMuchDisplay = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valor);
+                                } else {
+                                    howMuchDisplay = linha.howMuch.toString();
+                                }
+                            } else if (linha.how_much !== undefined && linha.how_much !== null && linha.how_much !== '') {
+                                const valor = parseFloat(linha.how_much.toString().replace(/[^\d,.-]/g, '').replace(',', '.'));
+                                if (!isNaN(valor)) {
+                                    howMuchDisplay = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valor);
+                                } else {
+                                    howMuchDisplay = linha.how_much.toString();
+                                }
+                            }
+                            
+                            // Formatar How Many
+                            const howManyDisplay = (linha.howMany !== undefined && linha.howMany !== null && linha.howMany !== '') 
+                                ? linha.howMany.toString() 
+                                : ((linha.how_many !== undefined && linha.how_many !== null && linha.how_many !== '') ? linha.how_many.toString() : '-');
+                            
+                            // Status com cores corretas
+                            const statusValue = linha.status || 'pendente';
+                            const statusLabels = {
+                                'pendente': { label: 'Pendente', class: 'secondary', color: '#6c757d' },
+                                'em_andamento': { label: 'Em andamento', class: 'warning', color: '#ffc107' },
+                                'finalizado': { label: 'Finalizado', class: 'success', color: '#28a745' },
+                                'atrasado': { label: 'Atrasado', class: 'danger', color: '#dc3545' }
+                            };
+                            const statusInfo = statusLabels[statusValue] || { label: statusValue, class: 'secondary', color: '#6c757d' };
+                            
+                            html += `
+                                <tr class="${rowClass}">
+                                    <td class="text-center">${index + 1}</td>
+                                    <td><strong style="color: #2d3748;">${escapeHtml(linha.what || '-')}</strong></td>
+                                    <td>${escapeHtml(linha.why || '-')}</td>
+                                    <td>${escapeHtml(linha.where || '-')}</td>
+                                    <td><span class="badge bg-info text-white">${escapeHtml(linha.when || '-')}</span></td>
+                                    <td><span class="badge bg-primary">${escapeHtml(whoDisplay)}</span></td>
+                                    <td>${escapeHtml(linha.how || '-')}</td>
+                                    <td><strong style="color: #28a745;">${escapeHtml(howMuchDisplay)}</strong></td>
+                                    <td><span class="badge bg-secondary">${escapeHtml(howManyDisplay)}</span></td>
+                                    <td><span class="badge" style="background-color: ${statusInfo.color}; color: ${statusValue === 'em_andamento' ? '#000' : '#fff'}; font-weight: 600;">${statusInfo.label}</span></td>
+                                    <td>${escapeHtml(linha.observacao || '-')}</td>
+                                </tr>
+                            `;
+                        });
+                        
+                        html += `
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        `;
+                    } else {
+                        html += '<div class="alert alert-info" style="border-radius: 12px; border: none; background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%); padding: 2rem; text-align: center;">';
+                        html += '<i class="fas fa-info-circle me-2" style="font-size: 1.5rem;"></i>';
+                        html += '<strong>Nenhum item cadastrado no 5W2H.</strong>';
+                        html += '<p class="mb-0 mt-2">Adicione linhas de informação para começar a análise.</p>';
+                        html += '</div>';
+                    }
+                    html += '</div>';
+                    break;
+                    
+                case 'ishikawa':
+                    html += '<div class="mt-4">';
+                    if (dados.categorias && Object.keys(dados.categorias).length > 0) {
+                        Object.keys(dados.categorias).forEach(categoria => {
+                            const causas = dados.categorias[categoria] || [];
+                            if (causas.length > 0) {
+                                html += `<div class="mb-4">`;
+                                html += `<h6 class="text-primary"><i class="fas fa-tag me-2"></i>${escapeHtml(categoria)}</h6>`;
+                                html += '<ul>';
+                                causas.forEach(causa => {
+                                    html += `<li>${escapeHtml(causa)}</li>`;
+                                });
+                                html += '</ul></div>';
+                            }
+                        });
+                    } else {
+                        html += '<div class="alert alert-info"><i class="fas fa-info-circle me-2"></i>Nenhuma causa cadastrada no diagrama de Ishikawa.</div>';
+                    }
+                    html += '</div>';
+                    break;
+                    
+                case '5porques':
+                    html += '<div class="mt-4">';
+                    if (dados.problema) {
+                        html += `<div class="mb-3"><strong>Problema:</strong> <p class="text-muted mb-0">${escapeHtml(dados.problema)}</p></div>`;
+                    }
+                    if (dados.porques && dados.porques.length > 0) {
+                        html += '<h6 class="mb-3">Análise dos 5 Porquês:</h6>';
+                        html += '<ol>';
+                        dados.porques.forEach((porque, index) => {
+                            html += `<li><strong>Por quê ${index + 1}:</strong> ${escapeHtml(porque)}</li>`;
+                        });
+                        html += '</ol>';
+                        if (dados.causa_raiz) {
+                            html += `<div class="alert alert-success mt-3"><strong>Causa Raiz Identificada:</strong> ${escapeHtml(dados.causa_raiz)}</div>`;
+                        }
+                    } else {
+                        html += '<div class="alert alert-info"><i class="fas fa-info-circle me-2"></i>Nenhuma análise dos 5 Porquês cadastrada.</div>';
+                    }
+                    html += '</div>';
+                    break;
+                    
+                case 'pdca':
+                    html += '<div class="mt-4">';
+                    const etapas = ['plan', 'do', 'check', 'act'];
+                    const etapasLabels = {
+                        'plan': 'Planejar (Plan)',
+                        'do': 'Executar (Do)',
+                        'check': 'Verificar (Check)',
+                        'act': 'Agir (Act)'
+                    };
+                    
+                    etapas.forEach(etapa => {
+                        if (dados[etapa] && dados[etapa].length > 0) {
+                            html += `<div class="mb-3">`;
+                            html += `<h6 class="text-primary"><i class="fas fa-circle-notch me-2"></i>${etapasLabels[etapa]}</h6>`;
+                            html += '<ul>';
+                            dados[etapa].forEach(item => {
+                                html += `<li>${escapeHtml(item)}</li>`;
+                            });
+                            html += '</ul></div>';
+                        }
+                    });
+                    
+                    if (!dados.plan && !dados.do && !dados.check && !dados.act) {
+                        html += '<div class="alert alert-info"><i class="fas fa-info-circle me-2"></i>Nenhuma etapa do PDCA cadastrada.</div>';
+                    }
+                    html += '</div>';
+                    break;
+                    
+                default:
+                    // Para outros tipos ou dados não reconhecidos, mostrar JSON formatado
+                    html += '<div class="mt-4">';
+                    html += '<pre class="bg-light p-3 rounded">' + escapeHtml(JSON.stringify(dados, null, 2)) + '</pre>';
+                    html += '</div>';
+            }
+            
+            return html;
+        }
+        
+        // Escape HTML
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Permitir Enter na busca
+        document.getElementById('inputBusca')?.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                aplicarFiltros();
+            }
+        });
+    </script>
+</body>
+</html>
+
+

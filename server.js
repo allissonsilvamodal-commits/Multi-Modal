@@ -24,8 +24,8 @@ const bcrypt = require('bcryptjs');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const crypto = require('crypto');
-const { validate } = require('./validation');
-const { logger } = require('./logger');
+const { validate } = require('./backend/middleware/validation');
+const { logger } = require('./backend/utils/logger');
 const OpenAI = require('openai');
 const { promisify } = require('util');
 const writeFile = promisify(fs.writeFile);
@@ -277,7 +277,7 @@ const uploadDocumentos = multer({
 });
 
 // 🔥 IMPORT DO SUPABASE SEGURO
-const { supabase } = require('./supabase-secure.js');
+const { supabase } = require('./backend/config/supabase-secure.js');
 const { createClient } = require('@supabase/supabase-js');
 
 // 🔒 SEGURANÇA: Criar cliente Supabase com SERVICE_KEY (sem fallback para ANON_KEY)
@@ -978,12 +978,20 @@ app.use((req, res, next) => {
   next();
 });
 
+// IMPORTANTE: Rotas HTML devem vir ANTES do express.static
+// para evitar que arquivos estáticos interceptem as rotas
+
 // Configurar express.static com opções que desabilitam cache automático
+// Servir arquivos estáticos de public/ primeiro
+app.use(express.static('public', {
+  etag: false,
+  lastModified: false
+}));
+// Manter raiz para arquivos que ainda estão lá (manifest, service-worker, etc)
 app.use(express.static('.', {
   etag: false, // Desabilitar ETag padrão do Express (usamos nosso próprio)
   lastModified: false // Desabilitar Last-Modified padrão (usamos nosso próprio)
 }));
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Rotas para PWA (manifest e service worker)
@@ -1018,8 +1026,8 @@ if (!SESSION_SECRET) {
 
 app.use(session({
   secret: SESSION_SECRET,
-  resave: false,
-  saveUninitialized: false,
+  resave: true, // Salvar sessão mesmo se não modificada (garante persistência)
+  saveUninitialized: false, // Não salvar sessões vazias
   store: new SQLiteStore({
     db: 'sessions.db',
     dir: './',
@@ -1027,11 +1035,16 @@ app.use(session({
   }),
   cookie: { 
     secure: process.env.NODE_ENV === 'production', // HTTPS obrigatório em produção
-    maxAge: 24 * 60 * 60 * 1000,
+    maxAge: 24 * 60 * 60 * 1000, // 24 horas
     httpOnly: true,
-    sameSite: 'lax',
-    path: '/'
-  }
+    sameSite: 'lax', // Permite cookies em requisições cross-site GET
+    path: '/',
+    // Garantir que o cookie seja enviado mesmo em requisições subsequentes
+    domain: undefined // Não definir domain para funcionar em localhost e produção
+  },
+  // Garantir que a sessão seja salva mesmo se não modificada
+  rolling: false, // Não renovar automaticamente (evita problemas)
+  name: 'connect.sid' // Nome padrão do cookie de sessão
 }));
 
 // 🔧 DEBUG DETALHADO DE SESSÃO - AGORA DEPOIS DA SESSÃO
@@ -1073,27 +1086,71 @@ console.log('👥 Usuários carregados:', Object.keys(usuarios));
 // Middleware de autenticação
 async function requireAuth(req, res, next) {
   try {
-    if (req.session && req.session.usuario) {
-      console.log('🔐 Usuário autenticado (sessão):', req.session.usuario);
-      return next();
+    // Verificar se a sessão existe e tem dados
+    if (req.session) {
+      // Verificar se o usuário está na sessão (pode ser string ou objeto)
+      const usuarioId = req.session.usuario || req.session.userData?.id || req.session.userData?.email;
+      
+      if (usuarioId) {
+        console.log('🔐 Usuário autenticado (sessão):', {
+          usuario: req.session.usuario,
+          userData: req.session.userData,
+          sessionID: req.sessionID?.substring(0, 10) + '...'
+        });
+        return next();
+      }
+
+      // Debug: verificar o que está na sessão
+      console.log('⚠️ Sessão existe mas sem usuário:', {
+        temSession: !!req.session,
+        temUsuario: !!req.session.usuario,
+        temUserData: !!req.session.userData,
+        sessionKeys: Object.keys(req.session || {}),
+        sessionID: req.sessionID
+      });
+    } else {
+      console.log('⚠️ Nenhuma sessão encontrada:', {
+        sessionID: req.sessionID,
+        cookies: req.headers.cookie ? 'presente' : 'ausente'
+      });
     }
 
-    const { user, error } = await getSupabaseUserFromRequest(req);
-
-    if (user && !error) {
-      req.supabaseUser = user;
-      console.log('🔐 Usuário autenticado via Supabase:', user.email || user.id);
-      return next();
-    }
-
-    if (error && error.status && error.status !== 401) {
-      console.warn('⚠️ Erro ao validar token Supabase em requireAuth:', error.message || error);
+    // Para requisições de API (com header Authorization), tentar validar via Supabase
+    const authHeader = req.headers.authorization || '';
+    if (authHeader.toLowerCase().startsWith('bearer ')) {
+      const { user, error } = await getSupabaseUserFromRequest(req);
+      if (user && !error) {
+        req.supabaseUser = user;
+        console.log('🔐 Usuário autenticado via Supabase:', user.email || user.id);
+        return next();
+      }
+      if (error && error.status && error.status !== 401) {
+        console.warn('⚠️ Erro ao validar token Supabase em requireAuth:', error.message || error);
+      }
     }
   } catch (authError) {
     console.warn('⚠️ Erro inesperado no middleware requireAuth:', authError.message || authError);
   }
 
   console.log('❌ Acesso não autorizado');
+  console.log('📋 Debug sessão:', {
+    temSession: !!req.session,
+    temUsuario: !!(req.session && req.session.usuario),
+    usuario: req.session?.usuario,
+    sessionID: req.sessionID,
+    path: req.path,
+    acceptsHtml: req.accepts('text/html'),
+    cookies: req.headers.cookie ? 'presente' : 'ausente',
+    userAgent: req.headers['user-agent']?.substring(0, 50)
+  });
+  
+  // Se for uma requisição de página HTML, redirecionar para login
+  if (req.path.endsWith('.html') || req.accepts('text/html')) {
+    console.log(`🔄 Redirecionando ${req.path} para /login.html`);
+    return res.redirect('/login.html');
+  }
+  
+  // Caso contrário, retornar JSON
   return res.status(401).json({ error: 'Não autenticado' });
 }
 
@@ -2348,9 +2405,17 @@ async function requireMotoristaAuth(req) {
 // ========== ROTAS DE AUTENTICAÇÃO ==========
 // ✅✅✅ ENDPOINT DE LOGIN COM FALLBACK PARA .ENV
 app.post('/api/login', loginLimiter, express.json(), async (req, res) => {
+  console.log('🔐 === TENTATIVA DE LOGIN ===');
+  console.log('📋 Body recebido:', { usuario: req.body?.usuario, temSenha: !!req.body?.senha });
+  console.log('📋 SessionID:', req.sessionID);
+  console.log('📋 Cookies recebidos:', req.headers.cookie ? 'SIM' : 'NÃO');
+  
   // Validar dados de entrada
   const validation = validate('login', req.body);
+  console.log('✅ Validação:', validation.isValid ? 'VÁLIDA' : 'INVÁLIDA');
+  
   if (!validation.isValid) {
+    console.log('❌ Erros de validação:', validation.errors);
     return res.status(400).json({ 
       success: false, 
       error: 'Dados inválidos', 
@@ -2359,16 +2424,24 @@ app.post('/api/login', loginLimiter, express.json(), async (req, res) => {
   }
 
   const { usuario, senha } = validation.value;
+  console.log('✅ Usuário extraído:', usuario);
   
   logger.info('Tentativa de login', { usuario, sessionID: req.sessionID });
-  
+
   try {
+    console.log('🔍 Tentando autenticação via Supabase...');
     // ✅ PRIMEIRO: Tentar autenticação via Supabase
     const { data: usuarios, error } = await supabase
       .from('usuarios')
       .select('*')
       .eq('id', usuario)
       .limit(1);
+
+    console.log('📊 Resultado Supabase:', {
+      temErro: !!error,
+      erro: error?.message,
+      encontrouUsuarios: usuarios?.length || 0
+    });
 
     if (!error && usuarios && usuarios.length > 0) {
       // ✅ Autenticação via Supabase
@@ -2408,7 +2481,10 @@ app.post('/api/login', loginLimiter, express.json(), async (req, res) => {
         sessionID: req.sessionID
       });
 
-      // ✅ SALVAR A SESSÃO
+      // ✅ SALVAR A SESSÃO - CRÍTICO: garantir que seja salva
+      // Marcar sessão como modificada para forçar salvamento
+      req.session.touch();
+      
       req.session.save((err) => {
         if (err) {
           console.error('❌ Erro ao salvar sessão:', err);
@@ -2416,7 +2492,24 @@ app.post('/api/login', loginLimiter, express.json(), async (req, res) => {
         }
         
         console.log('💾 Sessão salva com sucesso!');
-        console.log('🔐 Sessão após save:', req.session);
+        console.log('🔐 Sessão após save:', {
+          usuario: req.session.usuario,
+          userData: req.session.userData,
+          sessionID: req.sessionID,
+          cookie: req.session.cookie
+        });
+        
+        // Verificar se realmente foi salva
+        if (!req.session.usuario) {
+          console.error('❌ CRÍTICO: Sessão não contém usuário após save!');
+        }
+        
+        // Verificar se o cookie está sendo enviado
+        const setCookieHeader = res.getHeader('Set-Cookie');
+        console.log('🍪 Cookie sendo enviado:', setCookieHeader ? 'SIM' : 'NÃO');
+        if (setCookieHeader) {
+          console.log('🍪 Set-Cookie header:', Array.isArray(setCookieHeader) ? setCookieHeader[0] : setCookieHeader);
+        }
         
         res.json({ 
           success: true, 
@@ -2425,7 +2518,8 @@ app.post('/api/login', loginLimiter, express.json(), async (req, res) => {
           permissoes: permissoes,
           isAdmin: usuarioData.is_admin || false,
           config: userConfig,
-          source: 'supabase'
+          source: 'supabase',
+          sessionID: req.sessionID
         });
       });
 
@@ -2433,9 +2527,12 @@ app.post('/api/login', loginLimiter, express.json(), async (req, res) => {
     }
 
     // ✅ SEGUNDO: Fallback para autenticação via .env
+    console.log('🔍 Tentando autenticação via .env...');
+    console.log('📋 Usuários disponíveis no .env:', Object.keys(usuarios));
     logger.info('Tentando autenticação via .env', { usuario });
     
     if (usuarios[usuario] && usuarios[usuario] === senha) {
+      console.log('✅ Autenticação via .env bem-sucedida!');
       logger.info('Usuário autenticado via .env', { usuario });
       
       // ✅ CARREGAR PERMISSÕES E CONFIGURAÇÃO
@@ -2459,7 +2556,10 @@ app.post('/api/login', loginLimiter, express.json(), async (req, res) => {
         sessionID: req.sessionID
       });
 
-      // ✅ SALVAR A SESSÃO
+      // ✅ SALVAR A SESSÃO - CRÍTICO: garantir que seja salva
+      // Marcar sessão como modificada para forçar salvamento
+      req.session.touch();
+      
       req.session.save((err) => {
         if (err) {
           console.error('❌ Erro ao salvar sessão:', err);
@@ -2467,7 +2567,16 @@ app.post('/api/login', loginLimiter, express.json(), async (req, res) => {
         }
         
         console.log('💾 Sessão salva com sucesso (ENV)!');
-        console.log('🔐 Sessão após save:', req.session);
+        console.log('🔐 Sessão após save:', {
+          usuario: req.session.usuario,
+          userData: req.session.userData,
+          sessionID: req.sessionID
+        });
+        
+        // Verificar se realmente foi salva
+        if (!req.session.usuario) {
+          console.error('❌ CRÍTICO: Sessão não contém usuário após save!');
+        }
         
         res.json({ 
           success: true, 
@@ -2484,12 +2593,119 @@ app.post('/api/login', loginLimiter, express.json(), async (req, res) => {
     }
 
     // ✅ Se chegou até aqui, usuário não encontrado
+    console.log('❌ Usuário não encontrado em nenhum método de autenticação');
     logger.warn('Usuário não encontrado', { usuario });
     return res.status(401).json({ success: false, error: 'Usuário não encontrado' });
 
   } catch (error) {
-    console.error('❌ Erro no login:', error);
-    res.status(500).json({ success: false, error: 'Erro interno do servidor' });
+    console.error('❌ ERRO CRÍTICO NO LOGIN:', error);
+    console.error('❌ Stack:', error.stack);
+    logger.error('Erro no login', { error: error.message, stack: error.stack });
+    res.status(500).json({ 
+      success: false, 
+      error: 'Erro interno do servidor',
+      message: process.env.NODE_ENV !== 'production' ? error.message : undefined
+    });
+  }
+});
+
+// ========== ENDPOINT PARA SINCRONIZAR AUTENTICAÇÃO SUPABASE COM SESSÃO ==========
+app.post('/api/auth/sync', express.json(), async (req, res) => {
+  console.log('🔄 === SINCRONIZAÇÃO DE AUTENTICAÇÃO ===');
+  
+  try {
+    // Verificar token Supabase no header
+    const authHeader = req.headers.authorization || '';
+    if (!authHeader.toLowerCase().startsWith('bearer ')) {
+      return res.status(401).json({ 
+        success: false, 
+        error: 'Token de autenticação não fornecido' 
+      });
+    }
+
+    const token = authHeader.substring(7);
+    console.log('🔐 Token recebido, validando...');
+    
+    // Validar token com Supabase
+    const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
+    
+    if (error || !user) {
+      console.error('❌ Token inválido:', error?.message);
+      return res.status(401).json({ 
+        success: false, 
+        error: 'Token inválido ou expirado' 
+      });
+    }
+
+    console.log('✅ Usuário validado:', user.email || user.id);
+    
+    // Buscar dados do usuário na tabela usuarios
+    const { data: usuarioData, error: usuarioError } = await supabase
+      .from('usuarios')
+      .select('*')
+      .eq('id', user.id)
+      .limit(1);
+
+    if (usuarioError || !usuarioData || usuarioData.length === 0) {
+      console.warn('⚠️ Usuário não encontrado na tabela usuarios, usando dados do Auth');
+      // Se não encontrar na tabela usuarios, usar dados do Auth
+      const permissoes = await carregarPermissoesUsuario(user.id);
+      
+      req.session.usuario = user.id;
+      req.session.permissoes = permissoes || [];
+      req.session.isAdmin = user.user_metadata?.role === 'admin' || false;
+      req.session.userData = {
+        nome: user.user_metadata?.nome || user.email?.split('@')[0] || user.id,
+        email: user.email,
+        departamento: user.user_metadata?.departamento || 'Operações'
+      };
+    } else {
+      // Usar dados da tabela usuarios
+      const usuario = usuarioData[0];
+      const permissoes = await carregarPermissoesUsuario(usuario.id);
+      const userConfig = await getEvolutionConfigByUser(usuario.id);
+      
+      req.session.usuario = usuario.id;
+      req.session.permissoes = permissoes || [];
+      req.session.isAdmin = usuario.is_admin || false;
+      req.session.userData = {
+        nome: usuario.nome,
+        email: usuario.email,
+        departamento: usuario.departamento
+      };
+    }
+
+    // Salvar sessão
+    req.session.touch();
+    req.session.save((err) => {
+      if (err) {
+        console.error('❌ Erro ao salvar sessão:', err);
+        return res.status(500).json({ 
+          success: false, 
+          error: 'Erro ao criar sessão' 
+        });
+      }
+      
+      console.log('✅ Sessão sincronizada com sucesso!');
+      console.log('🔐 Sessão criada:', {
+        usuario: req.session.usuario,
+        userData: req.session.userData,
+        sessionID: req.sessionID
+      });
+      
+      res.json({ 
+        success: true, 
+        message: 'Autenticação sincronizada com sucesso',
+        sessionID: req.sessionID
+      });
+    });
+
+  } catch (error) {
+    console.error('❌ Erro ao sincronizar autenticação:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Erro ao sincronizar autenticação' 
+    });
   }
 });
 
@@ -6456,69 +6672,89 @@ app.get('/api/active-sessions', async (req, res) => {
     // 1. Contar sessões ativas do SQLite (express-session)
     try {
       const db = new sqlite3.Database('./sessions.db');
-      // A tabela sessions do express-session usa 'expires' (com 's'), não 'expire'
-      // Verificar primeiro quais colunas existem antes de fazer a query
-      const query = `SELECT sid, sess, expired, expires FROM sessions`;
+      // A tabela sessions do connect-sqlite3 pode ter diferentes estruturas
+      // Primeiro verificar quais colunas existem
+      const checkColumnsQuery = `PRAGMA table_info(sessions)`;
       
-      await new Promise((resolve, reject) => {
-        db.all(query, [], (err, rows) => {
-          db.close();
-          
+      await new Promise((resolveCheck, rejectCheck) => {
+        db.all(checkColumnsQuery, [], (err, columns) => {
           if (err) {
-            console.warn('⚠️ Erro ao buscar sessões SQLite:', err);
-            resolve();
+            console.warn('⚠️ Erro ao verificar colunas da tabela sessions:', err);
+            db.close();
+            resolveCheck();
             return;
           }
           
-          const now = Date.now();
+          // Verificar quais colunas existem
+          const columnNames = columns.map(col => col.name);
+          const hasExpires = columnNames.includes('expires');
+          const hasExpired = columnNames.includes('expired');
           
-          if (rows && rows.length) {
-            rows.forEach(row => {
-              try {
-                // A tabela sessions do express-session usa 'expires' (string ISO) ou 'expired' (boolean)
-                let notExpired = true;
-                
-                // Verificar coluna 'expires' (formato ISO string)
-                if (row.expires) {
-                  const expParsed = new Date(row.expires).getTime();
-                  if (!Number.isNaN(expParsed)) {
-                    notExpired = expParsed > now;
+          // Construir query baseada nas colunas disponíveis
+          let query = `SELECT sid, sess`;
+          if (hasExpired) query += `, expired`;
+          if (hasExpires) query += `, expires`;
+          query += ` FROM sessions`;
+          
+          db.all(query, [], (err, rows) => {
+            db.close();
+            
+            if (err) {
+              console.warn('⚠️ Erro ao buscar sessões SQLite:', err);
+              resolveCheck();
+              return;
+            }
+            
+            const now = Date.now();
+            
+            if (rows && rows.length) {
+              rows.forEach(row => {
+                try {
+                  // Verificar se sessão está expirada baseado nas colunas disponíveis
+                  let notExpired = true;
+                  
+                  if (hasExpires && row.expires) {
+                    // Verificar coluna 'expires' (formato ISO string ou timestamp)
+                    const expParsed = new Date(row.expires).getTime();
+                    if (!Number.isNaN(expParsed)) {
+                      notExpired = expParsed > now;
+                    }
+                  } else if (hasExpired && typeof row.expired === 'boolean') {
+                    // Se 'expired' é false, a sessão ainda está ativa
+                    notExpired = !row.expired;
                   }
-                } else if (typeof row.expired === 'boolean') {
-                  // Se 'expired' é false, a sessão ainda está ativa
-                  notExpired = !row.expired;
-                }
                 
-                if (notExpired) {
-                  const sessData = typeof row.sess === 'string' ? JSON.parse(row.sess) : row.sess;
-                  if (sessData && sessData.usuario) {
-                    // Adicionar ID do usuário ou email como identificador único
-                    const userId = sessData.userData?.id || sessData.userData?.email || sessData.usuario?.id || sessData.usuario?.email || sessData.usuario;
-                    if (userId) {
-                      // Excluir motoristas
-                      if (motoristaIds.has(userId)) {
-                        return;
-                      }
-                      usuariosUnicos.add(userId);
-                      // Armazenar detalhes da sessão
-                      if (sessData.userData) {
-                        usuariosDetalhes.set(userId, {
-                          id: userId,
-                          nome: sessData.userData.nome || sessData.userData.username || sessData.userData.email,
-                          email: sessData.userData.email,
-                          tipo: 'sessao'
-                        });
+                  if (notExpired) {
+                    const sessData = typeof row.sess === 'string' ? JSON.parse(row.sess) : row.sess;
+                    if (sessData && sessData.usuario) {
+                      // Adicionar ID do usuário ou email como identificador único
+                      const userId = sessData.userData?.id || sessData.userData?.email || sessData.usuario?.id || sessData.usuario?.email || sessData.usuario;
+                      if (userId) {
+                        // Excluir motoristas
+                        if (motoristaIds.has(userId)) {
+                          return;
+                        }
+                        usuariosUnicos.add(userId);
+                        // Armazenar detalhes da sessão
+                        if (sessData.userData) {
+                          usuariosDetalhes.set(userId, {
+                            id: userId,
+                            nome: sessData.userData.nome || sessData.userData.username || sessData.userData.email,
+                            email: sessData.userData.email,
+                            tipo: 'sessao'
+                          });
+                        }
                       }
                     }
                   }
+                } catch (parseError) {
+                  // Ignorar erros de parsing
                 }
-              } catch (parseError) {
-                // Ignorar erros de parsing
-              }
-            });
-          }
-          
-          resolve();
+              });
+            }
+            
+            resolveCheck();
+          });
         });
       });
     } catch (error) {
@@ -7678,11 +7914,11 @@ app.get('/api/permissoes/verificar/:etapa', requireAuth, async (req, res) => {
 
 // ========== ROTAS PÚBLICAS ==========
 app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'index.html'));
+  res.sendFile(path.join(__dirname, 'public/pages/index.html'));
 });
 
 app.get('/index.html', (req, res) => {
-  res.sendFile(path.join(__dirname, 'index.html'));
+  res.sendFile(path.join(__dirname, 'public/pages/index.html'));
 });
 
 // 🧪 ROTA DE TESTE DE SESSÃO
@@ -7703,53 +7939,325 @@ app.get('/api/debug-session', (req, res) => {
 
 // ========== ROTAS PRINCIPAIS ==========
 app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'index.html'));
+  res.sendFile(path.join(__dirname, 'public/pages/index.html'));
 });
 
 app.get('/login.html', (req, res) => {
-  res.sendFile(path.join(__dirname, 'login.html'));
+  res.sendFile(path.join(__dirname, 'public/pages/login.html'));
 });
 
 app.get('/comercial.html', (req, res) => {
-  res.sendFile(path.join(__dirname, 'comercial.html'));
+  res.sendFile(path.join(__dirname, 'public/pages/comercial.html'));
 });
 
 // ========== ROTAS PROTEGIDAS ==========
-app.get('/painel.html', (req, res) => {
+app.get('/painel.html', requireAuth, (req, res) => {
   // Headers para evitar cache em HTML
   res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
   res.setHeader('Pragma', 'no-cache');
   res.setHeader('Expires', '0');
-  res.sendFile(path.join(__dirname, 'painel.html'));
+  res.sendFile(path.join(__dirname, 'public/pages/painel.html'));
 });
 
-app.get('/portal.html', (req, res) => {
+app.get('/portal.html', requireAuth, (req, res) => {
   // Headers para evitar cache em HTML
   res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
   res.setHeader('Pragma', 'no-cache');
   res.setHeader('Expires', '0');
-  res.sendFile(path.join(__dirname, 'portal.html'));
+  res.sendFile(path.join(__dirname, 'public/pages/portal.html'));
 });
 
-app.get('/coletas.html', (req, res) => {
-  res.sendFile(path.join(__dirname, 'coletas.html'));
+app.get('/coletas.html', requireAuth, (req, res) => {
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate, max-age=0');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  res.sendFile(path.join(__dirname, 'public/pages/coletas.html'));
 });
 
-app.get('/settings.html', (req, res) => {
-  res.sendFile(path.join(__dirname, 'settings.html'));
+app.get('/settings.html', requireAuth, (req, res) => {
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate, max-age=0');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  res.sendFile(path.join(__dirname, 'public/pages/settings.html'));
 });
 
-app.get('/relatorios.html', (req, res) => {
-  res.sendFile(path.join(__dirname, 'relatorios.html'));
+app.get('/relatorios.html', requireAuth, (req, res) => {
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate, max-age=0');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  res.sendFile(path.join(__dirname, 'public/pages/relatorios.html'));
 });
 
 // Rota para treinamento-disparador.html
-app.get('/treinamento-disparador.html', (req, res) => {
-  res.sendFile(path.join(__dirname, 'treinamento-disparador.html'));
+app.get('/treinamento-disparador.html', requireAuth, (req, res) => {
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate, max-age=0');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  res.sendFile(path.join(__dirname, 'public/pages/treinamento-disparador.html'));
 });
 
-app.get('/cadastro.html', (req, res) => {
-  res.sendFile(path.join(__dirname, 'cadastro.html'));
+app.get('/cadastro.html', requireAuth, (req, res) => {
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate, max-age=0');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  res.sendFile(path.join(__dirname, 'public/pages/cadastro.html'));
+});
+
+app.get('/gestao-dados.html', requireAuth, (req, res) => {
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate, max-age=0');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  res.sendFile(path.join(__dirname, 'public/pages/gestao-dados.html'));
+});
+
+// Rotas para páginas do portal
+app.get('/minhas-acoes.html', requireAuth, (req, res) => {
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate, max-age=0');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  res.sendFile(path.join(__dirname, 'public/pages/minhas-acoes.html'));
+});
+
+app.get('/chat-interno.html', requireAuth, (req, res) => {
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate, max-age=0');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  res.sendFile(path.join(__dirname, 'public/pages/chat-interno.html'));
+});
+
+app.get('/realizar-avaliacao.html', requireAuth, (req, res) => {
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate, max-age=0');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  res.sendFile(path.join(__dirname, 'public/pages/realizar-avaliacao.html'));
+});
+
+app.get('/motoristas-falhas.html', requireAuth, (req, res) => {
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate, max-age=0');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  res.sendFile(path.join(__dirname, 'public/pages/motoristas-falhas.html'));
+});
+
+app.get('/chamados.html', requireAuth, (req, res) => {
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate, max-age=0');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  res.sendFile(path.join(__dirname, 'public/pages/chamados.html'));
+});
+
+app.get('/crm.html', requireAuth, (req, res) => {
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate, max-age=0');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  res.sendFile(path.join(__dirname, 'public/pages/crm.html'));
+});
+
+app.get('/vendas.html', requireAuth, (req, res) => {
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate, max-age=0');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  res.sendFile(path.join(__dirname, 'public/pages/vendas.html'));
+});
+
+app.get('/monitoramento.html', requireAuth, (req, res) => {
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate, max-age=0');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  res.sendFile(path.join(__dirname, 'public/pages/monitoramento.html'));
+});
+
+app.get('/historico_coletas.html', requireAuth, (req, res) => {
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate, max-age=0');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  res.sendFile(path.join(__dirname, 'public/pages/historico_coletas.html'));
+});
+
+app.get('/monitoramento-rastreamento.html', requireAuth, (req, res) => {
+  console.log('✅ Acesso autorizado a monitoramento-rastreamento.html');
+  console.log('👤 Usuário:', req.session?.usuario?.email || req.session?.usuario?.nome || 'N/A');
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate, max-age=0');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  res.sendFile(path.join(__dirname, 'public/pages/monitoramento-rastreamento.html'));
+});
+
+app.get('/avaliacao-360.html', requireAuth, (req, res) => {
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate, max-age=0');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  res.sendFile(path.join(__dirname, 'public/pages/avaliacao-360.html'));
+});
+
+app.get('/ninebox.html', requireAuth, (req, res) => {
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate, max-age=0');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  res.sendFile(path.join(__dirname, 'public/pages/ninebox.html'));
+});
+
+app.get('/historico-chamados.html', requireAuth, (req, res) => {
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate, max-age=0');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  res.sendFile(path.join(__dirname, 'public/pages/historico-chamados.html'));
+});
+
+app.get('/treinamentos.html', requireAuth, (req, res) => {
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate, max-age=0');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  res.sendFile(path.join(__dirname, 'public/pages/treinamentos.html'));
+});
+
+app.get('/treinamentos-documentos.html', requireAuth, (req, res) => {
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate, max-age=0');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  res.sendFile(path.join(__dirname, 'public/pages/treinamentos-documentos.html'));
+});
+
+app.get('/painel-qualidade.html', requireAuth, (req, res) => {
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate, max-age=0');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  res.sendFile(path.join(__dirname, 'public/pages/painel-qualidade.html'));
+});
+
+app.get('/ferramentas-qualidade.html', requireAuth, (req, res) => {
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate, max-age=0');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  res.sendFile(path.join(__dirname, 'public/pages/ferramentas-qualidade.html'));
+});
+
+// Rotas para páginas que podem não existir ainda (retornam 404 se não existirem)
+app.get('/contas-pagar.html', requireAuth, (req, res) => {
+  const filePath = path.join(__dirname, 'public/pages/contas-pagar.html');
+  if (fs.existsSync(filePath)) {
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate, max-age=0');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+    res.sendFile(filePath);
+  } else {
+    res.status(404).send('Página em desenvolvimento');
+  }
+});
+
+app.get('/contas-receber.html', requireAuth, (req, res) => {
+  const filePath = path.join(__dirname, 'public/pages/contas-receber.html');
+  if (fs.existsSync(filePath)) {
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate, max-age=0');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+    res.sendFile(filePath);
+  } else {
+    res.status(404).send('Página em desenvolvimento');
+  }
+});
+
+app.get('/folha.html', requireAuth, (req, res) => {
+  const filePath = path.join(__dirname, 'public/pages/folha.html');
+  if (fs.existsSync(filePath)) {
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate, max-age=0');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+    res.sendFile(filePath);
+  } else {
+    res.status(404).send('Página em desenvolvimento');
+  }
+});
+
+app.get('/recrutamento.html', requireAuth, (req, res) => {
+  const filePath = path.join(__dirname, 'public/pages/recrutamento.html');
+  if (fs.existsSync(filePath)) {
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate, max-age=0');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+    res.sendFile(filePath);
+  } else {
+    res.status(404).send('Página em desenvolvimento');
+  }
+});
+
+// Rotas adicionais para outras páginas
+app.get('/bi-disparos.html', requireAuth, (req, res) => {
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate, max-age=0');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  res.sendFile(path.join(__dirname, 'public/pages/bi-disparos.html'));
+});
+
+app.get('/portal-motorista.html', (req, res) => {
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate, max-age=0');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  res.sendFile(path.join(__dirname, 'public/pages/portal-motorista.html'));
+});
+
+app.get('/portal-emergencia.html', (req, res) => {
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate, max-age=0');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  res.sendFile(path.join(__dirname, 'public/pages/portal-emergencia.html'));
+});
+
+app.get('/login-motorista.html', (req, res) => {
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate, max-age=0');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  res.sendFile(path.join(__dirname, 'public/pages/login-motorista.html'));
+});
+
+app.get('/treinamento-ferramentas-qualidade.html', requireAuth, (req, res) => {
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate, max-age=0');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  res.sendFile(path.join(__dirname, 'public/pages/treinamento-ferramentas-qualidade.html'));
+});
+
+app.get('/treinamento-chat-interno.html', requireAuth, (req, res) => {
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate, max-age=0');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  res.sendFile(path.join(__dirname, 'public/pages/treinamento-chat-interno.html'));
+});
+
+app.get('/treinamento-cadastro-motoristas.html', requireAuth, (req, res) => {
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate, max-age=0');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  res.sendFile(path.join(__dirname, 'public/pages/treinamento-cadastro-motoristas.html'));
+});
+
+app.get('/treinamento-trocar-senha.html', requireAuth, (req, res) => {
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate, max-age=0');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  res.sendFile(path.join(__dirname, 'public/pages/treinamento-trocar-senha.html'));
+});
+
+// Rotas para páginas adicionais
+app.get('/exemplo-ia-tools.html', requireAuth, (req, res) => {
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate, max-age=0');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  res.sendFile(path.join(__dirname, 'public/pages/exemplo-ia-tools.html'));
+});
+
+app.get('/instalar-app.html', (req, res) => {
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate, max-age=0');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  res.sendFile(path.join(__dirname, 'public/pages/instalar-app.html'));
+});
+
+app.get('/teste-sistema.html', requireAuth, (req, res) => {
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate, max-age=0');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  res.sendFile(path.join(__dirname, 'public/pages/teste-sistema.html'));
 });
 
 app.get('/contatos.csv', requireAuth, (req, res) => {

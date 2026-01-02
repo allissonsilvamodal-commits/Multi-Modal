@@ -1,0 +1,1409 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Multimodal Logística</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        :root {
+            --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --secondary-gradient: linear-gradient(135deg, #2c3e50 0%, #3498db 100%);
+            --success-gradient: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%);
+            --warning-gradient: linear-gradient(135deg, #f39c12 0%, #f1c40f 100%);
+            --danger-gradient: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+            --card-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            --glass-bg: rgba(255, 255, 255, 0.1);
+            --glass-border: rgba(255, 255, 255, 0.2);
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            --text-primary: #2c3e50;
+            --text-secondary: #6c757d;
+            --text-light: #ffffff;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: var(--primary-gradient);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            padding: 20px;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        /* Efeitos de fundo animados */
+        .bg-animation {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            opacity: 0.1;
+        }
+
+        .floating-shape {
+            position: absolute;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.1);
+            animation: float 20s infinite ease-in-out;
+        }
+
+        .floating-shape:nth-child(1) {
+            width: 100px;
+            height: 100px;
+            top: 10%;
+            left: 10%;
+            animation-delay: 0s;
+        }
+
+        .floating-shape:nth-child(2) {
+            width: 150px;
+            height: 150px;
+            top: 60%;
+            left: 80%;
+            animation-delay: 3s;
+        }
+
+        .floating-shape:nth-child(3) {
+            width: 80px;
+            height: 80px;
+            top: 80%;
+            left: 20%;
+            animation-delay: 6s;
+        }
+
+        .floating-shape:nth-child(4) {
+            width: 120px;
+            height: 120px;
+            top: 30%;
+            right: 10%;
+            animation-delay: 9s;
+        }
+
+        @keyframes float {
+            0%, 100% { 
+                transform: translateY(0) rotate(0deg) scale(1); 
+                opacity: 0.1;
+            }
+            50% { 
+                transform: translateY(-30px) rotate(180deg) scale(1.1); 
+                opacity: 0.2;
+            }
+        }
+
+        /* Partículas animadas */
+        .particles {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+        }
+
+        .particle {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            animation: particle-float 15s infinite linear;
+        }
+
+        .particle:nth-child(odd) {
+            animation-duration: 20s;
+        }
+
+        .particle:nth-child(even) {
+            animation-duration: 25s;
+        }
+
+        @keyframes particle-float {
+            0% {
+                transform: translateY(100vh) translateX(0);
+                opacity: 0;
+            }
+            10% {
+                opacity: 1;
+            }
+            90% {
+                opacity: 1;
+            }
+            100% {
+                transform: translateY(-100px) translateX(100px);
+                opacity: 0;
+            }
+        }
+
+        /* Container principal */
+        .login-container {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-radius: 25px;
+            box-shadow: var(--card-shadow);
+            overflow: hidden;
+            width: 100%;
+            max-width: 500px;
+            transition: var(--transition);
+            border: 1px solid var(--glass-border);
+            position: relative;
+        }
+
+        .login-container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: var(--primary-gradient);
+        }
+
+        .login-container:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.15);
+        }
+
+        /* Header moderno */
+        .login-header {
+            background: var(--secondary-gradient);
+            color: var(--text-light);
+            padding: 40px 30px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .login-header::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+            animation: pulse 10s infinite linear;
+        }
+
+        @keyframes pulse {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .logo-container {
+            position: relative;
+            z-index: 2;
+            margin-bottom: 20px;
+        }
+
+        .logo-icon {
+            width: 80px;
+            height: 80px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 15px;
+            font-size: 2rem;
+            backdrop-filter: blur(10px);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            animation: logo-glow 3s ease-in-out infinite alternate;
+        }
+
+        @keyframes logo-glow {
+            0% { box-shadow: 0 0 20px rgba(255, 255, 255, 0.3); }
+            100% { box-shadow: 0 0 30px rgba(255, 255, 255, 0.5); }
+        }
+
+        .login-header h1 {
+            margin: 0;
+            font-size: 2.2rem;
+            font-weight: 700;
+            position: relative;
+            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+            background: linear-gradient(45deg, #ffffff, #e8f4fd);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .login-header p {
+            margin: 15px 0 0;
+            opacity: 0.9;
+            font-size: 1.1rem;
+            position: relative;
+            font-weight: 300;
+        }
+
+        /* Corpo do formulário */
+        .login-body {
+            padding: 40px 30px 30px;
+        }
+
+        .form-group {
+            margin-bottom: 2rem;
+            position: relative;
+        }
+
+        .form-label {
+            display: flex;
+            align-items: center;
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: var(--text-primary);
+            font-size: 1rem;
+        }
+
+        .form-label i {
+            margin-right: 10px;
+            width: 20px;
+            text-align: center;
+            color: var(--text-secondary);
+        }
+
+        .input-group-modern {
+            position: relative;
+        }
+
+        .form-control-modern {
+            border-radius: 15px;
+            border: 2px solid #e9ecef;
+            padding: 16px 20px 16px 50px;
+            transition: var(--transition);
+            font-size: 1rem;
+            background: #f8f9fa;
+            width: 100%;
+        }
+
+        .form-control-modern:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 0.25rem rgba(102, 126, 234, 0.25);
+            background: white;
+            outline: none;
+        }
+
+        .input-icon {
+            position: absolute;
+            left: 18px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-secondary);
+            z-index: 5;
+            font-size: 1.1rem;
+        }
+
+        .password-toggle {
+            cursor: pointer;
+            position: absolute;
+            right: 18px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-secondary);
+            transition: var(--transition);
+            z-index: 5;
+            font-size: 1.1rem;
+        }
+
+        .password-toggle:hover {
+            color: #667eea;
+            transform: translateY(-50%) scale(1.1);
+        }
+
+        /* Botão de login moderno */
+        .btn-login {
+            background: var(--success-gradient);
+            border: none;
+            border-radius: 15px;
+            color: var(--text-light);
+            padding: 16px;
+            font-weight: 600;
+            font-size: 1.1rem;
+            transition: var(--transition);
+            margin-top: 15px;
+            position: relative;
+            overflow: hidden;
+            width: 100%;
+        }
+
+        .btn-login::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+            transition: var(--transition);
+        }
+
+        .btn-login:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 30px rgba(39, 174, 96, 0.4);
+        }
+
+        .btn-login:hover::before {
+            left: 100%;
+        }
+
+        .btn-login:active {
+            transform: translateY(-1px);
+        }
+
+        .btn-login:disabled {
+            opacity: 0.7;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .btn-content {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid transparent;
+            border-top: 2px solid var(--text-light);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Footer moderno */
+        .login-footer {
+            text-align: center;
+            margin-top: 30px;
+            padding-top: 25px;
+            border-top: 1px solid #e9ecef;
+        }
+
+        .login-footer p {
+            margin: 0;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        /* Informações do sistema */
+        .system-info {
+            background: linear-gradient(135deg, rgba(52, 152, 219, 0.1), rgba(41, 128, 185, 0.1));
+            border-radius: 15px;
+            padding: 15px 20px;
+            margin-top: 20px;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            text-align: center;
+            border: 1px solid rgba(52, 152, 219, 0.2);
+            backdrop-filter: blur(10px);
+        }
+
+        .security-badges {
+            background: linear-gradient(135deg, rgba(39, 174, 96, 0.1), rgba(46, 204, 113, 0.1));
+            border-radius: 15px;
+            padding: 20px;
+            margin-top: 20px;
+            border-left: 4px solid #27ae60;
+        }
+
+        .security-badges h6 {
+            color: var(--text-primary);
+            margin-bottom: 15px;
+            font-size: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .badge-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .security-badge {
+            display: inline-flex;
+            align-items: center;
+            background: rgba(52, 152, 219, 0.1);
+            color: #2c3e50;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            border: 1px solid rgba(52, 152, 219, 0.2);
+            transition: var(--transition);
+        }
+
+        .security-badge:hover {
+            background: rgba(52, 152, 219, 0.2);
+            transform: translateY(-2px);
+        }
+
+        .security-badge i {
+            margin-right: 6px;
+            font-size: 0.9rem;
+        }
+
+        /* Alertas modernos */
+        .alert-modern {
+            border-radius: 15px;
+            border: none;
+            padding: 16px 20px;
+            font-size: 0.95rem;
+            margin-bottom: 1rem;
+            backdrop-filter: blur(10px);
+        }
+
+        .alert-modern-success {
+            background: linear-gradient(135deg, rgba(39, 174, 96, 0.1), rgba(46, 204, 113, 0.1));
+            color: #27ae60;
+            border-left: 4px solid #27ae60;
+        }
+
+        .alert-modern-danger {
+            background: linear-gradient(135deg, rgba(231, 76, 60, 0.1), rgba(192, 57, 43, 0.1));
+            color: #e74c3c;
+            border-left: 4px solid #e74c3c;
+        }
+
+        .alert-modern-warning {
+            background: linear-gradient(135deg, rgba(243, 156, 18, 0.1), rgba(241, 196, 15, 0.1));
+            color: #f39c12;
+            border-left: 4px solid #f39c12;
+        }
+
+        .alert-modern-info {
+            background: linear-gradient(135deg, rgba(52, 152, 219, 0.1), rgba(41, 128, 185, 0.1));
+            color: #3498db;
+            border-left: 4px solid #3498db;
+        }
+
+        /* Link para voltar */
+        .back-link {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: var(--text-light);
+            text-decoration: none;
+            font-size: 1.2rem;
+            transition: var(--transition);
+            z-index: 10;
+        }
+
+        .back-link:hover {
+            color: var(--text-light);
+            transform: translateX(-5px);
+        }
+
+        /* Responsividade */
+        @media (max-width: 480px) {
+            .login-container {
+                max-width: 100%;
+                border-radius: 20px;
+                margin: 10px;
+            }
+            
+            .login-header {
+                padding: 30px 20px;
+            }
+            
+            .login-body {
+                padding: 30px 20px 20px;
+            }
+            
+            .login-header h1 {
+                font-size: 1.8rem;
+            }
+
+            .logo-icon {
+                width: 60px;
+                height: 60px;
+                font-size: 1.5rem;
+            }
+        }
+
+        /* Animações de entrada */
+        .login-container {
+            animation: slideInUp 0.8s ease-out;
+        }
+
+        @keyframes slideInUp {
+            from {
+                opacity: 0;
+                transform: translateY(50px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Modo escuro */
+        @media (prefers-color-scheme: dark) {
+            .login-container {
+                background: rgba(30, 30, 30, 0.95);
+                border-color: rgba(255, 255, 255, 0.1);
+            }
+
+            .form-control-modern {
+                background: rgba(40, 40, 40, 0.8);
+                border-color: rgba(255, 255, 255, 0.1);
+                color: var(--text-light);
+            }
+
+            .form-control-modern:focus {
+                background: rgba(50, 50, 50, 0.9);
+                border-color: #667eea;
+            }
+
+            .form-label {
+                color: var(--text-light);
+            }
+
+            .login-footer p {
+                color: rgba(255, 255, 255, 0.7);
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Efeitos de fundo animados -->
+    <div class="bg-animation">
+        <div class="floating-shape"></div>
+        <div class="floating-shape"></div>
+        <div class="floating-shape"></div>
+        <div class="floating-shape"></div>
+    </div>
+
+    <!-- Partículas -->
+    <div class="particles" id="particles"></div>
+
+    <!-- Link para voltar -->
+    <a href="index.html" class="back-link">
+        <i class="fas fa-arrow-left"></i>
+    </a>
+
+    <div class="login-container">
+        <div class="login-header">
+            <div class="logo-container">
+                <div class="logo-icon">
+                    <i class="fas fa-shield-alt"></i>
+                </div>
+                <h1>Multimodal Logística</h1>
+                <p>Sistema Corporativo Seguro</p>
+            </div>
+        </div>
+        
+        <div class="login-body">
+            <form id="loginForm">
+                <div class="form-group">
+                    <label for="email" class="form-label">
+                        <i class="fas fa-envelope"></i> E-mail Corporativo
+                    </label>
+                    <div class="input-group-modern">
+                        <i class="fas fa-envelope input-icon"></i>
+                        <input type="email" class="form-control-modern" id="email" placeholder="seu.email@multimodal.com.br" required autocomplete="username">
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="senha" class="form-label">
+                        <i class="fas fa-lock"></i> Senha
+                    </label>
+                    <div class="input-group-modern">
+                        <i class="fas fa-lock input-icon"></i>
+                        <input type="password" class="form-control-modern" id="senha" placeholder="Digite sua senha" required autocomplete="current-password">
+                        <span class="password-toggle" onclick="togglePassword()">
+                            <i class="fas fa-eye"></i>
+                        </span>
+                    </div>
+                </div>
+                
+                <button type="submit" class="btn-login" id="submitBtn">
+                    <div class="btn-content">
+                        <i class="fas fa-sign-in-alt"></i>
+                        <span class="btn-text">Acessar Sistema</span>
+                        <span class="btn-loading" style="display: none;">
+                            <span class="loading-spinner"></span>
+                            <span>Autenticando...</span>
+                        </span>
+                    </div>
+                </button>
+                
+                <!-- Botão para definir como admin (apenas para desenvolvimento) -->
+                <button type="button" class="btn-login" id="adminBtn" style="background: var(--warning-gradient); margin-top: 10px;" onclick="definirComoAdmin()">
+                    <div class="btn-content">
+                        <i class="fas fa-crown"></i>
+                        <span class="btn-text">Definir como Admin</span>
+                    </div>
+                </button>
+            </form>
+            
+            <div id="loginAlert" class="alert-modern" style="display: none;"></div>
+            
+            <!-- Informações de Segurança -->
+            <div class="security-badges">
+                <h6><i class="fas fa-shield-alt"></i> Autenticação Segura</h6>
+                <div class="badge-container">
+                    <span class="security-badge">
+                        <i class="fas fa-database"></i>
+                        Supabase Auth
+                    </span>
+                    <span class="security-badge">
+                        <i class="fas fa-lock"></i>
+                        Criptografia SSL
+                    </span>
+                    <span class="security-badge">
+                        <i class="fas fa-user-shield"></i>
+                        Multi-Fator
+                    </span>
+                    <span class="security-badge">
+                        <i class="fas fa-clock"></i>
+                        Sessão Segura
+                    </span>
+                </div>
+                <small class="text-muted mt-2 d-block">Sistema protegido com as melhores práticas de segurança</small>
+            </div>
+            
+            <div class="login-footer">
+                <p><i class="fas fa-shield-alt"></i> Acesso seguro e criptografado</p>
+                <div class="system-info" id="systemInfo">
+                    <i class="fas fa-server"></i> Conectando ao servidor...
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    // ========== CONFIGURAÇÕES SEGURAS ==========
+    let SUPABASE_URL = '';
+    let SUPABASE_ANON_KEY = '';
+    let supabaseClient = null; // Renomeado para evitar conflito com possível variável global do Supabase
+    
+    // ========== CONFIGURAÇÕES ==========
+    const SERVER_URL = window.location.origin;
+    
+    // ========== ELEMENTOS DOM ==========
+    const loginForm = document.getElementById('loginForm');
+    const submitBtn = document.getElementById('submitBtn');
+    const alertDiv = document.getElementById('loginAlert');
+    const systemInfo = document.getElementById('systemInfo');
+
+    // ========== GERAR PARTÍCULAS ==========
+    function createParticles() {
+        const particlesContainer = document.getElementById('particles');
+        const particleCount = 20;
+        
+        for (let i = 0; i < particleCount; i++) {
+            const particle = document.createElement('div');
+            particle.className = 'particle';
+            particle.style.left = Math.random() * 100 + '%';
+            particle.style.animationDelay = Math.random() * 15 + 's';
+            particle.style.animationDuration = (15 + Math.random() * 10) + 's';
+            particlesContainer.appendChild(particle);
+        }
+    }
+
+    // ========== INICIALIZAÇÃO SEGURA ==========
+    async function inicializarSupabase() {
+        try {
+            console.log('🔧 Inicializando Supabase de forma segura...');
+            
+            // Buscar configurações do servidor de forma segura
+            const response = await fetch('/api/supabase-config');
+            
+            if (!response.ok) {
+                throw new Error('Erro ao buscar configurações do servidor');
+            }
+            
+            const config = await response.json();
+            
+            SUPABASE_URL = config.supabaseUrl;
+            SUPABASE_ANON_KEY = config.supabaseAnonKey;
+            
+            // Inicializar cliente Supabase
+            supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            
+            console.log('✅ Supabase inicializado com sucesso (configurações seguras)');
+            return true;
+            
+        } catch (error) {
+            console.error('❌ Erro ao inicializar Supabase:', error);
+            return false;
+        }
+    }
+
+    // ========== FUNÇÕES UTILITÁRIAS ==========
+    function togglePassword() {
+        const senhaInput = document.getElementById('senha');
+        const toggleIcon = document.querySelector('.password-toggle i');
+        
+        if (senhaInput.type === 'password') {
+            senhaInput.type = 'text';
+            toggleIcon.className = 'fas fa-eye-slash';
+        } else {
+            senhaInput.type = 'password';
+            toggleIcon.className = 'fas fa-eye';
+        }
+    }
+    
+    // ========== FUNÇÃO PARA DEFINIR USUÁRIO COMO ADMIN ==========
+    async function definirUsuarioComoAdmin(email) {
+        try {
+            console.log('🔧 Definindo usuário como admin:', email);
+            
+            if (!supabase) {
+                throw new Error('Supabase não inicializado');
+            }
+            
+            // Atualizar user_metadata no Supabase Auth
+            const { data, error } = await supabase.auth.updateUser({
+                data: {
+                    role: 'admin',
+                    nome: email.split('@')[0],
+                    instance_name: 'admin_instance'
+                }
+            });
+            
+            if (error) {
+                console.error('❌ Erro ao atualizar usuário:', error);
+                throw error;
+            }
+            
+            console.log('✅ Usuário definido como admin:', data.user.email);
+            return data.user;
+            
+        } catch (error) {
+            console.error('❌ Erro ao definir usuário como admin:', error);
+            throw error;
+        }
+    }
+
+    // ========== FUNÇÃO PARA VERIFICAR E DEFINIR ADMIN ==========
+    async function verificarEdefinirAdmin() {
+        try {
+            const { data: { user }, error } = await supabase.auth.getUser();
+            
+            if (error || !user) {
+                console.log('❌ Usuário não autenticado');
+                return false;
+            }
+            
+            console.log('👤 Usuário atual:', user.email);
+            console.log('🔑 Role atual:', user.user_metadata?.role || 'user');
+            
+            // Se não é admin, definir como admin
+            if (user.user_metadata?.role !== 'admin') {
+                console.log('🔧 Definindo usuário como admin...');
+                await definirUsuarioComoAdmin(user.email);
+                console.log('✅ Usuário agora é admin!');
+            } else {
+                console.log('✅ Usuário já é admin');
+            }
+            
+            return true;
+            
+        } catch (error) {
+            console.error('❌ Erro ao verificar/definir admin:', error);
+            return false;
+        }
+    }
+
+    function showLoading(show = true) {
+        if (show) {
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<div class="btn-content"><span class="loading-spinner"></span> Autenticando...</div>';
+        } else {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<div class="btn-content"><i class="fas fa-sign-in-alt"></i> Acessar Sistema</div>';
+        }
+    }
+    
+    function showAlert(message, type = 'danger') {
+        alertDiv.className = `alert-modern alert-modern-${type}`;
+        alertDiv.innerHTML = `<i class="fas fa-${type === 'success' ? 'check-circle' : type === 'warning' ? 'exclamation-triangle' : 'exclamation-circle'}"></i> ${message}`;
+        alertDiv.style.display = 'block';
+        
+        if (type === 'success') {
+            setTimeout(() => {
+                alertDiv.style.display = 'none';
+            }, 3000);
+        }
+    }
+    
+    function updateSystemInfo(message, type = 'info') {
+        const icon = type === 'success' ? 'fa-check-circle' : 
+                     type === 'error' ? 'fa-exclamation-circle' : 'fa-server';
+        systemInfo.innerHTML = `<i class="fas ${icon}"></i> ${message}`;
+    }
+
+    // ========== SISTEMA DE AUTENTICAÇÃO SUPABASE ==========
+    async function fazerLoginSupabase(email, senha) {
+        if (!supabaseClient) {
+            throw new Error('Sistema não inicializado corretamente');
+        }
+        
+        console.log('🔐 Tentando login via Supabase Auth:', email);
+        
+        // ✅ Usar autenticação nativa do Supabase
+        const { data, error } = await supabaseClient.auth.signInWithPassword({
+            email: email,
+            password: senha
+        });
+
+        if (error) {
+            console.error('❌ Erro na autenticação Supabase:', error);
+            
+            // ✅ Se o erro for "Email not confirmed", confirmar automaticamente e tentar novamente
+            if (error.message && error.message.includes('Email not confirmed')) {
+                console.log('📧 E-mail não confirmado. Confirmando automaticamente...');
+                
+                try {
+                    // Chamar endpoint do backend para confirmar o e-mail
+                    const confirmResponse = await fetch('/api/auth/resend-confirmation', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ email: email }),
+                        credentials: 'include'
+                    });
+                    
+                    const confirmResult = await confirmResponse.json();
+                    
+                    if (confirmResult.success) {
+                        console.log('✅ E-mail confirmado automaticamente. Tentando login novamente...');
+                        
+                        // Tentar login novamente após confirmação
+                        const { data: retryData, error: retryError } = await supabaseClient.auth.signInWithPassword({
+                            email: email,
+                            password: senha
+                        });
+                        
+                        if (retryError) {
+                            console.error('❌ Erro após confirmação:', retryError);
+                            throw new Error('E-mail ou senha inválidos');
+                        }
+                        
+                        if (!retryData.user) {
+                            throw new Error('E-mail ou senha inválidos');
+                        }
+                        
+                        console.log('✅ Login bem-sucedido após confirmação automática:', retryData.user.email);
+                        return retryData;
+                    } else {
+                        console.warn('⚠️ Não foi possível confirmar o e-mail automaticamente:', confirmResult.error);
+                        throw new Error('E-mail não confirmado. Tente novamente em alguns instantes.');
+                    }
+                } catch (confirmError) {
+                    console.error('❌ Erro ao confirmar e-mail:', confirmError);
+                    throw new Error('E-mail não confirmado. Tente novamente em alguns instantes.');
+                }
+            }
+            
+            throw new Error('E-mail ou senha inválidos');
+        }
+
+        if (!data.user) {
+            console.log('❌ Usuário não encontrado');
+            throw new Error('E-mail ou senha inválidos');
+        }
+
+        console.log('✅ Login bem-sucedido via Supabase Auth:', data.user.email);
+        return data;
+    }
+
+    async function obterPerfilUsuario(userId) {
+        console.log('👤 Buscando perfil do usuário autenticado');
+        
+        // ✅ Usar dados do usuário autenticado do Supabase
+        const { data: { user }, error } = await supabaseClient.auth.getUser();
+
+        if (error || !user) {
+            console.error('❌ Erro ao buscar usuário autenticado:', error);
+            throw new Error('Erro ao carregar perfil do usuário');
+        }
+
+        // ✅ Buscar role na tabela user_profiles
+        let role = user.user_metadata?.role || 'user';
+        
+        try {
+            const { data: profileData, error: profileError } = await supabaseClient
+                .from('user_profiles')
+                .select('role')
+                .eq('id', user.id)
+                .single();
+            
+            if (!profileError && profileData) {
+                role = profileData.role;
+                console.log('✅ Role encontrado na tabela user_profiles:', role);
+            } else {
+                console.log('⚠️ Perfil não encontrado na tabela user_profiles, usando role padrão');
+            }
+        } catch (error) {
+            console.error('❌ Erro ao buscar perfil:', error);
+        }
+
+        // ✅ Criar perfil baseado nos dados do Supabase Auth e tabela user_profiles
+        const profile = {
+            username: user.email.split('@')[0], // Usar parte antes do @ como username
+            role: role,
+            instance_name: user.user_metadata?.instance_name || 'default_instance',
+            nome: user.user_metadata?.nome || user.email.split('@')[0]
+        };
+
+        console.log('✅ Perfil carregado com sucesso:', profile);
+        return profile;
+    }
+
+    async function verificarSessaoAtiva() {
+        console.log('🔍 Verificando sessão Supabase...');
+        
+        if (!supabaseClient) return null;
+        
+        const { data, error } = await supabaseClient.auth.getSession();
+        
+        if (error) {
+            console.error('❌ Erro ao verificar sessão:', error);
+            return null;
+        }
+
+        if (data.session) {
+            console.log('✅ Sessão ativa encontrada');
+            return data.session;
+        }
+
+        console.log('🔐 Nenhuma sessão ativa');
+        return null;
+    }
+
+    // ========== SISTEMA DE STORAGE ==========
+    function salvarUsuarioLocalStorage(userData, profile) {
+        try {
+            const userInfo = {
+                id: userData.id,
+                email: userData.email,
+                username: profile.username,
+                role: profile.role,
+                instanceName: profile.instance_name,
+                isAdmin: profile.role === 'admin',
+                loginTimestamp: Date.now(),
+                authenticated: true
+            };
+            
+            localStorage.setItem('loggedInUser', JSON.stringify(userInfo));
+            console.log('✅ Usuário salvo no localStorage');
+            
+            return userInfo;
+        } catch (error) {
+            console.error('❌ Erro ao salvar no localStorage:', error);
+            return null;
+        }
+    }
+
+    function verificarUsuarioLocalStorage() {
+        try {
+            const userData = localStorage.getItem('loggedInUser');
+            if (!userData) {
+                return null;
+            }
+            
+            const user = JSON.parse(userData);
+            
+            if (!user.authenticated) {
+                console.log('❌ Usuário não autenticado no localStorage');
+                return null;
+            }
+            
+            // Verificar se a sessão expirou (12 horas)
+            const now = Date.now();
+            const sessionAge = now - user.loginTimestamp;
+            const SESSION_TIMEOUT = 12 * 60 * 60 * 1000;
+            
+            if (sessionAge > SESSION_TIMEOUT) {
+                console.log('🕒 Sessão expirada, limpando localStorage');
+                localStorage.removeItem('loggedInUser');
+                return null;
+            }
+            
+            console.log('✅ Usuário autenticado encontrado no localStorage');
+            return user;
+        } catch (error) {
+            console.error('❌ Erro ao verificar localStorage:', error);
+            return null;
+        }
+    }
+
+    // ========== TESTES DE CONEXÃO ==========
+    async function testarConexao() {
+        try {
+            console.log('🧪 Testando conexão com servidor...');
+            updateSystemInfo('Testando conexão com servidor...');
+            
+            // Usar a rota de health check que existe
+            const response = await fetch(`${SERVER_URL}/health`, {
+                credentials: 'include' // ✅ IMPORTANTE: Incluir cookies de sessão
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                console.log('✅ Servidor respondendo:', data.status);
+                updateSystemInfo('Conectado ao servidor', 'success');
+                return true;
+            }
+            return false;
+        } catch (error) {
+            console.error('❌ Erro de conexão:', error);
+            updateSystemInfo('Erro ao conectar com servidor', 'error');
+            return false;
+        }
+    }
+
+    async function testarConexaoSupabase() {
+        try {
+            console.log('🧪 Testando conexão Supabase...');
+            
+            if (!supabaseClient) {
+                console.error('❌ Supabase não inicializado');
+                return false;
+            }
+            
+            // Testa a conexão com o Supabase Auth
+            const { data, error } = await supabaseClient.auth.getSession();
+
+            if (error) {
+                console.error('❌ Erro Supabase Auth:', error);
+                return false;
+            }
+
+            console.log('✅ Supabase Auth conectado');
+            return true;
+        } catch (error) {
+            console.error('❌ Erro ao testar Supabase:', error);
+            return false;
+        }
+    }
+
+    // ========== VERIFICAÇÃO DE LOGIN ==========
+    async function verificarLoginExistente() {
+        try {
+            console.log('🔐 Verificando autenticação existente...');
+            
+            // ✅ PRIMEIRO VERIFICAR LOCALSTORAGE (mais rápido)
+            const localUser = verificarUsuarioLocalStorage();
+            if (localUser && localUser.authenticated) {
+                console.log('✅ Usuário já logado (cache), redirecionando...');
+                
+                // Marcar como online
+                try {
+                    await supabase.rpc('mark_user_online', { p_user_id: localUser.id });
+                } catch (e) {
+                    console.warn('⚠️ Erro ao marcar presença:', e);
+                }
+                
+                showAlert(`<i class="fas fa-check-circle"></i> Bem-vindo de volta, ${localUser.username}!`, 'success');
+                
+                setTimeout(() => {
+                    window.location.href = 'portal.html';
+                }, 1500);
+                return true;
+            }
+            
+            // ✅ SE NÃO TEM CACHE LOCAL, VERIFICAR SESSÃO SUPABASE
+            const session = await verificarSessaoAtiva();
+            if (session) {
+                const profile = await obterPerfilUsuario(session.user.id);
+                const userData = salvarUsuarioLocalStorage(session.user, profile);
+                
+                if (userData) {
+                    console.log('✅ Usuário já logado, redirecionando...');
+                    
+                    // Marcar como online
+                    try {
+                        await supabase.rpc('mark_user_online', { p_user_id: session.user.id });
+                    } catch (e) {
+                        console.warn('⚠️ Erro ao marcar presença:', e);
+                    }
+                    
+                    showAlert(`<i class="fas fa-check-circle"></i> Bem-vindo de volta, ${profile.username}!`, 'success');
+                    
+                    setTimeout(() => {
+                        window.location.href = 'portal.html';
+                    }, 1500);
+                    return true;
+                }
+            }
+            
+        } catch (error) {
+            console.log('🔐 Usuário não autenticado');
+        }
+        
+        return false;
+    }
+
+    // ========== FUNÇÃO PARA DEFINIR COMO ADMIN ==========
+    async function definirComoAdmin() {
+        try {
+            const email = document.getElementById('email').value.trim();
+            const senha = document.getElementById('senha').value;
+            
+            if (!email || !senha) {
+                showAlert('Preencha email e senha primeiro');
+                return;
+            }
+            
+            showLoading(true);
+            alertDiv.style.display = 'none';
+            
+            // 1. Fazer login primeiro
+            const authData = await fazerLoginSupabase(email, senha);
+            
+            // 2. Definir como admin
+            await definirUsuarioComoAdmin(email);
+            
+            // 3. Buscar perfil atualizado
+            const profile = await obterPerfilUsuario(authData.user.id);
+            
+            // 4. Salvar no localStorage
+            const userData = salvarUsuarioLocalStorage(authData.user, profile);
+            
+            // 5. Mostrar sucesso
+            showAlert(`<i class="fas fa-crown"></i> Usuário definido como ADMIN! Redirecionando...`, 'success');
+            updateSystemInfo(`Usuário ${email} agora é ADMIN`, 'success');
+            
+            setTimeout(() => {
+                window.location.href = 'portal.html';
+            }, 2000);
+            
+        } catch (error) {
+            console.error('❌ Erro ao definir como admin:', error);
+            showAlert(`<i class="fas fa-exclamation-circle"></i> ${error.message}`);
+            updateSystemInfo('Falha ao definir como admin', 'error');
+        } finally {
+            showLoading(false);
+        }
+    }
+    loginForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const email = document.getElementById('email').value.trim();
+        const senha = document.getElementById('senha').value;
+        
+        if (!email || !senha) {
+            showAlert('<i class="fas fa-exclamation-triangle"></i> Preencha todos os campos');
+            return;
+        }
+        
+        // Verificar se o Supabase foi inicializado
+        if (!supabaseClient) {
+            showAlert('Sistema não inicializado. Recarregue a página.', 'danger');
+            return;
+        }
+        
+        showLoading(true);
+        alertDiv.style.display = 'none';
+        
+        try {
+            // 1. Fazer login no Supabase
+            console.log('🔐 Chamando fazerLoginSupabase...');
+            const authData = await fazerLoginSupabase(email, senha);
+            console.log('✅ Auth data recebido:', authData);
+            console.log('👤 User ID:', authData?.user?.id);
+            console.log('📧 User Email:', authData?.user?.email);
+            console.log('🔑 Session:', authData?.session ? 'SIM' : 'NÃO');
+            console.log('🔑 Access Token:', authData?.session?.access_token ? 'SIM' : 'NÃO');
+            
+            // 2. Buscar perfil do usuário
+            console.log('🔍 Buscando perfil do usuário...');
+            const profile = await obterPerfilUsuario(authData.user.id);
+            console.log('✅ Profile recebido:', profile);
+            
+            // 3. Salvar no localStorage
+            console.log('💾 Salvando no localStorage...');
+            const userData = salvarUsuarioLocalStorage(authData.user, profile);
+            console.log('✅ UserData salvo:', userData);
+            
+            // 4. Sincronizar com sessão do servidor
+            try {
+                console.log('🔄 Sincronizando autenticação com servidor...');
+                
+                // Obter token da sessão atual do Supabase
+                const { data: { session }, error: sessionError } = await supabaseClient.auth.getSession();
+                
+                if (sessionError || !session) {
+                    console.warn('⚠️ Não foi possível obter sessão do Supabase:', sessionError);
+                    // Tentar usar o token do authData se disponível
+                    const sessionToken = authData.session?.access_token;
+                    if (!sessionToken) {
+                        throw new Error('Token de sessão não encontrado');
+                    }
+                    
+                    const syncResponse = await fetch('/api/auth/sync', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${sessionToken}`
+                        },
+                        credentials: 'include' // IMPORTANTE: Incluir cookies
+                    });
+                    
+                    if (!syncResponse.ok) {
+                        const syncError = await syncResponse.json();
+                        throw new Error(syncError.error || 'Erro ao sincronizar sessão');
+                    }
+                    
+                    const syncResult = await syncResponse.json();
+                    console.log('✅ Sessão sincronizada:', syncResult);
+                } else {
+                    // Usar sessão obtida
+                    const syncResponse = await fetch('/api/auth/sync', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${session.access_token}`
+                        },
+                        credentials: 'include' // IMPORTANTE: Incluir cookies
+                    });
+                    
+                    if (!syncResponse.ok) {
+                        const syncError = await syncResponse.json();
+                        throw new Error(syncError.error || 'Erro ao sincronizar sessão');
+                    }
+                    
+                    const syncResult = await syncResponse.json();
+                    console.log('✅ Sessão sincronizada:', syncResult);
+                }
+            } catch (syncErr) {
+                console.error('❌ Erro ao sincronizar sessão:', syncErr);
+                // Continuar mesmo se a sincronização falhar
+                showAlert('⚠️ Login realizado, mas houve problema ao sincronizar sessão. Algumas funcionalidades podem não funcionar.', 'warning');
+            }
+            
+            // 5. Marcar usuário como online na plataforma
+            try {
+                console.log('🟢 Marcando usuário como online...');
+                const { error: presenceError } = await supabase.rpc('mark_user_online', {
+                    p_user_id: authData.user.id
+                });
+                if (presenceError) {
+                    console.warn('⚠️ Erro ao marcar usuário como online:', presenceError);
+                } else {
+                    console.log('✅ Usuário marcado como online');
+                }
+            } catch (presenceErr) {
+                console.warn('⚠️ Erro ao marcar presença:', presenceErr);
+            }
+            
+            // 6. Mostrar sucesso
+            showAlert(`<i class="fas fa-check-circle"></i> Login realizado! Redirecionando...`, 'success');
+            updateSystemInfo(`Usuário autenticado com sucesso`, 'success');
+            
+            setTimeout(() => {
+                console.log('🔄 Redirecionando para portal.html...');
+                window.location.href = 'portal.html';
+            }, 1500);
+            
+        } catch (error) {
+            console.error('❌ Erro completo:', error);
+            console.error('❌ Erro stack:', error.stack);
+            showAlert(`
+                <i class="fas fa-exclamation-circle"></i> ${error.message}
+            `);
+            updateSystemInfo('Falha na autenticação', 'error');
+        } finally {
+            showLoading(false);
+        }
+    });
+
+    // ========== FUNÇÃO PARA VERIFICAR LOGIN QUANDO NECESSÁRIO ==========
+    async function verificarLoginSeNecessario() {
+        // Só verifica se há parâmetros na URL indicando que veio de outra página
+        const urlParams = new URLSearchParams(window.location.search);
+        const fromPortal = urlParams.get('from') === 'portal';
+        const autoLogin = urlParams.get('auto') === 'true';
+        
+        if (fromPortal || autoLogin) {
+            console.log('🔄 Verificando login devido a redirecionamento...');
+            await verificarLoginExistente();
+        }
+    }
+
+    // ========== INICIALIZAÇÃO ==========
+    document.addEventListener('DOMContentLoaded', async () => {
+        console.log('🚀 Sistema de Login Moderno inicializado');
+        console.log('📍 Servidor:', SERVER_URL);
+        
+        // Criar partículas animadas
+        createParticles();
+        
+        // Inicializar Supabase de forma segura
+        const supabaseInicializado = await inicializarSupabase();
+        
+        if (!supabaseInicializado) {
+            showAlert('Erro ao conectar com o sistema. Recarregue a página.', 'danger');
+            updateSystemInfo('Erro de inicialização', 'error');
+            return;
+        }
+        
+        // Foco no campo de email
+        document.getElementById('email').focus();
+        
+        // Testar conexões
+        const conexaoOk = await testarConexao();
+        const supabaseOk = await testarConexaoSupabase();
+        
+        if (conexaoOk && supabaseOk) {
+            updateSystemInfo('Sistemas conectados e prontos', 'success');
+            
+            // Verificar login apenas se necessário (redirecionamento)
+            await verificarLoginSeNecessario();
+        } else {
+            if (!conexaoOk) {
+                updateSystemInfo('Erro na conexão com servidor', 'error');
+            }
+            if (!supabaseOk) {
+                updateSystemInfo('Erro na conexão com banco de dados', 'error');
+            }
+        }
+    });
+
+    // Enter key submission
+    document.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            loginForm.dispatchEvent(new Event('submit'));
+        }
+    });
+
+    // Logout function para usar em outras páginas
+    window.fazerLogout = async function() {
+        try {
+            if (supabaseClient) {
+                await supabaseClient.auth.signOut();
+            }
+            localStorage.removeItem('loggedInUser');
+            console.log('🚪 Logout realizado');
+        } catch (error) {
+            console.error('❌ Erro no logout:', error);
+        }
+    };
+    </script>
+</body>
+</html>
