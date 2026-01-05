@@ -1117,22 +1117,40 @@
                 
                 console.log('🎯 isAdmin FINAL definido como:', isAdmin);
                 
-                // Verificar permissão
-                if (typeof verificarEAplicarPermissao === 'function') {
-                    const temPermissao = await verificarEAplicarPermissao('treinamentos-documentos');
-                    if (!temPermissao) {
-                        alert('Você não tem permissão para acessar esta página.');
-                        window.location.href = 'portal.html';
-                        return;
+                // ✅ Verificar permissão (não bloqueia acesso, apenas controla ações)
+                // Todos os usuários autenticados podem visualizar e baixar ITs
+                // Apenas usuários com permissões específicas podem adicionar, editar ou excluir
+                let temPermissaoQualidade = false;
+                try {
+                    if (typeof verificarPermissaoPagina === 'function') {
+                        temPermissaoQualidade = await verificarPermissaoPagina('treinamentos-documentos');
+                        // Não redireciona se não tiver permissão - apenas controla ações
+                        if (window.DEBUG || window.location.hostname === 'localhost') {
+                            console.log('📋 Permissão de qualidade:', temPermissaoQualidade);
+                        }
                     }
+                } catch (permError) {
+                    console.warn('⚠️ Erro ao verificar permissão de qualidade (continuando mesmo assim):', permError);
+                    // Não bloqueia acesso em caso de erro na verificação de permissão
                 }
                 
-                // ✅ Carregar permissões de ITs
-                await verificarPermissoesITs();
+                // ✅ Carregar permissões de ITs (para ações específicas)
+                try {
+                    await verificarPermissoesITs();
+                } catch (itsPermError) {
+                    console.warn('⚠️ Erro ao carregar permissões de ITs (continuando mesmo assim):', itsPermError);
+                    // Define permissões padrão (todas false) em caso de erro
+                    permissoesITs = { adicionar: false, editar: false, excluir: false };
+                }
             } catch (error) {
                 console.error('Erro ao verificar autenticação:', error);
-                window.location.href = 'index.html';
-                return;
+                // Só redireciona se for erro de autenticação (não de permissão)
+                if (error.message && error.message.includes('autenticação')) {
+                    window.location.href = 'index.html';
+                    return;
+                }
+                // Se for outro tipo de erro, apenas loga e continua
+                console.warn('⚠️ Erro não crítico, continuando...');
             }
             
             // ✅ Ocultar/mostrar botões baseado nas permissões
@@ -1824,6 +1842,58 @@
         function normalizeCodigoIT(codigo) {
             if (!codigo) return null;
             return codigo.trim().toUpperCase();
+        }
+        
+        // ✅ Função para verificar permissões de ITs
+        async function verificarPermissoesITs() {
+            try {
+                const loggedInUserData = localStorage.getItem('loggedInUser');
+                if (!loggedInUserData) {
+                    permissoesITs = { adicionar: false, editar: false, excluir: false };
+                    return;
+                }
+
+                const userData = JSON.parse(loggedInUserData);
+                const userId = userData.id;
+
+                // Se for admin, tem todas as permissões
+                if (userData.isAdmin === true || userData.role === 'admin') {
+                    permissoesITs = { adicionar: true, editar: true, excluir: true };
+                    return;
+                }
+
+                // Se não houver supabaseClient, não pode verificar permissões
+                if (!supabaseClient) {
+                    permissoesITs = { adicionar: false, editar: false, excluir: false };
+                    return;
+                }
+
+                // Buscar permissões de ITs do usuário
+                const { data: permissoes, error } = await supabaseClient
+                    .from('permissoes_portal')
+                    .select('permissao_id')
+                    .eq('usuario_id', userId)
+                    .in('permissao_id', ['its_adicionar', 'its_editar', 'its_excluir']);
+
+                if (error) {
+                    console.warn('⚠️ Erro ao buscar permissões de ITs:', error);
+                    permissoesITs = { adicionar: false, editar: false, excluir: false };
+                    return;
+                }
+
+                permissoesITs = {
+                    adicionar: permissoes?.some(p => p.permissao_id === 'its_adicionar') || false,
+                    editar: permissoes?.some(p => p.permissao_id === 'its_editar') || false,
+                    excluir: permissoes?.some(p => p.permissao_id === 'its_excluir') || false
+                };
+
+                if (window.DEBUG || window.location.hostname === 'localhost') {
+                    console.log('📋 Permissões de ITs carregadas:', permissoesITs);
+                }
+            } catch (error) {
+                console.error('❌ Erro ao verificar permissões de ITs:', error);
+                permissoesITs = { adicionar: false, editar: false, excluir: false };
+            }
         }
         
         async function enviarIT() {

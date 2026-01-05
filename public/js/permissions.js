@@ -297,6 +297,7 @@ async function paginaDisponivel(pageName) {
 // Exportar funções para uso global
 window.verificarPermissaoPagina = verificarPermissaoPagina;
 window.verificarEAplicarPermissao = verificarEAplicarPermissao;
+window.verificarPermissaoPagina = verificarPermissaoPagina;
 window.paginaDisponivel = paginaDisponivel;
 window.isUserAdmin = isUserAdmin;
 
