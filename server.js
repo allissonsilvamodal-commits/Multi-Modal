@@ -77,7 +77,7 @@ if (isDevelopment) {
         fontSrc: ["'self'", "https://cdnjs.cloudflare.com", "https://fonts.gstatic.com", "https://fonts.googleapis.com", "https:", "data:"],
         objectSrc: ["'none'"],
         mediaSrc: ["'self'", "blob:"],
-        frameSrc: ["'none'"],
+        frameSrc: ["'self'", "https://*.supabase.co", "https://docs.google.com", "https://view.officeapps.live.com"],
         workerSrc: ["'self'", "blob:"],
         manifestSrc: ["'self'"],
         formAction: ["'self'"],
@@ -104,7 +104,7 @@ if (isDevelopment) {
         fontSrc: ["'self'", "https://cdnjs.cloudflare.com", "https://fonts.gstatic.com", "https://fonts.googleapis.com"],
         objectSrc: ["'none'"],
         mediaSrc: ["'self'", "blob:"],
-        frameSrc: ["'none'"],
+        frameSrc: ["'self'", "https://*.supabase.co", "https://docs.google.com", "https://view.officeapps.live.com"],
         workerSrc: ["'self'", "blob:"],
         manifestSrc: ["'self'"],
         formAction: ["'self'"],
@@ -16090,12 +16090,26 @@ app.get('/api/settings/permissoes/:usuarioId', async (req, res) => {
       throw errorColetas;
     }
 
-    console.log(`✅ Permissões encontradas: ${(permissoesPortal || []).length} portal, ${(permissoesColetas || []).length} coletas`);
+    // Buscar permissões de ITs usando admin (contorna RLS)
+    // Permissões de ITs são armazenadas na tabela permissoes_portal com permissao_id começando com 'its_'
+    const { data: permissoesITs, error: errorITs } = await supabaseAdmin
+      .from('permissoes_portal')
+      .select('permissao_id')
+      .eq('usuario_id', usuarioId)
+      .like('permissao_id', 'its_%');
+
+    if (errorITs) {
+      console.error('❌ Erro ao buscar permissões de ITs:', errorITs);
+      throw errorITs;
+    }
+
+    console.log(`✅ Permissões encontradas: ${(permissoesPortal || []).length} portal, ${(permissoesColetas || []).length} coletas, ${(permissoesITs || []).length} ITs`);
 
     res.json({
       success: true,
       permissoesPortal: permissoesPortal || [],
-      permissoesColetas: permissoesColetas || []
+      permissoesColetas: permissoesColetas || [],
+      permissoesITs: permissoesITs || []
     });
   } catch (error) {
     console.error('❌ Erro ao buscar permissões:', error);
@@ -16261,6 +16275,91 @@ app.post('/api/settings/permissoes/coleta', async (req, res) => {
     res.status(500).json({ 
       success: false, 
       error: error.message || 'Erro ao salvar permissão de coleta' 
+    });
+  }
+});
+
+// ========== ENDPOINT PARA SALVAR/REMOVER PERMISSÃO DE ITs ==========
+app.post('/api/settings/permissoes/its', async (req, res) => {
+  try {
+    // Verificar autenticação e se é admin
+    const { user, error: authError } = await getUserFromRequest(req);
+    if (authError || !user) {
+      return res.status(401).json({ success: false, error: 'Não autenticado' });
+    }
+
+    // Verificar se é admin
+    const { data: userProfile } = await supabaseAdmin
+      .from('user_profiles')
+      .select('role')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    const isAdmin = userProfile?.role === 'admin' || user.isAdmin === true;
+    if (!isAdmin) {
+      return res.status(403).json({ success: false, error: 'Acesso negado. Apenas administradores podem alterar permissões.' });
+    }
+
+    const { usuarioId, permissaoId, permitido } = req.body;
+    
+    if (!usuarioId || !permissaoId || permitido === undefined) {
+      return res.status(400).json({ success: false, error: 'Dados inválidos. usuarioId, permissaoId e permitido são obrigatórios.' });
+    }
+
+    // Validar que a permissão é de ITs
+    if (!permissaoId.startsWith('its_')) {
+      return res.status(400).json({ success: false, error: 'Permissão inválida. Deve começar com "its_".' });
+    }
+
+    console.log(`💾 ${permitido ? 'Concedendo' : 'Removendo'} permissão de IT ${permissaoId} para usuário ${usuarioId}`);
+
+    if (permitido) {
+      // Verificar se a permissão já existe
+      const { data: existing, error: checkError } = await supabaseAdmin
+        .from('permissoes_portal')
+        .select('id')
+        .eq('usuario_id', usuarioId)
+        .eq('permissao_id', permissaoId)
+        .maybeSingle();
+
+      if (checkError && checkError.code !== 'PGRST116') {
+        throw checkError;
+      }
+
+      // Se não existe, inserir
+      if (!existing) {
+        const { data, error } = await supabaseAdmin
+          .from('permissoes_portal')
+          .insert([{
+            usuario_id: usuarioId,
+            tipo: 'permissao',
+            permissao_id: permissaoId
+          }]);
+
+        if (error) throw error;
+        console.log('✅ Permissão de IT inserida com sucesso');
+        res.json({ success: true, message: 'Permissão concedida com sucesso', data });
+      } else {
+        console.log('⚠️ Permissão de IT já existe');
+        res.json({ success: true, message: 'Permissão já existe', data: existing });
+      }
+    } else {
+      // Remover permissão
+      const { error } = await supabaseAdmin
+        .from('permissoes_portal')
+        .delete()
+        .eq('usuario_id', usuarioId)
+        .eq('permissao_id', permissaoId);
+
+      if (error) throw error;
+      console.log('✅ Permissão de IT removida com sucesso');
+      res.json({ success: true, message: 'Permissão removida com sucesso' });
+    }
+  } catch (error) {
+    console.error('❌ Erro ao salvar permissão de IT:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: error.message || 'Erro ao salvar permissão de IT' 
     });
   }
 });

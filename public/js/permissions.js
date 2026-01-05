@@ -15,7 +15,10 @@ function isUserAdmin() {
     try {
         const loggedInUserData = localStorage.getItem('loggedInUser');
         if (!loggedInUserData) {
-            console.log('❌ Nenhum usuário logado');
+            // ✅ SEGURANÇA: Logs condicionais apenas em desenvolvimento
+            if (window.DEBUG || window.location.hostname === 'localhost') {
+                console.log('❌ Nenhum usuário logado');
+            }
             return false;
         }
         
@@ -24,15 +27,20 @@ function isUserAdmin() {
         // Verificação rigorosa de admin
         const isAdmin = (userData.isAdmin === true || userData.role === 'admin');
         
-        console.log('👤 Verificando se é admin:', {
-            email: userData.email,
-            isAdmin: userData.isAdmin,
-            role: userData.role,
-            isAdminCheck: isAdmin
-        });
+        // ✅ SEGURANÇA: Não logar dados de usuário em produção
+        if (window.DEBUG || window.location.hostname === 'localhost') {
+            console.log('👤 Verificando se é admin:', {
+                email: userData.email,
+                isAdmin: userData.isAdmin,
+                role: userData.role,
+                isAdminCheck: isAdmin
+            });
+        }
         
         if (isAdmin) {
-            console.log('✅ Usuário é ADMIN');
+            if (window.DEBUG || window.location.hostname === 'localhost') {
+                console.log('✅ Usuário é ADMIN');
+            }
             return userData;
         }
         
@@ -82,33 +90,48 @@ async function initSupabaseForPermissions() {
  */
 async function verificarPermissaoPagina(pageName) {
     try {
-        console.log(`🔐 Verificando permissão para página: ${pageName}`);
+        // ✅ SEGURANÇA: Logs condicionais apenas em desenvolvimento
+        if (window.DEBUG || window.location.hostname === 'localhost') {
+            console.log(`🔐 Verificando permissão para página: ${pageName}`);
+        }
         
         // Buscar usuário logado
         const loggedInUserData = localStorage.getItem('loggedInUser');
         if (!loggedInUserData) {
-            console.log('❌ Nenhum usuário logado encontrado');
+            if (window.DEBUG || window.location.hostname === 'localhost') {
+                console.log('❌ Nenhum usuário logado encontrado');
+            }
             return false;
         }
         
         const userData = JSON.parse(loggedInUserData);
-        console.log('👤 Usuário verificando permissão:', userData.email);
-        console.log('📊 Dados do usuário:', {
-            id: userData.id,
-            email: userData.email,
-            isAdmin: userData.isAdmin,
-            role: userData.role
-        });
+        
+        // ✅ SEGURANÇA: Não logar dados de usuário em produção
+        if (window.DEBUG || window.location.hostname === 'localhost') {
+            console.log('👤 Usuário verificando permissão:', userData.email);
+            console.log('📊 Dados do usuário:', {
+                id: userData.id,
+                email: userData.email,
+                isAdmin: userData.isAdmin,
+                role: userData.role
+            });
+        }
         
         // ✅ Se for ADMIN, permite acesso a tudo
         const isAdminCheck = (userData.isAdmin === true) || (userData.role === 'admin');
         
         if (isAdminCheck) {
-            console.log('✅ Usuário é ADMIN, permissão concedida para:', pageName);
+            // ✅ SEGURANÇA: Logs condicionais apenas em desenvolvimento
+            if (window.DEBUG || window.location.hostname === 'localhost') {
+                console.log('✅ Usuário é ADMIN, permissão concedida para:', pageName);
+            }
             return true;
         }
         
-        console.log('⚠️ Usuário NÃO é admin, verificando permissões específicas...');
+        // ✅ SEGURANÇA: Logs condicionais apenas em desenvolvimento
+        if (window.DEBUG || window.location.hostname === 'localhost') {
+            console.log('⚠️ Usuário NÃO é admin, verificando permissões específicas...');
+        }
         
         // Inicializar Supabase
         const client = await initSupabaseForPermissions();
