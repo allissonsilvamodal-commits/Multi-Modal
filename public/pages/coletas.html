@@ -4139,7 +4139,7 @@
                                                 <div class="motorista-detalhes">
                                                     <span><i class="fas fa-id-badge"></i> CNH: ${motorista.cnh || 'N/A'}</span>
                                                     <span><i class="fas fa-car"></i> ${motorista.categoria_cnh || 'N/A'}</span>
-                                                    <span><i class="fas fa-phone"></i> ${motorista.telefone || motorista.telefone1 || 'N/A'}</span>
+                                                    <span><i class="fas fa-phone"></i> ${motorista.telefone1 || motorista.telefone2 || 'N/A'}</span>
                                                 </div>
                                             </div>
                                             <div class="motorista-status">
@@ -4622,10 +4622,10 @@
                     return [];
                 }
                 
-                // ✅ OTIMIZAÇÃO: Selecionar apenas campos necessários
+                // ✅ OTIMIZAÇÃO: Selecionar apenas campos necessários (telefone1 e telefone2)
                 const { data, error } = await supabaseClient
                     .from('motoristas')
-                    .select('id, nome, cnh, categoria_cnh, telefone, telefone1, status, estado, classe_veiculo, tipo_veiculo, tipo_carroceria')
+                    .select('id, nome, cnh, categoria_cnh, telefone1, telefone2, status, estado, classe_veiculo, tipo_veiculo, tipo_carroceria')
                     .eq('status', 'ativo')
                     .order('nome', { ascending: true });
 
@@ -4935,7 +4935,7 @@
                                 </div>
                                 <div>
                                     <strong style="color: ${motorista.reprovado ? '#dc3545' : '#28a745'}; font-size: 0.9rem;">Telefone</strong>
-                                    <div style="font-size: 1.1rem; margin-top: 0.5rem;">${motorista.telefone1 || motorista.telefone || 'N/A'}</div>
+                                    <div style="font-size: 1.1rem; margin-top: 0.5rem;">${motorista.telefone1 || motorista.telefone2 || 'N/A'}</div>
                                 </div>
                                 <div>
                                     <strong style="color: ${motorista.reprovado ? '#dc3545' : '#28a745'}; font-size: 0.9rem;">Estado</strong>
@@ -8906,7 +8906,7 @@
                     const motorista = await buscarMotoristaPorId(motoristaId);
                     if (motorista) {
                         const nome = motorista.nome || 'Motorista desconhecido';
-                        const telefone = motorista.telefone1 || motorista.telefone || '';
+                        const telefone = motorista.telefone1 || motorista.telefone2 || '';
                         const infoMotorista = telefone ? `${nome} (${telefone})` : nome;
                         detalhesProcessados = detalhesProcessados.replace(new RegExp(motoristaId, 'g'), infoMotorista);
                     }
