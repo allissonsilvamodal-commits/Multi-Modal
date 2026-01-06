@@ -273,6 +273,126 @@
             font-weight: 600;
         }
         
+        /* ========== ESTILOS DE MULTI-SELECT PARA CLIENTES ========== */
+        .multi-select-wrapper {
+            position: relative;
+            width: 100%;
+        }
+
+        .multi-select-button {
+            width: 100%;
+            padding: 0.5rem 1rem;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.9rem;
+            transition: all 0.3s;
+        }
+
+        .multi-select-button:hover {
+            border-color: var(--primary);
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.1);
+        }
+
+        .multi-select-button i {
+            transition: transform 0.3s;
+        }
+
+        .multi-select-wrapper.active .multi-select-button i {
+            transform: rotate(180deg);
+        }
+
+        .multi-select-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+            z-index: 1000;
+            max-height: 300px;
+            overflow-y: auto;
+            display: none;
+            margin-top: 4px;
+        }
+
+        .multi-select-wrapper.active .multi-select-dropdown {
+            display: block;
+        }
+
+        .multi-select-search {
+            padding: 0.5rem;
+            border-bottom: 1px solid #eee;
+            position: sticky;
+            top: 0;
+            background: white;
+            z-index: 10;
+        }
+
+        .multi-select-search input {
+            width: 100%;
+            padding: 0.5rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 0.9rem;
+        }
+
+        .multi-select-options {
+            padding: 0.5rem 0;
+            max-height: 250px;
+            overflow-y: auto;
+        }
+
+        .multi-select-option {
+            display: flex;
+            align-items: center;
+            padding: 0.5rem 1rem;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .multi-select-option:hover {
+            background: #f5f5f5;
+        }
+
+        .multi-select-option.hidden {
+            display: none;
+        }
+
+        .multi-select-option input[type="checkbox"] {
+            margin-right: 0.5rem;
+            cursor: pointer;
+        }
+
+        .multi-select-group {
+            border-bottom: 1px solid #eee;
+        }
+        
+        .multi-select-group:last-child {
+            border-bottom: none;
+        }
+        
+        .multi-select-group-header {
+            padding: 0.5rem 1rem;
+            background: #f8f9fa;
+            font-weight: 600;
+            font-size: 0.85rem;
+            color: #495057;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .multi-select-option span {
+            flex: 1;
+            font-size: 0.9rem;
+        }
+        
         .search-box {
             position: relative;
             margin-bottom: 1.5rem;
@@ -854,6 +974,47 @@
                     </select>
                     </div>
                     <div class="col-md-6 mb-3">
+                        <label class="form-label">Operação (opcional)</label>
+                        <select id="operacaoSelect" class="form-select">
+                            <option value="">Sem operação específica</option>
+                            <optgroup label="Operações por Filial">
+                                <option value="operacoes_jbo">Operações - Jaboatão (JBO)</option>
+                                <option value="operacoes_cabo">Operações - Cabo (CABO)</option>
+                                <option value="operacoes_sp">Operações - São Paulo (SP)</option>
+                                <option value="operacoes_ba">Operações - Simões Filho (BA)</option>
+                                <option value="operacoes_se">Operações - Aracaju (SE)</option>
+                                <option value="operacoes_al">Operações - Maceió (AL)</option>
+                                <option value="operacoes_pe">Operações - Recife (PE)</option>
+                                <option value="operacoes_pb">Operações - João Pessoa (PB)</option>
+                                <option value="operacoes_ce">Operações - Fortaleza (CE)</option>
+                                <option value="operacoes_ambev">Operações - Ambev (AMBEV)</option>
+                                <option value="operacoes_us">Operações - Usinas (US)</option>
+                                <option value="operacoes_paratibe">Operações - Paratibe (PARATIBE)</option>
+                            </optgroup>
+                            <optgroup label="Outras Áreas">
+                                <option value="qualidade">Qualidade</option>
+                                <option value="price">Price</option>
+                                <option value="comercial">Comercial</option>
+                                <option value="rh">Recursos Humanos</option>
+                                <option value="contas_pagar">Contas a Pagar</option>
+                                <option value="contas_receber">Contas a Receber</option>
+                                <option value="ti">Tecnologia da Informação</option>
+                                <option value="seguranca">Segurança do Trabalho</option>
+                                <option value="manutencao">Manutenção</option>
+                                <option value="estoque">Estoque</option>
+                                <option value="compras">Compras</option>
+                                <option value="cs">CS</option>
+                                <option value="frota">Frota</option>
+                                <option value="documentacao">Documentação</option>
+                                <option value="administrativo">Administrativo</option>
+                                <option value="outros">Outros</option>
+                            </optgroup>
+                        </select>
+                        <small class="text-muted">Vincule esta IT a uma operação específica</small>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
                         <label class="form-label">Código da IT <span id="codigoITLabel">(opcional)</span></label>
                         <input type="text" id="codigoIT" class="form-control" placeholder="Ex: IT-001, IT-QA-2024-01">
                         <small class="text-muted" id="codigoITHint">Deixe em branco se não tiver código padronizado</small>
@@ -867,6 +1028,31 @@
                     <label class="form-label">Versão (opcional)</label>
                     <input type="text" id="versaoIT" class="form-control" placeholder="Ex: 1.0, 2.1, v3">
                     <small class="text-muted">Versão da nova atualização</small>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">
+                        <i class="fas fa-building me-2"></i>Clientes Relacionados (opcional)
+                    </label>
+                    <div class="multi-select-wrapper">
+                        <button type="button" class="multi-select-button" id="clientesITButton" onclick="toggleMultiSelectClientes()">
+                            <span id="clientesITText">Nenhum cliente selecionado</span>
+                            <i class="fas fa-chevron-down"></i>
+                        </button>
+                        <div class="multi-select-dropdown" id="clientesITDropdown">
+                            <div class="multi-select-search">
+                                <input type="text" id="searchClientesIT" placeholder="Buscar cliente..." onkeyup="filterClientesIT(this)">
+                            </div>
+                            <div class="multi-select-options" id="clientesITOptions">
+                                <div class="text-center p-3">
+                                    <div class="spinner-border spinner-border-sm text-primary" role="status">
+                                        <span class="visually-hidden">Carregando...</span>
+                                    </div>
+                                    <p class="mt-2 text-muted">Carregando clientes...</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <small class="text-muted">Selecione um ou mais clientes para vincular esta IT. Isso permitirá que as ITs apareçam nas coletas relacionadas.</small>
                 </div>
                 <div class="upload-area" id="uploadArea">
                     <input type="file" id="fileInput" accept=".pdf,.png,.jpg,.jpeg,.doc,.docx" style="display: none;">
@@ -1028,6 +1214,10 @@
             editar: false,
             excluir: false
         };
+        
+        // ✅ Variáveis para gerenciar clientes
+        let todosClientes = [];
+        let clientesSelecionados = [];
         
         async function inicializar() {
             // Inicializar Supabase
@@ -1507,6 +1697,33 @@
                     return;
                 }
                 
+                // ✅ Carregar clientes vinculados à IT
+                try {
+                    const response = await fetch(`/api/its/${itId}/clientes`, {
+                        credentials: 'include'
+                    });
+                    
+                    if (response.ok) {
+                        const result = await response.json();
+                        if (result.success && result.clientes) {
+                            clientesSelecionados = result.clientes.map(c => ({
+                                id: c.id,
+                                nome: c.nome,
+                                filial: c.filial
+                            }));
+                            updateClientesITText();
+                            
+                            // Atualizar checkboxes
+                            clientesSelecionados.forEach(cliente => {
+                                const checkbox = document.querySelector(`#clientesITOptions input[value="${cliente.id}"]`);
+                                if (checkbox) checkbox.checked = true;
+                            });
+                        }
+                    }
+                } catch (error) {
+                    console.warn('⚠️ Erro ao carregar clientes da IT:', error);
+                }
+                
                 selecionarITParaAtualizacao(it);
                 
             } catch (error) {
@@ -1522,6 +1739,7 @@
             
             // Preencher campos do formulário
             document.getElementById('areaSelect').value = it.area || '';
+            document.getElementById('operacaoSelect').value = it.operacao || '';
             document.getElementById('codigoIT').value = it.codigo_it || '';
             document.getElementById('nomeIT').value = it.nome || '';
             
@@ -1583,6 +1801,7 @@
         // ✅ NOVO: Limpar apenas campos do formulário (sem resetar tudo)
         function limparCamposFormulario() {
             document.getElementById('areaSelect').value = '';
+            document.getElementById('operacaoSelect').value = '';
             document.getElementById('codigoIT').value = '';
             document.getElementById('nomeIT').value = '';
             document.getElementById('versaoIT').value = '';
@@ -1590,6 +1809,13 @@
         
         // ✅ NOVO: Limpar formulário
         function limparFormulario() {
+            // ✅ Limpar clientes selecionados
+            clientesSelecionados = [];
+            updateClientesITText();
+            
+            // Desmarcar todos os checkboxes de clientes
+            const checkboxes = document.querySelectorAll('#clientesITOptions input[type="checkbox"]');
+            checkboxes.forEach(cb => cb.checked = false);
             document.getElementById('uploadForm').reset();
             selectedFile = null;
             document.getElementById('fileInput').value = '';
@@ -1901,6 +2127,7 @@
             const modoAtualizar = document.getElementById('modeAtualizar').checked;
             const itSelecionadaId = document.getElementById('itSelecionadaId').value;
             const area = document.getElementById('areaSelect').value;
+            const operacao = document.getElementById('operacaoSelect').value || null;
             const codigoIT = document.getElementById('codigoIT').value.trim();
             const nomeIT = document.getElementById('nomeIT').value.trim();
             const versaoIT = document.getElementById('versaoIT').value.trim();
@@ -2128,6 +2355,7 @@
                     .from('its_documentos')
                     .insert({
                         area: area,
+                        operacao: operacao,
                         codigo_it: codigoIT || null,
                         codigo_it_normalizado: codigoNormalizado,
                         nome: nomeIT,
@@ -2150,6 +2378,30 @@
                     // Se erro na inserção, remover arquivo do storage
                     await supabaseClient.storage.from('anexos').remove([fileName]);
                     throw insertError;
+                }
+                
+                // ✅ Vincular clientes à IT
+                if (clientesSelecionados.length > 0 && insertData && insertData.id) {
+                    try {
+                        const clienteIds = clientesSelecionados.map(c => c.id);
+                        const response = await fetch(`/api/its/${insertData.id}/clientes`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            credentials: 'include',
+                            body: JSON.stringify({ clienteIds })
+                        });
+                        
+                        if (!response.ok) {
+                            console.warn('⚠️ Erro ao vincular clientes à IT:', await response.text());
+                        } else {
+                            console.log('✅ Clientes vinculados à IT com sucesso');
+                        }
+                    } catch (error) {
+                        console.warn('⚠️ Erro ao vincular clientes:', error);
+                        // Não bloquear o processo se falhar ao vincular clientes
+                    }
                 }
                 
                 const mensagem = modoAtualizar || (codigoNormalizado && itsExistentes && itsExistentes.length > 0)
@@ -2641,6 +2893,177 @@
                 }
             }
         }
+        
+        // ========== FUNÇÕES PARA MULTI-SELECT DE CLIENTES ==========
+        
+        // Toggle do dropdown de clientes
+        function toggleMultiSelectClientes() {
+            const wrapper = document.getElementById('clientesITButton')?.closest('.multi-select-wrapper');
+            if (!wrapper) return;
+            
+            const isActive = wrapper.classList.contains('active');
+            
+            // Fechar todos os outros multi-selects
+            document.querySelectorAll('.multi-select-wrapper').forEach(w => {
+                if (w !== wrapper) {
+                    w.classList.remove('active');
+                }
+            });
+            
+            // Toggle do atual
+            wrapper.classList.toggle('active', !isActive);
+            
+            // Se estiver abrindo e ainda não carregou clientes, carregar
+            if (!isActive && todosClientes.length === 0) {
+                carregarClientesParaIT();
+            }
+        }
+        
+        // Filtrar clientes na busca
+        function filterClientesIT(input) {
+            const searchTerm = input.value.toLowerCase().trim();
+            const optionsContainer = document.getElementById('clientesITOptions');
+            if (!optionsContainer) return;
+            
+            const checkboxes = optionsContainer.querySelectorAll('.multi-select-option');
+            checkboxes.forEach(option => {
+                const text = option.textContent.toLowerCase();
+                const matches = text.includes(searchTerm);
+                option.style.display = matches ? '' : 'none';
+            });
+        }
+        
+        // Atualizar texto do botão de clientes
+        function updateClientesITText() {
+            const buttonText = document.getElementById('clientesITText');
+            if (!buttonText) return;
+            
+            if (clientesSelecionados.length === 0) {
+                buttonText.textContent = 'Nenhum cliente selecionado';
+            } else if (clientesSelecionados.length === 1) {
+                buttonText.textContent = clientesSelecionados[0].nome;
+            } else {
+                buttonText.textContent = `${clientesSelecionados.length} clientes selecionados`;
+            }
+        }
+        
+        // Carregar clientes para o multi-select
+        async function carregarClientesParaIT() {
+            const optionsContainer = document.getElementById('clientesITOptions');
+            if (!optionsContainer) return;
+            
+            // Mostrar loading
+            optionsContainer.innerHTML = `
+                <div class="text-center p-3">
+                    <div class="spinner-border spinner-border-sm text-primary" role="status">
+                        <span class="visually-hidden">Carregando...</span>
+                    </div>
+                    <p class="mt-2 text-muted">Carregando clientes...</p>
+                </div>
+            `;
+            
+            try {
+                const response = await fetch('/api/clientes?apenasAtivos=true', {
+                    credentials: 'include'
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Erro ao carregar clientes');
+                }
+                
+                const data = await response.json();
+                
+                if (data.success && data.clientes) {
+                    todosClientes = data.clientes;
+                    renderizarClientesIT();
+                } else {
+                    throw new Error(data.error || 'Erro ao carregar clientes');
+                }
+            } catch (error) {
+                console.error('Erro ao carregar clientes:', error);
+                optionsContainer.innerHTML = `
+                    <div class="text-center p-3 text-danger">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <p class="mt-2">Erro ao carregar clientes</p>
+                    </div>
+                `;
+            }
+        }
+        
+        // Renderizar clientes no multi-select
+        function renderizarClientesIT() {
+            const optionsContainer = document.getElementById('clientesITOptions');
+            if (!optionsContainer) return;
+            
+            if (todosClientes.length === 0) {
+                optionsContainer.innerHTML = `
+                    <div class="text-center p-3 text-muted">
+                        <p>Nenhum cliente cadastrado</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            // Agrupar clientes por filial
+            const clientesPorFilial = {};
+            todosClientes.forEach(cliente => {
+                if (!clientesPorFilial[cliente.filial]) {
+                    clientesPorFilial[cliente.filial] = [];
+                }
+                clientesPorFilial[cliente.filial].push(cliente);
+            });
+            
+            let html = '';
+            const filiais = Object.keys(clientesPorFilial).sort();
+            
+            filiais.forEach(filial => {
+                html += `<div class="multi-select-group">
+                    <div class="multi-select-group-header">${escapeHtml(filial)}</div>`;
+                
+                clientesPorFilial[filial].forEach(cliente => {
+                    const isSelected = clientesSelecionados.some(c => c.id === cliente.id);
+                    html += `
+                        <label class="multi-select-option">
+                            <input type="checkbox" value="${cliente.id}" 
+                                   ${isSelected ? 'checked' : ''} 
+                                   onchange="toggleClienteIT('${cliente.id}', '${escapeHtml(cliente.nome)}', '${escapeHtml(cliente.filial)}', this.checked)">
+                            <span>${escapeHtml(cliente.nome)}</span>
+                        </label>
+                    `;
+                });
+                
+                html += `</div>`;
+            });
+            
+            optionsContainer.innerHTML = html;
+        }
+        
+        // Toggle seleção de cliente
+        function toggleClienteIT(clienteId, clienteNome, clienteFilial, checked) {
+            if (checked) {
+                // Adicionar cliente
+                if (!clientesSelecionados.some(c => c.id === clienteId)) {
+                    clientesSelecionados.push({
+                        id: clienteId,
+                        nome: clienteNome,
+                        filial: clienteFilial
+                    });
+                }
+            } else {
+                // Remover cliente
+                clientesSelecionados = clientesSelecionados.filter(c => c.id !== clienteId);
+            }
+            
+            updateClientesITText();
+        }
+        
+        // Fechar dropdown ao clicar fora
+        document.addEventListener('click', (e) => {
+            const wrapper = document.getElementById('clientesITButton')?.closest('.multi-select-wrapper');
+            if (wrapper && !wrapper.contains(e.target)) {
+                wrapper.classList.remove('active');
+            }
+        });
         
         // Inicializar quando a página carregar
         document.addEventListener('DOMContentLoaded', inicializar);

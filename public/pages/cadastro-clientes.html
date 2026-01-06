@@ -1,0 +1,1397 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cadastro de Clientes - Multimodal Logística</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../js/permissions.js"></script>
+    <style>
+        :root {
+            --primary: #667eea;
+            --secondary: #764ba2;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            min-height: 100vh;
+            padding-bottom: 2rem;
+        }
+        
+        .header-section {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            padding: 2.5rem 0;
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+        
+        .header-section h1 {
+            margin: 0;
+            font-size: 2.5rem;
+            font-weight: 700;
+        }
+        
+        .header-section p {
+            margin: 0.5rem 0 0 0;
+            opacity: 0.9;
+            font-size: 1.1rem;
+        }
+        
+        .container-custom {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 1.5rem;
+        }
+        
+        .card-modern {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            padding: 2rem;
+            margin-bottom: 2rem;
+            border: 1px solid #e5e7eb;
+        }
+        
+        .btn-primary-custom {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            border: none;
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 12px;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+        
+        .btn-primary-custom:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+            color: white;
+        }
+        
+        .btn-back {
+            background: #6b7280;
+            color: white;
+            border: none;
+            border-radius: 12px;
+            padding: 0.75rem 1.5rem;
+            font-weight: 600;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: all 0.3s;
+        }
+        
+        .btn-back:hover {
+            background: #4b5563;
+            color: white;
+            transform: translateY(-2px);
+        }
+        
+        .cliente-card {
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+            transition: all 0.3s;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .cliente-card:hover {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            border-color: var(--primary);
+            transform: translateY(-2px);
+        }
+        
+        .cliente-card.inativo {
+            opacity: 0.6;
+            background: #f9fafb;
+        }
+        
+        .cliente-info {
+            flex: 1;
+        }
+        
+        .cliente-nome {
+            font-weight: 600;
+            font-size: 1.1rem;
+            color: #1f2937;
+            margin-bottom: 0.5rem;
+        }
+        
+        .cliente-meta {
+            display: flex;
+            gap: 1.5rem;
+            flex-wrap: wrap;
+            color: #6b7280;
+            font-size: 0.9rem;
+        }
+        
+        .badge-filial {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            background: #e0e7ff;
+            color: var(--primary);
+        }
+        
+        .badge-status {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+        
+        .badge-ativo {
+            background: #d1fae5;
+            color: #065f46;
+        }
+        
+        .badge-inativo {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+        
+        .cliente-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+        
+        .btn-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .btn-edit {
+            background: #dbeafe;
+            color: #3b82f6;
+        }
+        
+        .btn-edit:hover {
+            background: #3b82f6;
+            color: white;
+        }
+        
+        .btn-delete {
+            background: #fee2e2;
+            color: var(--danger);
+        }
+        
+        .btn-delete:hover {
+            background: var(--danger);
+            color: white;
+        }
+        
+        .form-control, .form-select {
+            border-radius: 10px;
+            border: 1px solid #e5e7eb;
+            padding: 0.75rem 1rem;
+            transition: all 0.3s;
+        }
+        
+        .form-control:focus, .form-select:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+        }
+        
+        .field-error {
+            color: var(--danger);
+            font-size: 0.875rem;
+            margin-top: 0.25rem;
+            display: none;
+        }
+        
+        .field-error.show {
+            display: block;
+        }
+        
+        .field-input-error {
+            border-color: var(--danger) !important;
+        }
+        
+        .filters-section {
+            background: #f8fafc;
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 3rem;
+            color: #6b7280;
+        }
+        
+        .empty-state i {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+            opacity: 0.5;
+        }
+        
+        .alert-custom {
+            border-radius: 12px;
+            border: none;
+            padding: 1rem 1.5rem;
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <div class="header-section">
+        <div class="container-custom">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1><i class="fas fa-users me-3"></i>Cadastro de Clientes</h1>
+                    <p>Gerencie o cadastro de clientes por filial</p>
+                </div>
+                <a href="portal.html" class="btn-back">
+                    <i class="fas fa-arrow-left"></i> Voltar
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="container-custom">
+        <!-- Alertas -->
+        <div id="alertContainer"></div>
+
+        <!-- Filtros -->
+        <div class="filters-section">
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <label for="filtroFilial" class="form-label fw-bold">Filtrar por Filial</label>
+                    <select id="filtroFilial" class="form-select">
+                        <option value="">Todas as Filiais</option>
+                        <option value="JBO">JBO</option>
+                        <option value="CABO">CABO</option>
+                        <option value="AL">AL</option>
+                        <option value="SP">SP</option>
+                        <option value="BA">BA</option>
+                        <option value="CE">CE</option>
+                        <option value="SE">SE</option>
+                        <option value="PB">PB</option>
+                        <option value="PE">PE</option>
+                        <option value="AMBEV">AMBEV</option>
+                        <option value="US">US</option>
+                        <option value="PARATIBE">PARATIBE</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label for="filtroOperacao" class="form-label fw-bold">Filtrar por Operação</label>
+                    <select id="filtroOperacao" class="form-select">
+                        <option value="">Todas as Operações</option>
+                        <optgroup label="Operações por Filial">
+                            <option value="operacoes_jbo">Operações - Jaboatão (JBO)</option>
+                            <option value="operacoes_cabo">Operações - Cabo (CABO)</option>
+                            <option value="operacoes_sp">Operações - São Paulo (SP)</option>
+                            <option value="operacoes_ba">Operações - Simões Filho (BA)</option>
+                            <option value="operacoes_se">Operações - Aracaju (SE)</option>
+                            <option value="operacoes_al">Operações - Maceió (AL)</option>
+                            <option value="operacoes_pe">Operações - Recife (PE)</option>
+                            <option value="operacoes_pb">Operações - João Pessoa (PB)</option>
+                            <option value="operacoes_ce">Operações - Fortaleza (CE)</option>
+                            <option value="operacoes_ambev">Operações - Ambev (AMBEV)</option>
+                            <option value="operacoes_us">Operações - Usinas (US)</option>
+                            <option value="operacoes_paratibe">Operações - Paratibe (PARATIBE)</option>
+                        </optgroup>
+                        <optgroup label="Outras Áreas">
+                            <option value="qualidade">Qualidade</option>
+                            <option value="price">Price</option>
+                            <option value="comercial">Comercial</option>
+                            <option value="rh">Recursos Humanos</option>
+                            <option value="contas_pagar">Contas a Pagar</option>
+                            <option value="contas_receber">Contas a Receber</option>
+                            <option value="ti">Tecnologia da Informação</option>
+                            <option value="seguranca">Segurança do Trabalho</option>
+                            <option value="manutencao">Manutenção</option>
+                            <option value="estoque">Estoque</option>
+                            <option value="compras">Compras</option>
+                            <option value="cs">CS</option>
+                            <option value="frota">Frota</option>
+                            <option value="documentacao">Documentação</option>
+                            <option value="administrativo">Administrativo</option>
+                            <option value="outros">Outros</option>
+                        </optgroup>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label for="filtroStatus" class="form-label fw-bold">Filtrar por Status</label>
+                    <select id="filtroStatus" class="form-select">
+                        <option value="">Todos</option>
+                        <option value="ativo">Ativos</option>
+                        <option value="inativo">Inativos</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label for="filtroBusca" class="form-label fw-bold">Buscar por Nome</label>
+                    <input type="text" id="filtroBusca" class="form-control" placeholder="Digite o nome do cliente...">
+                </div>
+            </div>
+        </div>
+
+        <!-- Botões de Ação (apenas para admins) -->
+        <div id="adminActions" style="display: none;" class="mb-3 d-flex gap-2 flex-wrap">
+            <button class="btn btn-primary-custom" onclick="abrirFormulario()">
+                <i class="fas fa-plus me-2"></i>Novo Cliente
+            </button>
+            <button class="btn btn-primary-custom" onclick="abrirFormularioMassa()" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
+                <i class="fas fa-upload me-2"></i>Cadastro em Massa
+            </button>
+            <button class="btn btn-primary-custom" onclick="baixarModeloCSV()" style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);">
+                <i class="fas fa-download me-2"></i>Baixar Modelo CSV
+            </button>
+            <button class="btn btn-primary-custom" onclick="abrirImportacaoCSV()" style="background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);">
+                <i class="fas fa-file-import me-2"></i>Importar CSV
+            </button>
+            <button class="btn btn-primary-custom" onclick="exportarExcel()" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);">
+                <i class="fas fa-file-excel me-2"></i>Exportar Excel
+            </button>
+        </div>
+
+        <!-- Lista de Clientes -->
+        <div class="card-modern">
+            <h3 class="mb-4"><i class="fas fa-list me-2"></i>Clientes Cadastrados</h3>
+            <div id="clientesList">
+                <div class="empty-state">
+                    <i class="fas fa-spinner fa-spin"></i>
+                    <p>Carregando clientes...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal Formulário -->
+        <div class="modal fade" id="clienteModal" tabindex="-1">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content" style="border-radius: 16px; border: none;">
+                    <div class="modal-header" style="background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%); color: white; border-radius: 16px 16px 0 0;">
+                        <h5 class="modal-title" id="modalTitle">
+                            <i class="fas fa-user-plus me-2"></i>Novo Cliente
+                        </h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body p-4">
+                        <form id="clienteForm">
+                            <input type="hidden" id="clienteId">
+                            
+                            <div class="mb-3">
+                                <label for="clienteNome" class="form-label fw-bold">Nome do Cliente <span class="text-danger">*</span></label>
+                                <input type="text" id="clienteNome" class="form-control" required 
+                                       placeholder="Ex: VIVIX / OWENS - JAZIDA"
+                                       aria-describedby="clienteNomeError">
+                                <div class="field-error" id="clienteNomeError"></div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="clienteFilial" class="form-label fw-bold">Filial <span class="text-danger">*</span></label>
+                                <select id="clienteFilial" class="form-select" required aria-describedby="clienteFilialError">
+                                    <option value="">Selecione a filial</option>
+                                    <option value="JBO">JBO</option>
+                                    <option value="CABO">CABO</option>
+                                    <option value="AL">AL</option>
+                                    <option value="SP">SP</option>
+                                    <option value="BA">BA</option>
+                                    <option value="CE">CE</option>
+                                    <option value="SE">SE</option>
+                                    <option value="PB">PB</option>
+                                    <option value="PE">PE</option>
+                                    <option value="AMBEV">AMBEV</option>
+                                    <option value="US">US</option>
+                                    <option value="PARATIBE">PARATIBE</option>
+                                </select>
+                                <div class="field-error" id="clienteFilialError"></div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="clienteOperacao" class="form-label fw-bold">Operação</label>
+                                <select id="clienteOperacao" class="form-select" aria-describedby="clienteOperacaoError">
+                                    <option value="">Sem operação específica</option>
+                                    <optgroup label="Operações por Filial">
+                                        <option value="operacoes_jbo">Operações - Jaboatão (JBO)</option>
+                                        <option value="operacoes_cabo">Operações - Cabo (CABO)</option>
+                                        <option value="operacoes_sp">Operações - São Paulo (SP)</option>
+                                        <option value="operacoes_ba">Operações - Simões Filho (BA)</option>
+                                        <option value="operacoes_se">Operações - Aracaju (SE)</option>
+                                        <option value="operacoes_al">Operações - Maceió (AL)</option>
+                                        <option value="operacoes_pe">Operações - Recife (PE)</option>
+                                        <option value="operacoes_pb">Operações - João Pessoa (PB)</option>
+                                        <option value="operacoes_ce">Operações - Fortaleza (CE)</option>
+                                        <option value="operacoes_ambev">Operações - Ambev (AMBEV)</option>
+                                        <option value="operacoes_us">Operações - Usinas (US)</option>
+                                        <option value="operacoes_paratibe">Operações - Paratibe (PARATIBE)</option>
+                                    </optgroup>
+                                    <optgroup label="Outras Áreas">
+                                        <option value="qualidade">Qualidade</option>
+                                        <option value="price">Price</option>
+                                        <option value="comercial">Comercial</option>
+                                        <option value="rh">Recursos Humanos</option>
+                                        <option value="contas_pagar">Contas a Pagar</option>
+                                        <option value="contas_receber">Contas a Receber</option>
+                                        <option value="ti">Tecnologia da Informação</option>
+                                        <option value="seguranca">Segurança do Trabalho</option>
+                                        <option value="manutencao">Manutenção</option>
+                                        <option value="estoque">Estoque</option>
+                                        <option value="compras">Compras</option>
+                                        <option value="cs">CS</option>
+                                        <option value="frota">Frota</option>
+                                        <option value="documentacao">Documentação</option>
+                                        <option value="administrativo">Administrativo</option>
+                                        <option value="outros">Outros</option>
+                                    </optgroup>
+                                </select>
+                                <small class="form-text text-muted">Opcional: vincule o cliente a uma operação específica</small>
+                                <div class="field-error" id="clienteOperacaoError"></div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="clienteAtivo" checked>
+                                    <label class="form-check-label fw-bold" for="clienteAtivo">
+                                        Cliente Ativo
+                                    </label>
+                                </div>
+                            </div>
+                            
+                            <div class="d-flex gap-2 justify-content-end mt-4">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                                <button type="submit" class="btn btn-primary-custom">
+                                    <i class="fas fa-save me-2"></i>Salvar
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal Cadastro em Massa -->
+        <div class="modal fade" id="clienteMassaModal" tabindex="-1">
+            <div class="modal-dialog modal-dialog-centered modal-lg">
+                <div class="modal-content" style="border-radius: 16px; border: none;">
+                    <div class="modal-header" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; border-radius: 16px 16px 0 0;">
+                        <h5 class="modal-title">
+                            <i class="fas fa-upload me-2"></i>Cadastro de Clientes em Massa
+                        </h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body p-4">
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle me-2"></i>
+                            <strong>Formato:</strong> Uma linha por cliente. Formato: <code>Nome do Cliente | Filial | Operação</code>
+                            <br><small>Exemplo: VIVIX / OWENS - JAZIDA | JBO | operacoes_jbo</small>
+                            <br><small><strong>Operação é opcional.</strong> Se não informar, deixe em branco ou omita.</small>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="clientesMassa" class="form-label fw-bold">Lista de Clientes <span class="text-danger">*</span></label>
+                            <textarea id="clientesMassa" class="form-control" rows="15" 
+                                      placeholder="VIVIX / OWENS - JAZIDA | JBO | operacoes_jbo&#10;CLIENTE 2 | CABO | operacoes_cabo&#10;CLIENTE 3 | SP | operacoes_sp&#10;CLIENTE 4 | BA | estoque"
+                                      style="font-family: monospace; font-size: 0.9rem;"></textarea>
+                            <small class="form-text text-muted">Separe cada campo com <code>|</code> (pipe). Uma linha por cliente.</small>
+                        </div>
+
+                        <div id="previewMassa" class="mb-3" style="display: none;">
+                            <h6>Preview (serão processados):</h6>
+                            <div class="bg-light p-3 rounded" style="max-height: 200px; overflow-y: auto;">
+                                <div id="previewContent"></div>
+                            </div>
+                        </div>
+                        
+                        <div class="d-flex gap-2 justify-content-end mt-4">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                            <button type="button" class="btn btn-success" onclick="previewMassa()">
+                                <i class="fas fa-eye me-2"></i>Preview
+                            </button>
+                            <button type="button" class="btn btn-primary-custom" onclick="salvarClientesMassa()">
+                                <i class="fas fa-save me-2"></i>Salvar Todos
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal Importação CSV -->
+        <div class="modal fade" id="importacaoCSVModal" tabindex="-1">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content" style="border-radius: 16px; border: none;">
+                    <div class="modal-header" style="background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); color: white; border-radius: 16px 16px 0 0;">
+                        <h5 class="modal-title">
+                            <i class="fas fa-file-import me-2"></i>Importar Clientes via CSV
+                        </h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body p-4">
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle me-2"></i>
+                            <strong>Formato do CSV:</strong> Nome, Filial, Operação (opcional)
+                            <br><small>Baixe o modelo CSV para ver o formato correto.</small>
+                        </div>
+                        
+                        <form id="formImportacaoCSV" enctype="multipart/form-data">
+                            <div class="mb-3">
+                                <label for="arquivoCSV" class="form-label fw-bold">Selecionar arquivo CSV <span class="text-danger">*</span></label>
+                                <input type="file" id="arquivoCSV" class="form-control" accept=".csv" required>
+                                <small class="form-text text-muted">Apenas arquivos .csv são aceitos</small>
+                            </div>
+
+                            <div id="resultadoImportacao" class="mt-3" style="display: none;">
+                                <h6>Resultado da Importação:</h6>
+                                <div id="resultadoImportacaoConteudo" class="bg-light p-3 rounded" style="max-height: 200px; overflow-y: auto;"></div>
+                            </div>
+                            
+                            <div class="d-flex gap-2 justify-content-end mt-4">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                                <button type="submit" class="btn btn-primary-custom" style="background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);">
+                                    <i class="fas fa-upload me-2"></i>Importar
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // ========== SISTEMA DE TRATAMENTO DE ERROS ==========
+        class ErrorHandler {
+            static errorMessages = {
+                'PGRST301': 'Sessão expirada. Faça login novamente.',
+                'PGRST116': 'Registro não encontrado.',
+                '23505': 'Este registro já existe no sistema.',
+                '23503': 'Não é possível excluir. Existem registros relacionados.',
+                '23502': 'Campo obrigatório não preenchido.',
+                'NetworkError': 'Erro de conexão. Verifique sua internet.',
+                'TimeoutError': 'Tempo de espera esgotado. Tente novamente.',
+                'default': 'Ocorreu um erro inesperado. Tente novamente.'
+            };
+
+            static handle(error, context = 'Sistema') {
+                console.error(`❌ [${context}]`, error);
+                
+                const userMessage = this.getUserFriendlyMessage(error);
+                mostrarAlerta(userMessage, 'danger');
+                
+                return { message: userMessage, code: error.code, originalError: error, context };
+            }
+
+            static getUserFriendlyMessage(error) {
+                if (error.code && this.errorMessages[error.code]) {
+                    return this.errorMessages[error.code];
+                }
+
+                if (error.message) {
+                    const message = error.message.toLowerCase();
+                    if (message.includes('network') || message.includes('fetch')) {
+                        return this.errorMessages['NetworkError'];
+                    }
+                    if (message.includes('timeout')) {
+                        return this.errorMessages['TimeoutError'];
+                    }
+                    if (message.includes('session') || message.includes('token') || message.includes('unauthorized')) {
+                        return this.errorMessages['PGRST301'];
+                    }
+                    if (message.includes('not found') || message.includes('não encontrado')) {
+                        return this.errorMessages['PGRST116'];
+                    }
+                }
+
+                return error.message || this.errorMessages['default'];
+            }
+        }
+
+        // ========== SISTEMA DE VALIDAÇÃO ==========
+        class Validator {
+            constructor(schema) {
+                this.schema = schema;
+            }
+
+            validate(data) {
+                const errors = [];
+                
+                for (const [field, rules] of Object.entries(this.schema)) {
+                    const value = data[field];
+                    const fieldErrors = [];
+
+                    // Verificar obrigatoriedade
+                    if (rules.required && (value === undefined || value === null || value === '')) {
+                        fieldErrors.push(rules.message || `${field} é obrigatório`);
+                    }
+
+                    // Se o campo tem valor, validar
+                    if (value !== undefined && value !== null && value !== '') {
+                        // Validar tamanho mínimo
+                        if (rules.minLength && value.length < rules.minLength) {
+                            fieldErrors.push(rules.message || `${field} deve ter no mínimo ${rules.minLength} caracteres`);
+                        }
+
+                        // Validar tamanho máximo
+                        if (rules.maxLength && value.length > rules.maxLength) {
+                            fieldErrors.push(rules.message || `${field} deve ter no máximo ${rules.maxLength} caracteres`);
+                        }
+
+                        // Validar padrão (regex)
+                        if (rules.pattern && !rules.pattern.test(value)) {
+                            fieldErrors.push(rules.message || `${field} tem formato inválido`);
+                        }
+
+                        // Validar valores permitidos
+                        if (rules.oneOf && !rules.oneOf.includes(value)) {
+                            fieldErrors.push(rules.message || `${field} deve ser um dos valores permitidos`);
+                        }
+                    }
+
+                    if (fieldErrors.length > 0) {
+                        errors.push({ field, message: fieldErrors[0] });
+                    }
+                }
+
+                return errors;
+            }
+        }
+
+        // Schema de validação
+        const clienteSchema = {
+            nome: {
+                required: true,
+                minLength: 2,
+                maxLength: 200,
+                pattern: /^[a-zA-ZÀ-ÿ0-9\s\/\-\.]+$/,
+                message: 'Nome deve ter entre 2 e 200 caracteres e conter apenas letras (com acentos), números, espaços, barras, hífens e pontos'
+            },
+            filial: {
+                required: true,
+                oneOf: ['JBO', 'CABO', 'AL', 'SP', 'BA', 'CE', 'SE', 'PB', 'PE', 'AMBEV', 'US', 'PARATIBE'],
+                message: 'Selecione uma filial válida'
+            }
+        };
+
+        let clientes = [];
+        let isAdmin = false;
+        let clienteModal = null;
+        let importacaoCSVModal = null;
+
+        // Inicialização
+        document.addEventListener('DOMContentLoaded', async () => {
+            try {
+                // Verificar se é admin (sem redirecionar se falhar)
+                isAdmin = await verificarAdmin();
+                if (isAdmin) {
+                    document.getElementById('adminActions').style.display = 'block';
+                }
+
+                // Inicializar modais
+                clienteModal = new bootstrap.Modal(document.getElementById('clienteModal'));
+                importacaoCSVModal = new bootstrap.Modal(document.getElementById('importacaoCSVModal'));
+
+                // Carregar clientes
+                await carregarClientes();
+
+                // Event listeners para filtros
+                document.getElementById('filtroFilial').addEventListener('change', filtrarClientes);
+                document.getElementById('filtroOperacao').addEventListener('change', filtrarClientes);
+                document.getElementById('filtroStatus').addEventListener('change', filtrarClientes);
+                document.getElementById('filtroBusca').addEventListener('input', filtrarClientes);
+
+                // Event listener para formulário
+                document.getElementById('clienteForm').addEventListener('submit', salvarCliente);
+
+                // Event listener para formulário de importação CSV
+                const formImportacao = document.getElementById('formImportacaoCSV');
+                if (formImportacao) {
+                    formImportacao.addEventListener('submit', async (e) => {
+                        e.preventDefault();
+
+                        if (!isAdmin) {
+                            mostrarAlerta('Você não tem permissão para importar clientes', 'danger');
+                            return;
+                        }
+
+                        const arquivo = document.getElementById('arquivoCSV').files[0];
+                        if (!arquivo) {
+                            mostrarAlerta('Selecione um arquivo CSV', 'warning');
+                            return;
+                        }
+
+                        const formData = new FormData();
+                        formData.append('csv', arquivo);
+
+                        try {
+                            const btn = e.target.querySelector('button[type="submit"]');
+                            btn.disabled = true;
+                            btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Importando...';
+
+                            const response = await fetch('/api/clientes/importar-csv', {
+                                method: 'POST',
+                                body: formData
+                            });
+
+                            const data = await response.json();
+
+                            const resultadoDiv = document.getElementById('resultadoImportacao');
+                            const resultadoConteudo = document.getElementById('resultadoImportacaoConteudo');
+
+                            if (data.success) {
+                                let html = `<div class="alert alert-success mb-2">`;
+                                html += `<strong>✅ Importação concluída!</strong><br>`;
+                                html += `Total processado: ${data.total}<br>`;
+                                html += `✅ Sucessos: ${data.sucessos}<br>`;
+                                html += `❌ Falhas: ${data.falhas}`;
+                                html += `</div>`;
+
+                                if (data.detalhesSucessos && data.detalhesSucessos.length > 0) {
+                                    html += `<h6>Sucessos (primeiros 10):</h6><ul class="list-unstyled">`;
+                                    data.detalhesSucessos.forEach(detalhe => {
+                                        html += `<li>✅ ${detalhe}</li>`;
+                                    });
+                                    html += `</ul>`;
+                                }
+
+                                if (data.detalhesFalhas && data.detalhesFalhas.length > 0) {
+                                    html += `<h6>Falhas (primeiros 10):</h6><ul class="list-unstyled">`;
+                                    data.detalhesFalhas.forEach(detalhe => {
+                                        html += `<li>❌ ${detalhe}</li>`;
+                                    });
+                                    html += `</ul>`;
+                                }
+
+                                resultadoConteudo.innerHTML = html;
+                                resultadoDiv.style.display = 'block';
+
+                                if (data.sucessos > 0) {
+                                    await carregarClientes();
+                                }
+                            } else {
+                                resultadoConteudo.innerHTML = `<div class="alert alert-danger">${data.error || 'Erro ao importar'}</div>`;
+                                resultadoDiv.style.display = 'block';
+                            }
+
+                        } catch (error) {
+                            ErrorHandler.handle(error, 'Erro ao importar CSV');
+                        } finally {
+                            const btn = e.target.querySelector('button[type="submit"]');
+                            btn.disabled = false;
+                            btn.innerHTML = '<i class="fas fa-upload me-2"></i>Importar';
+                        }
+                    });
+                }
+            } catch (error) {
+                console.error('Erro ao inicializar página:', error);
+                // Não redirecionar, apenas mostrar erro
+                ErrorHandler.handle(error, 'Erro ao inicializar');
+            }
+        });
+
+        // Verificar se é admin
+        async function verificarAdmin() {
+            try {
+                const response = await fetch('/api/auth/user');
+                if (!response.ok) {
+                    return false;
+                }
+                const data = await response.json();
+                return data.user?.isAdmin === true || data.user?.role === 'admin';
+            } catch (error) {
+                console.error('Erro ao verificar admin:', error);
+                return false;
+            }
+        }
+
+        // Carregar clientes
+        async function carregarClientes() {
+            try {
+                const response = await fetch('/api/clientes');
+                const data = await response.json();
+                
+                if (data.success) {
+                    clientes = data.clientes || [];
+                    renderizarClientes(clientes);
+                } else {
+                    throw new Error(data.error || 'Erro ao carregar clientes');
+                }
+            } catch (error) {
+                ErrorHandler.handle(error, 'Erro ao carregar clientes');
+                document.getElementById('clientesList').innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <p>Erro ao carregar clientes. Tente novamente.</p>
+                    </div>
+                `;
+            }
+        }
+
+        // Renderizar clientes
+        function renderizarClientes(clientesParaRenderizar) {
+            const container = document.getElementById('clientesList');
+            
+            if (clientesParaRenderizar.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-users"></i>
+                        <p>Nenhum cliente encontrado</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = clientesParaRenderizar.map(cliente => {
+                const statusBadge = cliente.ativo 
+                    ? '<span class="badge-status badge-ativo">Ativo</span>'
+                    : '<span class="badge-status badge-inativo">Inativo</span>';
+                
+                const actions = isAdmin ? `
+                    <div class="cliente-actions">
+                        <button class="btn-icon btn-edit" onclick="editarCliente('${cliente.id}')" 
+                                title="Editar cliente" aria-label="Editar cliente">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="btn-icon btn-delete" onclick="confirmarExclusao('${cliente.id}', '${escapeHtml(cliente.nome)}')" 
+                                title="Excluir cliente" aria-label="Excluir cliente">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                ` : '';
+
+                // Mapear operação para nome legível
+                const operacoesMap = {
+                    'operacoes_jbo': 'Operações - JBO',
+                    'operacoes_cabo': 'Operações - CABO',
+                    'operacoes_sp': 'Operações - SP',
+                    'operacoes_ba': 'Operações - BA',
+                    'operacoes_se': 'Operações - SE',
+                    'operacoes_al': 'Operações - AL',
+                    'operacoes_pe': 'Operações - PE',
+                    'operacoes_pb': 'Operações - PB',
+                    'operacoes_ce': 'Operações - CE',
+                    'operacoes_ambev': 'Operações - AMBEV',
+                    'operacoes_us': 'Operações - US',
+                    'operacoes_paratibe': 'Operações - PARATIBE',
+                    'qualidade': 'Qualidade',
+                    'price': 'Price',
+                    'comercial': 'Comercial',
+                    'rh': 'Recursos Humanos',
+                    'contas_pagar': 'Contas a Pagar',
+                    'contas_receber': 'Contas a Receber',
+                    'ti': 'Tecnologia da Informação',
+                    'seguranca': 'Segurança do Trabalho',
+                    'manutencao': 'Manutenção',
+                    'estoque': 'Estoque',
+                    'compras': 'Compras',
+                    'cs': 'CS',
+                    'frota': 'Frota',
+                    'documentacao': 'Documentação',
+                    'administrativo': 'Administrativo',
+                    'outros': 'Outros'
+                };
+                
+                const operacaoNome = cliente.operacao ? operacoesMap[cliente.operacao] || cliente.operacao : null;
+                const operacaoBadge = operacaoNome 
+                    ? `<span class="badge-operacao" style="background: #8b5cf6; color: white; padding: 0.25rem 0.75rem; border-radius: 12px; font-size: 0.75rem; font-weight: 600;"><i class="fas fa-building me-1"></i>${escapeHtml(operacaoNome)}</span>`
+                    : '';
+
+                return `
+                    <div class="cliente-card ${!cliente.ativo ? 'inativo' : ''}">
+                        <div class="cliente-info">
+                            <div class="cliente-nome">${escapeHtml(cliente.nome)}</div>
+                            <div class="cliente-meta">
+                                <span class="badge-filial">${escapeHtml(cliente.filial)}</span>
+                                ${operacaoBadge}
+                                ${statusBadge}
+                                <span><i class="fas fa-calendar me-1"></i>Criado em: ${new Date(cliente.created_at).toLocaleDateString('pt-BR')}</span>
+                            </div>
+                        </div>
+                        ${actions}
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Filtrar clientes
+        function filtrarClientes() {
+            const filial = document.getElementById('filtroFilial').value;
+            const operacao = document.getElementById('filtroOperacao').value;
+            const status = document.getElementById('filtroStatus').value;
+            const busca = document.getElementById('filtroBusca').value.toLowerCase().trim();
+
+            let filtrados = [...clientes];
+
+            if (filial) {
+                filtrados = filtrados.filter(c => c.filial === filial);
+            }
+
+            if (operacao) {
+                filtrados = filtrados.filter(c => c.operacao === operacao);
+            }
+
+            if (status) {
+                const ativo = status === 'ativo';
+                filtrados = filtrados.filter(c => c.ativo === ativo);
+            }
+
+            if (busca) {
+                filtrados = filtrados.filter(c => 
+                    c.nome.toLowerCase().includes(busca)
+                );
+            }
+
+            renderizarClientes(filtrados);
+        }
+
+        // Abrir formulário (novo)
+        function abrirFormulario() {
+            if (!isAdmin) {
+                mostrarAlerta('Você não tem permissão para adicionar clientes', 'danger');
+                return;
+            }
+
+            document.getElementById('modalTitle').innerHTML = '<i class="fas fa-user-plus me-2"></i>Novo Cliente';
+            document.getElementById('clienteForm').reset();
+            document.getElementById('clienteId').value = '';
+            document.getElementById('clienteAtivo').checked = true;
+            clienteModal.show();
+        }
+
+        // Editar cliente
+        async function editarCliente(id) {
+            if (!isAdmin) {
+                mostrarAlerta('Você não tem permissão para editar clientes', 'danger');
+                return;
+            }
+
+            const cliente = clientes.find(c => c.id === id);
+            if (!cliente) {
+                mostrarAlerta('Cliente não encontrado', 'danger');
+                return;
+            }
+
+            document.getElementById('modalTitle').innerHTML = '<i class="fas fa-edit me-2"></i>Editar Cliente';
+            document.getElementById('clienteId').value = cliente.id;
+            document.getElementById('clienteNome').value = cliente.nome;
+            document.getElementById('clienteFilial').value = cliente.filial;
+            document.getElementById('clienteOperacao').value = cliente.operacao || '';
+            document.getElementById('clienteAtivo').checked = cliente.ativo;
+
+            clienteModal.show();
+        }
+
+        // Salvar cliente
+        async function salvarCliente(e) {
+            e.preventDefault();
+
+            if (!isAdmin) {
+                mostrarAlerta('Você não tem permissão para salvar clientes', 'danger');
+                return;
+            }
+
+            const id = document.getElementById('clienteId').value;
+            const nome = document.getElementById('clienteNome').value.trim();
+            const filial = document.getElementById('clienteFilial').value;
+            const operacao = document.getElementById('clienteOperacao').value || null;
+            const ativo = document.getElementById('clienteAtivo').checked;
+
+            // Validar
+            const validator = new Validator(clienteSchema);
+            const errors = validator.validate({ nome, filial });
+
+            if (errors.length > 0) {
+                errors.forEach(error => {
+                    const field = document.getElementById(`cliente${error.field.charAt(0).toUpperCase() + error.field.slice(1)}`);
+                    const errorDiv = document.getElementById(`cliente${error.field.charAt(0).toUpperCase() + error.field.slice(1)}Error`);
+                    if (field && errorDiv) {
+                        field.classList.add('field-input-error');
+                        errorDiv.textContent = error.message;
+                        errorDiv.classList.add('show');
+                    }
+                });
+                return;
+            }
+
+            // Limpar erros
+            document.querySelectorAll('.field-error').forEach(el => {
+                el.classList.remove('show');
+                el.textContent = '';
+            });
+            document.querySelectorAll('.field-input-error').forEach(el => {
+                el.classList.remove('field-input-error');
+            });
+
+            try {
+                const url = id ? `/api/clientes/${id}` : '/api/clientes';
+                const method = id ? 'PUT' : 'POST';
+
+                const response = await fetch(url, {
+                    method,
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ nome, filial, operacao, ativo })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    mostrarAlerta(
+                        id ? 'Cliente atualizado com sucesso!' : 'Cliente cadastrado com sucesso!',
+                        'success'
+                    );
+                    clienteModal.hide();
+                    await carregarClientes();
+                } else {
+                    throw new Error(data.error || 'Erro ao salvar cliente');
+                }
+            } catch (error) {
+                ErrorHandler.handle(error, 'Erro ao salvar cliente');
+            }
+        }
+
+        // Confirmar exclusão
+        function confirmarExclusao(id, nome) {
+            if (!isAdmin) {
+                mostrarAlerta('Você não tem permissão para excluir clientes', 'danger');
+                return;
+            }
+
+            if (confirm(`Tem certeza que deseja excluir o cliente "${nome}"?\n\nEsta ação não pode ser desfeita.`)) {
+                excluirCliente(id);
+            }
+        }
+
+        // Excluir cliente
+        async function excluirCliente(id) {
+            try {
+                const response = await fetch(`/api/clientes/${id}`, {
+                    method: 'DELETE'
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    mostrarAlerta('Cliente excluído com sucesso!', 'success');
+                    await carregarClientes();
+                } else {
+                    throw new Error(data.error || 'Erro ao excluir cliente');
+                }
+            } catch (error) {
+                ErrorHandler.handle(error, 'Erro ao excluir cliente');
+            }
+        }
+
+        // Mostrar alerta
+        function mostrarAlerta(mensagem, tipo = 'info') {
+            const container = document.getElementById('alertContainer');
+            const alertId = 'alert-' + Date.now();
+            const alert = document.createElement('div');
+            alert.id = alertId;
+            alert.className = `alert alert-${tipo} alert-dismissible fade show alert-custom`;
+            alert.innerHTML = `
+                ${mensagem}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            container.appendChild(alert);
+
+            setTimeout(() => {
+                const alertEl = document.getElementById(alertId);
+                if (alertEl) {
+                    const bsAlert = new bootstrap.Alert(alertEl);
+                    bsAlert.close();
+                }
+            }, 5000);
+        }
+
+        // Escapar HTML
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Abrir formulário de cadastro em massa
+        function abrirFormularioMassa() {
+            if (!isAdmin) {
+                mostrarAlerta('Você não tem permissão para cadastrar clientes em massa', 'danger');
+                return;
+            }
+
+            const modal = new bootstrap.Modal(document.getElementById('clienteMassaModal'));
+            document.getElementById('clientesMassa').value = '';
+            document.getElementById('previewMassa').style.display = 'none';
+            modal.show();
+        }
+
+        // Preview do cadastro em massa
+        function previewMassa() {
+            const texto = document.getElementById('clientesMassa').value.trim();
+            if (!texto) {
+                mostrarAlerta('Digite pelo menos um cliente', 'warning');
+                return;
+            }
+
+            const linhas = texto.split('\n').filter(l => l.trim());
+            const preview = document.getElementById('previewContent');
+            const previewDiv = document.getElementById('previewMassa');
+
+            let html = '<table class="table table-sm table-bordered">';
+            html += '<thead><tr><th>#</th><th>Nome</th><th>Filial</th><th>Operação</th><th>Status</th></tr></thead><tbody>';
+
+            linhas.forEach((linha, index) => {
+                const partes = linha.split('|').map(p => p.trim());
+                const nome = partes[0] || '';
+                const filial = partes[1] || '';
+                const operacao = partes[2] || '';
+
+                const filiaisValidas = ['JBO', 'CABO', 'AL', 'SP', 'BA', 'CE', 'SE', 'PB', 'PE', 'AMBEV', 'US', 'PARATIBE'];
+                const valido = nome.length >= 2 && filiaisValidas.includes(filial);
+
+                html += `<tr class="${valido ? '' : 'table-warning'}">`;
+                html += `<td>${index + 1}</td>`;
+                html += `<td>${escapeHtml(nome)}</td>`;
+                html += `<td>${escapeHtml(filial)}</td>`;
+                html += `<td>${escapeHtml(operacao || '(sem operação)')}</td>`;
+                html += `<td>${valido ? '<span class="badge bg-success">OK</span>' : '<span class="badge bg-danger">Inválido</span>'}</td>`;
+                html += '</tr>';
+            });
+
+            html += '</tbody></table>';
+            preview.innerHTML = html;
+            previewDiv.style.display = 'block';
+        }
+
+        // Salvar clientes em massa
+        async function salvarClientesMassa() {
+            if (!isAdmin) {
+                mostrarAlerta('Você não tem permissão para cadastrar clientes em massa', 'danger');
+                return;
+            }
+
+            const texto = document.getElementById('clientesMassa').value.trim();
+            if (!texto) {
+                mostrarAlerta('Digite pelo menos um cliente', 'warning');
+                return;
+            }
+
+            const linhas = texto.split('\n').filter(l => l.trim());
+            const clientesParaSalvar = [];
+            const erros = [];
+
+            const filiaisValidas = ['JBO', 'CABO', 'AL', 'SP', 'BA', 'CE', 'SE', 'PB', 'PE', 'AMBEV', 'US', 'PARATIBE'];
+            const operacoesValidas = [
+                'operacoes_jbo', 'operacoes_cabo', 'operacoes_sp', 'operacoes_ba', 'operacoes_se',
+                'operacoes_al', 'operacoes_pe', 'operacoes_pb', 'operacoes_ce', 'operacoes_ambev',
+                'operacoes_us', 'operacoes_paratibe', 'qualidade', 'price', 'comercial', 'rh',
+                'contas_pagar', 'contas_receber', 'ti', 'seguranca', 'manutencao', 'estoque',
+                'compras', 'cs', 'frota', 'documentacao', 'administrativo', 'outros'
+            ];
+
+            linhas.forEach((linha, index) => {
+                const partes = linha.split('|').map(p => p.trim());
+                const nome = partes[0] || '';
+                const filial = partes[1] || '';
+                const operacao = partes[2] || '';
+
+                if (!nome || nome.length < 2) {
+                    erros.push(`Linha ${index + 1}: Nome inválido`);
+                    return;
+                }
+
+                if (!filial || !filiaisValidas.includes(filial)) {
+                    erros.push(`Linha ${index + 1}: Filial inválida (${filial})`);
+                    return;
+                }
+
+                if (operacao && !operacoesValidas.includes(operacao)) {
+                    erros.push(`Linha ${index + 1}: Operação inválida (${operacao})`);
+                    return;
+                }
+
+                clientesParaSalvar.push({
+                    nome: nome,
+                    filial: filial,
+                    operacao: operacao || null,
+                    ativo: true
+                });
+            });
+
+            if (erros.length > 0) {
+                mostrarAlerta('Erros encontrados:\n' + erros.join('\n'), 'danger');
+                return;
+            }
+
+            if (clientesParaSalvar.length === 0) {
+                mostrarAlerta('Nenhum cliente válido para salvar', 'warning');
+                return;
+            }
+
+            // Confirmar
+            if (!confirm(`Deseja salvar ${clientesParaSalvar.length} cliente(s)?`)) {
+                return;
+            }
+
+            try {
+                const btn = event.target;
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Salvando...';
+
+                let sucessos = 0;
+                let falhas = 0;
+                const detalhesFalhas = [];
+
+                // Salvar cada cliente
+                for (const cliente of clientesParaSalvar) {
+                    try {
+                        const response = await fetch('/api/clientes', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify(cliente)
+                        });
+
+                        const data = await response.json();
+
+                        if (data.success) {
+                            sucessos++;
+                        } else {
+                            falhas++;
+                            detalhesFalhas.push(`${cliente.nome} (${cliente.filial}): ${data.error || 'Erro desconhecido'}`);
+                        }
+                    } catch (error) {
+                        falhas++;
+                        detalhesFalhas.push(`${cliente.nome} (${cliente.filial}): ${error.message}`);
+                    }
+                }
+
+                // Mostrar resultado
+                let mensagem = `Processamento concluído!\n\n`;
+                mensagem += `✅ Sucessos: ${sucessos}\n`;
+                mensagem += `❌ Falhas: ${falhas}`;
+
+                if (falhas > 0 && detalhesFalhas.length > 0) {
+                    mensagem += `\n\nDetalhes das falhas:\n${detalhesFalhas.slice(0, 5).join('\n')}`;
+                    if (detalhesFalhas.length > 5) {
+                        mensagem += `\n... e mais ${detalhesFalhas.length - 5} falha(s)`;
+                    }
+                }
+
+                mostrarAlerta(mensagem, sucessos > 0 ? 'success' : 'danger');
+
+                // Fechar modal e recarregar lista
+                if (sucessos > 0) {
+                    bootstrap.Modal.getInstance(document.getElementById('clienteMassaModal')).hide();
+                    await carregarClientes();
+                }
+
+            } catch (error) {
+                ErrorHandler.handle(error, 'Erro ao salvar clientes em massa');
+            } finally {
+                const btn = event.target;
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-save me-2"></i>Salvar Todos';
+            }
+        }
+
+        // Exportar clientes para Excel
+        async function exportarExcel() {
+            try {
+                const response = await fetch('/api/clientes/exportar-excel');
+                
+                if (!response.ok) {
+                    throw new Error('Erro ao gerar arquivo');
+                }
+
+                // Obter o conteúdo do arquivo
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                
+                // Criar link de download
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `clientes-por-filial-${new Date().toISOString().split('T')[0]}.xlsx`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+
+                mostrarAlerta('Arquivo Excel gerado com sucesso!', 'success');
+            } catch (error) {
+                ErrorHandler.handle(error, 'Erro ao exportar Excel');
+            }
+        }
+
+        // Baixar modelo CSV
+        async function baixarModeloCSV() {
+            try {
+                const response = await fetch('/api/clientes/modelo-csv');
+                
+                if (!response.ok) {
+                    throw new Error('Erro ao gerar modelo');
+                }
+
+                // Obter o conteúdo do arquivo
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                
+                // Criar link de download
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `modelo-importacao-clientes-${new Date().toISOString().split('T')[0]}.csv`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+
+                mostrarAlerta('Modelo CSV baixado com sucesso!', 'success');
+            } catch (error) {
+                ErrorHandler.handle(error, 'Erro ao baixar modelo CSV');
+            }
+        }
+
+        // Abrir modal de importação CSV
+        function abrirImportacaoCSV() {
+            if (!isAdmin) {
+                mostrarAlerta('Você não tem permissão para importar clientes', 'danger');
+                return;
+            }
+
+            if (!importacaoCSVModal) {
+                const modalElement = document.getElementById('importacaoCSVModal');
+                if (!modalElement) {
+                    mostrarAlerta('Erro: Modal de importação não encontrado', 'danger');
+                    return;
+                }
+                importacaoCSVModal = new bootstrap.Modal(modalElement);
+            }
+
+            const formImportacao = document.getElementById('formImportacaoCSV');
+            const resultadoDiv = document.getElementById('resultadoImportacao');
+            
+            if (formImportacao) formImportacao.reset();
+            if (resultadoDiv) resultadoDiv.style.display = 'none';
+            
+            importacaoCSVModal.show();
+        }
+
+    </script>
+</body>
+</html>
+

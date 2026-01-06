@@ -2791,6 +2791,108 @@
             z-index: 10;
         }
 
+        /* ========== ESTILOS DE MULTI-SELECT ========== */
+        .multi-select-wrapper {
+            position: relative;
+            width: 100%;
+        }
+
+        .multi-select-button {
+            width: 100%;
+            padding: 0.5rem 1rem;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.9rem;
+            transition: all 0.3s;
+        }
+
+        .multi-select-button:hover {
+            border-color: var(--primary);
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.1);
+        }
+
+        .multi-select-button i {
+            transition: transform 0.3s;
+        }
+
+        .multi-select-wrapper.active .multi-select-button i {
+            transform: rotate(180deg);
+        }
+
+        .multi-select-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+            z-index: 1000;
+            max-height: 300px;
+            overflow-y: auto;
+            display: none;
+            margin-top: 4px;
+        }
+
+        .multi-select-wrapper.active .multi-select-dropdown {
+            display: block;
+        }
+
+        .multi-select-search {
+            padding: 0.5rem;
+            border-bottom: 1px solid #eee;
+            position: sticky;
+            top: 0;
+            background: white;
+            z-index: 10;
+        }
+
+        .multi-select-search input {
+            width: 100%;
+            padding: 0.5rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 0.9rem;
+        }
+
+        .multi-select-options {
+            padding: 0.5rem 0;
+            max-height: 250px;
+            overflow-y: auto;
+        }
+
+        .multi-select-option {
+            display: flex;
+            align-items: center;
+            padding: 0.5rem 1rem;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .multi-select-option:hover {
+            background: #f5f5f5;
+        }
+
+        .multi-select-option.hidden {
+            display: none;
+        }
+
+        .multi-select-option input[type="checkbox"] {
+            margin-right: 0.5rem;
+            cursor: pointer;
+        }
+
+        .multi-select-option span {
+            flex: 1;
+            font-size: 0.9rem;
+        }
+
         /* ========== ESTILOS DE ACESSIBILIDADE ========== */
         .sr-only {
             position: absolute;
@@ -2887,47 +2989,164 @@
 
             <div class="filters-row">
                 <div class="filter-group">
-                    <label for="statusFilter"><i class="fas fa-filter"></i> Status</label>
-                    <select id="statusFilter" onchange="filterColetas()">
-                        <option value="">Todos os Status</option>
-                        <option value="pendente">Pendente</option>
-                        <option value="em_andamento">Em Andamento</option>
-                        <option value="concluida">Concluída</option>
-                        <option value="cancelada">Cancelada</option>
-                    </select>
+                    <label><i class="fas fa-filter"></i> Status</label>
+                    <div class="multi-select-wrapper">
+                        <button type="button" class="multi-select-button" id="statusFilterButton" onclick="toggleMultiSelect('statusFilter')">
+                            <span id="statusFilterText">Todos os Status</span>
+                            <i class="fas fa-chevron-down"></i>
+                        </button>
+                        <div class="multi-select-dropdown" id="statusFilterDropdown">
+                            <div class="multi-select-search">
+                                <input type="text" placeholder="Buscar status..." onkeyup="filterMultiSelectOptions(this, 'statusFilterOptions')">
+                            </div>
+                            <div class="multi-select-options" id="statusFilterOptions">
+                                <label class="multi-select-option">
+                                    <input type="checkbox" value="" onchange="updateMultiSelect('statusFilterOptions', this)" checked>
+                                    <span>Todos os Status</span>
+                                </label>
+                                <label class="multi-select-option">
+                                    <input type="checkbox" value="pendente" onchange="updateMultiSelect('statusFilterOptions', this)">
+                                    <span>Pendente</span>
+                                </label>
+                                <label class="multi-select-option">
+                                    <input type="checkbox" value="em_andamento" onchange="updateMultiSelect('statusFilterOptions', this)">
+                                    <span>Em Andamento</span>
+                                </label>
+                                <label class="multi-select-option">
+                                    <input type="checkbox" value="concluida" onchange="updateMultiSelect('statusFilterOptions', this)">
+                                    <span>Concluída</span>
+                                </label>
+                                <label class="multi-select-option">
+                                    <input type="checkbox" value="cancelada" onchange="updateMultiSelect('statusFilterOptions', this)">
+                                    <span>Cancelada</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
                 </div>
                 <div class="filter-group">
-                    <label for="etapaFilter"><i class="fas fa-layer-group"></i> Etapa</label>
-                    <select id="etapaFilter" onchange="filterColetas()">
-                        <option value="">Todas as Etapas</option>
-                        <option value="comercial">Comercial</option>
-                        <option value="price">Price</option>
-                        <option value="cs">CS</option>
-                        <option value="contratacao">Contratação</option>
-                        <option value="gr">GR</option>
-                        <option value="documentacao">Documentação</option>
-                        <option value="controladoria">Controladoria</option>
-                        <option value="contas_pagar">Contas a Pagar</option>
-                        <option value="contas_receber">Contas a Receber</option>
-                    </select>
+                    <label><i class="fas fa-layer-group"></i> Etapa</label>
+                    <div class="multi-select-wrapper">
+                        <button type="button" class="multi-select-button" id="etapaFilterButton" onclick="toggleMultiSelect('etapaFilter')">
+                            <span id="etapaFilterText">Todas as Etapas</span>
+                            <i class="fas fa-chevron-down"></i>
+                        </button>
+                        <div class="multi-select-dropdown" id="etapaFilterDropdown">
+                            <div class="multi-select-search">
+                                <input type="text" placeholder="Buscar etapa..." onkeyup="filterMultiSelectOptions(this, 'etapaFilterOptions')">
+                            </div>
+                            <div class="multi-select-options" id="etapaFilterOptions">
+                                <label class="multi-select-option">
+                                    <input type="checkbox" value="" onchange="updateMultiSelect('etapaFilterOptions', this)" checked>
+                                    <span>Todas as Etapas</span>
+                                </label>
+                                <label class="multi-select-option">
+                                    <input type="checkbox" value="comercial" onchange="updateMultiSelect('etapaFilterOptions', this)">
+                                    <span>Comercial</span>
+                                </label>
+                                <label class="multi-select-option">
+                                    <input type="checkbox" value="price" onchange="updateMultiSelect('etapaFilterOptions', this)">
+                                    <span>Price</span>
+                                </label>
+                                <label class="multi-select-option">
+                                    <input type="checkbox" value="cs" onchange="updateMultiSelect('etapaFilterOptions', this)">
+                                    <span>CS</span>
+                                </label>
+                                <label class="multi-select-option">
+                                    <input type="checkbox" value="contratacao" onchange="updateMultiSelect('etapaFilterOptions', this)">
+                                    <span>Contratação</span>
+                                </label>
+                                <label class="multi-select-option">
+                                    <input type="checkbox" value="gr" onchange="updateMultiSelect('etapaFilterOptions', this)">
+                                    <span>GR</span>
+                                </label>
+                                <label class="multi-select-option">
+                                    <input type="checkbox" value="documentacao" onchange="updateMultiSelect('etapaFilterOptions', this)">
+                                    <span>Documentação</span>
+                                </label>
+                                <label class="multi-select-option">
+                                    <input type="checkbox" value="controladoria" onchange="updateMultiSelect('etapaFilterOptions', this)">
+                                    <span>Controladoria</span>
+                                </label>
+                                <label class="multi-select-option">
+                                    <input type="checkbox" value="contas_pagar" onchange="updateMultiSelect('etapaFilterOptions', this)">
+                                    <span>Contas a Pagar</span>
+                                </label>
+                                <label class="multi-select-option">
+                                    <input type="checkbox" value="contas_receber" onchange="updateMultiSelect('etapaFilterOptions', this)">
+                                    <span>Contas a Receber</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
                 </div>
                 <div class="filter-group">
-                    <label for="filialFilter"><i class="fas fa-building"></i> Filial</label>
-                    <select id="filialFilter" onchange="filterColetas()">
-                        <option value="">Todas as Filiais</option>
-                        <option value="JBO">Jaboatão</option>
-                        <option value="CABO">CABO</option>
-                        <option value="AL">Alagoas</option>
-                        <option value="SP">São Paulo</option>
-                        <option value="BA">Bahia</option>
-                        <option value="CE">Ceará</option>
-                        <option value="SE">Sergipe</option>
-                        <option value="PB">Paraíba</option>
-                        <option value="PE">Recife</option>
-                        <option value="AMBEV">Ambev</option>
-                        <option value="US">Usinas</option>
-                        <option value="PARATIBE">Paratibe</option>
-                    </select>
+                    <label><i class="fas fa-building"></i> Filial</label>
+                    <div class="multi-select-wrapper">
+                        <button type="button" class="multi-select-button" id="filialFilterButton" onclick="toggleMultiSelect('filialFilter')">
+                            <span id="filialFilterText">Todas as Filiais</span>
+                            <i class="fas fa-chevron-down"></i>
+                        </button>
+                        <div class="multi-select-dropdown" id="filialFilterDropdown">
+                            <div class="multi-select-search">
+                                <input type="text" placeholder="Buscar filial..." onkeyup="filterMultiSelectOptions(this, 'filialFilterOptions')">
+                            </div>
+                            <div class="multi-select-options" id="filialFilterOptions">
+                                <label class="multi-select-option">
+                                    <input type="checkbox" value="" onchange="updateMultiSelect('filialFilterOptions', this)" checked>
+                                    <span>Todas as Filiais</span>
+                                </label>
+                                <label class="multi-select-option">
+                                    <input type="checkbox" value="JBO" onchange="updateMultiSelect('filialFilterOptions', this)">
+                                    <span>Jaboatão</span>
+                                </label>
+                                <label class="multi-select-option">
+                                    <input type="checkbox" value="CABO" onchange="updateMultiSelect('filialFilterOptions', this)">
+                                    <span>CABO</span>
+                                </label>
+                                <label class="multi-select-option">
+                                    <input type="checkbox" value="AL" onchange="updateMultiSelect('filialFilterOptions', this)">
+                                    <span>Alagoas</span>
+                                </label>
+                                <label class="multi-select-option">
+                                    <input type="checkbox" value="SP" onchange="updateMultiSelect('filialFilterOptions', this)">
+                                    <span>São Paulo</span>
+                                </label>
+                                <label class="multi-select-option">
+                                    <input type="checkbox" value="BA" onchange="updateMultiSelect('filialFilterOptions', this)">
+                                    <span>Bahia</span>
+                                </label>
+                                <label class="multi-select-option">
+                                    <input type="checkbox" value="CE" onchange="updateMultiSelect('filialFilterOptions', this)">
+                                    <span>Ceará</span>
+                                </label>
+                                <label class="multi-select-option">
+                                    <input type="checkbox" value="SE" onchange="updateMultiSelect('filialFilterOptions', this)">
+                                    <span>Sergipe</span>
+                                </label>
+                                <label class="multi-select-option">
+                                    <input type="checkbox" value="PB" onchange="updateMultiSelect('filialFilterOptions', this)">
+                                    <span>Paraíba</span>
+                                </label>
+                                <label class="multi-select-option">
+                                    <input type="checkbox" value="PE" onchange="updateMultiSelect('filialFilterOptions', this)">
+                                    <span>Recife</span>
+                                </label>
+                                <label class="multi-select-option">
+                                    <input type="checkbox" value="AMBEV" onchange="updateMultiSelect('filialFilterOptions', this)">
+                                    <span>Ambev</span>
+                                </label>
+                                <label class="multi-select-option">
+                                    <input type="checkbox" value="US" onchange="updateMultiSelect('filialFilterOptions', this)">
+                                    <span>Usinas</span>
+                                </label>
+                                <label class="multi-select-option">
+                                    <input type="checkbox" value="PARATIBE" onchange="updateMultiSelect('filialFilterOptions', this)">
+                                    <span>Paratibe</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
                 </div>
                 <div class="filter-group">
                     <label for="searchFilter"><i class="fas fa-search"></i> Buscar</label>
@@ -5222,7 +5441,7 @@
                 if (!userData) {
                     // ✅ SEGURANÇA: Logs condicionais apenas em desenvolvimento
                     if (window.DEBUG || window.location.hostname === 'localhost') {
-                        console.log('❌ Usuário não autenticado, redirecionando para portal...');
+                    console.log('❌ Usuário não autenticado, redirecionando para portal...');
                     }
                     window.location.href = 'portal.html';
                     return null;
@@ -5549,7 +5768,7 @@
                 showNotification('⚠️ Você não tem permissão para aprovar GR', 'warning');
                 // ✅ SEGURANÇA: Logs condicionais apenas em desenvolvimento
                 if (window.DEBUG || window.location.hostname === 'localhost') {
-                    console.log('❌ Usuário não tem permissão para etapa: gr');
+                console.log('❌ Usuário não tem permissão para etapa: gr');
                 }
                 return;
             }
@@ -5738,7 +5957,7 @@
                 showNotification('⚠️ Você não tem permissão para reprovar GR', 'warning');
                 // ✅ SEGURANÇA: Logs condicionais apenas em desenvolvimento
                 if (window.DEBUG || window.location.hostname === 'localhost') {
-                    console.log('❌ Usuário não tem permissão para etapa: gr');
+                console.log('❌ Usuário não tem permissão para etapa: gr');
                 }
                 return;
             }
@@ -5841,7 +6060,7 @@
                 showNotification('⚠️ Você não tem permissão para alterar esta etapa', 'warning');
                 // ✅ SEGURANÇA: Logs condicionais apenas em desenvolvimento
                 if (window.DEBUG || window.location.hostname === 'localhost') {
-                    console.log(`❌ Usuário não tem permissão para etapa: ${coleta.etapa_atual}`);
+                console.log(`❌ Usuário não tem permissão para etapa: ${coleta.etapa_atual}`);
                 }
                 return;
             }
@@ -7017,7 +7236,7 @@
                     showNotification('⚠️ Você não tem permissão para marcar como pago nesta etapa', 'warning');
                     // ✅ SEGURANÇA: Logs condicionais apenas em desenvolvimento
                     if (window.DEBUG || window.location.hostname === 'localhost') {
-                        console.log('❌ Usuário não tem permissão para etapa: contas_pagar');
+                    console.log('❌ Usuário não tem permissão para etapa: contas_pagar');
                     }
                     return;
                 }
@@ -8116,6 +8335,11 @@
                 if (coleta.motorista_id) {
                     await carregarInfoMotorista(coleta.id, coleta.motorista_id, coleta.anexos);
                         }
+                
+                // ✅ Carregar ITs relacionadas ao cliente (filtradas por filial)
+                if (coleta.cliente) {
+                    await carregarITsRelacionadas(coleta.id, coleta.cliente, coleta.filial);
+                }
                     } else {
                         console.warn('⚠️ Card duplicado detectado no último momento, removendo:', coleta.id);
                         cardDuplicado.remove();
@@ -8123,6 +8347,11 @@
                         
                         if (coleta.motorista_id) {
                             await carregarInfoMotorista(coleta.id, coleta.motorista_id, coleta.anexos);
+                        }
+                        
+                        // ✅ Carregar ITs relacionadas ao cliente (filtradas por filial)
+                        if (coleta.cliente) {
+                            await carregarITsRelacionadas(coleta.id, coleta.cliente, coleta.filial);
                         }
                     }
                 }
@@ -8528,6 +8757,25 @@
                         </div>
                     </div>
                 </div>
+                
+                    <!-- Submenu de ITs Relacionadas -->
+                    <div class="card-submenu its-submenu" id="its-submenu-${coleta.id}">
+                        <div class="submenu-header">
+                            <div class="submenu-title" onclick="event.stopPropagation(); toggleSubmenu('its-${coleta.id}')">
+                                <i class="fas fa-file-alt"></i> ITs Relacionadas
+                            </div>
+                            <i class="fas fa-chevron-down submenu-toggle" id="toggle-its-${coleta.id}" onclick="event.stopPropagation(); toggleSubmenu('its-${coleta.id}')"></i>
+                        </div>
+                        <div class="submenu-content" id="its-${coleta.id}">
+                            <div class="submenu-body">
+                                <div id="its-content-${coleta.id}" style="text-align: center; color: #6c757d; padding: 0.5rem; font-size: 0.8rem;">
+                                    <i class="fas fa-spinner fa-spin"></i>
+                                    Carregando ITs...
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
                 </div>
 
                 <div class="etapas-container">
@@ -8914,7 +9162,7 @@
                 showNotification('⚠️ Você não tem permissão para editar coletas nesta etapa', 'warning');
                 // ✅ SEGURANÇA: Logs condicionais apenas em desenvolvimento
                 if (window.DEBUG || window.location.hostname === 'localhost') {
-                    console.log(`❌ Usuário não tem permissão para editar etapa: ${coleta.etapa_atual}`);
+                console.log(`❌ Usuário não tem permissão para editar etapa: ${coleta.etapa_atual}`);
                 }
                 return;
             }
@@ -9516,7 +9764,7 @@
                 showNotification('⚠️ Você não tem permissão para alterar esta etapa', 'warning');
                 // ✅ SEGURANÇA: Logs condicionais apenas em desenvolvimento
                 if (window.DEBUG || window.location.hostname === 'localhost') {
-                    console.log(`❌ Usuário não tem permissão para etapa: ${coleta.etapa_atual}`);
+                console.log(`❌ Usuário não tem permissão para etapa: ${coleta.etapa_atual}`);
                 }
                 return;
             }
@@ -9918,25 +10166,177 @@
             }
         }
 
+        // ✅ Funções para gerenciar multi-select
+        const multiSelectValues = {
+            statusFilter: [],
+            etapaFilter: [],
+            filialFilter: []
+        };
+
+        function toggleMultiSelect(filterId) {
+            // Adicionar sufixo 'Button' se não tiver
+            const buttonId = filterId.includes('Button') ? filterId : `${filterId}Button`;
+            const button = document.getElementById(buttonId);
+            if (!button) {
+                console.warn(`⚠️ Botão não encontrado: ${buttonId}`);
+                return;
+            }
+            
+            const wrapper = button.closest('.multi-select-wrapper');
+            if (!wrapper) {
+                console.warn(`⚠️ Wrapper não encontrado para: ${buttonId}`);
+                return;
+            }
+            
+            const isActive = wrapper.classList.contains('active');
+            
+            // Fechar todos os outros multi-selects
+            document.querySelectorAll('.multi-select-wrapper').forEach(w => {
+                if (w !== wrapper) {
+                    w.classList.remove('active');
+                }
+            });
+            
+            // Toggle do atual
+            wrapper.classList.toggle('active', !isActive);
+        }
+
+        function updateMultiSelect(filterId, checkbox) {
+            const value = checkbox.value;
+            // Extrair o filterKey do ID do checkbox (ex: statusFilterOptions -> statusFilter)
+            let filterKey = filterId;
+            if (filterKey.includes('Options')) {
+                filterKey = filterKey.replace('Options', '');
+            } else if (filterKey.includes('Button')) {
+                filterKey = filterKey.replace('Button', '');
+            } else if (filterKey.includes('Dropdown')) {
+                filterKey = filterKey.replace('Dropdown', '');
+            }
+            
+            // Garantir que o filterKey existe no objeto
+            if (!multiSelectValues.hasOwnProperty(filterKey)) {
+                console.warn(`⚠️ FilterKey não encontrado: ${filterKey}`);
+                return;
+            }
+            
+            if (value === '') {
+                // Se "Todos" foi clicado, desmarcar todos os outros e marcar apenas "Todos"
+                if (checkbox.checked) {
+                    const options = document.querySelectorAll(`#${filterKey}Options input[type="checkbox"]`);
+                    options.forEach(opt => {
+                        if (opt !== checkbox) opt.checked = false;
+                    });
+                    multiSelectValues[filterKey] = [];
+                } else {
+                    // Não permitir desmarcar "Todos" se for o único selecionado
+                    checkbox.checked = true;
+                    return;
+                }
+            } else {
+                // Se outro item foi clicado, desmarcar "Todos"
+                const todosCheckbox = document.querySelector(`#${filterKey}Options input[value=""]`);
+                if (todosCheckbox) todosCheckbox.checked = false;
+                
+                if (checkbox.checked) {
+                    if (!multiSelectValues[filterKey].includes(value)) {
+                        multiSelectValues[filterKey].push(value);
+                    }
+                } else {
+                    multiSelectValues[filterKey] = multiSelectValues[filterKey].filter(v => v !== value);
+                }
+                
+                // Se nenhum item específico estiver selecionado, marcar "Todos"
+                if (multiSelectValues[filterKey].length === 0) {
+                    if (todosCheckbox) todosCheckbox.checked = true;
+                }
+            }
+            
+            updateMultiSelectText(filterKey);
+            filterColetas();
+        }
+
+        function updateMultiSelectText(filterKey) {
+            const values = multiSelectValues[filterKey];
+            const textElement = document.getElementById(`${filterKey}Text`);
+            
+            if (!textElement) return;
+            
+            if (values.length === 0) {
+                // Mostrar texto padrão
+                const labels = {
+                    statusFilter: 'Todos os Status',
+                    etapaFilter: 'Todas as Etapas',
+                    filialFilter: 'Todas as Filiais'
+                };
+                textElement.textContent = labels[filterKey] || 'Todos';
+            } else if (values.length === 1) {
+                // Mostrar o nome do item selecionado
+                const option = document.querySelector(`#${filterKey}Options input[value="${values[0]}"]`);
+                if (option) {
+                    const label = option.closest('label').querySelector('span');
+                    textElement.textContent = label ? label.textContent : values[0];
+                } else {
+                    textElement.textContent = values[0];
+                }
+            } else {
+                // Mostrar quantidade selecionada
+                textElement.textContent = `${values.length} selecionado(s)`;
+            }
+        }
+
+        function filterMultiSelectOptions(input, filterKey) {
+            const searchTerm = input.value.toLowerCase();
+            // Se filterKey já inclui 'Options', usar diretamente; caso contrário, adicionar
+            const optionsId = filterKey.includes('Options') ? filterKey : `${filterKey}Options`;
+            const options = document.querySelectorAll(`#${optionsId} .multi-select-option`);
+            
+            options.forEach(option => {
+                const text = option.textContent.toLowerCase();
+                if (text.includes(searchTerm)) {
+                    option.classList.remove('hidden');
+                } else {
+                    option.classList.add('hidden');
+                }
+            });
+        }
+
+        // Fechar multi-selects ao clicar fora
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.multi-select-wrapper')) {
+                document.querySelectorAll('.multi-select-wrapper').forEach(w => {
+                    w.classList.remove('active');
+                });
+            }
+        });
+
+        // Tornar funções globalmente acessíveis
+        window.toggleMultiSelect = toggleMultiSelect;
+        window.updateMultiSelect = updateMultiSelect;
+        window.filterMultiSelectOptions = filterMultiSelectOptions;
+
         function filterColetas() {
             // ✅ PAGINAÇÃO: Resetar para primeira página ao filtrar
             paginaAtual = 1;
             
-            const statusFilter = document.getElementById('statusFilter').value;
-            const etapaFilter = document.getElementById('etapaFilter').value;
-            const filialFilter = document.getElementById('filialFilter').value;
+            // ✅ Obter valores selecionados dos multi-selects
+            const statusFilters = multiSelectValues.statusFilter.length > 0 ? multiSelectValues.statusFilter : null;
+            const etapaFilters = multiSelectValues.etapaFilter.length > 0 ? multiSelectValues.etapaFilter : null;
+            const filialFilters = multiSelectValues.filialFilter.length > 0 ? multiSelectValues.filialFilter : null;
+            
             const searchFilter = document.getElementById('searchFilter').value.toLowerCase();
             const dataInicio = document.getElementById('dataInicio').value;
             const dataFim = document.getElementById('dataFim').value;
 
+            if (window.DEBUG || window.location.hostname === 'localhost') {
             console.log('🔍 Aplicando filtros:', {
                 dataInicio,
                 dataFim,
-                statusFilter,
-                etapaFilter,
-                filialFilter,
+                    statusFilters,
+                    etapaFilters,
+                    filialFilters,
                 searchFilter
             });
+            }
 
             // ✅ FILTRAR APENAS COLETAS NÃO ARQUIVADAS
             const coletasParaFiltrar = window.coletasAtivas || coletasData.filter(c => !c.arquivado);
@@ -9947,22 +10347,34 @@
                     return false;
                 }
 
-                // Filtro de status
-                if (statusFilter && coleta.status !== statusFilter) {
-                    console.log(`❌ Filtrado por status: ${coleta.status} !== ${statusFilter}`);
+                // ✅ Filtro de status (múltiplas seleções)
+                if (statusFilters && statusFilters.length > 0) {
+                    if (!statusFilters.includes(coleta.status)) {
+                        if (window.DEBUG || window.location.hostname === 'localhost') {
+                            console.log(`❌ Filtrado por status: ${coleta.status} não está em [${statusFilters.join(', ')}]`);
+                        }
                     return false;
+                    }
                 }
 
-                // Filtro de etapa
-                if (etapaFilter && coleta.etapa_atual !== etapaFilter) {
-                    console.log(`❌ Filtrado por etapa: ${coleta.etapa_atual} !== ${etapaFilter}`);
+                // ✅ Filtro de etapa (múltiplas seleções)
+                if (etapaFilters && etapaFilters.length > 0) {
+                    if (!etapaFilters.includes(coleta.etapa_atual)) {
+                        if (window.DEBUG || window.location.hostname === 'localhost') {
+                            console.log(`❌ Filtrado por etapa: ${coleta.etapa_atual} não está em [${etapaFilters.join(', ')}]`);
+                        }
                     return false;
+                    }
                 }
 
-                // Filtro de filial
-                if (filialFilter && coleta.filial !== filialFilter) {
-                    console.log(`❌ Filtrado por filial: ${coleta.filial} !== ${filialFilter}`);
+                // ✅ Filtro de filial (múltiplas seleções)
+                if (filialFilters && filialFilters.length > 0) {
+                    if (!filialFilters.includes(coleta.filial)) {
+                        if (window.DEBUG || window.location.hostname === 'localhost') {
+                            console.log(`❌ Filtrado por filial: ${coleta.filial} não está em [${filialFilters.join(', ')}]`);
+                        }
                     return false;
+                    }
                 }
 
                 // Filtro de busca
@@ -10023,7 +10435,9 @@
                     }
                 }
 
+                if (window.DEBUG || window.location.hostname === 'localhost') {
                 console.log(`✅ Coleta ${coleta.id} passou nos filtros`);
+                }
                 return true;
             });
 
@@ -10169,6 +10583,95 @@
             if (selectedFiles.length === 0) {
                 document.getElementById('selectedFiles').style.display = 'none';
                 document.getElementById('btnUpload').disabled = true;
+            }
+        }
+
+        // ✅ Função auxiliar para escape HTML
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        // ✅ Função para carregar ITs relacionadas ao cliente
+        async function carregarITsRelacionadas(coletaId, nomeCliente, filialColeta = null) {
+            try {
+                // Construir URL com query parameter de filial se disponível
+                let url = `/api/clientes/nome/${encodeURIComponent(nomeCliente)}/its`;
+                if (filialColeta) {
+                    url += `?filial=${encodeURIComponent(filialColeta)}`;
+                }
+                
+                const response = await fetch(url, {
+                    credentials: 'include'
+                });
+                
+                if (!response.ok) {
+                    console.warn('⚠️ Erro ao carregar ITs do cliente:', response.statusText);
+                    const itsContent = document.getElementById(`its-content-${coletaId}`);
+                    if (itsContent) {
+                        itsContent.innerHTML = '<div style="text-align: center; color: #6c757d; font-size: 0.8rem; padding: 1rem;">Nenhuma IT relacionada encontrada</div>';
+                    }
+                    return;
+                }
+                
+                const result = await response.json();
+                const itsContent = document.getElementById(`its-content-${coletaId}`);
+                
+                if (!itsContent) return;
+                
+                if (!result.success || !result.its || result.its.length === 0) {
+                    itsContent.innerHTML = `
+                        <div style="text-align: center; color: #6c757d; font-size: 0.8rem; padding: 1rem;">
+                            <i class="fas fa-info-circle" style="margin-right: 0.5rem;"></i>
+                            Nenhuma IT relacionada encontrada para este cliente${filialColeta ? ` na filial ${filialColeta}` : ''}
+                        </div>
+                    `;
+                    return;
+                }
+                
+                // Renderizar ITs
+                itsContent.innerHTML = `
+                    <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                        ${result.its.map(it => `
+                            <div style="background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%); padding: 0.75rem; border-radius: 8px; border-left: 3px solid #667eea;">
+                                <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 0.5rem;">
+                                    <div style="flex: 1;">
+                                        <div style="font-weight: 600; color: #667eea; margin-bottom: 0.25rem;">
+                                            ${it.codigo_it ? `<span style="font-size: 0.75rem; background: #667eea; color: white; padding: 0.2rem 0.5rem; border-radius: 4px; margin-right: 0.5rem;">${it.codigo_it}</span>` : ''}
+                                            ${escapeHtml(it.nome)}
+                                        </div>
+                                        ${it.area ? `<div style="font-size: 0.75rem; color: #6c757d; margin-top: 0.25rem;"><i class="fas fa-building"></i> ${escapeHtml(it.area)}</div>` : ''}
+                                        ${it.operacao ? `<div style="font-size: 0.75rem; color: #6c757d; margin-top: 0.25rem;"><i class="fas fa-cog"></i> ${escapeHtml(it.operacao.replace('operacoes_', 'Operações - ').replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()))}</div>` : ''}
+                                    </div>
+                                </div>
+                                <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem;">
+                                    <a href="${it.url}" target="_blank" 
+                                       onclick="event.stopPropagation();"
+                                       style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 0.4rem 0.8rem; border-radius: 6px; text-decoration: none; font-size: 0.75rem; font-weight: 600; display: inline-flex; align-items: center; gap: 0.4rem; transition: transform 0.2s;"
+                                       onmouseover="this.style.transform='translateY(-2px)'"
+                                       onmouseout="this.style.transform='translateY(0)'">
+                                        <i class="fas fa-eye"></i> Visualizar
+                                    </a>
+                                    <a href="${it.url}" download="${it.nome_arquivo || 'it.pdf'}"
+                                       onclick="event.stopPropagation();"
+                                       style="background: transparent; color: #667eea; border: 1px solid #667eea; padding: 0.4rem 0.8rem; border-radius: 6px; text-decoration: none; font-size: 0.75rem; font-weight: 600; display: inline-flex; align-items: center; gap: 0.4rem; transition: all 0.2s;"
+                                       onmouseover="this.style.background='#667eea'; this.style.color='white'"
+                                       onmouseout="this.style.background='transparent'; this.style.color='#667eea'">
+                                        <i class="fas fa-download"></i> Baixar
+                                    </a>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+            } catch (error) {
+                console.error('❌ Erro ao carregar ITs relacionadas:', error);
+                const itsContent = document.getElementById(`its-content-${coletaId}`);
+                if (itsContent) {
+                    itsContent.innerHTML = '<div style="text-align: center; color: #dc3545; font-size: 0.8rem; padding: 1rem;">Erro ao carregar ITs</div>';
+                }
             }
         }
 

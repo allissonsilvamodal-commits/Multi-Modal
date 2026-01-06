@@ -31,6 +31,7 @@ const { promisify } = require('util');
 const writeFile = promisify(fs.writeFile);
 const unlink = promisify(fs.unlink);
 const readFile = promisify(fs.readFile);
+const XLSX = require('xlsx');
 
 // Tentar carregar ffmpeg (opcional - apenas se disponível)
 let ffmpeg = null;
@@ -6398,6 +6399,306 @@ CREATE TABLE IF NOT EXISTS solicitacoes_documentos (
   }
 });
 
+// ========== ENDPOINT PARA ADICIONAR COLUNA OPERACAO À TABELA ITS_DOCUMENTOS ==========
+// Endpoint para executar migração de operacao em its_documentos
+app.post('/api/admin/adicionar-operacao-its-documentos', requireAuth, async (req, res) => {
+  try {
+    // Verificar se é admin
+    const { user, error: authError } = await getUserFromRequest(req);
+    if (authError || !user) {
+      return res.status(401).json({ success: false, error: 'Não autenticado' });
+    }
+
+    const { data: userProfile } = await supabaseAdmin
+      .from('user_profiles')
+      .select('role')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    const isAdmin = userProfile?.role === 'admin' || user.isAdmin === true;
+    if (!isAdmin) {
+      return res.status(403).json({ success: false, error: 'Apenas administradores podem executar migrações' });
+    }
+
+    console.log('🔧 Endpoint chamado para adicionar coluna operacao à tabela its_documentos...');
+
+    // Verificar se a coluna já existe
+    const { data: its, error: verifError } = await supabaseAdmin
+      .from('its_documentos')
+      .select('id, area, operacao')
+      .limit(1);
+
+    if (!verifError && its && its.length > 0 && 'operacao' in its[0]) {
+      console.log('✅ Coluna operacao já existe na tabela its_documentos!');
+      return res.json({
+        success: true,
+        message: 'Coluna operacao já existe na tabela its_documentos',
+        colunaExiste: true
+      });
+    }
+
+    // SQL da migração
+    const migrationSQL = `
+DO $$ 
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 
+        FROM information_schema.columns 
+        WHERE table_name = 'its_documentos' 
+        AND column_name = 'operacao'
+    ) THEN
+        ALTER TABLE its_documentos 
+        ADD COLUMN operacao TEXT NULL;
+        
+        RAISE NOTICE 'Coluna operacao adicionada com sucesso à tabela its_documentos';
+    ELSE
+        RAISE NOTICE 'Coluna operacao já existe na tabela its_documentos';
+    END IF;
+END $$;
+
+COMMENT ON COLUMN its_documentos.operacao IS 'Operação/Área específica da IT';
+
+CREATE INDEX IF NOT EXISTS idx_its_documentos_operacao ON its_documentos(operacao) WHERE operacao IS NOT NULL;
+    `.trim();
+
+    // Tentar executar via RPC exec_sql
+    console.log('⏳ Tentando executar migração via RPC exec_sql...');
+    const { data: rpcData, error: rpcError } = await supabaseAdmin.rpc('exec_sql', {
+      sql_query: migrationSQL
+    });
+
+    if (!rpcError) {
+      console.log('✅ Migração executada com sucesso via RPC!');
+      return res.json({
+        success: true,
+        message: 'Coluna operacao adicionada com sucesso à tabela its_documentos',
+        method: 'rpc'
+      });
+    }
+
+    console.log('⚠️ RPC não disponível, tentando método alternativo...');
+
+    // Método alternativo: executar cada comando separadamente
+    try {
+      // 1. Adicionar coluna
+      const { error: alterError } = await supabaseAdmin.rpc('exec_sql', {
+        sql_query: `
+          DO $$ 
+          BEGIN
+            IF NOT EXISTS (
+              SELECT 1 FROM information_schema.columns 
+              WHERE table_name = 'its_documentos' AND column_name = 'operacao'
+            ) THEN
+              ALTER TABLE its_documentos ADD COLUMN operacao TEXT NULL;
+            END IF;
+          END $$;
+        `
+      });
+
+      if (alterError) {
+        console.warn('⚠️ Erro ao adicionar coluna (pode já existir):', alterError.message);
+      }
+
+      // 2. Adicionar comentário
+      const { error: commentError } = await supabaseAdmin.rpc('exec_sql', {
+        sql_query: `COMMENT ON COLUMN its_documentos.operacao IS 'Operação/Área específica da IT';`
+      });
+
+      if (commentError) {
+        console.warn('⚠️ Erro ao adicionar comentário:', commentError.message);
+      }
+
+      // 3. Criar índice
+      const { error: indexError } = await supabaseAdmin.rpc('exec_sql', {
+        sql_query: `CREATE INDEX IF NOT EXISTS idx_its_documentos_operacao ON its_documentos(operacao) WHERE operacao IS NOT NULL;`
+      });
+
+      if (indexError) {
+        console.warn('⚠️ Erro ao criar índice (pode já existir):', indexError.message);
+      }
+
+      // Verificar se a coluna foi criada
+      const { data: verificacao, error: verifError2 } = await supabaseAdmin
+        .from('its_documentos')
+        .select('id, area, operacao')
+        .limit(1);
+
+      if (!verifError2 && verificacao && verificacao.length > 0 && 'operacao' in verificacao[0]) {
+        console.log('✅ Coluna operacao criada com sucesso!');
+        return res.json({
+          success: true,
+          message: 'Coluna operacao adicionada com sucesso à tabela its_documentos',
+          method: 'alternative'
+        });
+      }
+
+      throw new Error('Não foi possível verificar se a coluna foi criada');
+
+    } catch (altError) {
+      console.error('❌ Erro no método alternativo:', altError);
+      throw altError;
+    }
+
+  } catch (error) {
+    console.error('❌ Erro ao adicionar coluna operacao:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Erro ao adicionar coluna operacao: ' + (error.message || 'Erro desconhecido'),
+      details: error.message
+    });
+  }
+});
+
+// ========== ENDPOINT PARA ADICIONAR COLUNA OPERACAO À TABELA CLIENTES ==========
+// Endpoint para executar migração de operacao - pode ser chamado via MCP ou diretamente
+app.post('/api/admin/adicionar-operacao-clientes', requireAuth, async (req, res) => {
+  try {
+    // Verificar se é admin
+    const { user, error: authError } = await getUserFromRequest(req);
+    if (authError || !user) {
+      return res.status(401).json({ success: false, error: 'Não autenticado' });
+    }
+
+    const { data: userProfile } = await supabaseAdmin
+      .from('user_profiles')
+      .select('role')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    const isAdmin = userProfile?.role === 'admin' || user.isAdmin === true;
+    if (!isAdmin) {
+      return res.status(403).json({ success: false, error: 'Apenas administradores podem executar migrações' });
+    }
+
+    console.log('🔧 Endpoint chamado para adicionar coluna operacao à tabela clientes...');
+
+    // Verificar se a coluna já existe
+    const { data: clientes, error: verifError } = await supabaseAdmin
+      .from('clientes')
+      .select('id, nome, filial, operacao')
+      .limit(1);
+
+    if (!verifError && clientes && clientes.length > 0 && 'operacao' in clientes[0]) {
+      console.log('✅ Coluna operacao já existe na tabela clientes!');
+      return res.json({
+        success: true,
+        message: 'Coluna operacao já existe na tabela clientes',
+        colunaExiste: true
+      });
+    }
+
+    // SQL da migração
+    const migrationSQL = `
+DO $$ 
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 
+        FROM information_schema.columns 
+        WHERE table_name = 'clientes' 
+        AND column_name = 'operacao'
+    ) THEN
+        ALTER TABLE clientes 
+        ADD COLUMN operacao TEXT NULL;
+        
+        RAISE NOTICE 'Coluna operacao adicionada com sucesso à tabela clientes';
+    ELSE
+        RAISE NOTICE 'Coluna operacao já existe na tabela clientes';
+    END IF;
+END $$;
+
+COMMENT ON COLUMN clientes.operacao IS 'Operação/Área específica do cliente (ex: operacoes_jbo, operacoes_cabo, estoque, compras, etc.)';
+
+CREATE INDEX IF NOT EXISTS idx_clientes_operacao ON clientes(operacao) WHERE operacao IS NOT NULL;
+    `.trim();
+
+    // Tentar executar via RPC exec_sql
+    console.log('⏳ Tentando executar migração via RPC exec_sql...');
+    const { data: rpcData, error: rpcError } = await supabaseAdmin.rpc('exec_sql', {
+      sql_query: migrationSQL
+    });
+
+    if (!rpcError) {
+      console.log('✅ Migração executada com sucesso via RPC!');
+      return res.json({
+        success: true,
+        message: 'Coluna operacao adicionada com sucesso à tabela clientes',
+        method: 'rpc'
+      });
+    }
+
+    console.log('⚠️ RPC não disponível, tentando método alternativo...');
+
+    // Método alternativo: executar cada comando separadamente
+    try {
+      // 1. Adicionar coluna
+      const { error: alterError } = await supabaseAdmin.rpc('exec_sql', {
+        sql_query: `
+          DO $$ 
+          BEGIN
+            IF NOT EXISTS (
+              SELECT 1 FROM information_schema.columns 
+              WHERE table_name = 'clientes' AND column_name = 'operacao'
+            ) THEN
+              ALTER TABLE clientes ADD COLUMN operacao TEXT NULL;
+            END IF;
+          END $$;
+        `
+      });
+
+      if (alterError) {
+        console.warn('⚠️ Erro ao adicionar coluna (pode já existir):', alterError.message);
+      }
+
+      // 2. Adicionar comentário
+      const { error: commentError } = await supabaseAdmin.rpc('exec_sql', {
+        sql_query: `COMMENT ON COLUMN clientes.operacao IS 'Operação/Área específica do cliente';`
+      });
+
+      if (commentError) {
+        console.warn('⚠️ Erro ao adicionar comentário:', commentError.message);
+      }
+
+      // 3. Criar índice
+      const { error: indexError } = await supabaseAdmin.rpc('exec_sql', {
+        sql_query: `CREATE INDEX IF NOT EXISTS idx_clientes_operacao ON clientes(operacao) WHERE operacao IS NOT NULL;`
+      });
+
+      if (indexError) {
+        console.warn('⚠️ Erro ao criar índice (pode já existir):', indexError.message);
+      }
+
+      // Verificar se a coluna foi criada
+      const { data: verificacao, error: verifError2 } = await supabaseAdmin
+        .from('clientes')
+        .select('id, nome, filial, operacao')
+        .limit(1);
+
+      if (!verifError2 && verificacao && verificacao.length > 0 && 'operacao' in verificacao[0]) {
+        console.log('✅ Coluna operacao criada com sucesso!');
+        return res.json({
+          success: true,
+          message: 'Coluna operacao adicionada com sucesso à tabela clientes',
+          method: 'alternative'
+        });
+      }
+
+      throw new Error('Não foi possível verificar se a coluna foi criada');
+
+    } catch (altError) {
+      console.error('❌ Erro no método alternativo:', altError);
+      throw altError;
+    }
+
+  } catch (error) {
+    console.error('❌ Erro ao adicionar coluna operacao:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Erro ao adicionar coluna operacao: ' + (error.message || 'Erro desconhecido'),
+      details: error.message
+    });
+  }
+});
+
 // ========== ENDPOINT PARA ADICIONAR COLUNA DATA_ENTREGA À TABELA COLETAS ==========
 // Endpoint para executar migração de data_entrega - pode ser chamado via MCP ou diretamente
 app.post('/api/admin/adicionar-data-entrega-coletas', async (req, res) => {
@@ -6591,6 +6892,39 @@ app.post('/api/auth/trocar-senha', express.json(), async (req, res) => {
   } catch (error) {
     console.error('❌ Erro ao trocar senha:', error);
     return res.status(500).json({ success: false, error: 'Erro interno ao alterar senha' });
+  }
+});
+
+// Endpoint para obter dados do usuário autenticado
+app.get('/api/auth/user', requireAuth, async (req, res) => {
+  try {
+    const { user, error: authError } = await getUserFromRequest(req);
+    if (authError || !user) {
+      return res.status(401).json({ success: false, error: 'Não autenticado', user: null });
+    }
+
+    // Buscar dados completos do usuário
+    const { data: userProfile, error: profileError } = await supabaseAdmin
+      .from('user_profiles')
+      .select('id, email, role, nome')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    const isAdmin = userProfile?.role === 'admin' || user.isAdmin === true;
+
+    res.json({
+      success: true,
+      user: {
+        id: user.id,
+        email: user.email || userProfile?.email,
+        nome: userProfile?.nome,
+        role: userProfile?.role || user.role,
+        isAdmin: isAdmin
+      }
+    });
+  } catch (error) {
+    console.error('❌ Erro ao buscar dados do usuário:', error);
+    res.status(500).json({ success: false, error: 'Erro ao buscar dados do usuário', user: null });
   }
 });
 
@@ -8116,6 +8450,20 @@ app.get('/treinamentos-documentos.html', requireAuth, (req, res) => {
   res.setHeader('Pragma', 'no-cache');
   res.setHeader('Expires', '0');
   res.sendFile(path.join(__dirname, 'public/pages/treinamentos-documentos.html'));
+});
+
+app.get('/cadastro-clientes.html', requireAuth, (req, res) => {
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate, max-age=0');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  res.sendFile(path.join(__dirname, 'public/pages/cadastro-clientes.html'));
+});
+
+app.get('/migracao-operacao-clientes.html', requireAuth, (req, res) => {
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate, max-age=0');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  res.sendFile(path.join(__dirname, 'public/pages/migracao-operacao-clientes.html'));
 });
 
 app.get('/painel-qualidade.html', requireAuth, (req, res) => {
@@ -19302,18 +19650,6 @@ app.post('/api/auth/confirmar-todos-usuarios', express.json(), async (req, res) 
   }
 });
 
-// ========== ROTA 404 ==========
-app.use('*', (req, res) => {
-  // Ignorar requisições de favicon no 404
-  if (req.originalUrl === '/favicon.ico') {
-    return res.status(204).end();
-  }
-  res.status(404).json({ 
-    error: 'Rota não encontrada',
-    path: req.originalUrl
-  });
-});
-
 // ========== INICIALIZAÇÃO DO SERVIDOR ==========
 // ========== ENDPOINT DE MIGRAÇÃO PARA NORMALIZAR TIPOS DE VEÍCULO E CARROCERIA ==========
 app.post('/api/migracao/normalizar-tipos', requireAuth, async (req, res) => {
@@ -19454,6 +19790,1055 @@ app.listen(PORT, '0.0.0.0', async () => {
   } catch (error) {
     console.log('⚠️ Erro ao testar configurações do Supabase');
   }
+});
+
+// ========== ENDPOINTS PARA GERENCIAR CLIENTES ==========
+
+// Endpoint para buscar todos os clientes
+app.get('/api/clientes', requireAuth, async (req, res) => {
+  try {
+    const { user, error: authError } = await getUserFromRequest(req);
+    if (authError || !user) {
+      return res.status(401).json({ success: false, error: 'Não autenticado' });
+    }
+
+    // Permitir filtrar apenas ativos via query parameter (padrão: todos)
+    const apenasAtivos = req.query.apenasAtivos === 'true';
+
+    let query = supabaseAdmin
+      .from('clientes')
+      .select('id, nome, filial, operacao, ativo, created_at, updated_at');
+
+    if (apenasAtivos) {
+      query = query.eq('ativo', true);
+    }
+
+    const { data: clientes, error } = await query.order('nome', { ascending: true });
+
+    if (error) throw error;
+
+    res.json({ success: true, clientes: clientes || [] });
+  } catch (error) {
+    console.error('❌ Erro ao buscar clientes:', error);
+    res.status(500).json({ success: false, error: 'Erro ao buscar clientes' });
+  }
+});
+
+// Endpoint para gerar arquivo Excel com clientes por filial
+app.get('/api/clientes/exportar-excel', requireAuth, async (req, res) => {
+  try {
+    const { user, error: authError } = await getUserFromRequest(req);
+    if (authError || !user) {
+      return res.status(401).json({ success: false, error: 'Não autenticado' });
+    }
+
+    // Buscar todos os clientes ativos
+    const { data: clientes, error } = await supabaseAdmin
+      .from('clientes')
+      .select('id, nome, filial, operacao, ativo, created_at')
+      .eq('ativo', true)
+      .order('filial', { ascending: true })
+      .order('nome', { ascending: true });
+
+    if (error) throw error;
+
+    // Mapear operações para nomes legíveis
+    const operacoesMap = {
+      'operacoes_jbo': 'Operações - Jaboatão (JBO)',
+      'operacoes_cabo': 'Operações - Cabo (CABO)',
+      'operacoes_sp': 'Operações - São Paulo (SP)',
+      'operacoes_ba': 'Operações - Simões Filho (BA)',
+      'operacoes_se': 'Operações - Aracaju (SE)',
+      'operacoes_al': 'Operações - Maceió (AL)',
+      'operacoes_pe': 'Operações - Recife (PE)',
+      'operacoes_pb': 'Operações - João Pessoa (PB)',
+      'operacoes_ce': 'Operações - Fortaleza (CE)',
+      'operacoes_ambev': 'Operações - Ambev (AMBEV)',
+      'operacoes_us': 'Operações - Usinas (US)',
+      'operacoes_paratibe': 'Operações - Paratibe (PARATIBE)',
+      'qualidade': 'Qualidade',
+      'price': 'Price',
+      'comercial': 'Comercial',
+      'rh': 'Recursos Humanos',
+      'contas_pagar': 'Contas a Pagar',
+      'contas_receber': 'Contas a Receber',
+      'ti': 'Tecnologia da Informação',
+      'seguranca': 'Segurança do Trabalho',
+      'manutencao': 'Manutenção',
+      'estoque': 'Estoque',
+      'compras': 'Compras',
+      'cs': 'CS',
+      'frota': 'Frota',
+      'documentacao': 'Documentação',
+      'administrativo': 'Administrativo',
+      'outros': 'Outros'
+    };
+
+    // Organizar clientes por filial
+    const clientesPorFilial = {};
+    const filiais = ['JBO', 'CABO', 'AL', 'SP', 'BA', 'CE', 'SE', 'PB', 'PE', 'AMBEV', 'US', 'PARATIBE'];
+
+    filiais.forEach(filial => {
+      clientesPorFilial[filial] = [];
+    });
+
+    (clientes || []).forEach(cliente => {
+      if (!clientesPorFilial[cliente.filial]) {
+        clientesPorFilial[cliente.filial] = [];
+      }
+      clientesPorFilial[cliente.filial].push(cliente);
+    });
+
+    // Criar workbook Excel
+    const workbook = XLSX.utils.book_new();
+
+    // Criar planilha de resumo
+    const resumoData = [
+      ['Filial', 'Total de Clientes'],
+      ...filiais
+        .filter(filial => (clientesPorFilial[filial] || []).length > 0)
+        .map(filial => [filial, (clientesPorFilial[filial] || []).length])
+    ];
+    const resumoSheet = XLSX.utils.aoa_to_sheet(resumoData);
+    XLSX.utils.book_append_sheet(workbook, resumoSheet, 'Resumo');
+
+    // Criar uma planilha para cada filial
+    filiais.forEach(filial => {
+      const clientesFilial = clientesPorFilial[filial] || [];
+      
+      if (clientesFilial.length > 0) {
+        // Preparar dados da planilha
+        const sheetData = [
+          ['Nome do Cliente', 'Operação', 'Data de Cadastro']
+        ];
+
+        clientesFilial.forEach(cliente => {
+          const nomeOperacao = cliente.operacao 
+            ? (operacoesMap[cliente.operacao] || cliente.operacao)
+            : 'Sem operação específica';
+          
+          const dataCadastro = cliente.created_at 
+            ? new Date(cliente.created_at).toLocaleDateString('pt-BR')
+            : '';
+
+          sheetData.push([
+            cliente.nome,
+            nomeOperacao,
+            dataCadastro
+          ]);
+        });
+
+        // Criar planilha
+        const sheet = XLSX.utils.aoa_to_sheet(sheetData);
+        
+        // Ajustar largura das colunas
+        sheet['!cols'] = [
+          { wch: 40 }, // Nome do Cliente
+          { wch: 35 }, // Operação
+          { wch: 15 }  // Data de Cadastro
+        ];
+
+        // Adicionar planilha ao workbook
+        XLSX.utils.book_append_sheet(workbook, sheet, filial);
+      }
+    });
+
+    // Gerar buffer do arquivo Excel
+    const excelBuffer = XLSX.write(workbook, { 
+      type: 'buffer', 
+      bookType: 'xlsx',
+      cellStyles: true
+    });
+
+    // Retornar como arquivo para download
+    const fileName = `clientes-por-filial-${new Date().toISOString().split('T')[0]}.xlsx`;
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+    res.send(excelBuffer);
+
+  } catch (error) {
+    console.error('❌ Erro ao gerar arquivo Excel:', error);
+    res.status(500).json({ success: false, error: 'Erro ao gerar arquivo Excel' });
+  }
+});
+
+// Endpoint para baixar modelo CSV de clientes
+app.get('/api/clientes/modelo-csv', requireAuth, async (req, res) => {
+  try {
+    const { user, error: authError } = await getUserFromRequest(req);
+    if (authError || !user) {
+      return res.status(401).json({ success: false, error: 'Não autenticado' });
+    }
+
+    // Definir todas as filiais e operações
+    const filiais = ['JBO', 'CABO', 'AL', 'SP', 'BA', 'CE', 'SE', 'PB', 'PE', 'AMBEV', 'US', 'PARATIBE'];
+    
+    const operacoesPorFilial = {
+      'JBO': ['operacoes_jbo', 'qualidade', 'price', 'comercial', 'rh', 'contas_pagar', 'contas_receber', 'ti', 'seguranca', 'manutencao', 'estoque', 'compras', 'cs', 'frota', 'documentacao', 'administrativo', 'outros'],
+      'CABO': ['operacoes_cabo', 'qualidade', 'price', 'comercial', 'rh', 'contas_pagar', 'contas_receber', 'ti', 'seguranca', 'manutencao', 'estoque', 'compras', 'cs', 'frota', 'documentacao', 'administrativo', 'outros'],
+      'AL': ['operacoes_al', 'qualidade', 'price', 'comercial', 'rh', 'contas_pagar', 'contas_receber', 'ti', 'seguranca', 'manutencao', 'estoque', 'compras', 'cs', 'frota', 'documentacao', 'administrativo', 'outros'],
+      'SP': ['operacoes_sp', 'qualidade', 'price', 'comercial', 'rh', 'contas_pagar', 'contas_receber', 'ti', 'seguranca', 'manutencao', 'estoque', 'compras', 'cs', 'frota', 'documentacao', 'administrativo', 'outros'],
+      'BA': ['operacoes_ba', 'qualidade', 'price', 'comercial', 'rh', 'contas_pagar', 'contas_receber', 'ti', 'seguranca', 'manutencao', 'estoque', 'compras', 'cs', 'frota', 'documentacao', 'administrativo', 'outros'],
+      'CE': ['operacoes_ce', 'qualidade', 'price', 'comercial', 'rh', 'contas_pagar', 'contas_receber', 'ti', 'seguranca', 'manutencao', 'estoque', 'compras', 'cs', 'frota', 'documentacao', 'administrativo', 'outros'],
+      'SE': ['operacoes_se', 'qualidade', 'price', 'comercial', 'rh', 'contas_pagar', 'contas_receber', 'ti', 'seguranca', 'manutencao', 'estoque', 'compras', 'cs', 'frota', 'documentacao', 'administrativo', 'outros'],
+      'PB': ['operacoes_pb', 'qualidade', 'price', 'comercial', 'rh', 'contas_pagar', 'contas_receber', 'ti', 'seguranca', 'manutencao', 'estoque', 'compras', 'cs', 'frota', 'documentacao', 'administrativo', 'outros'],
+      'PE': ['operacoes_pe', 'qualidade', 'price', 'comercial', 'rh', 'contas_pagar', 'contas_receber', 'ti', 'seguranca', 'manutencao', 'estoque', 'compras', 'cs', 'frota', 'documentacao', 'administrativo', 'outros'],
+      'AMBEV': ['operacoes_ambev', 'qualidade', 'price', 'comercial', 'rh', 'contas_pagar', 'contas_receber', 'ti', 'seguranca', 'manutencao', 'estoque', 'compras', 'cs', 'frota', 'documentacao', 'administrativo', 'outros'],
+      'US': ['operacoes_us', 'qualidade', 'price', 'comercial', 'rh', 'contas_pagar', 'contas_receber', 'ti', 'seguranca', 'manutencao', 'estoque', 'compras', 'cs', 'frota', 'documentacao', 'administrativo', 'outros'],
+      'PARATIBE': ['operacoes_paratibe', 'qualidade', 'price', 'comercial', 'rh', 'contas_pagar', 'contas_receber', 'ti', 'seguranca', 'manutencao', 'estoque', 'compras', 'cs', 'frota', 'documentacao', 'administrativo', 'outros']
+    };
+
+    // Criar linhas do CSV
+    const linhas = ['Nome,Filial,Operacao'];
+    
+    filiais.forEach(filial => {
+      const operacoes = operacoesPorFilial[filial] || [];
+      
+      operacoes.forEach((operacao, index) => {
+        // Criar nome de exemplo baseado na filial e operação
+        const nomeExemplo = `CLIENTE EXEMPLO ${filial} - ${operacao.replace('operacoes_', '').replace('_', ' ').toUpperCase()}`;
+        linhas.push(`${nomeExemplo},${filial},${operacao}`);
+      });
+      
+      // Adicionar um exemplo sem operação para cada filial
+      linhas.push(`CLIENTE EXEMPLO ${filial} - SEM OPERAÇÃO,${filial},`);
+    });
+
+    const csvContent = linhas.join('\n');
+
+    // Retornar como arquivo para download
+    const fileName = `modelo-importacao-clientes-${new Date().toISOString().split('T')[0]}.csv`;
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+    res.send('\ufeff' + csvContent); // BOM para Excel reconhecer UTF-8
+
+  } catch (error) {
+    console.error('❌ Erro ao gerar modelo CSV:', error);
+    res.status(500).json({ success: false, error: 'Erro ao gerar modelo CSV' });
+  }
+});
+
+// Endpoint para importar clientes via CSV
+app.post('/api/clientes/importar-csv', requireAuth, upload.single('csv'), async (req, res) => {
+  try {
+    const { user, error: authError } = await getUserFromRequest(req);
+    if (authError || !user) {
+      return res.status(401).json({ success: false, error: 'Não autenticado' });
+    }
+
+    // Verificar se é admin
+    const { data: userProfile } = await supabaseAdmin
+      .from('user_profiles')
+      .select('role')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    const isAdmin = userProfile?.role === 'admin' || user.isAdmin === true;
+    if (!isAdmin) {
+      return res.status(403).json({ success: false, error: 'Apenas administradores podem importar clientes' });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({ success: false, error: 'Nenhum arquivo CSV enviado' });
+    }
+
+    // Ler e processar CSV
+    const csvContent = req.file.buffer.toString('utf8').replace(/^\ufeff/, ''); // Remover BOM se existir
+    const lines = csvContent.split('\n').filter(line => line.trim());
+    
+    if (lines.length === 0) {
+      return res.status(400).json({ success: false, error: 'Arquivo CSV vazio' });
+    }
+
+    // Verificar se tem cabeçalho
+    const header = lines[0].toLowerCase();
+    const hasHeader = header.includes('nome') && (header.includes('filial') || header.includes('filial'));
+    const startLine = hasHeader ? 1 : 0;
+
+    if (lines.length <= startLine) {
+      return res.status(400).json({ success: false, error: 'Nenhum dado encontrado no CSV' });
+    }
+
+    // Mapear operações
+    const operacoesValidas = [
+      'operacoes_jbo', 'operacoes_cabo', 'operacoes_sp', 'operacoes_ba', 'operacoes_se',
+      'operacoes_al', 'operacoes_pe', 'operacoes_pb', 'operacoes_ce', 'operacoes_ambev',
+      'operacoes_us', 'operacoes_paratibe', 'qualidade', 'price', 'comercial', 'rh',
+      'contas_pagar', 'contas_receber', 'ti', 'seguranca', 'manutencao', 'estoque',
+      'compras', 'cs', 'frota', 'documentacao', 'administrativo', 'outros'
+    ];
+
+    const filiaisValidas = ['JBO', 'CABO', 'AL', 'SP', 'BA', 'CE', 'SE', 'PB', 'PE', 'AMBEV', 'US', 'PARATIBE'];
+
+    let sucessos = 0;
+    let falhas = 0;
+    const detalhesFalhas = [];
+    const detalhesSucessos = [];
+
+    // Processar cada linha
+    for (let i = startLine; i < lines.length; i++) {
+      const line = lines[i].trim();
+      if (!line) continue;
+
+      try {
+        // Parse CSV (simples - pode melhorar com biblioteca)
+        const columns = line.split(',').map(col => col.trim().replace(/^"|"$/g, ''));
+        
+        if (columns.length < 2) {
+          falhas++;
+          detalhesFalhas.push(`Linha ${i + 1}: Formato inválido (esperado: Nome, Filial, Operação)`);
+          continue;
+        }
+
+        const nome = columns[0] || '';
+        const filial = columns[1] || '';
+        const operacao = columns[2] || '';
+
+        // Validações
+        if (!nome || nome.length < 2 || nome.length > 200) {
+          falhas++;
+          detalhesFalhas.push(`Linha ${i + 1}: Nome inválido (${nome})`);
+          continue;
+        }
+
+        if (!filial || !filiaisValidas.includes(filial)) {
+          falhas++;
+          detalhesFalhas.push(`Linha ${i + 1}: Filial inválida (${filial})`);
+          continue;
+        }
+
+        if (operacao && !operacoesValidas.includes(operacao)) {
+          falhas++;
+          detalhesFalhas.push(`Linha ${i + 1}: Operação inválida (${operacao})`);
+          continue;
+        }
+
+        // Verificar se cliente já existe
+        const { data: clienteExistente, error: checkError } = await supabaseAdmin
+          .from('clientes')
+          .select('id, nome, filial')
+          .eq('nome', nome.trim())
+          .eq('filial', filial)
+          .maybeSingle();
+
+        if (checkError && checkError.code !== 'PGRST116') {
+          throw checkError;
+        }
+
+        if (clienteExistente) {
+          // Atualizar se existir
+          const { error: updateError } = await supabaseAdmin
+            .from('clientes')
+            .update({
+              operacao: operacao && operacao.trim() !== '' ? operacao.trim() : null,
+              ativo: true,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', clienteExistente.id);
+
+          if (updateError) throw updateError;
+          sucessos++;
+          detalhesSucessos.push(`${nome} (${filial}) - Atualizado`);
+        } else {
+          // Inserir novo
+          const { error: insertError } = await supabaseAdmin
+            .from('clientes')
+            .insert({
+              nome: nome.trim(),
+              filial: filial,
+              operacao: operacao && operacao.trim() !== '' ? operacao.trim() : null,
+              ativo: true
+            });
+
+          if (insertError) throw insertError;
+          sucessos++;
+          detalhesSucessos.push(`${nome} (${filial}) - Criado`);
+        }
+
+      } catch (error) {
+        falhas++;
+        detalhesFalhas.push(`Linha ${i + 1}: ${error.message || 'Erro desconhecido'}`);
+      }
+    }
+
+    res.json({
+      success: true,
+      total: lines.length - startLine,
+      sucessos,
+      falhas,
+      detalhesSucessos: detalhesSucessos.slice(0, 10), // Limitar para não sobrecarregar
+      detalhesFalhas: detalhesFalhas.slice(0, 10),
+      mensagem: `Importação concluída: ${sucessos} sucesso(s), ${falhas} falha(s)`
+    });
+
+  } catch (error) {
+    console.error('❌ Erro ao importar CSV:', error);
+    res.status(500).json({ success: false, error: 'Erro ao importar CSV: ' + error.message });
+  }
+});
+
+// Endpoint para buscar clientes por filial
+app.get('/api/clientes/filial/:filial', async (req, res) => {
+  try {
+    const { user, error: authError } = await getUserFromRequest(req);
+    if (authError || !user) {
+      return res.status(401).json({ success: false, error: 'Não autenticado' });
+    }
+
+    const { filial } = req.params;
+
+    const { data: clientes, error } = await supabaseAdmin
+      .from('clientes')
+      .select('id, nome, filial, operacao, ativo')
+      .eq('filial', filial)
+      .eq('ativo', true)
+      .order('nome', { ascending: true });
+
+    if (error) throw error;
+
+    res.json({ success: true, clientes: clientes || [] });
+  } catch (error) {
+    console.error('❌ Erro ao buscar clientes por filial:', error);
+    res.status(500).json({ success: false, error: 'Erro ao buscar clientes' });
+  }
+});
+
+// Endpoint para sincronizar clientes do coletas.html para o banco
+app.post('/api/clientes/sincronizar', async (req, res) => {
+  try {
+    const { user, error: authError } = await getUserFromRequest(req);
+    if (authError || !user) {
+      return res.status(401).json({ success: false, error: 'Não autenticado' });
+    }
+
+    // Verificar se é admin
+    const { data: userProfile } = await supabaseAdmin
+      .from('user_profiles')
+      .select('role')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    const isAdmin = userProfile?.role === 'admin' || user.isAdmin === true;
+    if (!isAdmin) {
+      return res.status(403).json({ success: false, error: 'Apenas administradores podem sincronizar clientes' });
+    }
+
+    const { clientesPorFilial } = req.body;
+
+    if (!clientesPorFilial || typeof clientesPorFilial !== 'object') {
+      return res.status(400).json({ success: false, error: 'Dados de clientes inválidos' });
+    }
+
+    let totalInseridos = 0;
+    let totalAtualizados = 0;
+    const erros = [];
+
+    for (const [filial, clientes] of Object.entries(clientesPorFilial)) {
+      if (!Array.isArray(clientes)) continue;
+
+      for (const nomeCliente of clientes) {
+        if (!nomeCliente || typeof nomeCliente !== 'string') continue;
+
+        try {
+          // Verificar se o cliente já existe
+          const { data: clienteExistente, error: checkError } = await supabaseAdmin
+            .from('clientes')
+            .select('id, nome, filial, ativo')
+            .eq('nome', nomeCliente.trim())
+            .eq('filial', filial)
+            .maybeSingle();
+
+          if (checkError && checkError.code !== 'PGRST116') {
+            throw checkError;
+          }
+
+          if (clienteExistente) {
+            // Atualizar se estiver inativo
+            if (!clienteExistente.ativo) {
+              const { error: updateError } = await supabaseAdmin
+                .from('clientes')
+                .update({ ativo: true, updated_at: new Date().toISOString() })
+                .eq('id', clienteExistente.id);
+
+              if (updateError) throw updateError;
+              totalAtualizados++;
+            }
+          } else {
+            // Inserir novo cliente
+            const { error: insertError } = await supabaseAdmin
+              .from('clientes')
+              .insert({
+                nome: nomeCliente.trim(),
+                filial: filial,
+                ativo: true
+              });
+
+            if (insertError) throw insertError;
+            totalInseridos++;
+          }
+        } catch (error) {
+          erros.push({ cliente: nomeCliente, filial, error: error.message });
+          console.error(`❌ Erro ao processar cliente ${nomeCliente} (${filial}):`, error);
+        }
+      }
+    }
+
+    res.json({
+      success: true,
+      message: 'Sincronização concluída',
+      totalInseridos,
+      totalAtualizados,
+      erros: erros.length > 0 ? erros : undefined
+    });
+  } catch (error) {
+    console.error('❌ Erro ao sincronizar clientes:', error);
+    res.status(500).json({ success: false, error: 'Erro ao sincronizar clientes' });
+  }
+});
+
+// Endpoint para criar novo cliente (apenas admins)
+app.post('/api/clientes', async (req, res) => {
+  try {
+    const { user, error: authError } = await getUserFromRequest(req);
+    if (authError || !user) {
+      return res.status(401).json({ success: false, error: 'Não autenticado' });
+    }
+
+    // Verificar se é admin
+    const { data: userProfile } = await supabaseAdmin
+      .from('user_profiles')
+      .select('role')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    const isAdmin = userProfile?.role === 'admin' || user.isAdmin === true;
+    if (!isAdmin) {
+      return res.status(403).json({ success: false, error: 'Apenas administradores podem criar clientes' });
+    }
+
+    const { nome, filial, operacao, ativo = true } = req.body;
+
+    // Validações
+    if (!nome || typeof nome !== 'string' || nome.trim().length < 2 || nome.trim().length > 200) {
+      return res.status(400).json({ success: false, error: 'Nome do cliente deve ter entre 2 e 200 caracteres' });
+    }
+
+    const filiaisValidas = ['JBO', 'CABO', 'AL', 'SP', 'BA', 'CE', 'SE', 'PB', 'PE', 'AMBEV', 'US', 'PARATIBE'];
+    if (!filial || !filiaisValidas.includes(filial)) {
+      return res.status(400).json({ success: false, error: 'Filial inválida' });
+    }
+
+    // Validar operação se fornecida (opcional)
+    const operacoesValidas = [
+      'operacoes_jbo', 'operacoes_cabo', 'operacoes_sp', 'operacoes_ba', 'operacoes_se',
+      'operacoes_al', 'operacoes_pe', 'operacoes_pb', 'operacoes_ce', 'operacoes_ambev',
+      'operacoes_us', 'operacoes_paratibe', 'qualidade', 'price', 'comercial', 'rh',
+      'contas_pagar', 'contas_receber', 'ti', 'seguranca', 'manutencao', 'estoque',
+      'compras', 'cs', 'frota', 'documentacao', 'administrativo', 'outros'
+    ];
+    if (operacao && operacao.trim() !== '' && !operacoesValidas.includes(operacao)) {
+      return res.status(400).json({ success: false, error: 'Operação inválida' });
+    }
+
+    // Verificar se já existe cliente com mesmo nome e filial
+    const { data: clienteExistente, error: checkError } = await supabaseAdmin
+      .from('clientes')
+      .select('id')
+      .eq('nome', nome.trim())
+      .eq('filial', filial)
+      .maybeSingle();
+
+    if (checkError && checkError.code !== 'PGRST116') {
+      throw checkError;
+    }
+
+    if (clienteExistente) {
+      return res.status(400).json({ success: false, error: 'Já existe um cliente com este nome nesta filial' });
+    }
+
+    // Criar cliente
+    const { data: novoCliente, error } = await supabaseAdmin
+      .from('clientes')
+      .insert({
+        nome: nome.trim(),
+        filial,
+        operacao: operacao && operacao.trim() !== '' ? operacao.trim() : null,
+        ativo: ativo === true || ativo === 'true'
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    res.json({ success: true, cliente: novoCliente });
+  } catch (error) {
+    console.error('❌ Erro ao criar cliente:', error);
+    res.status(500).json({ success: false, error: 'Erro ao criar cliente' });
+  }
+});
+
+// Endpoint para atualizar cliente (apenas admins)
+app.put('/api/clientes/:id', async (req, res) => {
+  try {
+    const { user, error: authError } = await getUserFromRequest(req);
+    if (authError || !user) {
+      return res.status(401).json({ success: false, error: 'Não autenticado' });
+    }
+
+    // Verificar se é admin
+    const { data: userProfile } = await supabaseAdmin
+      .from('user_profiles')
+      .select('role')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    const isAdmin = userProfile?.role === 'admin' || user.isAdmin === true;
+    if (!isAdmin) {
+      return res.status(403).json({ success: false, error: 'Apenas administradores podem atualizar clientes' });
+    }
+
+    const { id } = req.params;
+    const { nome, filial, operacao, ativo } = req.body;
+
+    // Validações
+    if (nome !== undefined) {
+      if (typeof nome !== 'string' || nome.trim().length < 2 || nome.trim().length > 200) {
+        return res.status(400).json({ success: false, error: 'Nome do cliente deve ter entre 2 e 200 caracteres' });
+      }
+    }
+
+    if (filial !== undefined) {
+      const filiaisValidas = ['JBO', 'CABO', 'AL', 'SP', 'BA', 'CE', 'SE', 'PB', 'PE', 'AMBEV', 'US', 'PARATIBE'];
+      if (!filiaisValidas.includes(filial)) {
+        return res.status(400).json({ success: false, error: 'Filial inválida' });
+      }
+    }
+
+    // Validar operação se fornecida (opcional)
+    if (operacao !== undefined) {
+      const operacoesValidas = [
+        'operacoes_jbo', 'operacoes_cabo', 'operacoes_sp', 'operacoes_ba', 'operacoes_se',
+        'operacoes_al', 'operacoes_pe', 'operacoes_pb', 'operacoes_ce', 'operacoes_ambev',
+        'operacoes_us', 'operacoes_paratibe', 'qualidade', 'price', 'comercial', 'rh',
+        'contas_pagar', 'contas_receber', 'ti', 'seguranca', 'manutencao', 'estoque',
+        'compras', 'cs', 'frota', 'documentacao', 'administrativo', 'outros'
+      ];
+      if (operacao && operacao.trim() !== '' && !operacoesValidas.includes(operacao)) {
+        return res.status(400).json({ success: false, error: 'Operação inválida' });
+      }
+    }
+
+    // Verificar se cliente existe
+    const { data: clienteExistente, error: checkError } = await supabaseAdmin
+      .from('clientes')
+      .select('id, nome, filial')
+      .eq('id', id)
+      .maybeSingle();
+
+    if (checkError) throw checkError;
+    if (!clienteExistente) {
+      return res.status(404).json({ success: false, error: 'Cliente não encontrado' });
+    }
+
+    // Se nome ou filial mudaram, verificar duplicatas
+    if ((nome !== undefined && nome.trim() !== clienteExistente.nome) || 
+        (filial !== undefined && filial !== clienteExistente.filial)) {
+      const nomeFinal = nome !== undefined ? nome.trim() : clienteExistente.nome;
+      const filialFinal = filial !== undefined ? filial : clienteExistente.filial;
+
+      const { data: duplicado, error: dupError } = await supabaseAdmin
+        .from('clientes')
+        .select('id')
+        .eq('nome', nomeFinal)
+        .eq('filial', filialFinal)
+        .neq('id', id)
+        .maybeSingle();
+
+      if (dupError && dupError.code !== 'PGRST116') {
+        throw dupError;
+      }
+
+      if (duplicado) {
+        return res.status(400).json({ success: false, error: 'Já existe um cliente com este nome nesta filial' });
+      }
+    }
+
+    // Preparar dados para atualização
+    const dadosAtualizacao = {};
+    if (nome !== undefined) dadosAtualizacao.nome = nome.trim();
+    if (filial !== undefined) dadosAtualizacao.filial = filial;
+    if (operacao !== undefined) dadosAtualizacao.operacao = operacao && operacao.trim() !== '' ? operacao.trim() : null;
+    if (ativo !== undefined) dadosAtualizacao.ativo = ativo === true || ativo === 'true';
+
+    // Atualizar cliente
+    const { data: clienteAtualizado, error } = await supabaseAdmin
+      .from('clientes')
+      .update(dadosAtualizacao)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    res.json({ success: true, cliente: clienteAtualizado });
+  } catch (error) {
+    console.error('❌ Erro ao atualizar cliente:', error);
+    res.status(500).json({ success: false, error: 'Erro ao atualizar cliente' });
+  }
+});
+
+// Endpoint para excluir cliente (apenas admins) - na verdade desativa
+app.delete('/api/clientes/:id', async (req, res) => {
+  try {
+    const { user, error: authError } = await getUserFromRequest(req);
+    if (authError || !user) {
+      return res.status(401).json({ success: false, error: 'Não autenticado' });
+    }
+
+    // Verificar se é admin
+    const { data: userProfile } = await supabaseAdmin
+      .from('user_profiles')
+      .select('role')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    const isAdmin = userProfile?.role === 'admin' || user.isAdmin === true;
+    if (!isAdmin) {
+      return res.status(403).json({ success: false, error: 'Apenas administradores podem excluir clientes' });
+    }
+
+    const { id } = req.params;
+
+    // Verificar se cliente existe
+    const { data: clienteExistente, error: checkError } = await supabaseAdmin
+      .from('clientes')
+      .select('id')
+      .eq('id', id)
+      .maybeSingle();
+
+    if (checkError) throw checkError;
+    if (!clienteExistente) {
+      return res.status(404).json({ success: false, error: 'Cliente não encontrado' });
+    }
+
+    // Desativar cliente (soft delete)
+    const { data: clienteDesativado, error } = await supabaseAdmin
+      .from('clientes')
+      .update({ ativo: false })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    res.json({ success: true, cliente: clienteDesativado });
+  } catch (error) {
+    console.error('❌ Erro ao excluir cliente:', error);
+    res.status(500).json({ success: false, error: 'Erro ao excluir cliente' });
+  }
+});
+
+// ========== ENDPOINTS PARA RELACIONAMENTO ITs E CLIENTES ==========
+
+// Endpoint para vincular clientes a uma IT
+app.post('/api/its/:itId/clientes', async (req, res) => {
+  try {
+    const { user, error: authError } = await getUserFromRequest(req);
+    if (authError || !user) {
+      return res.status(401).json({ success: false, error: 'Não autenticado' });
+    }
+
+    const { itId } = req.params;
+    const { clienteIds } = req.body;
+
+    if (!Array.isArray(clienteIds)) {
+      return res.status(400).json({ success: false, error: 'clienteIds deve ser um array' });
+    }
+
+    // Verificar se a IT existe
+    const { data: it, error: itError } = await supabaseAdmin
+      .from('its_documentos')
+      .select('id')
+      .eq('id', itId)
+      .maybeSingle();
+
+    if (itError) throw itError;
+    if (!it) {
+      return res.status(404).json({ success: false, error: 'IT não encontrada' });
+    }
+
+    // Remover relacionamentos existentes
+    const { error: deleteError } = await supabaseAdmin
+      .from('its_clientes')
+      .delete()
+      .eq('it_id', itId);
+
+    if (deleteError) throw deleteError;
+
+    // Inserir novos relacionamentos
+    if (clienteIds.length > 0) {
+      const relacionamentos = clienteIds.map(clienteId => ({
+        it_id: itId,
+        cliente_id: clienteId
+      }));
+
+      const { error: insertError } = await supabaseAdmin
+        .from('its_clientes')
+        .insert(relacionamentos);
+
+      if (insertError) throw insertError;
+    }
+
+    res.json({ success: true, message: 'Clientes vinculados com sucesso' });
+  } catch (error) {
+    console.error('❌ Erro ao vincular clientes à IT:', error);
+    res.status(500).json({ success: false, error: 'Erro ao vincular clientes' });
+  }
+});
+
+// Endpoint para buscar clientes vinculados a uma IT
+app.get('/api/its/:itId/clientes', async (req, res) => {
+  try {
+    const { user, error: authError } = await getUserFromRequest(req);
+    if (authError || !user) {
+      return res.status(401).json({ success: false, error: 'Não autenticado' });
+    }
+
+    const { itId } = req.params;
+
+    const { data: relacionamentos, error } = await supabaseAdmin
+      .from('its_clientes')
+      .select(`
+        cliente_id,
+        clientes:cliente_id (
+          id,
+          nome,
+          filial
+        )
+      `)
+      .eq('it_id', itId);
+
+    if (error) throw error;
+
+    const clientes = (relacionamentos || []).map(r => r.clientes).filter(Boolean);
+
+    res.json({ success: true, clientes });
+  } catch (error) {
+    console.error('❌ Erro ao buscar clientes da IT:', error);
+    res.status(500).json({ success: false, error: 'Erro ao buscar clientes' });
+  }
+});
+
+// Endpoint para buscar ITs relacionadas a um cliente por nome (para uso em coletas)
+app.get('/api/clientes/nome/:nomeCliente/its', async (req, res) => {
+  try {
+    const { user, error: authError } = await getUserFromRequest(req);
+    if (authError || !user) {
+      return res.status(401).json({ success: false, error: 'Não autenticado' });
+    }
+
+    const { nomeCliente } = req.params;
+    const { filial } = req.query; // Filial da coleta (opcional)
+
+    // Decodificar o nome do cliente
+    let nomeClienteDecodificado;
+    try {
+      nomeClienteDecodificado = decodeURIComponent(nomeCliente);
+    } catch (decodeError) {
+      console.error('❌ Erro ao decodificar nome do cliente:', decodeError);
+      nomeClienteDecodificado = nomeCliente; // Usar o nome original se falhar
+    }
+
+    console.log(`🔍 Buscando ITs para cliente: "${nomeClienteDecodificado}"${filial ? ` (filial: ${filial})` : ''}`);
+
+    // Buscar cliente pelo nome
+    // Se houver filial, filtrar também por filial para evitar múltiplos resultados
+    let cliente;
+    let clienteError;
+    
+    let query = supabaseAdmin
+      .from('clientes')
+      .select('id, filial, operacao')
+      .eq('nome', nomeClienteDecodificado)
+      .eq('ativo', true);
+    
+    // Se foi informada uma filial, filtrar também por ela
+    if (filial) {
+      const filialNormalizada = filial.trim().toUpperCase();
+      query = query.eq('filial', filialNormalizada);
+    }
+    
+    // Usar .limit(1).maybeSingle() para pegar apenas um resultado
+    const result = await query.limit(1).maybeSingle();
+    cliente = result.data;
+    clienteError = result.error;
+    
+    // Se não encontrou e não tinha filial, tentar case-insensitive sem filial
+    if (!cliente && !clienteError && !filial) {
+      console.log('⚠️ Cliente não encontrado com busca exata, tentando case-insensitive...');
+      const queryCaseInsensitive = supabaseAdmin
+        .from('clientes')
+        .select('id, filial, operacao')
+        .ilike('nome', nomeClienteDecodificado)
+        .eq('ativo', true)
+        .limit(1)
+        .maybeSingle();
+      
+      const resultCaseInsensitive = await queryCaseInsensitive;
+      cliente = resultCaseInsensitive.data;
+      clienteError = resultCaseInsensitive.error;
+    }
+    
+    // Se ainda não encontrou e havia filial, tentar sem filtrar por filial (mas avisar)
+    if (!cliente && !clienteError && filial) {
+      console.log(`⚠️ Cliente não encontrado com filial ${filial}, tentando sem filtro de filial...`);
+      const querySemFilial = supabaseAdmin
+        .from('clientes')
+        .select('id, filial, operacao')
+        .eq('nome', nomeClienteDecodificado)
+        .eq('ativo', true)
+        .limit(1)
+        .maybeSingle();
+      
+      const resultSemFilial = await querySemFilial;
+      cliente = resultSemFilial.data;
+      clienteError = resultSemFilial.error;
+      
+      if (cliente && cliente.filial !== filial.trim().toUpperCase()) {
+        console.log(`⚠️ Cliente encontrado mas com filial diferente: ${cliente.filial} vs ${filial}`);
+      }
+    }
+
+    if (clienteError) {
+      console.error('❌ Erro ao buscar cliente:', clienteError);
+      throw clienteError;
+    }
+
+    if (!cliente) {
+      console.log(`⚠️ Cliente "${nomeClienteDecodificado}" não encontrado ou inativo`);
+      return res.json({ success: true, its: [] });
+    }
+
+    console.log(`✅ Cliente encontrado: ID=${cliente.id}, Filial=${cliente.filial}, Operação=${cliente.operacao || 'N/A'}`);
+
+    // Se foi informada uma filial, verificar se corresponde à filial do cliente
+    // (já filtramos por filial na busca, mas verificamos novamente como segurança)
+    if (filial && cliente.filial) {
+      const filialColeta = filial.trim().toUpperCase();
+      const filialCliente = (cliente.filial || '').trim().toUpperCase();
+      if (filialCliente && filialColeta !== filialCliente) {
+        console.log(`⚠️ Filial da coleta (${filialColeta}) não corresponde à filial do cliente (${filialCliente})`);
+        return res.json({ success: true, its: [] });
+      }
+    }
+
+    // Buscar ITs relacionadas
+    // Primeiro, buscar os IDs das ITs relacionadas
+    const { data: relacionamentos, error: relacionamentosError } = await supabaseAdmin
+      .from('its_clientes')
+      .select('it_id')
+      .eq('cliente_id', cliente.id);
+
+    if (relacionamentosError) {
+      console.error('❌ Erro ao buscar relacionamentos ITs-Clientes:', relacionamentosError);
+      throw relacionamentosError;
+    }
+
+    console.log(`📋 Encontrados ${relacionamentos?.length || 0} relacionamentos IT-Cliente`);
+
+    if (!relacionamentos || relacionamentos.length === 0) {
+      return res.json({ success: true, its: [] });
+    }
+
+    // Extrair IDs das ITs
+    const itIds = relacionamentos.map(r => r.it_id).filter(Boolean);
+
+    if (itIds.length === 0) {
+      return res.json({ success: true, its: [] });
+    }
+
+    // Buscar as ITs pelos IDs
+    // Primeiro tentar buscar com operacao, se falhar, buscar sem operacao
+    let itsData;
+    let itsError;
+    
+    // Tentar buscar com operacao primeiro
+    const queryComOperacao = supabaseAdmin
+      .from('its_documentos')
+      .select('id, nome, codigo_it, versao, versao_atual, area, operacao, url, nome_arquivo, created_at')
+      .in('id', itIds);
+    
+    const resultComOperacao = await queryComOperacao;
+    itsData = resultComOperacao.data;
+    itsError = resultComOperacao.error;
+    
+    // Se der erro relacionado à coluna operacao, tentar sem ela
+    if (itsError && (itsError.message?.includes('operacao') || itsError.message?.includes('column') || itsError.code === 'PGRST116')) {
+      console.log('⚠️ Coluna operacao não encontrada, buscando sem ela...');
+      const querySemOperacao = supabaseAdmin
+        .from('its_documentos')
+        .select('id, nome, codigo_it, versao, versao_atual, area, url, nome_arquivo, created_at')
+        .in('id', itIds);
+      
+      const resultSemOperacao = await querySemOperacao;
+      itsData = resultSemOperacao.data;
+      itsError = resultSemOperacao.error;
+      
+      // Adicionar operacao como null para todas as ITs se a coluna não existir
+      if (itsData && !itsError) {
+        itsData = itsData.map(it => ({ ...it, operacao: null }));
+      }
+    }
+
+    if (itsError) {
+      console.error('❌ Erro ao buscar ITs:', itsError);
+      throw itsError;
+    }
+
+    let its = (itsData || [])
+      .filter(Boolean)
+      .filter(it => it.versao_atual === true); // Apenas versões atuais
+
+    console.log(`📄 ITs com versão atual: ${its.length}`);
+
+    // Filtrar por operação se o cliente tiver uma operação específica
+    // A IT deve ter a mesma operação do cliente OU não ter operação específica (NULL)
+    if (cliente.operacao) {
+      const antesFiltro = its.length;
+      its = its.filter(it => 
+        !it.operacao || // IT sem operação específica (válida para todas)
+        it.operacao === cliente.operacao // IT com a mesma operação do cliente
+      );
+      console.log(`🔧 Filtro por operação "${cliente.operacao}": ${antesFiltro} → ${its.length} ITs`);
+    }
+
+    // Ordenar por data de criação (mais recentes primeiro)
+    its.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+    console.log(`✅ Retornando ${its.length} ITs para o cliente`);
+
+    res.json({ success: true, its });
+  } catch (error) {
+    console.error('❌ Erro ao buscar ITs do cliente por nome:', error);
+    console.error('❌ Stack trace:', error.stack);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Erro ao buscar ITs',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+
+// ========== ROTA 404 (deve ser a última rota) ==========
+app.use('*', (req, res) => {
+  // Ignorar requisições de favicon no 404
+  if (req.originalUrl === '/favicon.ico') {
+    return res.status(204).end();
+  }
+  res.status(404).json({ 
+    error: 'Rota não encontrada',
+    path: req.originalUrl
+  });
 });
 
 // Graceful shutdown
