@@ -3436,7 +3436,7 @@
         }
 
         function renderizarPermissoesColetas(permissoes) {
-            const etapasColetas = ['comercial', 'price', 'cs', 'contratacao', 'gr', 'documentacao', 'controladoria', 'contas_pagar', 'contas_receber', 'monitoramento'];
+            const etapasColetas = ['comercial', 'price', 'cs', 'contratacao', 'gr', 'documentacao', 'controladoria', 'contas_pagar', 'contas_receber', 'monitoramento', 'servicos_adicionais', 'finalizar_operacao'];
             const etapaNomes = {
                 'comercial': 'Comercial',
                 'price': 'Price',
@@ -3447,7 +3447,9 @@
                 'controladoria': 'Controladoria',
                 'contas_pagar': 'Contas a Pagar',
                 'contas_receber': 'Contas a Receber',
-                'monitoramento': 'Monitoramento'
+                'monitoramento': 'Monitoramento',
+                'servicos_adicionais': 'Serviços Adicionais',
+                'finalizar_operacao': 'Finalizar Operação'
             };
 
             const container = document.getElementById('containerPermissoesColetas');
@@ -3460,13 +3462,23 @@
                     }
                     rows.push('<div class="row mb-2">');
                 }
+                
+                // Nota especial para finalizar_operacao (acesso liberado para todos)
+                const isFinalizarOperacao = etapa === 'finalizar_operacao';
+                const notaEspecial = isFinalizarOperacao ? 
+                    '<small class="text-muted d-block mt-1"><i class="fas fa-info-circle"></i> Acesso liberado para todos os usuários</small>' : '';
+                
                 rows.push(`
                     <div class="col-md-4">
                         <div class="form-check form-switch">
                             <input class="form-check-input" type="checkbox" id="permColeta${etapa}" 
                                 ${permissoes.some(p => p.etapa_id === etapa) ? 'checked' : ''}
+                                ${isFinalizarOperacao ? 'disabled' : ''}
                                 onchange="salvarPermissaoColeta('${etapa}', this.checked)">
-                            <label class="form-check-label" for="permColeta${etapa}">${etapaNomes[etapa] || etapa}</label>
+                            <label class="form-check-label" for="permColeta${etapa}">
+                                ${etapaNomes[etapa] || etapa}
+                                ${notaEspecial}
+                            </label>
                         </div>
                     </div>
                 `);

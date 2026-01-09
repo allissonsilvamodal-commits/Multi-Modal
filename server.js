@@ -10929,8 +10929,26 @@ app.put('/api/coletas/:id', requireAuth, async (req, res) => {
 
 app.delete('/api/coletas/:id', requireAuth, async (req, res) => {
   try {
-    if (req.session.usuario !== 'admin') {
-      return res.status(403).json({ error: 'Apenas administradores podem excluir coletas' });
+    // 🔐 Verificar se o usuário é admin
+    const { user, error: authError } = await getUserFromRequest(req);
+    if (authError || !user) {
+      return res.status(401).json({ error: 'Não autenticado' });
+    }
+    
+    // Verificar se é admin
+    const { data: userProfile, error: profileError } = await supabaseAdmin
+      .from('user_profiles')
+      .select('role')
+      .eq('id', user.id)
+      .maybeSingle();
+    
+    if (profileError) {
+      console.error('❌ Erro ao buscar perfil:', profileError);
+      return res.status(403).json({ error: 'Erro ao verificar permissões' });
+    }
+    
+    if (!userProfile || userProfile.role !== 'admin') {
+      return res.status(403).json({ error: 'Apenas administradores podem excluir oportunidades' });
     }
 
     const coletaId = req.params.id;
@@ -11192,10 +11210,15 @@ app.post('/api/anexos', requireAuth, uploadDocumentos.single('file'), async (req
       return res.status(400).json({ error: 'Nenhum arquivo enviado' });
     }
 
-    const { coleta_id, usuario } = req.body;
+    const { coleta_id, usuario, categoria, titulo_contrato } = req.body;
     
     if (!coleta_id) {
       return res.status(400).json({ error: 'ID da coleta é obrigatório' });
+    }
+    
+    // Validar título do contrato se categoria for contratos
+    if (categoria === 'contratos' && !titulo_contrato) {
+      return res.status(400).json({ error: 'Título do contrato é obrigatório para documentos do tipo Contrato' });
     }
 
     console.log('📎 Upload de anexo:', req.file.originalname);
@@ -11230,16 +11253,28 @@ app.post('/api/anexos', requireAuth, uploadDocumentos.single('file'), async (req
 
       const storageUrl = buildStorageUrl(ANEXOS_BUCKET, storagePath);
 
+      const insertData = {
+        id: generateUUID(),
+        coleta_id: coleta_id,
+        nome_arquivo: req.file.originalname,
+        tipo_arquivo: req.file.mimetype,
+        tamanho: req.file.size,
+        url: storageUrl
+      };
+      
+      // Adicionar categoria se fornecida
+      if (categoria) {
+        insertData.categoria = categoria;
+      }
+      
+      // Adicionar título do contrato se fornecida e categoria for contratos
+      if (categoria === 'contratos' && titulo_contrato) {
+        insertData.titulo_contrato = titulo_contrato;
+      }
+      
       const { data, error } = await supabase
         .from('anexos')
-        .insert([{
-          id: generateUUID(),
-          coleta_id: coleta_id,
-          nome_arquivo: req.file.originalname,
-          tipo_arquivo: req.file.mimetype,
-          tamanho: req.file.size,
-          url: storageUrl
-        }])
+        .insert([insertData])
         .select();
 
       if (error) {
@@ -11530,6 +11565,145 @@ app.get('/api/anexos/coleta/:coleta_id', requireAuth, async (req, res) => {
 // Excluir anexo
 app.delete('/api/anexos/:id', requireAuth, async (req, res) => {
   try {
+    // 🔐 Verificar se o usuário é admin
+    // Primeiro, tentar verificar via sessão (mais rápido e confiável)
+    let isAdmin = false;
+    let userId = null;
+    let userEmail = null;
+    
+    // Verificar sessão do Express
+    if (req.session) {
+      if (req.session.isAdmin === true) {
+        console.log('✅ Admin verificado via sessão (isAdmin)');
+        isAdmin = true;
+      } else if (req.session.usuario) {
+        // Tentar buscar perfil do usuário da sessão
+        userId = req.session.usuario;
+        console.log('🔍 Verificando admin via sessão.usuario:', userId);
+        
+        try {
+          // Buscar na tabela usuarios (Supabase)
+          const { data: usuarioData, error: usuarioError } = await supabaseAdmin
+            .from('usuarios')
+            .select('is_admin, id, email')
+            .eq('id', userId)
+            .maybeSingle();
+          
+          if (!usuarioError && usuarioData) {
+            isAdmin = usuarioData.is_admin === true;
+            userEmail = usuarioData.email;
+            console.log('📊 Admin verificado via tabela usuarios:', { isAdmin, is_admin: usuarioData.is_admin });
+          } else {
+            // Tentar buscar em user_profiles
+            const { data: userProfile, error: profileError } = await supabaseAdmin
+              .from('user_profiles')
+              .select('role')
+              .eq('id', userId)
+              .maybeSingle();
+            
+            if (!profileError && userProfile) {
+              isAdmin = userProfile.role === 'admin';
+              console.log('📊 Admin verificado via user_profiles:', { isAdmin, role: userProfile.role });
+            }
+          }
+        } catch (err) {
+          console.warn('⚠️ Erro ao verificar admin via sessão:', err.message);
+        }
+      }
+    }
+    
+    // Se ainda não confirmou, verificar via getUserFromRequest (token Supabase)
+    if (!isAdmin) {
+      console.log('🔍 Verificando admin via getUserFromRequest...');
+      const { user, error: authError } = await getUserFromRequest(req);
+      
+      if (authError || !user) {
+        console.error('❌ Erro de autenticação:', authError);
+        return res.status(401).json({ error: 'Não autenticado' });
+      }
+      
+      userId = user.id;
+      userEmail = user.email;
+      console.log('👤 Usuário encontrado:', { id: userId, email: userEmail });
+      
+      // Verificar se é admin
+      // Tentar buscar pelo ID do usuário
+      let userProfile = null;
+      let profileError = null;
+      
+      try {
+        const { data, error } = await supabaseAdmin
+          .from('user_profiles')
+          .select('role')
+          .eq('id', userId)
+          .maybeSingle();
+        
+        userProfile = data;
+        profileError = error;
+        
+        // Se não encontrou pelo ID, tentar buscar pelo email
+        if (!userProfile && userEmail) {
+          console.log('🔍 Perfil não encontrado pelo ID, tentando buscar pelo email:', userEmail);
+          const { data: profileByEmail, error: emailError } = await supabaseAdmin
+            .from('user_profiles')
+            .select('role')
+            .eq('email', userEmail)
+            .maybeSingle();
+          
+          if (profileByEmail) {
+            userProfile = profileByEmail;
+            profileError = null;
+            console.log('✅ Perfil encontrado pelo email');
+          } else if (emailError && emailError.code !== 'PGRST116') {
+            profileError = emailError;
+          }
+        }
+        
+        // Verificar se é admin
+        if (userProfile) {
+          isAdmin = userProfile.role === 'admin';
+          console.log('📊 Verificação de admin:', { 
+            role: userProfile.role, 
+            isAdmin 
+          });
+        } else if (user.user_metadata?.role === 'admin' || user.isAdmin === true) {
+          isAdmin = true;
+          console.log('✅ Admin verificado via user_metadata ou isAdmin');
+        }
+        
+      } catch (err) {
+        console.error('❌ Erro ao buscar perfil do usuário:', err);
+        profileError = err;
+      }
+      
+      if (!isAdmin) {
+        // Se ainda não confirmou que é admin, retornar erro
+        if (profileError && profileError.code !== 'PGRST116') {
+          console.error('❌ Erro ao verificar permissões:', profileError);
+          return res.status(403).json({ 
+            error: 'Erro ao verificar permissões',
+            details: profileError.message 
+          });
+        }
+        
+        if (!userProfile) {
+          console.warn('⚠️ Perfil do usuário não encontrado:', { userId, userEmail });
+          return res.status(403).json({ error: 'Perfil do usuário não encontrado. Verifique se você tem permissões de administrador.' });
+        }
+        
+        console.warn('⚠️ Usuário não é admin:', { 
+          userId, 
+          userEmail,
+          role: userProfile.role
+        });
+        return res.status(403).json({ error: 'Apenas administradores podem excluir anexos' });
+      }
+    }
+    
+    if (!isAdmin) {
+      return res.status(403).json({ error: 'Apenas administradores podem excluir anexos' });
+    }
+    
     const { id } = req.params;
     
     console.log('🗑️ Excluindo anexo:', id);
@@ -16095,30 +16269,190 @@ app.post('/api/motoristas/reprovar', async (req, res) => {
       usuarioNome
     });
 
-    // Atualizar motorista com reprovação usando service key (ignora RLS)
-    const updateData = {
-      reprovado: true,
-      motivo_reprovacao: motivo,
+    // Buscar motorista atual para obter histórico existente
+    const { data: motoristaAtual, error: errorBuscar } = await supabaseAdmin
+      .from('motoristas')
+      .select('id, quantidade_reprovacoes, historico_reprovacoes')
+      .eq('id', motoristaId)
+      .single();
+
+    if (errorBuscar) {
+      console.error('❌ Erro ao buscar motorista:', errorBuscar);
+      return res.status(500).json({
+        success: false,
+        error: `Erro ao buscar motorista: ${errorBuscar.message}`
+      });
+    }
+
+    // Preparar histórico de reprovações
+    // Garantir que historico_reprovacoes seja um array válido
+    let historicoAtual = [];
+    if (motoristaAtual?.historico_reprovacoes) {
+      if (Array.isArray(motoristaAtual.historico_reprovacoes)) {
+        historicoAtual = motoristaAtual.historico_reprovacoes;
+      } else if (typeof motoristaAtual.historico_reprovacoes === 'string') {
+        try {
+          const parsed = JSON.parse(motoristaAtual.historico_reprovacoes);
+          historicoAtual = Array.isArray(parsed) ? parsed : [];
+        } catch (e) {
+          console.warn('⚠️ Erro ao parsear historico_reprovacoes:', e);
+          historicoAtual = [];
+        }
+      }
+    } else {
+      // Se historico_reprovacoes é null ou undefined, inicializar como array vazio
+      historicoAtual = [];
+    }
+    
+    // Garantir que historicoAtual seja sempre um array
+    if (!Array.isArray(historicoAtual)) {
+      console.warn('⚠️ historicoAtual não é um array, convertendo...', { tipo: typeof historicoAtual, valor: historicoAtual });
+      historicoAtual = [];
+    }
+    
+    const quantidadeAtual = parseInt(motoristaAtual?.quantidade_reprovacoes) || 0;
+    
+    console.log('📊 Estado atual do motorista antes da reprovação:', {
+      id: motoristaAtual?.id,
+      nome: motoristaAtual?.nome,
+      reprovado_atual: motoristaAtual?.reprovado,
+      quantidade_atual: quantidadeAtual,
+      historico_length: historicoAtual.length,
+      historico_tipo: typeof historicoAtual,
+      historico_isArray: Array.isArray(historicoAtual)
+    });
+    
+    // Adicionar nova reprovação ao histórico
+    const novaReprovacao = {
+      coleta_id: coletaId,
+      motivo: motivo,
       reprovado_por: usuarioNome || 'Sistema',
-      data_reprovacao: new Date().toISOString(),
-      coleta_id_reprovacao: coletaId
+      data_reprovacao: new Date().toISOString()
     };
+    
+    const novoHistorico = [...historicoAtual, novaReprovacao];
+    const novaQuantidade = quantidadeAtual + 1;
+    
+    console.log('📊 Histórico de reprovações:', {
+      historicoAtual_length: historicoAtual.length,
+      novaQuantidade: novaQuantidade,
+      novoHistorico_length: novoHistorico.length
+    });
+
+    // Atualizar motorista com reprovação usando service key (ignora RLS)
+    // Garantir que historico_reprovacoes seja um array JSON válido para JSONB
+    // IMPORTANTE: Garantir que reprovado seja boolean true, não string
+    const updateData = {
+      reprovado: true, // Boolean true, não string
+      motivo_reprovacao: motivo, // Mantém o último motivo para compatibilidade
+      reprovado_por: usuarioNome || 'Sistema', // Mantém o último reprovador para compatibilidade
+      data_reprovacao: new Date().toISOString(), // Mantém a última data para compatibilidade
+      coleta_id_reprovacao: coletaId, // Mantém a última coleta para compatibilidade
+      quantidade_reprovacoes: novaQuantidade, // Novo campo: contador de reprovações
+      historico_reprovacoes: Array.isArray(novoHistorico) ? novoHistorico : [] // Garantir que seja array
+    };
+    
+    // Validar que o histórico é um array válido antes de salvar
+    if (!Array.isArray(updateData.historico_reprovacoes)) {
+      console.error('❌ Erro: historico_reprovacoes não é um array válido:', updateData.historico_reprovacoes);
+      updateData.historico_reprovacoes = [];
+    }
+    
+    // Garantir que reprovado seja boolean true
+    if (updateData.reprovado !== true) {
+      console.warn('⚠️ Ajustando reprovado para boolean true');
+      updateData.reprovado = true;
+    }
+
+    console.log('📝 Dados a serem atualizados:', JSON.stringify(updateData, null, 2));
+    console.log('📝 Tipo de historico_reprovacoes:', typeof updateData.historico_reprovacoes, Array.isArray(updateData.historico_reprovacoes));
 
     const { data: dataMotorista, error: errorMotorista } = await supabaseAdmin
       .from('motoristas')
       .update(updateData)
       .eq('id', motoristaId)
-      .select();
+      .select('*'); // Selecionar todos os campos para verificar se foi atualizado
 
     if (errorMotorista) {
       console.error('❌ Erro ao atualizar motorista:', errorMotorista);
+      console.error('❌ Detalhes do erro:', JSON.stringify(errorMotorista, null, 2));
       return res.status(500).json({
         success: false,
-        error: `Erro ao atualizar motorista: ${errorMotorista.message}`
+        error: `Erro ao atualizar motorista: ${errorMotorista.message}`,
+        details: errorMotorista
       });
     }
 
-    console.log('✅ Motorista atualizado:', dataMotorista);
+    if (!dataMotorista || dataMotorista.length === 0) {
+      console.error('❌ Nenhum registro atualizado - motorista não encontrado ou sem permissão');
+      return res.status(404).json({
+        success: false,
+        error: 'Motorista não encontrado ou não foi possível atualizar'
+      });
+    }
+
+    // Verificar se os dados foram realmente salvos
+    const motoristaAtualizado = dataMotorista[0];
+    const reprovadoSalvo = motoristaAtualizado?.reprovado;
+    const quantidadeSalva = motoristaAtualizado?.quantidade_reprovacoes;
+    const historicoSalvo = motoristaAtualizado?.historico_reprovacoes;
+    
+    console.log('✅ Motorista atualizado com sucesso:', {
+      id: motoristaAtualizado?.id,
+      nome: motoristaAtualizado?.nome,
+      reprovado: reprovadoSalvo,
+      reprovado_tipo: typeof reprovadoSalvo,
+      quantidade_reprovacoes: quantidadeSalva,
+      historico_length: Array.isArray(historicoSalvo) ? historicoSalvo.length : 'N/A',
+      historico_tipo: typeof historicoSalvo,
+      motivo_reprovacao: motoristaAtualizado?.motivo_reprovacao
+    });
+    
+    // Verificar se a atualização foi bem-sucedida
+    if (reprovadoSalvo !== true && reprovadoSalvo !== 'true' && reprovadoSalvo !== 1) {
+      console.warn('⚠️ ATENÇÃO: Campo reprovado não foi salvo como true:', { 
+        valor: reprovadoSalvo, 
+        tipo: typeof reprovadoSalvo 
+      });
+      
+      // Tentar atualizar novamente apenas o campo reprovado
+      console.log('🔄 Tentando atualizar campo reprovado novamente...');
+      const { error: retryError } = await supabaseAdmin
+        .from('motoristas')
+        .update({ reprovado: true })
+        .eq('id', motoristaId);
+      
+      if (retryError) {
+        console.error('❌ Erro ao tentar atualizar reprovado novamente:', retryError);
+      } else {
+        console.log('✅ Campo reprovado atualizado com sucesso na segunda tentativa');
+      }
+    }
+    if (quantidadeSalva !== novaQuantidade) {
+      console.warn('⚠️ ATENÇÃO: quantidade_reprovacoes não corresponde:', { esperado: novaQuantidade, salvo: quantidadeSalva });
+    }
+    if (!Array.isArray(historicoSalvo) || historicoSalvo.length !== novoHistorico.length) {
+      console.warn('⚠️ ATENÇÃO: historico_reprovacoes não foi salvo corretamente:', { 
+        esperado_length: novoHistorico.length, 
+        salvo_length: Array.isArray(historicoSalvo) ? historicoSalvo.length : 'N/A',
+        tipo: typeof historicoSalvo
+      });
+    }
+    
+    // Buscar novamente para confirmar que foi salvo
+    const { data: motoristaVerificado, error: errorVerificacao } = await supabaseAdmin
+      .from('motoristas')
+      .select('id, reprovado, quantidade_reprovacoes')
+      .eq('id', motoristaId)
+      .single();
+    
+    if (!errorVerificacao && motoristaVerificado) {
+      console.log('✅ Verificação final do motorista:', {
+        reprovado: motoristaVerificado.reprovado,
+        reprovado_tipo: typeof motoristaVerificado.reprovado,
+        quantidade_reprovacoes: motoristaVerificado.quantidade_reprovacoes
+      });
+    }
 
     // NÃO remover vínculo do motorista - manter vinculado mas marcado como reprovado
     // O usuário pode trocar manualmente se desejar
