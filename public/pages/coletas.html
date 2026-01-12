@@ -6380,8 +6380,8 @@
                     };
                 }
 
-                console.warn('⚠️ Sessão não encontrada ao obter headers');
-                // Tentar fallback com localStorage
+                // Não há sessão Supabase ativa - isso é normal se a autenticação for via cookie/sessão do servidor
+                // Tentar fallback com localStorage (silenciosamente)
                 const userData = localStorage.getItem('loggedInUser');
                 if (userData) {
                     try {
@@ -6392,9 +6392,12 @@
                             };
                         }
                     } catch (e) {
-                        console.warn('⚠️ Erro ao parsear userData:', e);
+                        // Erro ao parsear, continuar silenciosamente
                     }
                 }
+                
+                // Retornar objeto vazio - o servidor usará autenticação via cookie/sessão (req.session)
+                // Isso não é um erro, apenas significa que não há token Supabase disponível
                 return {};
             } catch (error) {
                 console.error('❌ Erro ao construir headers de autenticação:', error);
@@ -6461,6 +6464,8 @@
                 // Re-renderizar grid
                 console.log('🔄 Alternando para Grid');
                 await renderColetasWrapper();
+                // Iniciar atualização de tempo parado
+                iniciarAtualizacaoTempoParado();
             } else {
                 // Mostrar kanban e ocultar grid
                 gridContainer.style.display = 'none';
@@ -6469,6 +6474,9 @@
                 // Atualizar estilos dos botões
                 btnKanban.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
                 btnKanban.style.color = 'white';
+                
+                // Iniciar atualização de tempo parado
+                iniciarAtualizacaoTempoParado();
                 btnGrid.style.background = 'transparent';
                 btnGrid.style.color = '#667eea';
                 
@@ -6562,6 +6570,9 @@
             setTimeout(() => {
                 configurarNavegacaoKanban();
             }, 200);
+            
+            // Iniciar atualização de tempo parado
+            iniciarAtualizacaoTempoParado();
         }
         
         // Função para configurar navegação do Kanban
@@ -7010,11 +7021,106 @@
             });
         }
 
+        // Função para calcular tempo parado na etapa atual
+        function calcularTempoParado(coleta) {
+            if (!coleta.data_entrada_etapa && !coleta.updated_at) {
+                return null;
+            }
+            
+            // Usar data_entrada_etapa se disponível, senão usar updated_at como fallback
+            const dataEntrada = coleta.data_entrada_etapa 
+                ? new Date(coleta.data_entrada_etapa) 
+                : (coleta.updated_at ? new Date(coleta.updated_at) : null);
+            
+            if (!dataEntrada || isNaN(dataEntrada.getTime())) {
+                return null;
+            }
+            
+            const agora = new Date();
+            const diffMs = agora - dataEntrada;
+            const diffSegundos = Math.floor(diffMs / 1000);
+            const diffMinutos = Math.floor(diffSegundos / 60);
+            const diffHoras = Math.floor(diffMinutos / 60);
+            const diffDias = Math.floor(diffHoras / 24);
+            
+            if (diffDias > 0) {
+                return { valor: diffDias, unidade: 'dia', plural: diffDias > 1 ? 's' : '' };
+            } else if (diffHoras > 0) {
+                return { valor: diffHoras, unidade: 'hora', plural: diffHoras > 1 ? 's' : '' };
+            } else if (diffMinutos > 0) {
+                return { valor: diffMinutos, unidade: 'min', plural: '' };
+            } else {
+                return { valor: diffSegundos, unidade: 'seg', plural: '' };
+            }
+        }
+        
+        // Função para formatar tempo parado com cor baseada no tempo
+        function formatarTempoParado(tempoInfo, isDiaria, isUrgente) {
+            if (!tempoInfo) return '';
+            
+            const { valor, unidade, plural } = tempoInfo;
+            let cor = '#6c757d'; // Cinza padrão
+            let bgColor = 'rgba(108, 117, 125, 0.1)';
+            
+            // Cores baseadas no tempo parado
+            if (unidade === 'dia') {
+                if (valor >= 7) {
+                    cor = '#dc3545'; // Vermelho para mais de 7 dias
+                    bgColor = 'rgba(220, 53, 69, 0.15)';
+                } else if (valor >= 3) {
+                    cor = '#ffc107'; // Amarelo para 3-6 dias
+                    bgColor = 'rgba(255, 193, 7, 0.15)';
+                } else {
+                    cor = '#28a745'; // Verde para menos de 3 dias
+                    bgColor = 'rgba(40, 167, 69, 0.15)';
+                }
+            } else if (unidade === 'hora') {
+                if (valor >= 24) {
+                    cor = '#ffc107'; // Amarelo para mais de 24 horas
+                    bgColor = 'rgba(255, 193, 7, 0.15)';
+                } else {
+                    cor = '#28a745'; // Verde para menos de 24 horas
+                    bgColor = 'rgba(40, 167, 69, 0.15)';
+                }
+            } else {
+                cor = '#28a745'; // Verde para minutos/segundos
+                bgColor = 'rgba(40, 167, 69, 0.15)';
+            }
+            
+            // Ajustar cores se for diária ou urgente (usar branco)
+            if (isDiaria || isUrgente) {
+                cor = 'rgba(255, 255, 255, 0.9)';
+                bgColor = 'rgba(255, 255, 255, 0.2)';
+            }
+            
+            return `
+                <div class="tempo-parado-badge" style="
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 0.4rem;
+                    padding: 0.35rem 0.7rem;
+                    border-radius: 8px;
+                    background: ${bgColor};
+                    color: ${cor};
+                    font-size: 0.75rem;
+                    font-weight: 600;
+                    margin-top: 0.4rem;
+                ">
+                    <i class="fas fa-clock" style="font-size: 0.7rem;"></i>
+                    <span>${valor} ${unidade}${plural}</span>
+                </div>
+            `;
+        }
+
         function createKanbanCard(coleta) {
             const podeMover = temPermissaoEtapa(coleta.etapa_atual);
             const statusClass = coleta.status || 'pendente';
             const isDiaria = coleta.diaria === true || coleta.diaria === 'true' || coleta.diaria === 1;
             const isUrgente = coleta.prioridade === 'urgente';
+            
+            // Calcular tempo parado na etapa atual
+            const tempoParado = calcularTempoParado(coleta);
+            const tempoParadoHTML = formatarTempoParado(tempoParado, isDiaria, isUrgente);
             
             // Estilo do card baseado se é diária ou urgente
             // Prioridade: Se for diária E urgente, fica azul (diária tem prioridade)
@@ -7082,6 +7188,11 @@
                             <div class="kanban-card-info" style="background: ${isUrgente || isDiaria ? 'rgba(255, 255, 255, 0.2);' : 'rgba(253, 126, 20, 0.1);'}; padding: 0.4rem 0.6rem; border-radius: 6px; margin-top: 0.5rem; border-left: 3px solid ${isUrgente || isDiaria ? 'white;' : '#fd7e14;'}">
                                 <i class="fas fa-file-contract" style="color: ${isUrgente || isDiaria ? 'white;' : '#fd7e14;'}"></i> 
                                 <span style="color: ${isUrgente || isDiaria ? 'white;' : '#fd7e14;'}; font-weight: 600; font-size: 0.85rem; word-break: break-word;">${escapeHtml(coleta.titulo_contrato)}</span>
+                            </div>
+                        ` : ''}
+                        ${tempoParadoHTML ? `
+                            <div style="margin-top: 0.5rem; display: flex; align-items: center;">
+                                ${tempoParadoHTML}
                             </div>
                         ` : ''}
                     </div>
@@ -8045,15 +8156,27 @@
                 
                 showNotification(`${files.length} arquivo(s) enviado(s) com sucesso na categoria ${obterNomeCategoria(categoria)}!`, 'success');
                 
-                // Recarregar anexos
+                // Recarregar anexos (forçando refresh para garantir que busca os novos)
+                // Invalidar cache antes de buscar
                 invalidarCacheAnexos(coletaId);
-                const novosAnexos = await carregarAnexos(coletaId);
+                
+                // Aguardar um pouco para garantir que o banco foi atualizado
+                await new Promise(resolve => setTimeout(resolve, 300));
+                
+                // Buscar anexos novamente (forçando refresh)
+                const novosAnexos = await carregarAnexos(coletaId, true);
+                
+                console.log('🔄 Anexos recarregados após upload:', novosAnexos.length, 'arquivo(s)');
+                console.log('📋 Lista de anexos:', novosAnexos.map(a => ({ id: a.id, nome: a.nome_arquivo, categoria: a.categoria })));
                 
                 // Atualizar tab de anexos
                 const anexosTabContent = document.getElementById('tab-anexos');
                 if (anexosTabContent) {
                     const temPermissao = temPermissaoEtapa(coletasData.find(c => c.id === coletaId)?.etapa_atual);
-                    anexosTabContent.innerHTML = renderTabAnexos(novosAnexos, coletaId, temPermissao);
+                    const novaRenderizacao = renderTabAnexos(novosAnexos, coletaId, temPermissao);
+                    anexosTabContent.innerHTML = novaRenderizacao;
+                    
+                    console.log('✅ Tab de anexos atualizada com', novosAnexos.length, 'arquivo(s)');
                     
                     // Reconfigurar event listener do input file após renderizar
                     const fileInput = document.getElementById(`drawer-upload-anexo-${coletaId}`);
@@ -8070,6 +8193,8 @@
                             }
                         });
                     }
+                } else {
+                    console.warn('⚠️ Tab de anexos não encontrada para atualizar');
                 }
                 
                 // Atualizar contador na tab
@@ -11551,10 +11676,15 @@
         const anexosCache = new Map();
         const anexosCarregando = new Set();
         
-        async function carregarAnexos(coletaId) {
+        async function carregarAnexos(coletaId, forceRefresh = false) {
             try {
-                // Verificar cache primeiro
-                if (anexosCache.has(coletaId)) {
+                // Se forceRefresh for true, invalidar cache e forçar nova busca
+                if (forceRefresh) {
+                    invalidarCacheAnexos(coletaId);
+                }
+                
+                // Verificar cache primeiro (apenas se não for forçar refresh)
+                if (!forceRefresh && anexosCache.has(coletaId)) {
                     return anexosCache.get(coletaId);
                 }
                 
@@ -11574,6 +11704,8 @@
                 // Marcar como carregando
                 anexosCarregando.add(coletaId);
                 
+                console.log('📥 Carregando anexos para coleta:', coletaId, forceRefresh ? '(forçando refresh)' : '');
+                
                 const headers = await getSupabaseAuthHeaders();
                 
                 // Se não houver autenticação, retornar array vazio silenciosamente
@@ -11588,19 +11720,28 @@
                     headers
                 });
 
+                // Ler a resposta uma única vez
+                let result;
+                try {
+                    result = await response.json();
+                } catch (parseError) {
+                    console.error('❌ Erro ao parsear resposta JSON:', parseError);
+                    anexosCarregando.delete(coletaId);
+                    return [];
+                }
+
                 if (!response.ok) {
                     if (response.status === 401) {
                         console.warn('⚠️ Erro de autenticação ao carregar anexos');
                         anexosCarregando.delete(coletaId);
                         return [];
                     }
-                    const result = await response.json().catch(() => ({}));
-                    throw new Error(result.error || `Erro ${response.status} ao carregar anexos.`);
+                    throw new Error(result.error || result.details || `Erro ${response.status} ao carregar anexos.`);
                 }
-                
-                const result = await response.json();
 
                 const anexos = result?.anexos || [];
+                
+                console.log('✅ Anexos carregados:', anexos.length, 'arquivo(s)');
                 
                 // Armazenar no cache
                 anexosCache.set(coletaId, anexos);
@@ -11649,17 +11790,35 @@
                 }
 
                 const headers = await getSupabaseAuthHeaders();
+                // NÃO enviar Content-Type ao usar FormData, o browser define automaticamente
+                // Remover Content-Type dos headers se existir
+                const headersSemContentType = { ...headers };
+                delete headersSemContentType['Content-Type'];
+                
                 const response = await fetch('/api/anexos', {
                     method: 'POST',
                     body: formData,
                     credentials: 'include',
-                    headers
+                    headers: headersSemContentType
                 });
 
-                const result = await response.json();
+                let result;
+                try {
+                    result = await response.json();
+                } catch (parseError) {
+                    console.error('❌ Erro ao parsear resposta JSON:', parseError);
+                    const text = await response.text();
+                    console.error('❌ Resposta do servidor:', text);
+                    throw new Error('Erro ao processar resposta do servidor: ' + text);
+                }
 
                 if (!response.ok) {
-                    throw new Error(result.error || 'Erro ao enviar arquivo.');
+                    console.error('❌ Erro na resposta do servidor:', {
+                        status: response.status,
+                        statusText: response.statusText,
+                        error: result
+                    });
+                    throw new Error(result.error || result.details || 'Erro ao enviar arquivo.');
                 }
 
                 // Invalidar cache de anexos para esta coleta
@@ -12071,62 +12230,47 @@
         // Função para salvar no histórico (salva em ambas as tabelas)
         async function salvarNoHistorico(coletaId, acao, detalhes = '') {
             try {
-                // Verificar se o Supabase está inicializado
-                if (!supabaseClient) {
-                    console.error('❌ Supabase não inicializado');
-                    return;
-                }
-                
-                const userData = JSON.parse(localStorage.getItem('loggedInUser'));
+                const userData = JSON.parse(localStorage.getItem('loggedInUser')) || {};
                 const usuarioNome = currentUser?.nome || currentUser?.username || userData?.email || 'Sistema';
                 const usuarioId = currentUser?.id || userData?.id || null;
                 
-                // Se detalhes é um array de mudanças, formatar para string
-                let detalhesFormatado = '';
-                if (Array.isArray(detalhes) && detalhes.length > 0) {
-                    detalhesFormatado = detalhes.map(m => 
-                        `• ${m.campo}: "${m.valorAntigo}" → "${m.valorNovo}"`
-                    ).join('\n');
-                } else {
-                    detalhesFormatado = detalhes;
-                }
+                console.log('📝 Salvando histórico via API:', { coletaId, acao, usuarioNome });
                 
-                // Salvar na tabela historico_coletas (para compatibilidade)
-                const { error: error1 } = await supabaseClient
-                    .from('historico_coletas')
-                    .insert([{
-                        id: 'HIST-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9),
-                        coleta_id: coletaId,
-                        usuario: usuarioNome,
-                        acao: acao,
-                        detalhes: detalhesFormatado,
-                        created_at: new Date().toISOString()
-                    }]);
-
-                if (error1) {
-                    console.warn('⚠️ Erro ao salvar em historico_coletas:', error1);
-                }
-
-                // Salvar na tabela historico_movimentacoes (usada pelo modal completo)
-                const { error: error2 } = await supabaseClient
-                    .from('historico_movimentacoes')
-                    .insert([{
+                // Usar API do servidor para salvar histórico (contorna RLS)
+                const headers = await getSupabaseAuthHeaders();
+                const response = await fetch('/api/historico/salvar', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...headers
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify({
                         coleta_id: coletaId,
                         acao: acao,
-                        detalhes: detalhesFormatado,
+                        detalhes: detalhes,
                         usuario_id: usuarioId,
-                        usuario_nome: usuarioNome,
-                        created_at: new Date().toISOString()
-                    }]);
+                        usuario_nome: usuarioNome
+                    })
+                });
 
-                if (error2) {
-                    console.error('❌ Erro ao salvar em historico_movimentacoes:', error2);
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    let result;
+                    try {
+                        result = JSON.parse(errorText);
+                    } catch {
+                        result = { error: errorText };
+                    }
+                    console.error('❌ Erro ao salvar histórico:', result.error || result.details || errorText);
                     // Não lançar erro para não bloquear outras operações
                 } else {
-                    console.log('📝 Histórico salvo em ambas as tabelas:', acao);
+                    const result = await response.json();
+                    console.log('✅ Histórico salvo com sucesso:', acao, result);
                 }
             } catch (error) {
-                console.error('❌ Erro ao salvar histórico:', error);
+                console.error('❌ Erro ao salvar histórico (catch):', error);
+                // Não lançar erro para não bloquear outras operações
             }
         }
 
@@ -15863,7 +16007,7 @@
 
             const etiquetasAtuaisIds = (etiquetasColeta || []).map(e => e.etiqueta_id);
 
-            // Criar modal ultra moderno com glassmorphism e animações
+            // Criar modal elegante com overlay sutil
             const modalHTML = `
                 <div class="modal fade show" id="modalEtiquetas" style="
                     display: block; 
@@ -15873,8 +16017,8 @@
                     left: 0; 
                     width: 100%; 
                     height: 100%; 
-                    background: linear-gradient(135deg, rgba(102, 126, 234, 0.95) 0%, rgba(118, 75, 162, 0.95) 100%);
-                    backdrop-filter: blur(10px);
+                    background: rgba(0, 0, 0, 0.35);
+                    backdrop-filter: blur(4px);
                     animation: fadeIn 0.3s ease;
                 ">
                     <style>
@@ -15908,52 +16052,55 @@
                         animation: slideUp 0.4s ease;
                     ">
                         <div class="modal-content" style="
-                            border-radius: 25px; 
-                            border: 1px solid rgba(255,255,255,0.2);
-                            box-shadow: 0 25px 70px rgba(0,0,0,0.4), 0 0 100px rgba(102, 126, 234, 0.3);
+                            border-radius: 20px; 
+                            border: 1px solid rgba(255,255,255,0.3);
+                            box-shadow: 0 20px 60px rgba(0,0,0,0.3), 0 8px 32px rgba(102, 126, 234, 0.2);
                             overflow: hidden;
-                            background: rgba(255,255,255,0.05);
+                            background: linear-gradient(135deg, #ffffff 0%, #fafbfc 100%);
                             backdrop-filter: blur(20px);
                         ">
-                            <!-- Header futurista com glow effect -->
+                            <!-- Header elegante -->
                             <div class="modal-header" style="
-                                background: linear-gradient(135deg, rgba(102, 126, 234, 0.9) 0%, rgba(118, 75, 162, 0.9) 100%);
+                                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
                                 color: white; 
-                                padding: 1.8rem 2rem;
+                                padding: 1.5rem 2rem;
                                 border: none;
                                 position: relative;
                                 overflow: hidden;
                             ">
-                                <!-- Efeito de partículas -->
-                                <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0.3;">
-                                    <div style="position: absolute; top: 10px; left: 20px; width: 60px; height: 60px; background: radial-gradient(circle, rgba(255,255,255,0.3) 0%, transparent 70%); border-radius: 50%;"></div>
-                                    <div style="position: absolute; bottom: 15px; right: 30px; width: 80px; height: 80px; background: radial-gradient(circle, rgba(255,255,255,0.2) 0%, transparent 70%); border-radius: 50%;"></div>
-                                </div>
-                                
-                                <div style="flex: 1; position: relative; z-index: 1;">
-                                    <h5 class="modal-title" style="
-                                        margin: 0 0 0.3rem 0; 
-                                        font-weight: 800; 
-                                        font-size: 1.5rem;
-                                        text-shadow: 0 2px 10px rgba(0,0,0,0.2);
-                                        letter-spacing: -0.5px;
+                                <div style="flex: 1; position: relative; z-index: 1; display: flex; align-items: center; gap: 1rem;">
+                                    <div style="
+                                        width: 48px;
+                                        height: 48px;
+                                        background: rgba(255, 255, 255, 0.2);
+                                        border-radius: 12px;
+                                        display: flex;
+                                        align-items: center;
+                                        justify-content: center;
+                                        backdrop-filter: blur(10px);
                                     ">
-                                        <i class="fas fa-tags me-2" style="
-                                            background: linear-gradient(135deg, #ff6b6b, #ee5a6f);
-                                            -webkit-background-clip: text;
-                                            -webkit-text-fill-color: transparent;
-                                        "></i>Gerenciar Etiquetas
-                                    </h5>
-                                    <small style="
-                                        opacity: 0.95; 
-                                        display: flex; 
-                                        align-items: center; 
-                                        gap: 0.5rem;
-                                        font-size: 0.85rem;
-                                    ">
-                                        <i class="fas fa-fingerprint" style="font-size: 0.7rem;"></i>
-                                        <span style="font-family: 'Courier New', monospace;">${coleta.id.substring(0, 8)}</span>
-                                    </small>
+                                        <i class="fas fa-tags" style="font-size: 1.25rem;"></i>
+                                    </div>
+                                    <div>
+                                        <h5 class="modal-title" style="
+                                            margin: 0 0 0.25rem 0; 
+                                            font-weight: 700; 
+                                            font-size: 1.35rem;
+                                            letter-spacing: -0.5px;
+                                        ">
+                                            Gerenciar Etiquetas
+                                        </h5>
+                                        <small style="
+                                            opacity: 0.9; 
+                                            display: flex; 
+                                            align-items: center; 
+                                            gap: 0.5rem;
+                                            font-size: 0.8rem;
+                                        ">
+                                            <i class="fas fa-hashtag" style="font-size: 0.7rem;"></i>
+                                            <span>${coleta.filial || ''} #${coleta.numero_coleta || coleta.id.substring(0, 8)}</span>
+                                        </small>
+                                    </div>
                                 </div>
                                 <button type="button" class="btn-close btn-close-white" onclick="fecharModalEtiquetas()" style="
                                     filter: brightness(0) invert(1);
@@ -15961,7 +16108,10 @@
                                     transition: all 0.3s;
                                     position: relative;
                                     z-index: 1;
-                                " onmouseover="this.style.opacity='1'; this.style.transform='rotate(90deg) scale(1.1)';" onmouseout="this.style.opacity='0.8'; this.style.transform='rotate(0deg) scale(1)';"></button>
+                                    background: rgba(255, 255, 255, 0.2);
+                                    border-radius: 8px;
+                                    padding: 0.5rem;
+                                " onmouseover="this.style.opacity='1'; this.style.background='rgba(255, 255, 255, 0.3)'; this.style.transform='rotate(90deg)';" onmouseout="this.style.opacity='0.8'; this.style.background='rgba(255, 255, 255, 0.2)'; this.style.transform='rotate(0deg)';"></button>
                             </div>
                             
                             <!-- Body com glassmorphism e grid animado -->
@@ -16238,11 +16388,41 @@
 
                 await salvarNoHistorico(coletaEtiquetasModal, 'etiquetas_alteradas', detalhesHistorico);
 
+                // Buscar etiquetas atualizadas com cores
+                const { data: etiquetasAtualizadas } = await supabaseClient
+                    .from('coleta_etiquetas')
+                    .select(`
+                        etiqueta_id,
+                        etiquetas_coletas:etiqueta_id (
+                            id,
+                            nome,
+                            cor
+                        )
+                    `)
+                    .eq('coleta_id', coletaEtiquetasModal);
+
+                // Atualizar etiquetas no objeto coleta em coletasData
+                const coletaIndex = coletasData.findIndex(c => c.id === coletaEtiquetasModal);
+                if (coletaIndex !== -1) {
+                    coletasData[coletaIndex].etiquetas = etiquetasAtualizadas
+                        ?.map(e => e.etiquetas_coletas)
+                        .filter(Boolean) || [];
+                }
+
+                // Verificar se o drawer está aberto para esta coleta
+                const drawer = document.getElementById('kanbanDrawer');
+                const isDrawerOpen = drawer && drawer.classList.contains('active');
+                
+                if (isDrawerOpen) {
+                    // Recarregar conteúdo do drawer para mostrar etiquetas atualizadas
+                    await carregarConteudoDrawer(coletaEtiquetasModal);
+                }
+
+                // Atualizar o card do kanban se estiver visível
+                renderColetasWrapper();
+
                 showNotification('Etiquetas salvas com sucesso!', 'success');
                 fecharModalEtiquetas();
-                
-                // Recarregar coletas para atualizar as etiquetas
-                await carregarColetas();
                 
             } catch (error) {
                 console.error('❌ Erro ao salvar etiquetas:', error);
@@ -16250,10 +16430,155 @@
             }
         }
 
+        // Função para buscar data de entrada na etapa atual a partir do histórico
+        async function buscarDataEntradaEtapa(coletaId, etapaAtual) {
+            try {
+                // Buscar última mudança de etapa no histórico
+                const { data: historicoEtapas } = await supabaseClient
+                    .from('historico_coletas')
+                    .select('created_at, detalhes')
+                    .eq('coleta_id', coletaId)
+                    .or(`acao.eq.etapa_avancada,acao.eq.etapa_alterada,acao.eq.etapa_movida,detalhes.ilike.%${etapaAtual}%`)
+                    .order('created_at', { ascending: false })
+                    .limit(10);
+                
+                if (!historicoEtapas || historicoEtapas.length === 0) {
+                    // Se não há histórico, usar created_at da coleta
+                    const coleta = coletasData.find(c => c.id === coletaId);
+                    return coleta?.created_at || null;
+                }
+                
+                // Procurar a última vez que entrou na etapa atual
+                for (const registro of historicoEtapas) {
+                    if (registro.detalhes && registro.detalhes.includes(`"${etapaAtual}"`)) {
+                        return registro.created_at;
+                    }
+                }
+                
+                // Se não encontrou, usar a data mais recente do histórico
+                return historicoEtapas[0]?.created_at || null;
+            } catch (error) {
+                console.warn('⚠️ Erro ao buscar data de entrada na etapa:', error);
+                // Fallback: usar created_at da coleta
+                const coleta = coletasData.find(c => c.id === coletaId);
+                return coleta?.created_at || null;
+            }
+        }
+        
+        // Função para enriquecer coletas com data de entrada na etapa
+        async function enriquecerColetasComTempoParado() {
+            if (coletasData.length === 0) return;
+            
+            try {
+                // Buscar histórico de etapas para todas as coletas de uma vez
+                const coletasIds = coletasData.map(c => c.id);
+                const { data: historicoEtapas } = await supabaseClient
+                    .from('historico_coletas')
+                    .select('coleta_id, created_at, detalhes, acao')
+                    .in('coleta_id', coletasIds)
+                    .or('acao.eq.etapa_avancada,acao.eq.etapa_alterada,acao.eq.etapa_movida')
+                    .order('created_at', { ascending: false });
+                
+                // Agrupar histórico por coleta
+                const historicoPorColeta = {};
+                if (historicoEtapas) {
+                    historicoEtapas.forEach(h => {
+                        if (!historicoPorColeta[h.coleta_id]) {
+                            historicoPorColeta[h.coleta_id] = [];
+                        }
+                        historicoPorColeta[h.coleta_id].push(h);
+                    });
+                }
+                
+                // Para cada coleta, encontrar quando entrou na etapa atual
+                coletasData.forEach(coleta => {
+                    const historico = historicoPorColeta[coleta.id] || [];
+                    let dataEntradaEtapa = null;
+                    
+                    // Procurar última entrada na etapa atual (buscar por padrão "para \"Etapa\"")
+                    for (const registro of historico) {
+                        if (registro.detalhes) {
+                            // Padrões: "para \"Etapa\"", "→ \"Etapa\"", "Etapa\""
+                            const padrao1 = new RegExp(`para\\s*["']${coleta.etapa_atual}["']`, 'i');
+                            const padrao2 = new RegExp(`→\\s*["']${coleta.etapa_atual}["']`, 'i');
+                            const padrao3 = new RegExp(`["']${coleta.etapa_atual}["']`, 'i');
+                            
+                            if (padrao1.test(registro.detalhes) || padrao2.test(registro.detalhes) || padrao3.test(registro.detalhes)) {
+                                dataEntradaEtapa = registro.created_at;
+                                break;
+                            }
+                        }
+                    }
+                    
+                    // Se não encontrou no histórico, usar created_at como fallback
+                    if (!dataEntradaEtapa) {
+                        dataEntradaEtapa = coleta.created_at || coleta.updated_at;
+                    }
+                    
+                    coleta.data_entrada_etapa = dataEntradaEtapa;
+                });
+            } catch (error) {
+                console.warn('⚠️ Erro ao enriquecer coletas com tempo parado:', error);
+                // Fallback: usar created_at para todas
+                coletasData.forEach(coleta => {
+                    coleta.data_entrada_etapa = coleta.created_at || coleta.updated_at;
+                });
+            }
+        }
+        
+        // Função para atualizar contadores de tempo parado em tempo real
+        function iniciarAtualizacaoTempoParado() {
+            // Limpar intervalo anterior se existir
+            if (window.intervalTempoParado) {
+                clearInterval(window.intervalTempoParado);
+            }
+            
+            // Atualizar contadores a cada minuto
+            window.intervalTempoParado = setInterval(() => {
+                if (visualizacaoAtual === 'kanban') {
+                    // Atualizar apenas os cards visíveis
+                    const cards = document.querySelectorAll('.kanban-card[data-coleta-id]');
+                    cards.forEach(card => {
+                        const coletaId = card.getAttribute('data-coleta-id');
+                        const coleta = coletasData.find(c => c.id === coletaId);
+                        
+                        if (coleta && coleta.data_entrada_etapa) {
+                            const tempoParado = calcularTempoParado(coleta);
+                            const isDiaria = coleta.diaria === true || coleta.diaria === 'true' || coleta.diaria === 1;
+                            const isUrgente = coleta.prioridade === 'urgente';
+                            const tempoParadoHTML = formatarTempoParado(tempoParado, isDiaria, isUrgente);
+                            
+                            if (tempoParadoHTML) {
+                                // Atualizar badge de tempo parado no card
+                                const tempoBadge = card.querySelector('.tempo-parado-badge');
+                                if (tempoBadge) {
+                                    // Criar novo elemento e substituir
+                                    const tempDiv = document.createElement('div');
+                                    tempDiv.innerHTML = tempoParadoHTML.trim();
+                                    tempoBadge.replaceWith(tempDiv.firstElementChild);
+                                } else {
+                                    // Se não existe, adicionar
+                                    const cardBody = card.querySelector('.kanban-card-body');
+                                    if (cardBody) {
+                                        const tempDiv = document.createElement('div');
+                                        tempDiv.innerHTML = tempoParadoHTML.trim();
+                                        cardBody.appendChild(tempDiv.firstElementChild);
+                                    }
+                                }
+                            }
+                        }
+                    });
+                }
+            }, 60000); // Atualizar a cada 1 minuto
+        }
+
         // Modificar carregarColetas para buscar etiquetas também
         const originalCarregarColetas = carregarColetas;
         carregarColetas = async function() {
             await originalCarregarColetas();
+            
+            // Enriquecer coletas com data de entrada na etapa atual
+            await enriquecerColetasComTempoParado();
             
             // ✅ OTIMIZAÇÃO: Buscar todas as etiquetas de uma vez em vez de loop individual
             if (coletasData.length > 0) {

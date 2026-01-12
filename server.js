@@ -2134,19 +2134,33 @@ async function injectSignedUrl(record, options = {}) {
   } = options;
 
   const storageValue = record[urlField];
-  const info = await createSignedUrlFromStorage(storageValue, expiresIn);
+  
+  // Se não houver URL de storage, retornar o registro sem modificação
+  if (!storageValue) {
+    return record;
+  }
+  
+  let info;
+  try {
+    info = await createSignedUrlFromStorage(storageValue, expiresIn);
+  } catch (error) {
+    console.warn('⚠️ Erro ao criar URL assinada:', error.message);
+    // Em caso de erro, retornar o registro sem URL assinada
+    return record;
+  }
+  
   const output = { ...record };
 
-  if (info.isStorage) {
+  if (info && info.isStorage) {
     output.storage_url = storageValue;
     output.storage_bucket = info.bucket;
     output.storage_path = info.path;
   }
 
-  if (info.signedUrl) {
+  if (info && info.signedUrl) {
     output[targetField] = info.signedUrl;
     output[urlField] = info.signedUrl;
-  } else if (info.isStorage) {
+  } else if (info && info.isStorage) {
     output[targetField] = null;
   }
 
@@ -2160,7 +2174,14 @@ async function injectSignedUrls(records, options = {}) {
 
   const results = [];
   for (const record of records) {
-    results.push(await injectSignedUrl(record, options));
+    try {
+      const processed = await injectSignedUrl(record, options);
+      results.push(processed);
+    } catch (error) {
+      console.warn('⚠️ Erro ao processar URL assinada para anexo:', record?.id, error.message);
+      // Em caso de erro, adicionar o registro sem URL assinada
+      results.push(record);
+    }
   }
   return results;
 }
@@ -8016,11 +8037,34 @@ app.get('/api/evolution/instance/qrcode', requireAuth, async (req, res) => {
       hasSupabaseUser: !!req.supabaseUser,
       sessionUsuario: req.session?.usuario,
       supabaseUserEmail: req.supabaseUser?.email,
-      supabaseUserId: req.supabaseUser?.id
+      supabaseUserId: req.supabaseUser?.id,
+      hasAuthHeader: !!req.headers.authorization
     });
     
     // Obter identificador do usuário (sessão ou Supabase)
     let usuarioId = req.session?.usuario;
+    
+    // Se não tem usuarioId da sessão, tentar buscar do Supabase
+    if (!usuarioId) {
+      // Se req.supabaseUser já foi definido pelo requireAuth, usar
+      if (req.supabaseUser) {
+        console.log('✅ Usando req.supabaseUser do requireAuth');
+      } else {
+        // Tentar buscar do token diretamente
+        const authHeader = req.headers.authorization || '';
+        if (authHeader.toLowerCase().startsWith('bearer ')) {
+          console.log('🔍 Buscando usuário do token Supabase...');
+          const { user, error } = await getSupabaseUserFromRequest(req);
+          if (user && !error) {
+            req.supabaseUser = user;
+            console.log('✅ Usuário obtido do token:', user.email || user.id);
+          } else if (error) {
+            console.warn('⚠️ Erro ao obter usuário do token:', error.message);
+          }
+        }
+      }
+    }
+    
     if (!usuarioId && req.supabaseUser) {
       // IMPORTANTE: O user_id na tabela user_evolution_apis é o ID do user_profiles,
       // não o ID do Supabase Auth. Precisamos buscar o profile primeiro.
@@ -8050,26 +8094,40 @@ app.get('/api/evolution/instance/qrcode', requireAuth, async (req, res) => {
               usuarioId = profileByEmail.id;
               console.log('✅ ID do user_profiles encontrado pelo email:', usuarioId);
             } else {
-              // Fallback: usar o ID do Supabase Auth diretamente (pode funcionar se for o mesmo)
-              usuarioId = req.supabaseUser.id;
-              console.log('⚠️ Usando ID do Supabase Auth como fallback:', usuarioId);
+              // Fallback: usar o email se disponível, senão o ID do Supabase Auth
+              usuarioId = req.supabaseUser.email;
+              console.log('⚠️ Usando email do Supabase como fallback:', usuarioId);
             }
           } else {
+            // Se não tem email, usar o ID do Supabase Auth
             usuarioId = req.supabaseUser.id;
             console.log('⚠️ Usando ID do Supabase Auth (sem email):', usuarioId);
           }
         }
       } else if (req.supabaseUser.email) {
+        // Se não tem ID mas tem email, usar email
         usuarioId = req.supabaseUser.email;
         console.log('📧 Usando email do Supabase como identificador:', usuarioId);
+      } else {
+        // Último fallback: usar o ID mesmo sem verificação
+        usuarioId = req.supabaseUser.id;
+        console.log('⚠️ Usando ID do Supabase Auth como último recurso:', usuarioId);
       }
     }
     
     if (!usuarioId) {
       console.error('❌ Usuário não identificado para QR code');
+      console.error('📋 Debug completo:', {
+        hasSession: !!req.session,
+        sessionUsuario: req.session?.usuario,
+        hasSupabaseUser: !!req.supabaseUser,
+        supabaseUserId: req.supabaseUser?.id,
+        supabaseUserEmail: req.supabaseUser?.email,
+        hasAuthHeader: !!req.headers.authorization
+      });
       return res.status(401).json({
         success: false,
-        error: 'Usuário não identificado'
+        error: 'Usuário não identificado. Por favor, faça login novamente.'
       });
     }
     
@@ -11204,11 +11262,67 @@ app.get('/api/coletas/exportar', requireAuth, async (req, res) => {
 });
 // ========== ENDPOINTS PARA ANEXOS ==========
 // Upload de anexos
-app.post('/api/anexos', requireAuth, uploadDocumentos.single('file'), async (req, res) => {
+// Upload de anexos - com tratamento de erros do multer
+const uploadMiddleware = uploadDocumentos.single('file');
+app.post('/api/anexos', (req, res, next) => {
+  uploadMiddleware(req, res, (err) => {
+    if (err) {
+      console.error('❌ Erro no middleware do multer:', err);
+      if (err instanceof multer.MulterError) {
+        if (err.code === 'LIMIT_FILE_SIZE') {
+          return res.status(400).json({ error: 'Arquivo muito grande. Tamanho máximo: 10MB', code: err.code });
+        }
+        return res.status(400).json({ error: `Erro no upload: ${err.message}`, code: err.code });
+      }
+      if (err.message) {
+        // Erro do fileFilter (tipo de arquivo não permitido, etc.)
+        return res.status(400).json({ error: err.message, code: 'FILE_FILTER_ERROR' });
+      }
+      return res.status(400).json({ error: 'Erro ao processar arquivo', code: 'UNKNOWN_MULTER_ERROR' });
+    }
+    next();
+  });
+}, async (req, res) => {
   try {
+    console.log('📥 Requisição de upload recebida:', {
+      method: req.method,
+      url: req.url,
+      headers: {
+        'content-type': req.headers['content-type'],
+        'authorization': req.headers['authorization'] ? 'presente' : 'ausente'
+      },
+      body: {
+        coleta_id: req.body?.coleta_id,
+        categoria: req.body?.categoria,
+        titulo_contrato: req.body?.titulo_contrato
+      },
+      file: req.file ? {
+        originalname: req.file.originalname,
+        mimetype: req.file.mimetype,
+        size: req.file.size,
+        hasBuffer: !!req.file.buffer
+      } : 'ausente'
+    });
+
+    // Verificar autenticação
+    const { user, error: authError } = await getUserFromRequest(req);
+    if (authError || !user) {
+      console.error('❌ Erro de autenticação:', authError);
+      return res.status(401).json({ error: 'Usuário não autenticado', details: authError?.message });
+    }
+
     if (!req.file) {
+      console.error('❌ Nenhum arquivo recebido no upload');
+      console.error('❌ Body recebido:', req.body);
       return res.status(400).json({ error: 'Nenhum arquivo enviado' });
     }
+
+    console.log('📎 Arquivo recebido:', {
+      originalname: req.file.originalname,
+      mimetype: req.file.mimetype,
+      size: req.file.size,
+      buffer: req.file.buffer ? `Buffer presente (${req.file.buffer.length} bytes)` : 'Buffer ausente'
+    });
 
     const { coleta_id, usuario, categoria, titulo_contrato } = req.body;
     
@@ -11234,32 +11348,38 @@ app.post('/api/anexos', requireAuth, uploadDocumentos.single('file'), async (req
 
     try {
       if (!req.file.buffer) {
-        throw new Error('Falha ao processar arquivo recebido.');
-      }
-
-      if (!req.file.buffer) {
-        throw new Error('Falha ao processar arquivo recebido.');
+        console.error('❌ Buffer do arquivo não está presente');
+        throw new Error('Falha ao processar arquivo recebido. Buffer ausente.');
       }
 
       const fileBuffer = req.file.buffer;
+      console.log('📤 Fazendo upload para Supabase Storage:', {
+        bucket: ANEXOS_BUCKET,
+        path: storagePath,
+        size: fileBuffer.length,
+        contentType: uploadOptions.contentType
+      });
 
-      const { error: storageError } = await supabaseAdmin.storage
+      const { error: storageError, data: uploadData } = await supabaseAdmin.storage
         .from(ANEXOS_BUCKET)
         .upload(storagePath, fileBuffer, uploadOptions);
 
       if (storageError) {
+        console.error('❌ Erro no upload para Supabase Storage:', storageError);
         throw storageError;
       }
+
+      console.log('✅ Upload para storage concluído:', uploadData);
 
       const storageUrl = buildStorageUrl(ANEXOS_BUCKET, storagePath);
 
       const insertData = {
-        id: generateUUID(),
-        coleta_id: coleta_id,
-        nome_arquivo: req.file.originalname,
-        tipo_arquivo: req.file.mimetype,
-        tamanho: req.file.size,
-        url: storageUrl
+          id: generateUUID(),
+          coleta_id: coleta_id,
+          nome_arquivo: req.file.originalname,
+          tipo_arquivo: req.file.mimetype,
+          tamanho: req.file.size,
+          url: storageUrl
       };
       
       // Adicionar categoria se fornecida
@@ -11272,16 +11392,22 @@ app.post('/api/anexos', requireAuth, uploadDocumentos.single('file'), async (req
         insertData.titulo_contrato = titulo_contrato;
       }
       
-      const { data, error } = await supabase
+      console.log('📝 Inserindo anexo no banco de dados:', insertData);
+      // ✅ CORREÇÃO: Usar supabaseAdmin em vez de supabase para contornar RLS
+      const { data, error } = await supabaseAdmin
         .from('anexos')
         .insert([insertData])
         .select();
 
       if (error) {
+        console.error('❌ Erro ao inserir anexo no banco:', error);
+        // Tentar remover arquivo do storage se houver erro
         await supabaseAdmin.storage
           .from(ANEXOS_BUCKET)
           .remove([storagePath])
-          .catch(() => {});
+          .catch((removeError) => {
+            console.error('❌ Erro ao remover arquivo do storage:', removeError);
+          });
         throw error;
       }
 
@@ -11295,13 +11421,172 @@ app.post('/api/anexos', requireAuth, uploadDocumentos.single('file'), async (req
       return res.json({ success: true, anexo: anexoComUrl });
     } catch (error) {
       console.error('❌ Erro no upload:', error);
-      return res.status(500).json({ error: 'Erro ao fazer upload do arquivo' });
+      console.error('❌ Stack trace:', error.stack);
+      console.error('❌ Detalhes do erro:', {
+        message: error.message,
+        code: error.code,
+        details: error.details,
+        hint: error.hint,
+        statusCode: error.statusCode
+      });
+      return res.status(500).json({ 
+        error: 'Erro ao fazer upload do arquivo',
+        details: error.message || 'Erro desconhecido',
+        code: error.code || 'UNKNOWN_ERROR'
+      });
     }
 
   } catch (error) {
     console.error('❌ Erro inesperado no upload:', error);
-    res.status(500).json({ error: 'Erro ao fazer upload do arquivo' });
+    console.error('❌ Stack trace:', error.stack);
+    console.error('❌ Tipo do erro:', error.constructor.name);
+    res.status(500).json({ 
+      error: 'Erro ao fazer upload do arquivo',
+      details: error.message || 'Erro desconhecido',
+      code: error.code || 'UNKNOWN_ERROR'
+    });
   }
+});
+
+// Middleware para tratar erros do multer (deve vir após os endpoints que usam multer)
+app.use((error, req, res, next) => {
+  if (error instanceof multer.MulterError) {
+    console.error('❌ Erro do Multer:', error);
+    if (error.code === 'LIMIT_FILE_SIZE') {
+      return res.status(400).json({ error: 'Arquivo muito grande. Tamanho máximo: 10MB' });
+    }
+    if (error.code === 'LIMIT_FILE_COUNT') {
+      return res.status(400).json({ error: 'Muitos arquivos. Limite excedido.' });
+    }
+    if (error.code === 'LIMIT_UNEXPECTED_FILE') {
+      return res.status(400).json({ error: 'Campo de arquivo inesperado.' });
+    }
+    return res.status(400).json({ error: `Erro no upload: ${error.message}` });
+  }
+  if (error && error.message) {
+    console.error('❌ Erro no middleware de upload:', error);
+    return res.status(400).json({ error: error.message || 'Erro ao processar arquivo' });
+  }
+  next(error);
+});
+
+// Endpoint para salvar histórico de coletas (contorna RLS)
+app.post('/api/historico/salvar', express.json(), async (req, res) => {
+  try {
+    console.log('📥 Requisição para salvar histórico recebida:', {
+      body: req.body,
+      headers: {
+        'content-type': req.headers['content-type'],
+        'authorization': req.headers['authorization'] ? 'presente' : 'ausente'
+      }
+    });
+
+    // Verificar autenticação
+    const { user, error: authError } = await getUserFromRequest(req);
+    if (authError || !user) {
+      console.error('❌ Erro de autenticação ao salvar histórico:', authError);
+      return res.status(401).json({ error: 'Usuário não autenticado' });
+    }
+
+    const { coleta_id, acao, detalhes, usuario_id, usuario_nome } = req.body;
+
+    if (!coleta_id || !acao) {
+      console.error('❌ Dados incompletos para salvar histórico:', { coleta_id, acao });
+      return res.status(400).json({ error: 'ID da coleta e ação são obrigatórios' });
+    }
+
+    // Formatar detalhes se for array
+    let detalhesFormatado = '';
+    if (Array.isArray(detalhes) && detalhes.length > 0) {
+      detalhesFormatado = detalhes.map(m => 
+        `• ${m.campo}: "${m.valorAntigo}" → "${m.valorNovo}"`
+      ).join('\n');
+    } else {
+      detalhesFormatado = detalhes || '';
+    }
+
+    const usuarioNome = usuario_nome || user.email || user.user_metadata?.nome || 'Sistema';
+    const usuarioId = usuario_id || user.id || null;
+
+    // Inserir em historico_coletas (para compatibilidade)
+    const historicoColetasId = 'HIST-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+    const { error: error1 } = await supabaseAdmin
+      .from('historico_coletas')
+      .insert([{
+        id: historicoColetasId,
+        coleta_id: coleta_id,
+        usuario: usuarioNome,
+        acao: acao,
+        detalhes: detalhesFormatado,
+        created_at: new Date().toISOString()
+      }]);
+
+    if (error1) {
+      console.warn('⚠️ Erro ao salvar em historico_coletas:', error1);
+    }
+
+    // Inserir em historico_movimentacoes (usada pelo modal completo)
+    console.log('📝 Inserindo em historico_movimentacoes:', {
+      coleta_id,
+      acao,
+      usuario_id: usuarioId,
+      usuario_nome: usuarioNome
+    });
+    
+    const { error: error2, data: data2 } = await supabaseAdmin
+      .from('historico_movimentacoes')
+      .insert([{
+        coleta_id: coleta_id,
+        acao: acao,
+        detalhes: detalhesFormatado,
+        usuario_id: usuarioId,
+        usuario_nome: usuarioNome,
+        created_at: new Date().toISOString()
+      }])
+      .select();
+
+    if (error2) {
+      console.error('❌ Erro ao salvar em historico_movimentacoes:', error2);
+      console.error('❌ Detalhes do erro:', {
+        code: error2.code,
+        message: error2.message,
+        details: error2.details,
+        hint: error2.hint
+      });
+      return res.status(500).json({ 
+        error: 'Erro ao salvar histórico',
+        details: error2.message || 'Erro desconhecido',
+        code: error2.code || 'UNKNOWN_ERROR'
+      });
+    }
+
+    console.log('✅ Histórico salvo com sucesso em ambas as tabelas:', acao);
+    return res.json({ success: true, message: 'Histórico salvo com sucesso', data: data2 });
+
+  } catch (error) {
+    console.error('❌ Erro inesperado ao salvar histórico:', error);
+    res.status(500).json({ 
+      error: 'Erro ao salvar histórico',
+      details: error.message || 'Erro desconhecido',
+      code: error.code || 'UNKNOWN_ERROR'
+    });
+  }
+});
+
+// Middleware para tratar erros do multer
+app.use((error, req, res, next) => {
+  if (error instanceof multer.MulterError) {
+    console.error('❌ Erro do Multer:', error);
+    if (error.code === 'LIMIT_FILE_SIZE') {
+      return res.status(400).json({ error: 'Arquivo muito grande. Tamanho máximo: 10MB' });
+    }
+    return res.status(400).json({ error: `Erro no upload: ${error.message}` });
+  }
+  if (error) {
+    console.error('❌ Erro no middleware de upload:', error);
+    return res.status(400).json({ error: error.message || 'Erro ao processar arquivo' });
+  }
+  next();
 });
 
 // Endpoint para finalizar operação (anexar canhoto e mover para finalizar_operacao)
@@ -11447,17 +11732,26 @@ app.get('/api/anexos/:id/info', requireAuth, async (req, res) => {
   try {
     const { id } = req.params;
 
-    const { data, error } = await supabase
+    console.log('📋 Buscando anexo por ID:', id);
+
+    // ✅ CORREÇÃO: Usar supabaseAdmin em vez de supabase para contornar RLS
+    const { data, error } = await supabaseAdmin
       .from('anexos')
       .select('*')
       .eq('id', id)
       .maybeSingle();
 
-    if (error) throw error;
+    if (error) {
+      console.error('❌ Erro ao buscar anexo no Supabase:', error);
+      throw error;
+    }
 
     if (!data) {
+      console.log('⚠️ Anexo não encontrado:', id);
       return res.status(404).json({ success: false, error: 'Anexo não encontrado' });
     }
+
+    console.log('✅ Anexo encontrado:', data.nome_arquivo);
 
     const anexoComUrl = await injectSignedUrl(data);
 
@@ -11475,15 +11769,20 @@ app.get('/api/anexos/:id/download', requireAuth, async (req, res) => {
     
     console.log('📥 Download de anexo:', id);
 
-    const { data, error } = await supabase
+    // ✅ CORREÇÃO: Usar supabaseAdmin em vez de supabase para contornar RLS
+    const { data, error } = await supabaseAdmin
       .from('anexos')
       .select('*')
       .eq('id', id)
       .single();
 
-    if (error) throw error;
+    if (error) {
+      console.error('❌ Erro ao buscar anexo no Supabase:', error);
+      throw error;
+    }
 
     if (!data) {
+      console.log('⚠️ Anexo não encontrado para download:', id);
       return res.status(404).json({ error: 'Anexo não encontrado' });
     }
 
@@ -11525,22 +11824,36 @@ app.get('/api/anexos/:id/download', requireAuth, async (req, res) => {
 });
 
 // Listar anexos de uma coleta
-app.get('/api/anexos/coleta/:coleta_id', requireAuth, async (req, res) => {
+app.get('/api/anexos/coleta/:coleta_id', async (req, res) => {
   try {
+    // Verificar autenticação
+    const { user, error: authError } = await getUserFromRequest(req);
+    if (authError || !user) {
+      return res.status(401).json({ error: 'Usuário não autenticado' });
+    }
+
     const { coleta_id } = req.params;
     
     console.log('📋 Listando anexos da coleta:', coleta_id);
 
-    const { data, error } = await supabase
+    // ✅ CORREÇÃO: Usar supabaseAdmin em vez de supabase para contornar RLS
+    const { data, error } = await supabaseAdmin
       .from('anexos')
       .select('*')
-      .eq('coleta_id', coleta_id);
+      .eq('coleta_id', coleta_id)
+      .order('data_upload', { ascending: false });
 
-    if (error) throw error;
+    if (error) {
+      console.error('❌ Erro ao buscar anexos:', error);
+      throw error;
+    }
 
+    console.log('✅ Anexos encontrados:', (data || []).length, 'arquivo(s)');
+
+    // Ordenar por data_upload (a coluna correta na tabela anexos)
     const anexosOrdenados = (data || []).slice().sort((a, b) => {
-      const dataB = b?.created_at || b?.data_upload || null;
-      const dataA = a?.created_at || a?.data_upload || null;
+      const dataB = b?.data_upload || null;
+      const dataA = a?.data_upload || null;
 
       if (dataA && dataB) {
         return new Date(dataB).getTime() - new Date(dataA).getTime();
@@ -11552,13 +11865,36 @@ app.get('/api/anexos/coleta/:coleta_id', requireAuth, async (req, res) => {
       return 0;
     });
 
-    const anexos = await injectSignedUrls(anexosOrdenados);
+    console.log('📋 Processando URLs assinadas para', anexosOrdenados.length, 'anexo(s)');
+
+    // Processar URLs assinadas com tratamento de erro
+    let anexos;
+    try {
+      anexos = await injectSignedUrls(anexosOrdenados);
+      console.log('✅ Anexos processados com URLs assinadas:', anexos.length, 'arquivo(s)');
+    } catch (urlError) {
+      console.error('❌ Erro ao processar URLs assinadas:', urlError);
+      // Se houver erro ao processar URLs, retornar anexos sem URLs assinadas
+      anexos = anexosOrdenados;
+      console.warn('⚠️ Retornando anexos sem URLs assinadas devido a erro');
+    }
 
     res.json({ success: true, anexos });
 
   } catch (error) {
     console.error('❌ Erro ao listar anexos:', error);
-    res.status(500).json({ error: 'Erro ao listar anexos' });
+    console.error('❌ Stack trace:', error.stack);
+    console.error('❌ Detalhes do erro:', {
+      message: error.message,
+      code: error.code,
+      details: error.details,
+      hint: error.hint
+    });
+    res.status(500).json({ 
+      error: 'Erro ao listar anexos', 
+      details: error.message || 'Erro desconhecido',
+      code: error.code || 'UNKNOWN_ERROR'
+    });
   }
 });
 
@@ -11708,26 +12044,34 @@ app.delete('/api/anexos/:id', requireAuth, async (req, res) => {
     
     console.log('🗑️ Excluindo anexo:', id);
 
+    // ✅ CORREÇÃO: Usar supabaseAdmin em vez de supabase para contornar RLS
     // Buscar informações do anexo
-    const { data: anexo, error: fetchError } = await supabase
+    const { data: anexo, error: fetchError } = await supabaseAdmin
       .from('anexos')
       .select('*')
       .eq('id', id)
       .single();
 
-    if (fetchError) throw fetchError;
+    if (fetchError) {
+      console.error('❌ Erro ao buscar anexo no Supabase:', fetchError);
+      throw fetchError;
+    }
 
     if (!anexo) {
+      console.log('⚠️ Anexo não encontrado para exclusão:', id);
       return res.status(404).json({ error: 'Anexo não encontrado' });
     }
 
     // Excluir do Supabase
-    const { error: deleteError } = await supabase
+    const { error: deleteError } = await supabaseAdmin
       .from('anexos')
       .delete()
       .eq('id', id);
 
-    if (deleteError) throw deleteError;
+    if (deleteError) {
+      console.error('❌ Erro ao excluir anexo no Supabase:', deleteError);
+      throw deleteError;
+    }
 
     // Excluir arquivo físico / storage
     const storageInfo = parseStorageUrl(anexo.url);
