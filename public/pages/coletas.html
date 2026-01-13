@@ -1387,6 +1387,83 @@
             display: inline-block;
         }
 
+        /* Botão de ordenação do Kanban */
+        .kanban-sort-btn {
+            position: relative;
+            background: transparent;
+            border: 1px solid rgba(102, 126, 234, 0.2);
+            border-radius: 6px;
+            padding: 0.4rem 0.6rem;
+            color: #667eea;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 0.35rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            transition: all 0.2s ease;
+        }
+
+        .kanban-sort-btn:hover {
+            background: rgba(102, 126, 234, 0.1);
+            border-color: rgba(102, 126, 234, 0.3);
+        }
+
+        .kanban-sort-btn.active {
+            background: rgba(102, 126, 234, 0.15);
+            border-color: #667eea;
+            color: #667eea;
+        }
+
+        .kanban-sort-menu {
+            position: absolute;
+            top: calc(100% + 0.5rem);
+            right: 0;
+            background: white;
+            border: 1px solid rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            min-width: 180px;
+            z-index: 1000;
+            display: none;
+            overflow: hidden;
+        }
+
+        .kanban-sort-menu.show {
+            display: block;
+        }
+
+        .kanban-sort-menu-item {
+            padding: 0.65rem 1rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.85rem;
+            color: #495057;
+            transition: background 0.15s ease;
+            border: none;
+            background: none;
+            width: 100%;
+            text-align: left;
+        }
+
+        .kanban-sort-menu-item:hover {
+            background: rgba(102, 126, 234, 0.1);
+        }
+
+        .kanban-sort-menu-item.active {
+            background: rgba(102, 126, 234, 0.15);
+            color: #667eea;
+            font-weight: 600;
+        }
+
+        .kanban-sort-menu-item i {
+            width: 16px;
+            text-align: center;
+            font-size: 0.75rem;
+        }
+
         .kanban-column-cards {
             display: flex;
             flex-direction: column;
@@ -3017,45 +3094,110 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 1rem;
-            border: 1px solid #e9ecef;
-            border-radius: 8px;
-            margin-bottom: 0.5rem;
+            padding: 1.25rem 1.5rem;
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(248, 250, 252, 0.95) 100%);
+            border: 2px solid #e2e8f0;
+            border-radius: 16px;
+            margin-bottom: 0.75rem;
             cursor: pointer;
-            transition: all 0.3s ease;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .motorista-item::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            transform: scaleY(0);
+            transition: transform 0.3s ease;
         }
 
         .motorista-item:hover {
-            background: #f8f9fa;
-            border-color: #007bff;
-            transform: translateY(-2px);
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%);
+            border-color: #667eea;
+            transform: translateY(-4px);
+            box-shadow: 0 8px 24px rgba(102, 126, 234, 0.2);
+        }
+
+        .motorista-item:hover::before {
+            transform: scaleY(1);
         }
 
         .motorista-info {
             flex: 1;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .motorista-avatar {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 700;
+            font-size: 1.1rem;
+            flex-shrink: 0;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+
+        .motorista-content {
+            flex: 1;
+            min-width: 0;
         }
 
         .motorista-nome {
-            font-weight: 600;
-            color: var(--cinza-escuro);
-            margin-bottom: 0.25rem;
+            font-weight: 700;
+            color: #1e293b;
+            margin-bottom: 0.5rem;
+            font-size: 1.05rem;
+            letter-spacing: -0.3px;
         }
 
         .motorista-detalhes {
             display: flex;
+            flex-wrap: wrap;
             gap: 1rem;
-            font-size: 0.8rem;
-            color: #6c757d;
+            font-size: 0.875rem;
+            color: #64748b;
         }
 
         .motorista-detalhes span {
             display: flex;
             align-items: center;
-            gap: 0.25rem;
+            gap: 0.5rem;
+            background: rgba(102, 126, 234, 0.08);
+            padding: 0.35rem 0.75rem;
+            border-radius: 8px;
+            font-weight: 500;
+        }
+
+        .motorista-detalhes span i {
+            color: #667eea;
+            font-size: 0.8rem;
         }
 
         .motorista-status {
             margin-left: 1rem;
+        }
+
+        .motorista-status .badge {
+            padding: 0.5rem 1rem;
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 0.8rem;
+            text-transform: capitalize;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
         }
 
         /* Estilos para formulário de motorista */
@@ -3823,6 +3965,108 @@
         [aria-invalid="true"]:focus {
             outline-color: #dc3545;
         }
+        /* Estilos do Formulário Moderno (do cadastro.html) */
+        .form-section {
+            background: white;
+            border-radius: 20px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.08);
+            border: 1px solid rgba(0,0,0,0.03);
+        }
+        
+        .form-section .section-title {
+            font-weight: 700;
+            color: #1f2937;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-size: 1.2rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 2px solid #f1f5f9;
+        }
+        
+        .form-section .section-title i {
+            color: #667eea;
+            font-size: 1.3rem;
+        }
+        
+        .form-control-modern, .form-select-modern {
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 1rem 1.25rem;
+            font-size: 1rem;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            background: white;
+        }
+        
+        .form-control-modern:focus, .form-select-modern:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+            transform: translateY(-2px);
+            outline: none;
+        }
+        
+        .form-label-modern {
+            font-weight: 600;
+            color: #1f2937;
+            margin-bottom: 0.75rem;
+            font-size: 0.95rem;
+        }
+        
+        /* Botões Modernos (do cadastro.html) */
+        .btn-modern {
+            border: none;
+            border-radius: 14px;
+            padding: 1rem 2rem;
+            font-weight: 700;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+            font-size: 1rem;
+            cursor: pointer;
+        }
+        
+        .btn-modern::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+            transition: left 0.6s;
+        }
+        
+        .btn-modern:hover::before {
+            left: 100%;
+        }
+        
+        .btn-modern:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+        }
+        
+        .btn-modern-success {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+        }
+        
+        .btn-modern-warning {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            color: white;
+        }
+        
+        .btn-modern-primary {
+            background: linear-gradient(135deg, #667eea 0%, #5a6fd8 100%);
+            color: white;
+        }
+        
+        .btn-modern-danger {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            color: white;
+        }
     </style>
 </head>
 <body>
@@ -4336,7 +4580,7 @@
                             <option value="baixa">Baixa</option>
                             <option value="normal" selected>Normal</option>
                             <option value="alta">Alta</option>
-                            <option value="urgente">Urgente</option>
+                            <option value="urgente" id="prioridadeUrgenteOption">Urgente</option>
                         </select>
                             </div>
                     <div class="form-group">
@@ -4984,14 +5228,20 @@
                     message: 'Filial é obrigatória'
                 },
                 numero_coleta: {
-                    required: true,
+                    required: false, // Será verificado dinamicamente baseado na etapa
                     type: 'string',
                     validate: (val) => {
                         if (!val) return false;
                         const num = parseInt(val, 10);
                         return !isNaN(num) && num > 0 && /^[1-9][0-9]*$/.test(val);
                     },
-                    message: 'Número da coleta deve ser um número positivo sem zeros à esquerda'
+                    message: 'Número da coleta deve ser um número positivo sem zeros à esquerda',
+                    requiredIf: (data) => {
+                        // OC é obrigatório apenas a partir da etapa de documentação
+                        const etapa = data.etapa_atual || data.etapaAtual || '';
+                        const etapasQueExigemOC = ['documentacao', 'controladoria', 'ti', 'contas_pagar', 'contas_receber', 'monitoramento', 'finalizar_operacao'];
+                        return etapasQueExigemOC.includes(etapa.toLowerCase());
+                    }
                 },
                 cliente: {
                     required: true,
@@ -5090,9 +5340,14 @@
                 Object.entries(schema).forEach(([key, rules]) => {
                     const value = data[key];
 
-                    // Verificar obrigatoriedade
+                    // Verificar obrigatoriedade (incluindo requiredIf dinâmico)
+                    let isRequired = rules.required;
+                    if (rules.requiredIf && typeof rules.requiredIf === 'function') {
+                        isRequired = rules.requiredIf(data);
+                    }
+
                     // Para arrays, verificar se está vazio
-                    if (rules.required) {
+                    if (isRequired) {
                         let isEmpty = false;
                         if (Array.isArray(value)) {
                             isEmpty = value.length === 0;
@@ -5114,7 +5369,7 @@
                     }
 
                     // Se não é obrigatório e está vazio, pular validação
-                    if (!rules.required && (value === undefined || value === null || value === '')) {
+                    if (!isRequired && (value === undefined || value === null || value === '')) {
                         return;
                     }
 
@@ -6148,6 +6403,11 @@
             // Verificar se é diária
             const isDiaria = document.getElementById('diaria')?.checked || false;
             
+            // ✅ Prioridade: sempre "normal" na criação para usuários comuns
+            // Apenas admin/coordenador pode escolher outra prioridade na criação
+            const isAdminOrManager = currentUser && (currentUser.isAdmin || currentUser.role === 'admin' || currentUser.role === 'manager');
+            const prioridadeFinal = isAdminOrManager ? (rawData.prioridade || 'normal') : 'normal';
+            
             // Preparar dados base para todas as coletas
             const dadosBase = {
                 filial: rawData.filial,
@@ -6164,7 +6424,7 @@
                 status: rawData.status || 'pendente',
                 etapa_atual: rawData.etapaAtual || 'comercial',
                 observacoes: rawData.observacoes || null,
-                prioridade: rawData.prioridade || 'normal',
+                prioridade: prioridadeFinal,
                 diaria: isDiaria,
                 created_by: userData?.id || null,
                 updated_by: userData?.id || null,
@@ -6437,6 +6697,99 @@
 
         // ========== KANBAN FUNCTIONS ==========
         let visualizacaoAtual = 'kanban'; // 'grid' ou 'kanban' - Kanban é o modo principal
+        
+        // ✅ ORDENAÇÃO DO KANBAN: Armazenar preferências de ordenação por etapa
+        let ordenacaoKanban = {}; // { etapaId: { tipo: 'maior_tempo', campo: 'tempo_acumulado_etapa' } }
+        
+        // Carregar preferências do localStorage
+        try {
+            const ordenacaoSalva = localStorage.getItem('ordenacaoKanban');
+            if (ordenacaoSalva) {
+                ordenacaoKanban = JSON.parse(ordenacaoSalva);
+            }
+        } catch (error) {
+            console.warn('⚠️ Erro ao carregar preferências de ordenação:', error);
+        }
+        
+        // Salvar preferências no localStorage
+        function salvarOrdenacaoKanban() {
+            try {
+                localStorage.setItem('ordenacaoKanban', JSON.stringify(ordenacaoKanban));
+            } catch (error) {
+                console.warn('⚠️ Erro ao salvar preferências de ordenação:', error);
+            }
+        }
+        
+        // Função para ordenar coletas
+        function ordenarColetas(coletas, tipoOrdenacao) {
+            if (!coletas || coletas.length === 0) return coletas;
+            
+            const coletasOrdenadas = [...coletas];
+            
+            switch (tipoOrdenacao) {
+                case 'maior_tempo':
+                    coletasOrdenadas.sort((a, b) => {
+                        const tempoA = a.tempo_acumulado_etapa || 0;
+                        const tempoB = b.tempo_acumulado_etapa || 0;
+                        return tempoB - tempoA; // Maior primeiro
+                    });
+                    break;
+                case 'menor_tempo':
+                    coletasOrdenadas.sort((a, b) => {
+                        const tempoA = a.tempo_acumulado_etapa || 0;
+                        const tempoB = b.tempo_acumulado_etapa || 0;
+                        return tempoA - tempoB; // Menor primeiro
+                    });
+                    break;
+                case 'maior_valor':
+                    coletasOrdenadas.sort((a, b) => {
+                        const valorA = parseFloat(a.valor) || 0;
+                        const valorB = parseFloat(b.valor) || 0;
+                        return valorB - valorA; // Maior primeiro
+                    });
+                    break;
+                case 'menor_valor':
+                    coletasOrdenadas.sort((a, b) => {
+                        const valorA = parseFloat(a.valor) || 0;
+                        const valorB = parseFloat(b.valor) || 0;
+                        return valorA - valorB; // Menor primeiro
+                    });
+                    break;
+                case 'cliente_asc':
+                    coletasOrdenadas.sort((a, b) => {
+                        const clienteA = (a.cliente || '').toLowerCase();
+                        const clienteB = (b.cliente || '').toLowerCase();
+                        return clienteA.localeCompare(clienteB);
+                    });
+                    break;
+                case 'cliente_desc':
+                    coletasOrdenadas.sort((a, b) => {
+                        const clienteA = (a.cliente || '').toLowerCase();
+                        const clienteB = (b.cliente || '').toLowerCase();
+                        return clienteB.localeCompare(clienteA);
+                    });
+                    break;
+                case 'data_mais_recente':
+                    coletasOrdenadas.sort((a, b) => {
+                        const dataA = new Date(a.created_at || 0);
+                        const dataB = new Date(b.created_at || 0);
+                        return dataB - dataA; // Mais recente primeiro
+                    });
+                    break;
+                case 'data_mais_antiga':
+                    coletasOrdenadas.sort((a, b) => {
+                        const dataA = new Date(a.created_at || 0);
+                        const dataB = new Date(b.created_at || 0);
+                        return dataA - dataB; // Mais antiga primeiro
+                    });
+                    break;
+                default:
+                    // Sem ordenação (ordem padrão)
+                    break;
+            }
+            
+            return coletasOrdenadas;
+        }
 
         async function alternarVisualizacao(tipo) {
             visualizacaoAtual = tipo;
@@ -6511,6 +6864,25 @@
             ETAPAS.forEach(etapa => {
                 coletasPorEtapa[etapa.id] = dataToRender.filter(c => c.etapa_atual === etapa.id);
             });
+            
+            // ✅ CORREÇÃO: Coletas sem etapa_atual válida (null, undefined ou valor não existe no ETAPAS)
+            const etapasIds = new Set(ETAPAS.map(e => e.id));
+            const coletasSemEtapa = dataToRender.filter(c => {
+                const etapaAtual = c.etapa_atual;
+                return !etapaAtual || !etapasIds.has(etapaAtual);
+            });
+            
+            // Se houver coletas sem etapa válida, adicionar à primeira etapa (comercial) como fallback
+            if (coletasSemEtapa.length > 0) {
+                // ✅ SILENCIOSO: Apenas log em desenvolvimento para não poluir o console
+                if (window.DEBUG || window.location.hostname === 'localhost') {
+                    console.warn(`⚠️ ${coletasSemEtapa.length} coleta(s) sem etapa_atual válida, adicionando à etapa "comercial" como fallback:`, coletasSemEtapa.map(c => ({ id: c.id, etapa_atual: c.etapa_atual, cliente: c.cliente })));
+                }
+                if (!coletasPorEtapa['comercial']) {
+                    coletasPorEtapa['comercial'] = [];
+                }
+                coletasPorEtapa['comercial'].push(...coletasSemEtapa);
+            }
 
             // Função para calcular valor total de coletas
             const calcularValorTotal = (coletas) => {
@@ -6532,16 +6904,81 @@
 
             // Renderizar colunas
             kanbanBoard.innerHTML = ETAPAS.map(etapa => {
-                const coletas = coletasPorEtapa[etapa.id] || [];
+                let coletas = coletasPorEtapa[etapa.id] || [];
+                
+                // ✅ ORDENAÇÃO: Aplicar ordenação se houver preferência salva
+                const ordenacaoEtapa = ordenacaoKanban[etapa.id];
+                if (ordenacaoEtapa && ordenacaoEtapa.tipo) {
+                    coletas = ordenarColetas(coletas, ordenacaoEtapa.tipo);
+                }
+                
                 const valorTotal = calcularValorTotal(coletas);
                 const valorFormatado = formatarMoeda(valorTotal);
+                const ordenacaoAtual = ordenacaoKanban[etapa.id]?.tipo || 'padrao';
                 
                 return `
                     <div class="kanban-column" data-etapa-id="${etapa.id}">
                         <div class="kanban-column-header">
-                            <div class="kanban-column-title">
-                                <i class="fas fa-layer-group"></i>
-                                ${etapa.nome}
+                            <div class="kanban-column-title" style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                    <i class="fas fa-layer-group"></i>
+                                    ${etapa.nome}
+                                </div>
+                                <div style="position: relative;">
+                                    <button class="kanban-sort-btn ${ordenacaoAtual !== 'padrao' ? 'active' : ''}" 
+                                            onclick="event.stopPropagation(); toggleSortMenu('${etapa.id}', event)" 
+                                            title="Ordenar coletas">
+                                        <i class="fas fa-sort"></i>
+                                        <i class="fas fa-chevron-down" style="font-size: 0.65rem;"></i>
+                                    </button>
+                                    <div class="kanban-sort-menu" id="sortMenu_${etapa.id}">
+                                    <button class="kanban-sort-menu-item ${ordenacaoAtual === 'padrao' ? 'active' : ''}" 
+                                            onclick="event.stopPropagation(); aplicarOrdenacao('${etapa.id}', 'padrao')">
+                                        <i class="fas fa-times"></i>
+                                        <span>Padrão</span>
+                                    </button>
+                                    <button class="kanban-sort-menu-item ${ordenacaoAtual === 'maior_tempo' ? 'active' : ''}" 
+                                            onclick="event.stopPropagation(); aplicarOrdenacao('${etapa.id}', 'maior_tempo')">
+                                        <i class="fas fa-sort-amount-down"></i>
+                                        <span>Maior Tempo</span>
+                                    </button>
+                                    <button class="kanban-sort-menu-item ${ordenacaoAtual === 'menor_tempo' ? 'active' : ''}" 
+                                            onclick="event.stopPropagation(); aplicarOrdenacao('${etapa.id}', 'menor_tempo')">
+                                        <i class="fas fa-sort-amount-up"></i>
+                                        <span>Menor Tempo</span>
+                                    </button>
+                                    <button class="kanban-sort-menu-item ${ordenacaoAtual === 'maior_valor' ? 'active' : ''}" 
+                                            onclick="event.stopPropagation(); aplicarOrdenacao('${etapa.id}', 'maior_valor')">
+                                        <i class="fas fa-sort-amount-down"></i>
+                                        <span>Maior Valor</span>
+                                    </button>
+                                    <button class="kanban-sort-menu-item ${ordenacaoAtual === 'menor_valor' ? 'active' : ''}" 
+                                            onclick="event.stopPropagation(); aplicarOrdenacao('${etapa.id}', 'menor_valor')">
+                                        <i class="fas fa-sort-amount-up"></i>
+                                        <span>Menor Valor</span>
+                                    </button>
+                                    <button class="kanban-sort-menu-item ${ordenacaoAtual === 'cliente_asc' ? 'active' : ''}" 
+                                            onclick="event.stopPropagation(); aplicarOrdenacao('${etapa.id}', 'cliente_asc')">
+                                        <i class="fas fa-sort-alpha-down"></i>
+                                        <span>Cliente A-Z</span>
+                                    </button>
+                                    <button class="kanban-sort-menu-item ${ordenacaoAtual === 'cliente_desc' ? 'active' : ''}" 
+                                            onclick="event.stopPropagation(); aplicarOrdenacao('${etapa.id}', 'cliente_desc')">
+                                        <i class="fas fa-sort-alpha-up"></i>
+                                        <span>Cliente Z-A</span>
+                                    </button>
+                                    <button class="kanban-sort-menu-item ${ordenacaoAtual === 'data_mais_recente' ? 'active' : ''}" 
+                                            onclick="event.stopPropagation(); aplicarOrdenacao('${etapa.id}', 'data_mais_recente')">
+                                        <i class="fas fa-calendar-alt"></i>
+                                        <span>Data Mais Recente</span>
+                                    </button>
+                                    <button class="kanban-sort-menu-item ${ordenacaoAtual === 'data_mais_antiga' ? 'active' : ''}" 
+                                            onclick="event.stopPropagation(); aplicarOrdenacao('${etapa.id}', 'data_mais_antiga')">
+                                        <i class="fas fa-calendar"></i>
+                                        <span>Data Mais Antiga</span>
+                                    </button>
+                                    </div>
+                                </div>
                             </div>
                             <div class="kanban-column-info">
                                 <div class="kanban-column-count">${coletas.length}</div>
@@ -7023,11 +7460,30 @@
 
         // Função para calcular tempo parado na etapa atual
         function calcularTempoParado(coleta) {
+            // ✅ NOVO: Se tempo_acumulado_etapa estiver disponível, usar ele (considera múltiplas entradas)
+            if (coleta.tempo_acumulado_etapa !== undefined && coleta.tempo_acumulado_etapa !== null) {
+                const tempoAcumuladoMinutos = coleta.tempo_acumulado_etapa;
+                const diffMinutos = Math.floor(tempoAcumuladoMinutos);
+                const diffHoras = Math.floor(diffMinutos / 60);
+                const diffDias = Math.floor(diffHoras / 24);
+                
+                if (diffDias > 0) {
+                    return { valor: diffDias, unidade: 'dia', plural: diffDias > 1 ? 's' : '' };
+                } else if (diffHoras > 0) {
+                    return { valor: diffHoras, unidade: 'hora', plural: diffHoras > 1 ? 's' : '' };
+                } else if (diffMinutos > 0) {
+                    return { valor: diffMinutos, unidade: 'min', plural: '' };
+                } else {
+                    const diffSegundos = Math.floor(tempoAcumuladoMinutos * 60);
+                    return { valor: diffSegundos, unidade: 'seg', plural: '' };
+                }
+            }
+            
+            // Fallback: usar data_entrada_etapa se disponível, senão usar updated_at
             if (!coleta.data_entrada_etapa && !coleta.updated_at) {
                 return null;
             }
             
-            // Usar data_entrada_etapa se disponível, senão usar updated_at como fallback
             const dataEntrada = coleta.data_entrada_etapa 
                 ? new Date(coleta.data_entrada_etapa) 
                 : (coleta.updated_at ? new Date(coleta.updated_at) : null);
@@ -8782,6 +9238,56 @@
             dropZone.classList.add('drag-over');
         }
 
+        // ✅ FUNÇÕES DE ORDENAÇÃO DO KANBAN
+        function toggleSortMenu(etapaId, event) {
+            event.stopPropagation();
+            
+            // Fechar todos os menus abertos
+            document.querySelectorAll('.kanban-sort-menu.show').forEach(menu => {
+                if (menu.id !== `sortMenu_${etapaId}`) {
+                    menu.classList.remove('show');
+                }
+            });
+            
+            // Toggle do menu atual
+            const menu = document.getElementById(`sortMenu_${etapaId}`);
+            if (menu) {
+                menu.classList.toggle('show');
+            }
+        }
+        
+        function aplicarOrdenacao(etapaId, tipoOrdenacao) {
+            // Salvar preferência
+            if (tipoOrdenacao === 'padrao') {
+                delete ordenacaoKanban[etapaId];
+            } else {
+                ordenacaoKanban[etapaId] = { tipo: tipoOrdenacao };
+            }
+            
+            salvarOrdenacaoKanban();
+            
+            // Fechar menu
+            const menu = document.getElementById(`sortMenu_${etapaId}`);
+            if (menu) {
+                menu.classList.remove('show');
+            }
+            
+            // Re-renderizar kanban para aplicar ordenação
+            renderColetasKanban();
+        }
+        
+        // Fechar menus ao clicar fora (uma vez só)
+        if (!window.kanbanSortMenuListenerAdded) {
+            document.addEventListener('click', (e) => {
+                if (!e.target.closest('.kanban-sort-btn') && !e.target.closest('.kanban-sort-menu')) {
+                    document.querySelectorAll('.kanban-sort-menu.show').forEach(menu => {
+                        menu.classList.remove('show');
+                    });
+                }
+            });
+            window.kanbanSortMenuListenerAdded = true;
+        }
+
         function handleKanbanDragLeave(e) {
             e.currentTarget.classList.remove('drag-over');
         }
@@ -9239,18 +9745,28 @@
                             </div>
                             <div class="modal-body" style="flex: 1; overflow-y: auto; padding: 2rem;">
                                 <!-- Área de filtros -->
-                                <div class="motorista-filters" style="background: #f8f9fa; padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
-                                    <div class="row">
-                                        <div class="col-md-4">
-                                            <input type="text" id="filtroNome" class="form-control" placeholder="🔍 Buscar por nome..." style="margin-bottom: 0.5rem;">
-                                        </div>
-                                        <div class="col-md-6">
-                                            <input type="text" id="filtroCNH" class="form-control" placeholder="📋 Buscar por CNH..." style="margin-bottom: 0.5rem;">
-                                        </div>
+                                <div class="motorista-filters" style="background: linear-gradient(135deg, rgba(248, 250, 252, 0.8) 0%, rgba(241, 245, 249, 0.8) 100%); padding: 1.5rem; border-radius: 16px; margin-bottom: 1.5rem; border: 2px solid #e2e8f0; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);">
+                                    <div style="font-weight: 700; color: #1e293b; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem; font-size: 1.1rem;">
+                                        <i class="fas fa-filter" style="color: #667eea;"></i> Filtros de Busca
                                     </div>
-                                    <div class="row">
+                                    <div class="row g-3">
                                         <div class="col-md-6">
-                                            <select id="filtroCategoria" class="form-control" style="margin-bottom: 0.5rem;">
+                                            <label style="font-weight: 600; color: #475569; font-size: 0.9rem; margin-bottom: 0.5rem; display: block;">
+                                                <i class="fas fa-user"></i> Nome
+                                            </label>
+                                            <input type="text" id="filtroNome" class="form-control form-control-modern" placeholder="Digite o nome do motorista...">
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label style="font-weight: 600; color: #475569; font-size: 0.9rem; margin-bottom: 0.5rem; display: block;">
+                                                <i class="fas fa-id-badge"></i> CNH
+                                            </label>
+                                            <input type="text" id="filtroCNH" class="form-control form-control-modern" placeholder="Digite o número da CNH...">
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label style="font-weight: 600; color: #475569; font-size: 0.9rem; margin-bottom: 0.5rem; display: block;">
+                                                <i class="fas fa-car"></i> Categoria CNH
+                                            </label>
+                                            <select id="filtroCategoria" class="form-select form-select-modern">
                                                 <option value="">Todas as Categorias</option>
                                                 <option value="A">A - Moto</option>
                                                 <option value="B">B - Carro</option>
@@ -9260,7 +9776,10 @@
                                             </select>
                                         </div>
                                         <div class="col-md-6">
-                                            <select id="filtroStatus" class="form-control" style="margin-bottom: 0.5rem;">
+                                            <label style="font-weight: 600; color: #475569; font-size: 0.9rem; margin-bottom: 0.5rem; display: block;">
+                                                <i class="fas fa-check-circle"></i> Status
+                                            </label>
+                                            <select id="filtroStatus" class="form-select form-select-modern">
                                                 <option value="">Todos os Status</option>
                                                 <option value="ativo">Ativo</option>
                                                 <option value="inativo">Inativo</option>
@@ -9271,28 +9790,41 @@
                                 </div>
                                 
                                 <!-- Lista de motoristas -->
-                                <div class="motoristas-list" id="motoristasListContainer" style="max-height: 400px; overflow-y: auto;">
-                                    ${motoristas.map(motorista => `
+                                <div class="motoristas-list" id="motoristasListContainer" style="max-height: 450px; overflow-y: auto; padding-right: 0.5rem;">
+                                    ${motoristas.map(motorista => {
+                                        const iniciais = motorista.nome ? motorista.nome.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() : 'M';
+                                        const telefone = motorista.telefone1 || motorista.telefone2 || '';
+                                        const telefoneFormatado = telefone ? telefone.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3') : 'N/A';
+                                        return `
                                         <div class="motorista-item" data-nome="${motorista.nome}" data-cnh="${motorista.cnh || ''}" data-categoria="${motorista.categoria_cnh || ''}" data-status="${motorista.status || 'ativo'}" onclick="selecionarMotorista('${coletaId}', '${motorista.id}')">
                                             <div class="motorista-info">
-                                                <div class="motorista-nome">${motorista.nome}</div>
-                                                <div class="motorista-detalhes">
-                                                    <span><i class="fas fa-id-badge"></i> CNH: ${motorista.cnh || 'N/A'}</span>
-                                                    <span><i class="fas fa-car"></i> ${motorista.categoria_cnh || 'N/A'}</span>
-                                                    <span><i class="fas fa-phone"></i> ${motorista.telefone1 || motorista.telefone2 || 'N/A'}</span>
+                                                <div class="motorista-avatar">${iniciais}</div>
+                                                <div class="motorista-content">
+                                                    <div class="motorista-nome">${motorista.nome}</div>
+                                                    <div class="motorista-detalhes">
+                                                        ${motorista.cnh ? `<span><i class="fas fa-id-badge"></i> ${motorista.cnh}</span>` : ''}
+                                                        ${motorista.categoria_cnh ? `<span><i class="fas fa-car"></i> ${motorista.categoria_cnh}</span>` : ''}
+                                                        ${telefone ? `<span><i class="fas fa-phone"></i> ${telefoneFormatado}</span>` : ''}
+                                                    </div>
                                                 </div>
                                             </div>
                                             <div class="motorista-status">
-                                                <span class="badge ${motorista.status === 'ativo' ? 'bg-success' : 'bg-secondary'}">
-                                                    ${motorista.status || 'ativo'}
+                                                <span class="badge ${motorista.status === 'ativo' ? 'bg-success' : motorista.status === 'inativo' ? 'bg-secondary' : 'bg-warning'}">
+                                                    <i class="fas fa-circle" style="font-size: 0.5rem; margin-right: 0.35rem;"></i>${motorista.status || 'ativo'}
                                                 </span>
                                             </div>
                                         </div>
-                                    `).join('')}
+                                    `;
+                                    }).join('')}
                                 </div>
                             </div>
-                            <div class="modal-footer" style="padding: 1.5rem 2rem; background: #f8f9fa; border-top: 1px solid #e9ecef; margin-top: auto;">
-                                <button type="button" class="btn btn-secondary" onclick="fecharModalMotorista()">Cancelar</button>
+                            <div class="modal-footer" style="padding: 1.5rem 2rem; background: linear-gradient(135deg, rgba(248, 250, 252, 0.95) 0%, rgba(241, 245, 249, 0.95) 100%); border-top: 2px solid #e2e8f0; margin-top: auto; display: flex; justify-content: space-between; align-items: center;">
+                                <button type="button" class="btn btn-modern btn-modern-success" onclick="abrirModalCadastroMotorista('${coletaId}')">
+                                    <i class="fas fa-user-plus me-2"></i>Cadastrar Novo Motorista
+                                </button>
+                                <button type="button" class="btn btn-modern btn-modern-warning" onclick="fecharModalMotorista()">
+                                    <i class="fas fa-times me-2"></i>Cancelar
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -9416,9 +9948,277 @@
                 modal.remove();
             }
             // Também remover qualquer modal de cadastro
-            const modalCadastro = document.querySelector('.modal.show');
-            if (modalCadastro && modalCadastro.id !== 'modalVincularMotorista') {
+            const modalCadastro = document.getElementById('modalCadastroMotorista');
+            if (modalCadastro) {
                 modalCadastro.remove();
+            }
+        }
+        
+        // ✅ FUNÇÃO PARA ABRIR MODAL DE CADASTRO RÁPIDO DE MOTORISTA
+        async function abrirModalCadastroMotorista(coletaId) {
+            // Fechar modal de vinculação primeiro
+            fecharModalMotorista();
+            
+            // Criar modal de cadastro
+            const modal = document.createElement('div');
+            modal.className = 'modal fade show';
+            modal.id = 'modalCadastroMotorista';
+            modal.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.75); backdrop-filter: blur(12px); display: flex; justify-content: center; align-items: center; z-index: 10002; padding: 2rem; animation: fadeIn 0.3s ease;';
+            modal.innerHTML = `
+                <div class="modal-dialog" style="background: white; border-radius: 24px; box-shadow: 0 25px 70px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.1); max-width: 850px; width: 100%; max-height: 92vh; overflow: hidden; display: flex; flex-direction: column; animation: slideUp 0.4s cubic-bezier(0.4, 0, 0.2, 1);">
+                    <div class="modal-content" style="padding: 0; background: transparent; height: 100%; display: flex; flex-direction: column;">
+                        <div class="modal-header" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 24px 24px 0 0; padding: 2rem 2.5rem; position: relative; overflow: hidden;">
+                            <div style="position: absolute; top: -50px; right: -50px; width: 200px; height: 200px; background: rgba(255, 255, 255, 0.1); border-radius: 50%;"></div>
+                            <div style="position: absolute; bottom: -30px; left: -30px; width: 150px; height: 150px; background: rgba(255, 255, 255, 0.08); border-radius: 50%;"></div>
+                            <div style="position: relative; z-index: 1; display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                                <div>
+                                    <h5 class="modal-title" style="margin: 0; font-size: 1.5rem; font-weight: 700; display: flex; align-items: center; gap: 0.75rem;">
+                                        <div style="width: 48px; height: 48px; background: rgba(255, 255, 255, 0.2); border-radius: 12px; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(10px);">
+                                            <i class="fas fa-user-plus" style="font-size: 1.3rem;"></i>
+                                        </div>
+                                        Cadastrar Novo Motorista
+                                    </h5>
+                                    <p style="margin: 0.5rem 0 0 0; opacity: 0.9; font-size: 0.9rem;">Preencha os dados para cadastrar e vincular automaticamente</p>
+                                </div>
+                                <button type="button" class="btn-close" style="filter: invert(1); opacity: 0.9; background: rgba(255, 255, 255, 0.2); border-radius: 8px; padding: 0.5rem; transition: all 0.2s;" onmouseover="this.style.opacity='1'; this.style.background='rgba(255,255,255,0.3)';" onmouseout="this.style.opacity='0.9'; this.style.background='rgba(255,255,255,0.2)';" onclick="fecharModalCadastroMotorista()"></button>
+                            </div>
+                        </div>
+                        <div class="modal-body" style="flex: 1; overflow-y: auto; padding: 2.5rem; background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);">
+                            <form id="formCadastroMotoristaRapido">
+                                <!-- Informações Pessoais -->
+                                <div class="form-section" style="margin-bottom: 1.5rem;">
+                                    <div class="section-title">
+                                        <i class="fas fa-id-card"></i>
+                                        Informações Pessoais
+                                    </div>
+                                    <div class="row g-3">
+                                        <div class="col-md-6">
+                                            <label class="form-label-modern">
+                                                <i class="fas fa-user" style="color: #667eea; margin-right: 0.5rem;"></i>
+                                                Nome Completo *
+                                            </label>
+                                            <input type="text" id="nomeMotorista" class="form-control form-control-modern" required placeholder="Ex: João da Silva" maxlength="100">
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="form-label-modern">
+                                                <i class="fas fa-id-badge" style="color: #667eea; margin-right: 0.5rem;"></i>
+                                                CNH
+                                            </label>
+                                            <input type="text" id="cnhMotorista" class="form-control form-control-modern" placeholder="00000000000" maxlength="11" pattern="[0-9]{11}" title="CNH deve conter exatamente 11 dígitos numéricos">
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="form-label-modern">
+                                                <i class="fas fa-car" style="color: #667eea; margin-right: 0.5rem;"></i>
+                                                Categoria CNH
+                                            </label>
+                                            <select id="categoriaCNH" class="form-select form-select-modern">
+                                                <option value="">Selecione</option>
+                                                <option value="A">A - Motos</option>
+                                                <option value="B">B - Carros</option>
+                                                <option value="C">C - Caminhões</option>
+                                                <option value="D">D - Ônibus</option>
+                                                <option value="E">E - Carreta</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Contatos -->
+                                <div class="form-section">
+                                    <div class="section-title">
+                                        <i class="fas fa-phone"></i>
+                                        Contatos
+                                    </div>
+                                    <div class="row g-3">
+                                        <div class="col-md-4">
+                                            <label class="form-label-modern">
+                                                <i class="fas fa-phone-alt" style="color: #667eea; margin-right: 0.5rem;"></i>
+                                                Telefone 1 *
+                                            </label>
+                                            <input type="text" id="telefone1Motorista" class="form-control form-control-modern" required placeholder="5511999999999" maxlength="13" pattern="[0-9]{11,13}" title="Telefone deve ter 11 ou 13 dígitos (formato: 55+DDD+9+Número)">
+                                            <small style="color: #64748b; font-size: 0.75rem; margin-top: 0.25rem; display: block;">Formato: 55+DDD+9+Número</small>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label class="form-label-modern">
+                                                <i class="fas fa-mobile-alt" style="color: #667eea; margin-right: 0.5rem;"></i>
+                                                Telefone 2
+                                            </label>
+                                            <input type="text" id="telefone2Motorista" class="form-control form-control-modern" placeholder="5511888888888" maxlength="13" pattern="[0-9]{11,13}" title="Telefone deve ter 11 ou 13 dígitos (formato: 55+DDD+9+Número)">
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label class="form-label-modern">
+                                                <i class="fas fa-map-marker-alt" style="color: #667eea; margin-right: 0.5rem;"></i>
+                                                Estado (DDD)
+                                            </label>
+                                            <select id="estadoMotorista" class="form-select form-select-modern">
+                                                <option value="">Selecione o estado</option>
+                                                <option value="SP">São Paulo</option>
+                                                <option value="RJ">Rio de Janeiro</option>
+                                                <option value="MG">Minas Gerais</option>
+                                                <option value="ES">Espírito Santo</option>
+                                                <option value="PR">Paraná</option>
+                                                <option value="SC">Santa Catarina</option>
+                                                <option value="RS">Rio Grande do Sul</option>
+                                                <option value="MS">Mato Grosso do Sul</option>
+                                                <option value="MT">Mato Grosso</option>
+                                                <option value="GO">Goiás</option>
+                                                <option value="DF">Distrito Federal</option>
+                                                <option value="BA">Bahia</option>
+                                                <option value="SE">Sergipe</option>
+                                                <option value="AL">Alagoas</option>
+                                                <option value="PE">Pernambuco</option>
+                                                <option value="PB">Paraíba</option>
+                                                <option value="RN">Rio Grande do Norte</option>
+                                                <option value="CE">Ceará</option>
+                                                <option value="PI">Piauí</option>
+                                                <option value="MA">Maranhão</option>
+                                                <option value="PA">Pará</option>
+                                                <option value="AP">Amapá</option>
+                                                <option value="AM">Amazonas</option>
+                                                <option value="RR">Roraima</option>
+                                                <option value="AC">Acre</option>
+                                                <option value="RO">Rondônia</option>
+                                                <option value="TO">Tocantins</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                        <div class="modal-footer" style="padding: 2rem 2.5rem; background: white; border-top: 2px solid #e2e8f0; margin-top: auto; display: flex; gap: 1rem; justify-content: flex-end; border-radius: 0 0 24px 24px;">
+                            <button type="button" class="btn btn-modern btn-modern-warning" onclick="fecharModalCadastroMotorista()">
+                                <i class="fas fa-times me-2"></i>Cancelar
+                            </button>
+                            <button type="button" class="btn btn-modern btn-modern-success" onclick="salvarMotoristaRapido('${coletaId}')" style="min-width: 180px;">
+                                <i class="fas fa-save me-2"></i>Salvar e Vincular
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <style>
+                    @keyframes fadeIn {
+                        from { opacity: 0; }
+                        to { opacity: 1; }
+                    }
+                    @keyframes slideUp {
+                        from { 
+                            opacity: 0;
+                            transform: translateY(30px) scale(0.95);
+                        }
+                        to { 
+                            opacity: 1;
+                            transform: translateY(0) scale(1);
+                        }
+                    }
+                </style>
+            `;
+            
+            document.body.appendChild(modal);
+        }
+        
+        function fecharModalCadastroMotorista() {
+            const modal = document.getElementById('modalCadastroMotorista');
+            if (modal) {
+                modal.remove();
+            }
+        }
+        
+        // ✅ FUNÇÃO PARA SALVAR MOTORISTA RÁPIDO E VINCULAR À COLETA
+        async function salvarMotoristaRapido(coletaId) {
+            try {
+                // Validar campos obrigatórios
+                const nome = document.getElementById('nomeMotorista').value.trim();
+                const telefone1 = document.getElementById('telefone1Motorista').value.trim();
+                
+                if (!nome) {
+                    showNotification('Nome completo é obrigatório', 'error');
+                    return;
+                }
+                
+                if (!telefone1) {
+                    showNotification('Telefone 1 é obrigatório', 'error');
+                    return;
+                }
+                
+                // Normalizar telefones
+                const normalizarTelefone = (tel) => {
+                    if (!tel) return null;
+                    const apenasNumeros = tel.replace(/\D/g, '');
+                    if (apenasNumeros.length === 13 && apenasNumeros.startsWith('55')) {
+                        return apenasNumeros;
+                    }
+                    if (apenasNumeros.length === 11) {
+                        return '55' + apenasNumeros;
+                    }
+                    return apenasNumeros.length >= 11 ? apenasNumeros : null;
+                };
+                
+                const telefone1Normalizado = normalizarTelefone(telefone1);
+                if (!telefone1Normalizado || (telefone1Normalizado.length !== 13 && telefone1Normalizado.length !== 11)) {
+                    showNotification('Telefone 1 inválido. Use o formato: 5511999999999 ou 11999999999', 'error');
+                    return;
+                }
+                
+                const telefone2 = document.getElementById('telefone2Motorista').value.trim();
+                const telefone2Normalizado = telefone2 ? normalizarTelefone(telefone2) : null;
+                
+                // Normalizar CNH
+                const cnh = document.getElementById('cnhMotorista').value.trim();
+                const cnhNormalizada = cnh ? cnh.replace(/\D/g, '') : null;
+                if (cnhNormalizada && cnhNormalizada.length !== 11) {
+                    showNotification('CNH deve conter exatamente 11 dígitos numéricos', 'error');
+                    return;
+                }
+                
+                // Verificar se telefone já existe
+                if (!supabaseClient) {
+                    showNotification('Erro: Supabase não inicializado', 'error');
+                    return;
+                }
+                
+                const { data: telefoneExistente } = await supabaseClient
+                    .from('motoristas')
+                    .select('id, nome')
+                    .or(`telefone1.eq.${telefone1Normalizado},telefone2.eq.${telefone1Normalizado}`);
+                
+                if (telefoneExistente && telefoneExistente.length > 0) {
+                    showNotification(`Este telefone já está cadastrado para: ${telefoneExistente[0].nome}`, 'warning');
+                    return;
+                }
+                
+                // Preparar dados do motorista
+                const motoristaData = {
+                    nome: nome,
+                    telefone1: telefone1Normalizado,
+                    telefone2: telefone2Normalizado,
+                    cnh: cnhNormalizada,
+                    categoria_cnh: document.getElementById('categoriaCNH').value || null,
+                    estado: document.getElementById('estadoMotorista').value || null,
+                    status: 'ativo',
+                    data_cadastro: new Date().toISOString(),
+                    data_atualizacao: new Date().toISOString()
+                };
+                
+                // Salvar motorista
+                const { data: novoMotorista, error } = await supabaseClient
+                    .from('motoristas')
+                    .insert([motoristaData])
+                    .select()
+                    .single();
+                
+                if (error) throw error;
+                
+                showNotification('✅ Motorista cadastrado com sucesso!', 'success');
+                
+                // Fechar modal de cadastro
+                fecharModalCadastroMotorista();
+                
+                // Vincular motorista à coleta automaticamente
+                await selecionarMotorista(coletaId, novoMotorista.id);
+                
+            } catch (error) {
+                console.error('❌ Erro ao cadastrar motorista:', error);
+                showNotification('Erro ao cadastrar motorista: ' + error.message, 'error');
             }
         }
 
@@ -10125,7 +10925,7 @@
                                     <strong style="color: ${isReprovado ? '#dc3545' : '#1f2937'}; font-size: 1.1rem;">${motorista.nome}</strong>
                                     ${isReprovado ? `
                                         <span style="background: #dc3545; color: white; padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; box-shadow: 0 2px 6px rgba(220, 53, 69, 0.4);">
-                                            <i class="fas fa-times-circle"></i> ${tagReprovacao}
+                                            <i class="fas fa-times-circle"></i> ${tagStatus}
                                         </span>
                                     ` : `
                                         <span style="background: #28a745; color: white; padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">
@@ -11073,6 +11873,133 @@
         let carregandoColetas = false;
         let timeoutCarregarColetas = null;
         
+        /**
+         * ✅ ELEVAÇÃO AUTOMÁTICA DE PRIORIDADE BASEADA EM TEMPO
+         * Calcula e aplica a prioridade automaticamente baseado no tempo desde data_recebimento:
+         * - Baixa: 0-15 minutos
+         * - Normal: 15-25 minutos
+         * - Alta: 25-45 minutos
+         * - Urgente: > 45 minutos
+         * 
+         * IMPORTANTE: A prioridade é atualizada automaticamente conforme o tempo passa.
+         * Coletas criadas como "normal" serão atualizadas automaticamente quando passarem dos limites.
+         */
+        async function aplicarElevacaoAutomaticaPrioridade(coletas) {
+            if (!coletas || coletas.length === 0) return;
+            
+            if (!supabaseClient) {
+                console.warn('⚠️ Supabase não inicializado, não é possível atualizar prioridades');
+                return;
+            }
+            
+            const agora = new Date();
+            const coletasParaAtualizar = [];
+            
+            console.log(`🔄 Verificando elevação automática de prioridade para ${coletas.length} coleta(s)...`);
+            
+            for (const coleta of coletas) {
+                // Pular se a coleta estiver arquivada
+                if (coleta.arquivado) continue;
+                
+                // ✅ NOVO: Usar tempo acumulado na etapa (considera múltiplas entradas)
+                // Se tempo_acumulado_etapa estiver disponível, usar ele
+                // Senão, calcular tempo desde data_entrada_etapa (compatibilidade)
+                let tempoMinutos = 0;
+                
+                if (coleta.tempo_acumulado_etapa !== undefined && coleta.tempo_acumulado_etapa !== null) {
+                    // Usar tempo acumulado (considera múltiplas entradas na mesma etapa)
+                    tempoMinutos = coleta.tempo_acumulado_etapa;
+                } else {
+                    // Fallback: calcular tempo desde última entrada
+                    const dataEntradaEtapa = coleta.data_entrada_etapa 
+                        ? new Date(coleta.data_entrada_etapa)
+                        : (coleta.updated_at ? new Date(coleta.updated_at) : null);
+                    
+                    if (!dataEntradaEtapa || isNaN(dataEntradaEtapa.getTime())) {
+                        console.log(`⚠️ Coleta ${coleta.id} sem data de entrada na etapa válida, pulando...`);
+                        continue;
+                    }
+                    
+                    tempoMinutos = (agora.getTime() - dataEntradaEtapa.getTime()) / (1000 * 60);
+                }
+                
+                // Se o tempo for negativo, pular (data no futuro)
+                if (tempoMinutos < 0) {
+                    console.log(`⚠️ Coleta ${coleta.id}: data de entrada na etapa no futuro (${tempoMinutos.toFixed(1)}min), pulando...`);
+                    continue;
+                }
+                
+                const prioridadeAtual = coleta.prioridade || 'normal';
+                
+                // Determinar prioridade baseada no tempo (conforme especificação)
+                // - Baixa: 0-15 minutos
+                // - Normal: 15-25 minutos
+                // - Alta: 25-45 minutos
+                // - Urgente: > 45 minutos
+                let prioridadeBaseadaNoTempo;
+                if (tempoMinutos < 15) {
+                    prioridadeBaseadaNoTempo = 'baixa';
+                } else if (tempoMinutos < 25) {
+                    prioridadeBaseadaNoTempo = 'normal';
+                } else if (tempoMinutos < 45) {
+                    prioridadeBaseadaNoTempo = 'alta';
+                } else {
+                    prioridadeBaseadaNoTempo = 'urgente';
+                }
+                
+                // Atualizar se a prioridade calculada for diferente da atual
+                // IMPORTANTE: Sempre atualiza baseado no tempo, EXCETO se:
+                // - A prioridade atual é "urgente" E a calculada NÃO é "urgente" (preserva urgente manual)
+                if (prioridadeBaseadaNoTempo !== prioridadeAtual) {
+                    // Se o tempo indica urgente, SEMPRE atualiza (elevação automática)
+                    // Se a atual é urgente mas o tempo NÃO indica urgente, NÃO atualiza (preserva urgente manual)
+                    const deveAtualizar = prioridadeBaseadaNoTempo === 'urgente' || prioridadeAtual !== 'urgente';
+                    
+                    if (deveAtualizar) {
+                        console.log(`🔄 Coleta ${coleta.id}: atualizando prioridade ${prioridadeAtual} → ${prioridadeBaseadaNoTempo} (tempo: ${tempoMinutos.toFixed(1)}min)`);
+                        coletasParaAtualizar.push({
+                            id: coleta.id,
+                            prioridade: prioridadeBaseadaNoTempo,
+                            tempoMinutos: tempoMinutos.toFixed(1),
+                            prioridadeAtual: prioridadeAtual
+                        });
+                    }
+                }
+            }
+            
+            // Atualizar coletas em lote
+            if (coletasParaAtualizar.length > 0) {
+                console.log(`🔄 Atualizando prioridade automaticamente para ${coletasParaAtualizar.length} coleta(s)`);
+                
+                for (const item of coletasParaAtualizar) {
+                    try {
+                        console.log(`🔄 Atualizando coleta ${item.id}: ${item.prioridadeAtual} → ${item.prioridade} (${item.tempoMinutos}min)`);
+                        
+                        // Atualizar no banco de dados
+                        const { error } = await supabaseClient
+                            .from('coletas')
+                            .update({ prioridade: item.prioridade })
+                            .eq('id', item.id);
+                        
+                        if (error) {
+                            console.error(`❌ Erro ao atualizar prioridade da coleta ${item.id}:`, error);
+                        } else {
+                            // Atualizar também no array local
+                            const coletaIndex = coletas.findIndex(c => c.id === item.id);
+                            if (coletaIndex !== -1) {
+                                coletas[coletaIndex].prioridade = item.prioridade;
+                            }
+                            console.log(`✅ Prioridade atualizada automaticamente para coleta ${item.id}: ${item.prioridade} (${item.tempoMinutos}min)`);
+                        }
+                    } catch (error) {
+                        console.error(`❌ Erro ao atualizar prioridade da coleta ${item.id}:`, error);
+                    }
+                }
+            } else {
+                console.log('✅ Nenhuma coleta precisa de atualização de prioridade');
+            }
+        }
+        
         async function carregarColetas() {
             // Limpar timeout anterior se existir
             if (timeoutCarregarColetas) {
@@ -11128,6 +12055,12 @@
 
                 coletasData = coletasUnicas;
                 console.log('📦 Coletas carregadas (após remoção de duplicatas):', coletasData.length);
+                
+                // ✅ ENRIQUECER COLETAS COM TEMPO ACUMULADO (deve ser ANTES da elevação de prioridade)
+                await enriquecerColetasComTempoParado();
+                
+                // ✅ ELEVAÇÃO AUTOMÁTICA DE PRIORIDADE BASEADA EM TEMPO
+                await aplicarElevacaoAutomaticaPrioridade(coletasData);
                 
                 // Buscar contratos para cada coleta
                 const headers = await getSupabaseAuthHeaders();
@@ -13305,6 +14238,28 @@
             document.getElementById('status').value = 'pendente';
             document.getElementById('prioridade').value = 'normal';
             document.getElementById('etapaAtual').value = 'comercial';
+            
+            // ✅ Desabilitar campo de prioridade na criação para usuários comuns
+            // Apenas admin ou coordenador (manager) podem escolher prioridade na criação
+            const prioridadeSelect = document.getElementById('prioridade');
+            const isAdminOrManager = currentUser && (currentUser.isAdmin || currentUser.role === 'admin' || currentUser.role === 'manager');
+            
+            if (prioridadeSelect) {
+                if (!isAdminOrManager) {
+                    // Usuários comuns: desabilitar e garantir que seja "normal"
+                    prioridadeSelect.disabled = true;
+                    prioridadeSelect.value = 'normal';
+                    prioridadeSelect.title = 'Prioridade inicial sempre será Normal. Apenas coordenadores e administradores podem definir outras prioridades.';
+                } else {
+                    // Admin/Coordenador: habilitar e mostrar todas as opções
+                    prioridadeSelect.disabled = false;
+                    prioridadeSelect.title = '';
+                    const prioridadeUrgenteOption = document.getElementById('prioridadeUrgenteOption');
+                    if (prioridadeUrgenteOption) {
+                        prioridadeUrgenteOption.style.display = 'block';
+                    }
+                }
+            }
             document.getElementById('filial').value = ''; // Não preencher automaticamente, obrigar seleção
             
             // Desmarcar checkbox de diária
@@ -13569,6 +14524,27 @@
             });
             
             document.getElementById('status').value = coleta.status || 'pendente';
+            // ✅ Na edição: apenas admin ou coordenador (manager) podem alterar prioridade
+            const prioridadeSelect = document.getElementById('prioridade');
+            const isAdminOrManager = currentUser && (currentUser.isAdmin || currentUser.role === 'admin' || currentUser.role === 'manager');
+            
+            if (prioridadeSelect) {
+                // Sempre mostrar todas as opções na edição (admin/coordenador pode alterar)
+                const prioridadeUrgenteOption = document.getElementById('prioridadeUrgenteOption');
+                if (prioridadeUrgenteOption) {
+                    prioridadeUrgenteOption.style.display = isAdminOrManager ? 'block' : 'none';
+                }
+                
+                // Desabilitar campo se não for admin/coordenador
+                if (!isAdminOrManager) {
+                    prioridadeSelect.disabled = true;
+                    prioridadeSelect.title = 'Apenas coordenadores e administradores podem alterar a prioridade manualmente. O sistema pode elevar automaticamente baseado no tempo.';
+                } else {
+                    prioridadeSelect.disabled = false;
+                    prioridadeSelect.title = '';
+                }
+            }
+            
             document.getElementById('prioridade').value = coleta.prioridade || 'normal';
             document.getElementById('etapaAtual').value = coleta.etapa_atual || 'comercial';
             document.getElementById('observacoes').value = coleta.observacoes || '';
@@ -13844,6 +14820,11 @@
             // Verificar se é diária (para uso no coletaData)
             const isDiariaData = document.getElementById('diaria')?.checked || false;
             
+            // ✅ Prioridade: sempre "normal" na criação para usuários comuns
+            // Apenas admin/coordenador pode escolher outra prioridade na criação
+            const isAdminOrManager = currentUser && (currentUser.isAdmin || currentUser.role === 'admin' || currentUser.role === 'manager');
+            const prioridadeFinal = (!currentEditingId && !isAdminOrManager) ? 'normal' : (rawData.prioridade || 'normal');
+            
             const coletaData = {
                 filial: rawData.filial,
                 numero_coleta: numeroColeta || null,
@@ -13858,8 +14839,8 @@
                 tipos_veiculo: tiposVeiculoSelecionados,
                 tipos_carroceria: tiposCarroceriaSelecionados,
                 status: rawData.status,
-                etapa_atual: rawData.etapaAtual, 
-                prioridade: rawData.prioridade || 'normal',
+                etapa_atual: rawData.etapaAtual,
+                prioridade: prioridadeFinal,
                 observacoes: rawData.observacoes,
                 diaria: isDiariaData
             };
@@ -16465,7 +17446,80 @@
             }
         }
         
-        // Função para enriquecer coletas com data de entrada na etapa
+        /**
+         * ✅ NOVA FUNÇÃO: Calcula o tempo acumulado que uma coleta passou em uma etapa específica
+         * Considera múltiplas entradas/saídas da mesma etapa
+         * @param {string} coletaId - ID da coleta
+         * @param {string} etapaId - ID da etapa
+         * @param {Array} historico - Histórico de movimentações da coleta (ordenado por data, mais antigo primeiro)
+         * @param {string} etapaAtual - Etapa atual da coleta
+         * @returns {number} - Tempo acumulado em minutos
+         */
+        function calcularTempoAcumuladoEtapa(coletaId, etapaId, historico, etapaAtual) {
+            if (!historico || historico.length === 0) {
+                return 0;
+            }
+            
+            // Ordenar histórico por data (mais antigo primeiro)
+            const historicoOrdenado = [...historico].sort((a, b) => 
+                new Date(a.created_at) - new Date(b.created_at)
+            );
+            
+            let tempoAcumulado = 0; // em minutos
+            let entradaEtapa = null;
+            const agora = new Date();
+            
+            // Padrões para identificar mudanças de etapa
+            // Formato real: "Coleta movida de \"[ETAPA_ORIGEM]\" para \"[ETAPA_DESTINO]\" via Kanban"
+            // ou "Etapa voltou de [ETAPA_ORIGEM] para [ETAPA_DESTINO]"
+            const etapaNome = ETAPAS.find(e => e.id === etapaId)?.nome || etapaId;
+            
+            // Percorrer histórico cronologicamente
+            for (let i = 0; i < historicoOrdenado.length; i++) {
+                const registro = historicoOrdenado[i];
+                if (!registro.detalhes) continue;
+                
+                const detalhes = registro.detalhes;
+                
+                // Verificar se entrou na etapa (padrão: "para \"[ETAPA_DESTINO]\"")
+                // Formato: "Coleta movida de \"X\" para \"[ETAPA]\" via Kanban"
+                const padraoEntrada1 = new RegExp(`para\\s*["']${etapaNome}["']`, 'i');
+                const padraoEntrada2 = new RegExp(`para\\s*["']${etapaId}["']`, 'i');
+                const padraoEntrada3 = new RegExp(`voltou.*?para\\s*["']${etapaNome}["']`, 'i');
+                const entrouNaEtapa = padraoEntrada1.test(detalhes) || padraoEntrada2.test(detalhes) || padraoEntrada3.test(detalhes);
+                
+                // Verificar se saiu da etapa (padrão: "de \"[ETAPA_ORIGEM]\"")
+                // Formato: "Coleta movida de \"[ETAPA]\" para \"X\" via Kanban"
+                const padraoSaida1 = new RegExp(`de\\s*["']${etapaNome}["']`, 'i');
+                const padraoSaida2 = new RegExp(`de\\s*["']${etapaId}["']`, 'i');
+                const saiuDaEtapa = padraoSaida1.test(detalhes) || padraoSaida2.test(detalhes);
+                
+                // Se saiu da etapa e estava dentro dela
+                if (saiuDaEtapa && entradaEtapa !== null) {
+                    // Saiu da etapa - somar o tempo que ficou
+                    const saidaEtapa = new Date(registro.created_at);
+                    const tempoPeriodo = (saidaEtapa.getTime() - entradaEtapa.getTime()) / (1000 * 60);
+                    tempoAcumulado += tempoPeriodo;
+                    entradaEtapa = null; // Resetar para próxima entrada
+                }
+                
+                // Se entrou na etapa (e não estava saindo ao mesmo tempo)
+                if (entrouNaEtapa && !saiuDaEtapa) {
+                    // Registrar nova entrada na etapa
+                    entradaEtapa = new Date(registro.created_at);
+                }
+            }
+            
+            // Se ainda está na etapa (entradaEtapa !== null), somar tempo até agora
+            if (entradaEtapa !== null && etapaAtual === etapaId) {
+                const tempoAtual = (agora.getTime() - entradaEtapa.getTime()) / (1000 * 60);
+                tempoAcumulado += tempoAtual;
+            }
+            
+            return tempoAcumulado;
+        }
+        
+        // Função para enriquecer coletas com data de entrada na etapa e tempo acumulado
         async function enriquecerColetasComTempoParado() {
             if (coletasData.length === 0) return;
             
@@ -16476,8 +17530,8 @@
                     .from('historico_coletas')
                     .select('coleta_id, created_at, detalhes, acao')
                     .in('coleta_id', coletasIds)
-                    .or('acao.eq.etapa_avancada,acao.eq.etapa_alterada,acao.eq.etapa_movida')
-                    .order('created_at', { ascending: false });
+                    .or('acao.eq.etapa_avancada,acao.eq.etapa_alterada,acao.eq.etapa_movida,acao.eq.etapa_retornada')
+                    .order('created_at', { ascending: true }); // Ordenar do mais antigo para o mais recente
                 
                 // Agrupar histórico por coleta
                 const historicoPorColeta = {};
@@ -16490,15 +17544,29 @@
                     });
                 }
                 
-                // Para cada coleta, encontrar quando entrou na etapa atual
+                // Para cada coleta, calcular tempo acumulado na etapa atual
                 coletasData.forEach(coleta => {
                     const historico = historicoPorColeta[coleta.id] || [];
+                    
+                    // ✅ NOVO: Calcular tempo acumulado na etapa atual
+                    const tempoAcumuladoMinutos = calcularTempoAcumuladoEtapa(
+                        coleta.id, 
+                        coleta.etapa_atual, 
+                        historico, 
+                        coleta.etapa_atual
+                    );
+                    
+                    // Armazenar tempo acumulado
+                    coleta.tempo_acumulado_etapa = tempoAcumuladoMinutos;
+                    
+                    // Para compatibilidade, manter data_entrada_etapa (última entrada)
+                    // Mas vamos calcular uma data "virtual" baseada no tempo acumulado
                     let dataEntradaEtapa = null;
                     
-                    // Procurar última entrada na etapa atual (buscar por padrão "para \"Etapa\"")
-                    for (const registro of historico) {
+                    // Procurar última entrada na etapa atual
+                    for (let i = historico.length - 1; i >= 0; i--) {
+                        const registro = historico[i];
                         if (registro.detalhes) {
-                            // Padrões: "para \"Etapa\"", "→ \"Etapa\"", "Etapa\""
                             const padrao1 = new RegExp(`para\\s*["']${coleta.etapa_atual}["']`, 'i');
                             const padrao2 = new RegExp(`→\\s*["']${coleta.etapa_atual}["']`, 'i');
                             const padrao3 = new RegExp(`["']${coleta.etapa_atual}["']`, 'i');
@@ -16515,13 +17583,28 @@
                         dataEntradaEtapa = coleta.created_at || coleta.updated_at;
                     }
                     
-                    coleta.data_entrada_etapa = dataEntradaEtapa;
+                    // Calcular data "virtual" de entrada considerando tempo acumulado
+                    // Se o tempo acumulado é maior que o tempo desde a última entrada,
+                    // significa que houve múltiplas entradas - ajustar a data
+                    const agora = new Date();
+                    const dataUltimaEntrada = new Date(dataEntradaEtapa);
+                    const tempoDesdeUltimaEntrada = (agora.getTime() - dataUltimaEntrada.getTime()) / (1000 * 60);
+                    
+                    if (tempoAcumuladoMinutos > tempoDesdeUltimaEntrada) {
+                        // Tempo acumulado é maior - calcular data virtual retrocedendo o tempo extra
+                        const tempoExtra = tempoAcumuladoMinutos - tempoDesdeUltimaEntrada;
+                        const dataVirtual = new Date(agora.getTime() - (tempoAcumuladoMinutos * 60 * 1000));
+                        coleta.data_entrada_etapa = dataVirtual.toISOString();
+                    } else {
+                        coleta.data_entrada_etapa = dataEntradaEtapa;
+                    }
                 });
             } catch (error) {
                 console.warn('⚠️ Erro ao enriquecer coletas com tempo parado:', error);
                 // Fallback: usar created_at para todas
                 coletasData.forEach(coleta => {
                     coleta.data_entrada_etapa = coleta.created_at || coleta.updated_at;
+                    coleta.tempo_acumulado_etapa = 0;
                 });
             }
         }
@@ -16576,9 +17659,6 @@
         const originalCarregarColetas = carregarColetas;
         carregarColetas = async function() {
             await originalCarregarColetas();
-            
-            // Enriquecer coletas com data de entrada na etapa atual
-            await enriquecerColetasComTempoParado();
             
             // ✅ OTIMIZAÇÃO: Buscar todas as etiquetas de uma vez em vez de loop individual
             if (coletasData.length > 0) {
