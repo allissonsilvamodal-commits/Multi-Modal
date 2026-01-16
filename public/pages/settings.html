@@ -1402,7 +1402,14 @@
                                     </div>
                                 </div>
                                         
-                                        <label class="form-label mt-4">Permissões de Coletas</label>
+                                        <label class="form-label mt-4">Áreas do Kanban de Coletas</label>
+                                        <div id="containerPermissoesAreasKanban" class="mt-3">
+                                            <div class="alert alert-info">
+                                                Selecione um usuário para gerenciar o acesso às áreas do kanban
+                                            </div>
+                                        </div>
+
+                                        <label class="form-label mt-4">Permissões de Coletas (Etapas)</label>
                                         <div id="containerPermissoesColetas" class="mt-3">
                                             <div class="alert alert-info">
                                                 Selecione um usuário para gerenciar suas permissões
@@ -3708,6 +3715,7 @@
             const usuarioId = document.getElementById('selectUsuarioPermissoes').value;
             if (!usuarioId) {
                 document.getElementById('containerPermissoesPortal').innerHTML = '<div class="alert alert-info">Selecione um usuário para gerenciar suas permissões</div>';
+                document.getElementById('containerPermissoesAreasKanban').innerHTML = '<div class="alert alert-info">Selecione um usuário para gerenciar suas permissões</div>';
                 document.getElementById('containerPermissoesColetas').innerHTML = '<div class="alert alert-info">Selecione um usuário para gerenciar suas permissões</div>';
                 document.getElementById('containerPermissoesFerramentas').innerHTML = '<div class="alert alert-info">Selecione um usuário para gerenciar suas permissões</div>';
                 document.getElementById('containerPermissoesITs').innerHTML = '<div class="alert alert-info">Selecione um usuário para gerenciar suas permissões</div>';
@@ -3770,12 +3778,14 @@
 
                 console.log('✅ Permissões carregadas:', {
                     portal: result.permissoesPortal?.length || 0,
+                    areasKanban: result.permissoesAreasKanban?.length || 0,
                     coletas: result.permissoesColetas?.length || 0,
                     its: result.permissoesITs?.length || 0
                 });
 
                 // Renderizar permissões
                 renderizarPermissoesPortal(result.permissoesPortal || []);
+                renderizarPermissoesAreasKanban(result.permissoesAreasKanban || []);
                 renderizarPermissoesFerramentas(result.permissoesPortal || []);
                 renderizarPermissoesColetas(result.permissoesColetas || []);
                 renderizarPermissoesITs(result.permissoesITs || []);
@@ -3968,7 +3978,12 @@
                             <input class="form-check-input" type="checkbox" id="permPortalConfiguracoes" 
                                 ${permissoes.some(p => p.permissao_id === 'configuracoes') ? 'checked' : ''}
                                 onchange="salvarPermissaoPortal('configuracoes', this.checked)">
-                            <label class="form-check-label" for="permPortalConfiguracoes">Configurações do Sistema</label>
+                            <label class="form-check-label" for="permPortalConfiguracoes">
+                                Configurações do Sistema
+                                <small class="text-muted d-block mt-1">
+                                    <i class="fas fa-info-circle"></i> Inclui acesso ao Funil Geral de Coletas
+                                </small>
+                            </label>
                         </div>
                     </div>
                 </div>
@@ -4076,6 +4091,66 @@
             container.innerHTML = rows.join('');
         }
 
+        function renderizarPermissoesAreasKanban(permissoes) {
+            const areasKanban = [
+                {
+                    id: 'kanban_comercial',
+                    nome: 'Comercial',
+                    descricao: 'Acesso à área Comercial do kanban (Comercial, Price, CS)',
+                    icone: 'fa-handshake'
+                },
+                {
+                    id: 'kanban_administrativo',
+                    nome: 'Administrativo',
+                    descricao: 'Acesso à área Administrativo do kanban (Controladoria, GR, Serviços Adicionais)',
+                    icone: 'fa-briefcase'
+                },
+                {
+                    id: 'kanban_financeiro',
+                    nome: 'Financeiro',
+                    descricao: 'Acesso à área Financeiro do kanban (Contas a Pagar, Contas a Receber)',
+                    icone: 'fa-dollar-sign'
+                },
+                {
+                    id: 'kanban_operacao',
+                    nome: 'Operação',
+                    descricao: 'Acesso à área Operação do kanban (Contratação, Documentação, Monitoramento, Finalizar Operação)',
+                    icone: 'fa-cogs'
+                }
+            ];
+
+            const container = document.getElementById('containerPermissoesAreasKanban');
+            container.innerHTML = `
+                <div class="alert alert-info mb-3">
+                    <i class="fas fa-info-circle me-2"></i>
+                    <strong>Como usar:</strong> Controle o acesso às diferentes áreas do kanban de coletas. Cada área agrupa etapas relacionadas.
+                    <br><br>
+                    <strong>Nota:</strong> O usuário também precisa ter a permissão do menu correspondente (Comercial, Cadastro, Contas a Pagar ou Coletas) para acessar a área.
+                </div>
+                <div class="row g-3">
+                    ${areasKanban.map(area => {
+                        const temPermissao = permissoes.some(p => p.permissao_id === area.id);
+                        return `
+                            <div class="col-md-6">
+                                <div class="border rounded p-3 bg-light-subtle h-100">
+                                    <div class="form-check form-switch mb-2">
+                                        <input class="form-check-input" type="checkbox" id="permAreaKanban_${area.id}"
+                                            ${temPermissao ? 'checked' : ''}
+                                            onchange="salvarPermissaoAreaKanban('${area.id}', this.checked)">
+                                        <label class="form-check-label fw-semibold" for="permAreaKanban_${area.id}">
+                                            <i class="fas ${area.icone} me-2"></i>
+                                            ${area.nome}
+                                        </label>
+                                    </div>
+                                    <small class="text-muted d-block">${area.descricao}</small>
+                                </div>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+            `;
+        }
+
         function renderizarPermissoesITs(permissoes) {
             const container = document.getElementById('containerPermissoesITs');
             const acoesITs = [
@@ -4158,6 +4233,56 @@
                 await carregarPermissoesUsuario();
             } catch (error) {
                 console.error('❌ Erro ao salvar permissão:', error);
+                console.error('❌ Stack trace:', error.stack);
+                mostrarErro(`Erro ao salvar permissão: ${error.message || 'Erro desconhecido'}`);
+            }
+        }
+
+        async function salvarPermissaoAreaKanban(areaId, permitido) {
+            const usuarioId = document.getElementById('selectUsuarioPermissoes').value;
+            if (!usuarioId) {
+                mostrarErro('Selecione um usuário primeiro');
+                return;
+            }
+
+            console.log(`💾 Salvando permissão de área do kanban:`);
+            console.log(`👤 Usuário ID: ${usuarioId}`);
+            console.log(`🔑 Área: ${areaId}`);
+            console.log(`✅ Permitido: ${permitido}`);
+
+            try {
+                const headers = await getAuthHeaders();
+                const response = await fetch('/api/settings/permissoes/area-kanban', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...headers
+                    },
+                    body: JSON.stringify({
+                        usuarioId: usuarioId,
+                        areaId: areaId,
+                        permitido: permitido
+                    })
+                });
+
+                const result = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(result.error || 'Erro ao salvar permissão');
+                }
+
+                console.log(`✅ Permissão de área do kanban ${permitido ? 'adicionada' : 'removida'}: ${areaId}`);
+                
+                // Buscar nome do usuário para exibir na mensagem
+                const usuario = usuariosData.find(u => u.id === usuarioId);
+                const nomeUsuario = usuario ? (usuario.nome || usuario.email) : 'usuário';
+                
+                mostrarSucesso(`Permissão de área ${permitido ? 'habilitada' : 'desabilitada'} com sucesso para ${nomeUsuario}!`);
+                
+                // Recarregar as permissões do usuário para atualizar a interface
+                await carregarPermissoesUsuario();
+            } catch (error) {
+                console.error('❌ Erro ao salvar permissão de área do kanban:', error);
                 console.error('❌ Stack trace:', error.stack);
                 mostrarErro(`Erro ao salvar permissão: ${error.message || 'Erro desconhecido'}`);
             }

@@ -1019,6 +1019,187 @@
             margin-bottom: 3rem;
         }
 
+        /* ========== ESTILOS FUNIL GERAL ========== */
+        .funil-geral-container {
+            display: none; /* Oculto por padrão, será mostrado apenas quando a aba Funil Geral estiver ativa */
+            margin: 1.5rem 0;
+            padding: 1.5rem;
+            background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+            border-radius: 16px;
+            border: 1px solid rgba(102, 126, 234, 0.15);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+        }
+
+        .funil-geral-container.visible {
+            display: block;
+        }
+        
+        /* Quando o funil geral está ativo, ocultar controles do kanban */
+        .kanban-container:has(+ .funil-geral-container.visible),
+        .funil-geral-container.visible ~ .kanban-container {
+            display: none !important;
+        }
+
+        .funil-geral-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid rgba(102, 126, 234, 0.2);
+        }
+
+        .funil-geral-title {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: #667eea;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .funil-geral-title i {
+            font-size: 1.5rem;
+        }
+
+        .funil-geral-stats {
+            display: flex;
+            gap: 1rem;
+            font-size: 0.9rem;
+            color: #6c757d;
+        }
+
+        .funil-geral-stats span {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .funil-geral-stats strong {
+            color: #667eea;
+            font-weight: 700;
+        }
+
+        .funil-etapas-wrapper {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            overflow-x: auto;
+            padding: 0.5rem 0;
+        }
+
+        .funil-etapa-item {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 1rem;
+            background: #ffffff;
+            border-radius: 12px;
+            border: 1px solid rgba(102, 126, 234, 0.1);
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .funil-etapa-item:hover {
+            border-color: rgba(102, 126, 234, 0.3);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
+            transform: translateY(-2px);
+        }
+
+        .funil-etapa-ordem {
+            min-width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 50%;
+            font-weight: 700;
+            font-size: 1rem;
+            flex-shrink: 0;
+        }
+
+        .funil-etapa-info {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .funil-etapa-nome {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #2d3748;
+        }
+
+        .funil-etapa-detalhes {
+            display: flex;
+            gap: 1.5rem;
+            flex-wrap: wrap;
+            font-size: 0.9rem;
+            color: #6c757d;
+        }
+
+        .funil-etapa-detalhe {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .funil-etapa-detalhe i {
+            color: #667eea;
+        }
+
+        .funil-etapa-detalhe strong {
+            color: #2d3748;
+            font-weight: 600;
+        }
+
+        .funil-etapa-badge {
+            padding: 0.4rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .funil-etapa-badge.quantidade {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .funil-etapa-badge.valor {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+        }
+
+        .funil-etapa-badge.tempo-medio {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            color: white;
+        }
+
+        @media (max-width: 768px) {
+            .funil-geral-container {
+                padding: 1rem;
+            }
+
+            .funil-geral-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 1rem;
+            }
+
+            .funil-etapa-item {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .funil-etapa-detalhes {
+                width: 100%;
+            }
+        }
+
         /* ========== ESTILOS KANBAN ========== */
 
         /* Barra de rolagem customizada estilo slider - Parte inferior */
@@ -1130,6 +1311,192 @@
             opacity: 0.4;
             cursor: not-allowed;
             transform: none;
+        }
+
+        /* ============================================
+           SISTEMA DE PÁGINAS DO KANBAN
+           ============================================ */
+        .kanban-pages-tabs {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1.5rem;
+            padding: 0 1rem;
+            border-bottom: 2px solid rgba(77, 166, 255, 0.2);
+            overflow-x: auto;
+            scrollbar-width: thin;
+        }
+
+        .kanban-page-tab {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1.25rem;
+            background: transparent;
+            border: none;
+            border-bottom: 3px solid transparent;
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            white-space: nowrap;
+            position: relative;
+            margin-bottom: -2px;
+        }
+
+        .kanban-page-tab:hover {
+            color: var(--primary-color);
+            background: rgba(77, 166, 255, 0.05);
+        }
+
+        .kanban-page-tab.active {
+            color: var(--primary-color);
+            border-bottom-color: var(--primary-color);
+            background: rgba(77, 166, 255, 0.08);
+        }
+
+        .kanban-page-tab i {
+            font-size: 1rem;
+        }
+
+        .kanban-page-tab.active i {
+            color: var(--primary-color);
+        }
+
+        /* ✅ FAROL DE PRIORIDADES - Legenda de Cores */
+        .prioridade-farol {
+            margin: 1rem;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+        
+        .farol-header {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 1rem 1.25rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            cursor: pointer;
+            user-select: none;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        
+        .farol-header:hover {
+            background: linear-gradient(135deg, #5568d3 0%, #6a3f8f 100%);
+        }
+        
+        .farol-header i:first-child {
+            font-size: 1.2rem;
+        }
+        
+        .farol-chevron {
+            margin-left: auto;
+            transition: transform 0.3s ease;
+        }
+        
+        .prioridade-farol.fechado .farol-chevron {
+            transform: rotate(-90deg);
+        }
+        
+        .farol-content {
+            padding: 1.25rem;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1rem;
+            max-height: 500px;
+            overflow-y: auto;
+            transition: all 0.3s ease;
+        }
+        
+        .prioridade-farol.fechado .farol-content {
+            display: none;
+        }
+        
+        .farol-item {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 0.75rem;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid transparent;
+            transition: all 0.2s ease;
+        }
+        
+        .farol-item:hover {
+            background: #e9ecef;
+            transform: translateX(4px);
+        }
+        
+        .farol-item-especial {
+            background: linear-gradient(135deg, rgba(14, 165, 233, 0.1) 0%, rgba(2, 132, 199, 0.1) 100%);
+            border-left-color: #0ea5e9;
+        }
+        
+        .farol-cor {
+            width: 60px;
+            height: 60px;
+            border-radius: 8px;
+            flex-shrink: 0;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+        }
+        
+        .farol-info {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+            flex: 1;
+        }
+        
+        .farol-info strong {
+            font-size: 1rem;
+            color: #212529;
+            font-weight: 600;
+        }
+        
+        .farol-info span {
+            font-size: 0.85rem;
+            color: #6c757d;
+        }
+        
+        .farol-note {
+            grid-column: 1 / -1;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 1rem;
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+            margin-top: 0.5rem;
+        }
+        
+        .farol-note i {
+            color: #667eea;
+            font-size: 1.2rem;
+            flex-shrink: 0;
+        }
+        
+        .farol-note span {
+            color: #495057;
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+        
+        @media (max-width: 768px) {
+            .farol-content {
+                grid-template-columns: 1fr;
+            }
+            
+            .farol-cor {
+                width: 50px;
+                height: 50px;
+            }
         }
 
         /* ============================================
@@ -1520,6 +1887,7 @@
             flex-grow: 0;
             width: 100%;
             box-sizing: border-box;
+            color: #212529; /* ✅ CORREÇÃO: Cor padrão do texto para cards brancos */
         }
         
         .kanban-card::after {
@@ -1737,15 +2105,88 @@
 
         .kanban-card-title {
             font-weight: 600;
-            color: #333;
+            color: #212529; /* ✅ CORREÇÃO: Cor mais escura para melhor contraste */
             margin-bottom: 0.5rem;
             font-size: 0.95rem;
         }
 
         .kanban-card-info {
             font-size: 0.8rem;
-            color: #666;
+            color: #495057; /* ✅ CORREÇÃO: Cor mais escura para melhor contraste */
             margin-bottom: 0.25rem;
+        }
+        
+        /* ✅ CORREÇÃO: Garantir que elementos dentro do card herdem a cor do texto */
+        .kanban-card[style*="color: white"] .kanban-card-title,
+        .kanban-card[style*="color: white"] .kanban-card-info {
+            color: white !important;
+        }
+        
+        .kanban-card[style*="color: #333"] .kanban-card-title,
+        .kanban-card[style*="color: #333"] .kanban-card-info,
+        .kanban-card[style*="color: #212529"] .kanban-card-title,
+        .kanban-card[style*="color: #212529"] .kanban-card-info {
+            color: #212529 !important;
+        }
+        
+        /* ✅ CORREÇÃO ESPECÍFICA: Cards brancos devem ter texto escuro sempre visível */
+        .kanban-card[style*="background: #ffffff"],
+        .kanban-card[style*="background: white"],
+        .kanban-card[style*="background: #ffffff !important"] {
+            color: #212529 !important;
+        }
+        
+        .kanban-card[style*="background: #ffffff"] .kanban-card-title,
+        .kanban-card[style*="background: #ffffff"] .kanban-card-info,
+        .kanban-card[style*="background: white"] .kanban-card-title,
+        .kanban-card[style*="background: white"] .kanban-card-info,
+        .kanban-card[style*="background: #ffffff !important"] .kanban-card-title,
+        .kanban-card[style*="background: #ffffff !important"] .kanban-card-info {
+            color: #212529 !important;
+        }
+        
+        .kanban-card[style*="background: #ffffff"] .kanban-card-body,
+        .kanban-card[style*="background: white"] .kanban-card-body,
+        .kanban-card[style*="background: #ffffff !important"] .kanban-card-body {
+            color: #212529 !important;
+        }
+        
+        /* ✅ CORREÇÃO: Ícones em cards brancos devem ter cor escura */
+        .kanban-card[style*="background: #ffffff"] i,
+        .kanban-card[style*="background: white"] i,
+        .kanban-card[style*="background: #ffffff !important"] i {
+            color: #495057 !important;
+        }
+        
+        /* ✅ CORREÇÃO: Garantir que todos os elementos dentro de card branco tenham cor visível */
+        .kanban-card[style*="background: #ffffff"] *,
+        .kanban-card[style*="background: white"] *,
+        .kanban-card[style*="background: #ffffff !important"] * {
+            color: inherit;
+        }
+        
+        .kanban-card[style*="background: #ffffff"] span:not([style*="color"]),
+        .kanban-card[style*="background: white"] span:not([style*="color"]),
+        .kanban-card[style*="background: #ffffff !important"] span:not([style*="color"]) {
+            color: #212529 !important;
+        }
+        
+        /* ✅ CORREÇÃO ADICIONAL: Classe específica para cards brancos */
+        .kanban-card.card-branco {
+            background: #ffffff !important;
+            color: #212529 !important;
+        }
+        
+        .kanban-card.card-branco .kanban-card-title,
+        .kanban-card.card-branco .kanban-card-info,
+        .kanban-card.card-branco .kanban-card-body,
+        .kanban-card.card-branco span:not([style*="color"]),
+        .kanban-card.card-branco i:not([style*="color"]) {
+            color: #212529 !important;
+        }
+        
+        .kanban-card.card-branco .kanban-card-info i {
+            color: #495057 !important;
         }
 
         .kanban-card-header {
@@ -1817,6 +2258,11 @@
             margin-top: 0.5rem;
             padding-top: 0.5rem;
             border-top: 1px solid rgba(0, 0, 0, 0.1);
+        }
+        
+        /* ✅ CORREÇÃO: Footer em cards com fundo escuro */
+        .kanban-card[style*="color: white"] .kanban-card-footer {
+            border-top-color: rgba(255, 255, 255, 0.2) !important;
         }
 
         .kanban-card-btn {
@@ -4302,7 +4748,12 @@
                 </div>
                 <div class="filter-group">
                     <label for="searchFilter"><i class="fas fa-search"></i> Buscar</label>
-                    <input type="text" id="searchFilter" placeholder="Cliente, origem, destino, nº da coleta, filial..." onkeyup="filterColetas()">
+                    <div style="display: flex; gap: 0.5rem; align-items: center;">
+                        <input type="text" id="searchFilter" placeholder="Cliente, origem, destino, nº da coleta, filial..." onkeyup="filterColetas()" style="flex: 1;" onkeypress="if(event.key === 'Enter') buscarECarregarTrajetoria()">
+                        <button onclick="buscarECarregarTrajetoria()" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 0.5rem 1rem; border-radius: 8px; cursor: pointer; font-weight: 600; transition: all 0.3s; white-space: nowrap;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(102, 126, 234, 0.4)'" onmouseout="this.style.transform=''; this.style.boxShadow=''" title="Buscar e ver trajetória completa">
+                            <i class="fas fa-route"></i> Trajetória
+                        </button>
+                    </div>
                 </div>
                 </div>
             
@@ -4362,13 +4813,93 @@
         </div>
         </div>
 
+        <!-- Funil Geral - Apenas para usuários com permissão de settings -->
+        <div class="funil-geral-container" id="funilGeralContainer">
+            <div class="funil-geral-header">
+                <div class="funil-geral-title">
+                    <i class="fas fa-filter"></i>
+                    <span>Funil Geral - Todas as Etapas</span>
+                </div>
+                <div class="funil-geral-stats" id="funilGeralStats">
+                    <span><strong id="funilTotalColetas">0</strong> coletas</span>
+                    <span><strong id="funilTotalValor">R$ 0,00</strong> total</span>
+                </div>
+            </div>
+            <div class="funil-etapas-wrapper" id="funilEtapasWrapper">
+                <!-- Etapas serão renderizadas dinamicamente via JavaScript -->
+            </div>
+        </div>
+
         <!-- Grid de Coletas -->
         <div class="coletas-grid" id="coletasGrid" style="display: none;">
             <!-- Cards serão gerados dinamicamente via JavaScript -->
         </div>
 
+        <!-- Abas de Páginas do Kanban (sempre visíveis, independente da visualização) -->
+        <div class="kanban-pages-tabs" id="kanbanPagesTabs" style="margin-bottom: 1rem;">
+            <!-- Abas serão carregadas dinamicamente via JavaScript -->
+        </div>
+
         <!-- Kanban de Coletas -->
         <div class="kanban-container" id="kanbanContainer" style="display: block;">
+            
+            <!-- ✅ FAROL DE PRIORIDADES - Legenda de Cores -->
+            <div class="prioridade-farol" id="prioridadeFarol">
+                <div class="farol-header" onclick="toggleFarol()">
+                    <i class="fas fa-traffic-light"></i>
+                    <span>Farol de Prioridades</span>
+                    <i class="fas fa-chevron-down farol-chevron"></i>
+                </div>
+                <div class="farol-content" id="farolContent">
+                    <div class="farol-item">
+                        <div class="farol-cor" style="background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%); border: 1px solid #dee2e6; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);"></div>
+                        <div class="farol-info">
+                            <strong>Baixa</strong>
+                            <span>0-10 minutos na etapa</span>
+                        </div>
+                    </div>
+                    <div class="farol-item">
+                        <div class="farol-cor" style="background: linear-gradient(135deg, #ffc107 0%, #e0a800 100%); border: 2px solid #ffc107;"></div>
+                        <div class="farol-info">
+                            <strong>Normal</strong>
+                            <span>10-20 minutos na etapa</span>
+                        </div>
+                    </div>
+                    <div class="farol-item">
+                        <div class="farol-cor" style="background: linear-gradient(135deg, #fd7e14 0%, #e8590c 100%); border: 2px solid #fd7e14;"></div>
+                        <div class="farol-info">
+                            <strong>Alta</strong>
+                            <span>20-40 minutos na etapa</span>
+                        </div>
+                    </div>
+                    <div class="farol-item">
+                        <div class="farol-cor" style="background: linear-gradient(135deg, #dc3545 0%, #c82333 100%); border: 2px solid #dc3545;"></div>
+                        <div class="farol-info">
+                            <strong>Urgente</strong>
+                            <span>Mais de 40 minutos na etapa</span>
+                        </div>
+                    </div>
+                    <div class="farol-item">
+                        <div class="farol-cor" style="background: linear-gradient(135deg, #1a1a1a 0%, #000000 100%); border: 2px solid #000000;"></div>
+                        <div class="farol-info">
+                            <strong>Risco de Perder Cliente</strong>
+                            <span>Mais de 2h em etapa crítica ou 4h em qualquer etapa</span>
+                        </div>
+                    </div>
+                    <div class="farol-item farol-item-especial">
+                        <div class="farol-cor" style="background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%); border: 2px solid #0ea5e9;"></div>
+                        <div class="farol-info">
+                            <strong>Diária</strong>
+                            <span>Coleta diária (sempre azul, independente do tempo)</span>
+                        </div>
+                    </div>
+                    <div class="farol-note">
+                        <i class="fas fa-info-circle"></i>
+                        <span>As cores são calculadas automaticamente baseadas no tempo que a coleta está na etapa atual.</span>
+                    </div>
+                </div>
+            </div>
+            
             <!-- Controles de Navegação -->
             <div class="kanban-navigation" id="kanbanNavigation">
                 <div class="kanban-nav-buttons">
@@ -4495,7 +5026,7 @@
                     </div>
                     <div class="form-group">
                         <label for="cliente">Cliente *</label>
-                        <select id="cliente" name="cliente" required disabled>
+                        <select id="cliente" name="cliente" required disabled onchange="preencherOrigemDestino()">
                             <option value="">Selecione primeiro a filial</option>
                         </select>
                             </div>
@@ -4509,12 +5040,28 @@
                                 </div>
                     <div class="form-group">
                         <label for="origem">Origem *</label>
-                        <input type="text" id="origem" name="origem" placeholder="Cidade - UF" required>
-                            </div>
+                        <select id="origem" name="origem" required disabled>
+                            <option value="">Selecione primeiro o cliente</option>
+                        </select>
+                    </div>
                     <div class="form-group">
                         <label for="destino">Destino *</label>
-                        <input type="text" id="destino" name="destino" placeholder="Cidade - UF" required>
-                        </div>
+                        <select id="destino" name="destino" required disabled>
+                            <option value="">Selecione primeiro o cliente</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="tipoProduto">Tipo de Produto *</label>
+                        <select id="tipoProduto" name="tipoProduto" required disabled onchange="atualizarCodigoTabela()">
+                            <option value="">Selecione primeiro o cliente</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="codigoTabela">Código da Tabela *</label>
+                        <input type="text" id="codigoTabela" name="codigoTabela" readonly 
+                               placeholder="Será preenchido automaticamente" 
+                               style="background-color: #f8f9fa; cursor: not-allowed;">
+                    </div>
                     <div class="form-group">
                         <label for="valor">Valor CTE (R$) *</label>
                         <input type="number" id="valor" name="valor" step="0.01" min="0" placeholder="0,00" required>
@@ -4828,8 +5375,29 @@
                 </button>
             </div>
             <div id="conteudoHistoricoCompleto"></div>
-                                </div>
-                            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Trajetória Completa da Coleta -->
+    <div class="modal-overlay" id="modalTrajetoriaColeta" style="display: none; z-index: 10000;">
+        <div class="modal-content" style="max-width: 1000px; max-height: 90vh; overflow-y: auto; background: white; border-radius: 20px; padding: 2rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; border-bottom: 2px solid #e9ecef; padding-bottom: 1rem;">
+                <h2 style="color: #667eea; margin: 0; display: flex; align-items: center; gap: 0.5rem;">
+                    <i class="fas fa-route"></i> 
+                    <span>Trajetória Completa da Coleta</span>
+                </h2>
+                <button onclick="fecharModalTrajetoria()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #666; padding: 0.5rem; transition: color 0.3s;" onmouseover="this.style.color='#dc3545'" onmouseout="this.style.color='#666'">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div id="conteudoTrajetoriaColeta">
+                <div style="text-align: center; padding: 2rem;">
+                    <i class="fas fa-spinner fa-spin" style="font-size: 2rem; color: #667eea;"></i>
+                    <p style="margin-top: 1rem; color: #666;">Carregando trajetória...</p>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <!-- Botões Flutuantes -->
     <div class="floating-action-buttons">
@@ -4871,6 +5439,70 @@
             }
         }
         window.clearDateFilters = clearDateFilters;
+
+        // Função global para filtrar coletas
+        function filterColetas() {
+            try {
+                // Obter valores dos filtros
+                const searchInput = document.getElementById('searchFilter');
+                const dataInicioInput = document.getElementById('dataInicio');
+                const dataFimInput = document.getElementById('dataFim');
+                
+                const termoBusca = searchInput ? searchInput.value.trim().toLowerCase() : '';
+                const dataInicio = dataInicioInput ? dataInicioInput.value : '';
+                const dataFim = dataFimInput ? dataFimInput.value : '';
+                
+                // Obter dados base
+                const dataBase = window.coletasAtivas || coletasData.filter(c => !c.arquivado);
+                
+                // Aplicar filtros
+                let coletasFiltradas = dataBase.filter(coleta => {
+                    // Filtro de busca (cliente, origem, destino, número da coleta, filial)
+                    if (termoBusca) {
+                        const matchBusca = 
+                            (coleta.cliente && coleta.cliente.toLowerCase().includes(termoBusca)) ||
+                            (coleta.origem && coleta.origem.toLowerCase().includes(termoBusca)) ||
+                            (coleta.destino && coleta.destino.toLowerCase().includes(termoBusca)) ||
+                            (coleta.numero_coleta && coleta.numero_coleta.toString().toLowerCase().includes(termoBusca)) ||
+                            (coleta.filial && coleta.filial.toLowerCase().includes(termoBusca)) ||
+                            (coleta.id && coleta.id.toString().toLowerCase().includes(termoBusca));
+                        
+                        if (!matchBusca) return false;
+                    }
+                    
+                    // Filtro de data
+                    if (dataInicio || dataFim) {
+                        const dataColeta = coleta.data_recebimento || coleta.created_at;
+                        if (!dataColeta) return false;
+                        
+                        const dataColetaObj = new Date(dataColeta);
+                        dataColetaObj.setHours(0, 0, 0, 0);
+                        
+                        if (dataInicio) {
+                            const inicio = new Date(dataInicio);
+                            inicio.setHours(0, 0, 0, 0);
+                            if (dataColetaObj < inicio) return false;
+                        }
+                        
+                        if (dataFim) {
+                            const fim = new Date(dataFim);
+                            fim.setHours(23, 59, 59, 999);
+                            if (dataColetaObj > fim) return false;
+                        }
+                    }
+                    
+                    return true;
+                });
+                
+                // Renderizar com dados filtrados
+                renderColetasKanban(coletasFiltradas);
+            } catch (error) {
+                console.error('❌ Erro ao filtrar coletas:', error);
+                // Em caso de erro, renderizar todas as coletas
+                renderColetasKanban();
+            }
+        }
+        window.filterColetas = filterColetas;
         
         // Função global para abrir modal de nova coleta
         // Função stub temporária - será redefinida mais abaixo com implementação completa
@@ -6033,14 +6665,441 @@
             { id: 'contratacao', nome: 'Contratação', ordem: 4 },
             { id: 'gr', nome: 'GR', ordem: 5 },
             { id: 'documentacao', nome: 'Documentação', ordem: 6 },
-            { id: 'controladoria', nome: 'Controladoria', ordem: 7 },
-            { id: 'ti', nome: 'TI', ordem: 8 },
-            { id: 'contas_pagar', nome: 'Contas a Pagar', ordem: 9 },
-            { id: 'contas_receber', nome: 'Contas a Receber', ordem: 10 },
-            { id: 'monitoramento', nome: 'Monitoramento', ordem: 11 },
+            { id: 'monitoramento', nome: 'Monitoramento', ordem: 7 },
+            { id: 'contas_pagar', nome: 'Contas a Pagar', ordem: 8 },
+            { id: 'controladoria', nome: 'Controladoria', ordem: 9 },
+            { id: 'ti', nome: 'TI', ordem: 10 },
+            { id: 'contas_receber', nome: 'Contas a Receber', ordem: 11 },
             { id: 'servicos_adicionais', nome: 'Serviços Adicionais', ordem: 12 },
             { id: 'finalizar_operacao', nome: 'Finalizar Operação', ordem: 13 }
         ];
+
+        // ========== FUNIL GERAL - Apenas para usuários com permissão de settings ==========
+        /**
+         * Verifica se o usuário tem permissão de settings/configuracoes
+         * @returns {Promise<boolean>}
+         */
+        async function verificarPermissaoSettings() {
+            try {
+                // Verificar se é admin
+                const userData = JSON.parse(localStorage.getItem('loggedInUser') || '{}');
+                const isAdmin = (userData.isAdmin === true) || (userData.role === 'admin');
+                
+                if (isAdmin) {
+                    console.log('✅ Usuário é ADMIN, permissão de settings concedida');
+                    return true;
+                }
+
+                // Verificar permissão específica de settings
+                if (typeof verificarPermissaoPagina === 'function') {
+                    const temPermissao = await verificarPermissaoPagina('settings');
+                    console.log('🔐 Permissão de settings:', temPermissao);
+                    return temPermissao;
+                }
+
+                return false;
+            } catch (error) {
+                console.error('❌ Erro ao verificar permissão de settings:', error);
+                return false;
+            }
+        }
+
+        /**
+         * Calcula estatísticas de uma etapa específica
+         * @param {string} etapaId - ID da etapa
+         * @param {Array} coletas - Array de coletas
+         * @returns {Object} Estatísticas da etapa
+         */
+        function calcularEstatisticasEtapa(etapaId, coletas) {
+            const coletasNaEtapa = coletas.filter(c => c.etapa_atual === etapaId);
+            const quantidade = coletasNaEtapa.length;
+            const valorTotal = coletasNaEtapa.reduce((sum, c) => {
+                const valor = parseFloat(c.valor || c.valor_total || 0);
+                return sum + valor;
+            }, 0);
+
+            // Calcular tempo médio na etapa
+            let tempoMedio = 0;
+            if (coletasNaEtapa.length > 0) {
+                const tempos = coletasNaEtapa
+                    .filter(c => c.data_entrada_etapa)
+                    .map(c => {
+                        const entrada = new Date(c.data_entrada_etapa);
+                        const agora = new Date();
+                        return (agora - entrada) / (1000 * 60); // minutos
+                    });
+                
+                if (tempos.length > 0) {
+                    tempoMedio = tempos.reduce((sum, t) => sum + t, 0) / tempos.length;
+                }
+            }
+
+            return {
+                quantidade,
+                valorTotal,
+                tempoMedio: Math.round(tempoMedio)
+            };
+        }
+
+        /**
+         * Formata tempo em minutos para string legível
+         * @param {number} minutos - Tempo em minutos
+         * @returns {string} Tempo formatado
+         */
+        function formatarTempo(minutos) {
+            if (minutos < 60) {
+                return `${Math.round(minutos)}min`;
+            } else if (minutos < 1440) {
+                const horas = Math.floor(minutos / 60);
+                const mins = Math.round(minutos % 60);
+                return `${horas}h ${mins}min`;
+            } else {
+                const dias = Math.floor(minutos / 1440);
+                const horas = Math.floor((minutos % 1440) / 60);
+                return `${dias}d ${horas}h`;
+            }
+        }
+
+        /**
+         * Renderiza o funil geral com todas as etapas
+         * Nota: A verificação de permissão já foi feita na função verificarPermissaoPaginaKanban
+         */
+        async function renderizarFunilGeral() {
+            const container = document.getElementById('funilGeralContainer');
+            const wrapper = document.getElementById('funilEtapasWrapper');
+            
+            if (!container || !wrapper) {
+                console.warn('⚠️ Elementos do funil geral não encontrados');
+                return;
+            }
+
+            // Mostrar container (permissão já verificada na aba)
+            container.classList.add('visible');
+
+            // Função auxiliar para formatar moeda (caso formatters não esteja acessível)
+            const formatarMoeda = (valor) => {
+                if (valor === null || valor === undefined || valor === '') return 'R$ 0,00';
+                return `R$ ${parseFloat(valor || 0).toLocaleString('pt-BR', {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2
+                })}`;
+            };
+
+            // Calcular estatísticas gerais
+            const totalColetas = coletasData.length;
+            const valorTotalGeral = coletasData.reduce((sum, c) => {
+                const valor = parseFloat(c.valor || c.valor_total || 0);
+                return sum + valor;
+            }, 0);
+
+            // Atualizar estatísticas gerais
+            document.getElementById('funilTotalColetas').textContent = totalColetas;
+            document.getElementById('funilTotalValor').textContent = formatarMoeda(valorTotalGeral);
+
+            // Renderizar etapas
+            wrapper.innerHTML = ETAPAS.map(etapa => {
+                const stats = calcularEstatisticasEtapa(etapa.id, coletasData);
+                
+                return `
+                    <div class="funil-etapa-item">
+                        <div class="funil-etapa-ordem">${etapa.ordem}</div>
+                        <div class="funil-etapa-info">
+                            <div class="funil-etapa-nome">${etapa.nome}</div>
+                            <div class="funil-etapa-detalhes">
+                                <div class="funil-etapa-detalhe">
+                                    <i class="fas fa-box"></i>
+                                    <span><strong>${stats.quantidade}</strong> coletas</span>
+                                </div>
+                                <div class="funil-etapa-detalhe">
+                                    <i class="fas fa-dollar-sign"></i>
+                                    <span><strong>${formatarMoeda(stats.valorTotal)}</strong> total</span>
+                                </div>
+                                ${stats.tempoMedio > 0 ? `
+                                <div class="funil-etapa-detalhe">
+                                    <i class="fas fa-clock"></i>
+                                    <span><strong>${formatarTempo(stats.tempoMedio)}</strong> tempo médio</span>
+                                </div>
+                                ` : ''}
+                            </div>
+                        </div>
+                        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                            <span class="funil-etapa-badge quantidade">${stats.quantidade}</span>
+                            <span class="funil-etapa-badge valor">${formatarMoeda(stats.valorTotal)}</span>
+                            ${stats.tempoMedio > 0 ? `<span class="funil-etapa-badge tempo-medio">${formatarTempo(stats.tempoMedio)}</span>` : ''}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Definição de páginas e suas etapas
+        // IMPORTANTE: As permissões são baseadas em MENUS do sistema (RBAC)
+        // O acesso às áreas do kanban é controlado pelas permissões de menu correspondentes
+        const PAGINAS_KANBAN = {
+            comercial: {
+                nome: 'Comercial',
+                etapas: ['comercial', 'price', 'cs'],
+                icone: 'fa-handshake',
+                permissaoMenu: 'comercial' // Permissão do MENU Comercial (RBAC)
+            },
+            administrativo: {
+                nome: 'Administrativo',
+                etapas: ['controladoria', 'gr', 'servicos_adicionais'],
+                icone: 'fa-briefcase',
+                permissaoMenu: 'cadastro' // Permissão do MENU Administrativo/Gestão (RBAC)
+            },
+            financeiro: {
+                nome: 'Financeiro',
+                etapas: ['contas_pagar', 'contas_receber'],
+                icone: 'fa-dollar-sign',
+                permissaoMenu: 'contas-pagar' // Permissão do MENU Financeiro (RBAC)
+            },
+            operacao: {
+                nome: 'Operação',
+                etapas: ['contratacao', 'documentacao', 'monitoramento', 'finalizar_operacao'],
+                icone: 'fa-cogs',
+                permissaoMenu: 'coletas' // Permissão do MENU Operações/Coletas (RBAC)
+            },
+            funil_geral: {
+                nome: 'Funil Geral',
+                etapas: ETAPAS.map(e => e.id), // Todas as etapas
+                icone: 'fa-filter',
+                permissaoMenu: 'configuracoes', // Permissão de Settings/Configurações
+                isFunilGeral: true // Flag especial para identificar que é o funil geral
+            }
+        };
+
+        // Página ativa (será definida baseado nas permissões)
+        let paginaAtivaKanban = null;
+        
+        /**
+         * Verifica se o usuário tem permissão para visualizar uma página do kanban
+         * Baseado em permissões de MENU E ÁREA (RBAC - Role Based Access Control)
+         * @param {string} paginaId - ID da página (comercial, administrativo, financeiro, operacao)
+         * @returns {Promise<boolean>} - true se tem permissão, false caso contrário
+         */
+        async function verificarPermissaoPaginaKanban(paginaId) {
+            try {
+                const pagina = PAGINAS_KANBAN[paginaId];
+                if (!pagina) {
+                    console.error('Página não encontrada:', paginaId);
+                    return false;
+                }
+
+                // Buscar permissões do usuário
+                const loggedInUserData = localStorage.getItem('loggedInUser');
+                if (!loggedInUserData) {
+                    console.log('❌ Nenhum usuário logado');
+                    return false;
+                }
+
+                const userData = JSON.parse(loggedInUserData);
+                
+                // Se for ADMIN, permite acesso a tudo
+                const isAdmin = (userData.isAdmin === true) || (userData.role === 'admin');
+                if (isAdmin) {
+                    console.log('✅ Usuário é ADMIN, permissão concedida para:', paginaId);
+                    return true;
+                }
+
+                // ✅ RBAC: Verificar permissão do MENU correspondente
+                if (typeof verificarPermissaoPagina === 'function') {
+                    const temPermissaoMenu = await verificarPermissaoPagina(pagina.permissaoMenu);
+                    if (!temPermissaoMenu) {
+                        console.log(`❌ Verificação RBAC: Menu '${pagina.permissaoMenu}' NEGADO para área '${paginaId}'`);
+                        return false;
+                    }
+                }
+
+                // Para o Funil Geral, apenas verificar a permissão de configuracoes (não precisa de permissão de área)
+                if (pagina.isFunilGeral) {
+                    console.log(`🔐 Verificação RBAC: Funil Geral - permissão '${pagina.permissaoMenu}': PERMITIDO`);
+                    return true;
+                }
+
+                // ✅ RBAC: Verificar permissão específica da ÁREA do kanban (apenas para páginas normais)
+                const permissaoArea = `kanban_${paginaId}`;
+                if (typeof verificarPermissaoPagina === 'function') {
+                    const temPermissaoArea = await verificarPermissaoPagina(permissaoArea);
+                    console.log(`🔐 Verificação RBAC: Menu '${pagina.permissaoMenu}' + Área '${permissaoArea}' para '${paginaId}': ${temPermissaoArea ? 'PERMITIDO' : 'NEGADO'}`);
+                    return temPermissaoArea; // Precisa ter AMBAS as permissões
+                }
+
+                // Fallback: se a função não estiver disponível, negar acesso por segurança
+                console.warn('⚠️ Função verificarPermissaoPagina não disponível, negando acesso');
+                return false;
+            } catch (error) {
+                console.error('❌ Erro ao verificar permissão da página:', error);
+                return false; // Por segurança, nega acesso em caso de erro
+            }
+        }
+
+        /**
+         * Obtém todas as páginas do kanban que o usuário tem permissão para visualizar
+         * Baseado em permissões de MENU (RBAC)
+         * @returns {Promise<Array>} - Array com IDs das páginas permitidas
+         */
+        async function obterPaginasPermitidas() {
+            try {
+                const loggedInUserData = localStorage.getItem('loggedInUser');
+                if (!loggedInUserData) {
+                    return [];
+                }
+
+                const userData = JSON.parse(loggedInUserData);
+                
+                // Se for ADMIN, permite acesso a tudo
+                const isAdmin = (userData.isAdmin === true) || (userData.role === 'admin');
+                if (isAdmin) {
+                    console.log('✅ ADMIN: Acesso total a todas as áreas do kanban');
+                    return Object.keys(PAGINAS_KANBAN);
+                }
+
+                // ✅ RBAC: Verificar permissões de MENU E ÁREA para cada área
+                if (typeof verificarPermissaoPagina === 'function') {
+                    const paginasPermitidas = [];
+                    for (const [paginaId, pagina] of Object.entries(PAGINAS_KANBAN)) {
+                        // Verificar se o usuário tem permissão para o MENU correspondente
+                        const temPermissaoMenu = await verificarPermissaoPagina(pagina.permissaoMenu);
+                        if (!temPermissaoMenu) {
+                            console.log(`❌ Permissão de menu '${pagina.permissaoMenu}' NEGADA para área '${paginaId}'`);
+                            continue;
+                        }
+                        
+                        // Para o Funil Geral, apenas verificar a permissão de configuracoes (não precisa de permissão de área)
+                        if (pagina.isFunilGeral) {
+                            console.log(`✅ Funil Geral: permissão '${pagina.permissaoMenu}' concedida`);
+                            paginasPermitidas.push(paginaId);
+                            continue;
+                        }
+                        
+                        // Verificar se o usuário tem permissão específica da ÁREA do kanban (apenas para páginas normais)
+                        const permissaoArea = `kanban_${paginaId}`;
+                        const temPermissaoArea = await verificarPermissaoPagina(permissaoArea);
+                        if (temPermissaoArea) {
+                            console.log(`✅ Permissão de menu '${pagina.permissaoMenu}' + área '${permissaoArea}' concedida para '${paginaId}'`);
+                            paginasPermitidas.push(paginaId);
+                        } else {
+                            console.log(`❌ Permissão de área '${permissaoArea}' NEGADA para '${paginaId}' (mesmo com menu permitido)`);
+                        }
+                    }
+                    return paginasPermitidas;
+                }
+
+                // Fallback: se a função não estiver disponível, retornar array vazio
+                console.warn('⚠️ Função verificarPermissaoPagina não disponível');
+                return [];
+            } catch (error) {
+                console.error('❌ Erro ao obter páginas permitidas:', error);
+                return [];
+            }
+        }
+
+        /**
+         * Valida se o usuário tem acesso a pelo menos uma área do kanban de coletas
+         * Se não tiver acesso, mostra mensagem de acesso negado e esconde o conteúdo
+         * @returns {Promise<boolean>} - true se tem acesso, false caso contrário
+         */
+        async function validarAcessoColetas() {
+            try {
+                // Verificar se o usuário tem acesso a pelo menos uma página do kanban
+                const paginasPermitidas = await obterPaginasPermitidas();
+                
+                if (paginasPermitidas.length === 0) {
+                    // Usuário não tem acesso a nenhuma área do kanban
+                    console.log('❌ Usuário não tem acesso a nenhuma área do kanban de coletas');
+                    
+                    // Substituir o conteúdo da página por mensagem de acesso negado
+                    const mainContent = document.querySelector('main') || document.body;
+                    mainContent.innerHTML = `
+                        <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 80vh; padding: 2rem; text-align: center;">
+                            <div style="max-width: 600px; background: white; padding: 3rem; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.1);">
+                                <div style="font-size: 4rem; color: #dc3545; margin-bottom: 1.5rem;">
+                                    <i class="fas fa-lock"></i>
+                                </div>
+                                <h1 style="color: #333; margin-bottom: 1rem; font-size: 1.8rem;">Acesso Negado</h1>
+                                <p style="color: #666; margin-bottom: 2rem; line-height: 1.6;">
+                                    Você não tem permissão para acessar o sistema de coletas.
+                                </p>
+                                <p style="color: #999; font-size: 0.9rem; margin-bottom: 2rem;">
+                                    Entre em contato com o administrador do sistema para solicitar as permissões necessárias.
+                                </p>
+                                <a href="/index.html" style="display: inline-block; padding: 0.75rem 2rem; background: var(--primary-color, #667eea); color: white; text-decoration: none; border-radius: 8px; transition: all 0.3s;">
+                                    <i class="fas fa-arrow-left"></i> Voltar ao Início
+                                </a>
+                            </div>
+                        </div>
+                    `;
+                    
+                    return false;
+                }
+                
+                // Usuário tem acesso a pelo menos uma área
+                console.log(`✅ Usuário tem acesso a ${paginasPermitidas.length} área(s) do kanban:`, paginasPermitidas);
+                return true;
+                
+            } catch (error) {
+                console.error('❌ Erro ao validar acesso às coletas:', error);
+                // Em caso de erro, por segurança, negar acesso
+                return false;
+            }
+        }
+
+        /**
+         * Carrega e renderiza as abas do kanban baseado nas permissões do usuário
+         */
+        async function carregarAbasKanban() {
+            const tabsContainer = document.getElementById('kanbanPagesTabs');
+            if (!tabsContainer) return;
+
+            // Obter páginas permitidas
+            const paginasPermitidas = await obterPaginasPermitidas();
+
+            if (paginasPermitidas.length === 0) {
+                // Se não tiver nenhuma permissão, mostrar mensagem
+                tabsContainer.innerHTML = `
+                    <div style="padding: 1rem; text-align: center; color: #dc3545; background: #f8d7da; border-radius: 8px; width: 100%;">
+                        <i class="fas fa-lock"></i> Você não tem permissão para visualizar nenhuma página do kanban.
+                    </div>
+                `;
+                // Ocultar o kanban
+                const kanbanContainer = document.getElementById('kanbanContainer');
+                if (kanbanContainer) {
+                    kanbanContainer.style.display = 'none';
+                }
+                return;
+            }
+
+            // Renderizar apenas as abas permitidas
+            tabsContainer.innerHTML = paginasPermitidas.map(paginaId => {
+                const pagina = PAGINAS_KANBAN[paginaId];
+                const isActive = paginaId === paginaAtivaKanban;
+                return `
+                    <button class="kanban-page-tab ${isActive ? 'active' : ''}" 
+                            data-pagina="${paginaId}" 
+                            onclick="trocarPaginaKanban('${paginaId}')">
+                        <i class="fas ${pagina.icone}"></i>
+                        <span>${pagina.nome}</span>
+                    </button>
+                `;
+            }).join('');
+
+            // Se não há página ativa ou a página ativa não está permitida, definir a primeira permitida
+            if (!paginaAtivaKanban || !paginasPermitidas.includes(paginaAtivaKanban)) {
+                paginaAtivaKanban = paginasPermitidas[0];
+                // Atualizar a aba ativa
+                document.querySelectorAll('.kanban-page-tab').forEach(tab => {
+                    if (tab.dataset.pagina === paginaAtivaKanban) {
+                        tab.classList.add('active');
+                    } else {
+                        tab.classList.remove('active');
+                    }
+                });
+            }
+
+            // Re-renderizar o kanban com a página ativa
+            renderColetasKanban();
+        }
 
         // Mapeamento de tipos de carroceria já declarado acima (linha 3413)
 
@@ -6212,13 +7271,28 @@
         };
 
         // Função para filtrar clientes baseado na filial selecionada
-        function filtrarClientesPorFilial() {
+        async function filtrarClientesPorFilial() {
             const filialSelect = document.getElementById('filial');
             const clienteSelect = document.getElementById('cliente');
+            const origemSelect = document.getElementById('origem');
+            const destinoSelect = document.getElementById('destino');
             const filialSelecionada = filialSelect.value;
 
             // Limpar opções atuais
             clienteSelect.innerHTML = '';
+            origemSelect.innerHTML = '<option value="">Selecione primeiro o cliente</option>';
+            destinoSelect.innerHTML = '<option value="">Selecione primeiro o cliente</option>';
+            const tipoProdutoSelect = document.getElementById('tipoProduto');
+            const codigoTabelaInput = document.getElementById('codigoTabela');
+            if (tipoProdutoSelect) {
+                tipoProdutoSelect.innerHTML = '<option value="">Selecione primeiro o cliente</option>';
+                tipoProdutoSelect.disabled = true;
+            }
+            if (codigoTabelaInput) {
+                codigoTabelaInput.value = '';
+            }
+            origemSelect.disabled = true;
+            destinoSelect.disabled = true;
 
             if (!filialSelecionada) {
                 clienteSelect.innerHTML = '<option value="">Selecione primeiro a filial</option>';
@@ -6228,39 +7302,226 @@
 
             // Habilitar o select de clientes
             clienteSelect.disabled = false;
+            clienteSelect.innerHTML = '<option value="">Carregando clientes...</option>';
 
-            // Adicionar opção padrão
-            const optionPadrao = document.createElement('option');
-            optionPadrao.value = '';
-            optionPadrao.textContent = 'Selecione o cliente';
-            clienteSelect.appendChild(optionPadrao);
+            try {
+                // Buscar clientes da filial selecionada
+                const response = await fetch(`/api/clientes/filial/${filialSelecionada}`);
+                const data = await response.json();
+                
+                if (data.success && data.clientes) {
+                    // Limpar e adicionar opção padrão
+                    clienteSelect.innerHTML = '<option value="">Selecione o cliente</option>';
+                    
+                    // Adicionar clientes
+                    data.clientes.forEach(cliente => {
+                        const option = document.createElement('option');
+                        const razaoSocial = cliente.razao_social || cliente.nome || '';
+                        option.value = razaoSocial; // Usar razão social como valor
+                        option.textContent = razaoSocial;
+                        option.dataset.clienteId = cliente.id;
+                        option.dataset.cidadeOrigem = cliente.cidade_origem || '';
+                        option.dataset.ufOrigem = cliente.uf_origem || '';
+                        option.dataset.cidadeDestino = cliente.cidade_destino || '';
+                        option.dataset.ufDestino = cliente.uf_destino || '';
+                        option.dataset.tipoProduto = cliente.tipo_produto || '';
+                        option.dataset.codigoTabela = cliente.codigo_tabela || '';
+                        clienteSelect.appendChild(option);
+                    });
+                } else {
+                    clienteSelect.innerHTML = '<option value="">Nenhum cliente encontrado</option>';
+                }
+            } catch (error) {
+                console.error('Erro ao carregar clientes:', error);
+                clienteSelect.innerHTML = '<option value="">Erro ao carregar clientes</option>';
+            }
+        }
 
-            // Buscar clientes da filial selecionada
-            const clientes = clientesPorFilial[filialSelecionada] || [];
+        // Função para preencher origem, destino, tipo de produto e código da tabela quando cliente for selecionado
+        function preencherOrigemDestino() {
+            const clienteSelect = document.getElementById('cliente');
+            const origemSelect = document.getElementById('origem');
+            const destinoSelect = document.getElementById('destino');
+            const tipoProdutoSelect = document.getElementById('tipoProduto');
+            const codigoTabelaInput = document.getElementById('codigoTabela');
+            const clienteSelecionado = clienteSelect.options[clienteSelect.selectedIndex];
 
-            if (clientes.length === 0) {
-                const optionSemCliente = document.createElement('option');
-                optionSemCliente.value = '';
-                optionSemCliente.textContent = 'Nenhum cliente cadastrado para esta filial';
-                clienteSelect.appendChild(optionSemCliente);
-                clienteSelect.disabled = true;
+            // Limpar selects e campos
+            origemSelect.innerHTML = '<option value="">Selecione a origem</option>';
+            destinoSelect.innerHTML = '<option value="">Selecione o destino</option>';
+            tipoProdutoSelect.innerHTML = '<option value="">Selecione o tipo de produto</option>';
+            if (codigoTabelaInput) {
+                codigoTabelaInput.value = '';
+            }
+
+            if (!clienteSelecionado || !clienteSelecionado.value) {
+                origemSelect.disabled = true;
+                destinoSelect.disabled = true;
+                tipoProdutoSelect.disabled = true;
+                if (codigoTabelaInput) {
+                    codigoTabelaInput.value = '';
+                }
                 return;
             }
 
-            // Ordenar clientes alfabeticamente
-            const clientesOrdenados = [...clientes].sort();
+            // Obter dados do cliente selecionado
+            const cidadeOrigem = clienteSelecionado.dataset.cidadeOrigem || '';
+            const ufOrigem = clienteSelecionado.dataset.ufOrigem || '';
+            const cidadeDestino = clienteSelecionado.dataset.cidadeDestino || '';
+            const ufDestino = clienteSelecionado.dataset.ufDestino || '';
+            const tipoProdutoCliente = clienteSelecionado.dataset.tipoProduto || '';
+            const codigoTabela = clienteSelecionado.dataset.codigoTabela || '';
 
-            // Adicionar opções de clientes
-            clientesOrdenados.forEach(cliente => {
-                const option = document.createElement('option');
-                option.value = cliente;
-                option.textContent = cliente;
-                clienteSelect.appendChild(option);
-            });
+            // Habilitar selects
+            origemSelect.disabled = false;
+            destinoSelect.disabled = false;
+            tipoProdutoSelect.disabled = false;
+
+            // Preencher origem
+            if (cidadeOrigem && ufOrigem) {
+                const origemValue = `${cidadeOrigem} - ${ufOrigem}`;
+                const optionOrigem = document.createElement('option');
+                optionOrigem.value = origemValue;
+                optionOrigem.textContent = origemValue;
+                optionOrigem.selected = true;
+                origemSelect.appendChild(optionOrigem);
+            } else {
+                origemSelect.innerHTML = '<option value="">Origem não cadastrada</option>';
+            }
+
+            // Preencher destino
+            if (cidadeDestino && ufDestino) {
+                const destinoValue = `${cidadeDestino} - ${ufDestino}`;
+                const optionDestino = document.createElement('option');
+                optionDestino.value = destinoValue;
+                optionDestino.textContent = destinoValue;
+                optionDestino.selected = true;
+                destinoSelect.appendChild(optionDestino);
+            } else {
+                destinoSelect.innerHTML = '<option value="">Destino não cadastrado</option>';
+            }
+
+            // Preencher tipo de produto com todos os tipos únicos dos clientes da filial
+            const filialSelect = document.getElementById('filial');
+            const filialSelecionada = filialSelect.value;
+            
+            if (filialSelecionada) {
+                // Buscar todos os clientes da filial para obter tipos de produto únicos
+                const todasOpcoesClientes = Array.from(clienteSelect.options);
+                const tiposProdutoUnicos = new Set();
+                
+                todasOpcoesClientes.forEach(option => {
+                    if (option.dataset.tipoProduto && option.dataset.tipoProduto.trim()) {
+                        tiposProdutoUnicos.add(option.dataset.tipoProduto.trim());
+                    }
+                });
+                
+                // Ordenar tipos de produto
+                const tiposOrdenados = Array.from(tiposProdutoUnicos).sort();
+                
+                // Adicionar opções ao select
+                tiposOrdenados.forEach(tipo => {
+                    const option = document.createElement('option');
+                    option.value = tipo;
+                    option.textContent = tipo;
+                    // Selecionar o tipo do cliente se existir
+                    if (tipo === tipoProdutoCliente) {
+                        option.selected = true;
+                    }
+                    tipoProdutoSelect.appendChild(option);
+                });
+                
+                // Se não houver tipos cadastrados, mostrar mensagem
+                if (tiposOrdenados.length === 0) {
+                    tipoProdutoSelect.innerHTML = '<option value="">Nenhum tipo de produto cadastrado</option>';
+                }
+            } else {
+                tipoProdutoSelect.innerHTML = '<option value="">Selecione primeiro a filial</option>';
+            }
+
+            // Preencher código da tabela baseado no cliente selecionado
+            // A tabela correta é determinada pela combinação Cliente + Tipo de Produto
+            atualizarCodigoTabela();
         }
 
-        // Tornar função acessível globalmente
+        // Função para atualizar código da tabela baseado em Cliente + Tipo de Produto
+        function atualizarCodigoTabela() {
+            const clienteSelect = document.getElementById('cliente');
+            const tipoProdutoSelect = document.getElementById('tipoProduto');
+            const codigoTabelaInput = document.getElementById('codigoTabela');
+            
+            if (!codigoTabelaInput) return;
+            
+            const clienteSelecionado = clienteSelect.options[clienteSelect.selectedIndex];
+            const tipoProdutoSelecionado = tipoProdutoSelect.value;
+            
+            // Se não houver cliente ou tipo de produto selecionado, limpar
+            if (!clienteSelecionado || !clienteSelecionado.value || !tipoProdutoSelecionado) {
+                codigoTabelaInput.value = '';
+                return;
+            }
+            
+            // Buscar o código da tabela que corresponde ao cliente + tipo de produto
+            const clienteId = clienteSelecionado.dataset.clienteId;
+            const tipoProdutoCliente = clienteSelecionado.dataset.tipoProduto || '';
+            const codigoTabelaCliente = clienteSelecionado.dataset.codigoTabela || '';
+            
+            // Se o tipo de produto selecionado for o mesmo do cliente, usar o código do cliente
+            if (tipoProdutoSelecionado === tipoProdutoCliente && codigoTabelaCliente) {
+                codigoTabelaInput.value = codigoTabelaCliente;
+                return;
+            }
+            
+            // Se o tipo de produto for diferente, buscar na lista de clientes da filial
+            // o código da tabela que corresponde à combinação Cliente + Tipo de Produto
+            const filialSelect = document.getElementById('filial');
+            const filialSelecionada = filialSelect.value;
+            
+            if (filialSelecionada && clienteId) {
+                // Buscar todos os clientes da filial para encontrar correspondência
+                const todasOpcoesClientes = Array.from(clienteSelect.options);
+                
+                // Procurar cliente com mesmo ID e tipo de produto selecionado
+                const clienteComTipoProduto = todasOpcoesClientes.find(option => {
+                    return option.dataset.clienteId === clienteId && 
+                           option.dataset.tipoProduto === tipoProdutoSelecionado;
+                });
+                
+                if (clienteComTipoProduto && clienteComTipoProduto.dataset.codigoTabela) {
+                    codigoTabelaInput.value = clienteComTipoProduto.dataset.codigoTabela;
+                } else {
+                    // Se não encontrar correspondência exata, buscar códigos disponíveis para aquele tipo de produto
+                    const codigosDisponiveis = new Set();
+                    todasOpcoesClientes.forEach(option => {
+                        if (option.dataset.tipoProduto === tipoProdutoSelecionado && 
+                            option.dataset.codigoTabela) {
+                            codigosDisponiveis.add(option.dataset.codigoTabela);
+                        }
+                    });
+                    
+                    if (codigosDisponiveis.size === 1) {
+                        // Se houver apenas um código para aquele tipo, usar ele
+                        codigoTabelaInput.value = Array.from(codigosDisponiveis)[0];
+                    } else if (codigosDisponiveis.size > 1) {
+                        // Se houver múltiplos códigos, deixar vazio e mostrar aviso
+                        codigoTabelaInput.value = '';
+                        codigoTabelaInput.placeholder = `Múltiplos códigos disponíveis: ${Array.from(codigosDisponiveis).join(', ')}`;
+                        codigoTabelaInput.title = `Este tipo de produto tem ${codigosDisponiveis.size} códigos de tabela diferentes. Selecione o cliente correto ou informe manualmente.`;
+                    } else {
+                        // Nenhum código encontrado
+                        codigoTabelaInput.value = '';
+                        codigoTabelaInput.placeholder = 'Código não encontrado para esta combinação';
+                    }
+                }
+            } else {
+                codigoTabelaInput.value = codigoTabelaCliente || '';
+            }
+        }
+
+        // Tornar funções acessíveis globalmente
         window.filtrarClientesPorFilial = filtrarClientesPorFilial;
+        window.preencherOrigemDestino = preencherOrigemDestino;
+        window.atualizarCodigoTabela = atualizarCodigoTabela;
 
         // ========== SISTEMA DE CRIAÇÃO EM LOTE ==========
         let modoCriacaoLote = false; // false = única, true = múltiplas
@@ -6416,6 +7677,8 @@
                 data_entrega: dataEntrega || null,
                 origem: rawData.origem,
                 destino: rawData.destino,
+                tipo_produto: rawData.tipoProduto || null,
+                codigo_tabela: rawData.codigoTabela || null,
                 valor: parseFloat(rawData.valor) || 0,
                 frete_motorista: parseFloat(rawData.freteMotorista) || 0,
                 km: parseFloat(rawData.km) || 0,
@@ -6843,6 +8106,57 @@
             const kanbanBoard = document.getElementById('kanbanBoard');
             if (!kanbanBoard) return;
 
+            // Verificar se a página ativa é o Funil Geral
+            let paginaAtual = PAGINAS_KANBAN[paginaAtivaKanban];
+            if (paginaAtual && paginaAtual.isFunilGeral) {
+                // Mostrar o funil geral e ocultar apenas o conteúdo do kanban (não as abas)
+                const funilContainer = document.getElementById('funilGeralContainer');
+                const kanbanContainer = document.getElementById('kanbanContainer');
+                const kanbanBoard = document.getElementById('kanbanBoard');
+                const kanbanNavigation = document.getElementById('kanbanNavigation');
+                const prioridadeFarol = document.getElementById('prioridadeFarol');
+                
+                if (funilContainer) {
+                    funilContainer.style.display = 'block';
+                    funilContainer.classList.add('visible');
+                }
+                
+                // Ocultar apenas o conteúdo do kanban, mas manter as abas visíveis
+                if (kanbanContainer) {
+                    // Ocultar apenas o board e controles, não o container inteiro
+                    if (kanbanBoard) kanbanBoard.style.display = 'none';
+                    if (kanbanNavigation) kanbanNavigation.style.display = 'none';
+                    if (prioridadeFarol) prioridadeFarol.style.display = 'none';
+                }
+                
+                // Renderizar o funil geral
+                await renderizarFunilGeral();
+                return;
+            } else {
+                // Mostrar o kanban e ocultar o funil geral
+                const funilContainer = document.getElementById('funilGeralContainer');
+                const kanbanContainer = document.getElementById('kanbanContainer');
+                const kanbanBoard = document.getElementById('kanbanBoard');
+                const kanbanNavigation = document.getElementById('kanbanNavigation');
+                const prioridadeFarol = document.getElementById('prioridadeFarol');
+                
+                if (funilContainer) {
+                    funilContainer.style.display = 'none';
+                    funilContainer.classList.remove('visible');
+                }
+                
+                // Mostrar o conteúdo do kanban
+                if (kanbanBoard) kanbanBoard.style.display = 'flex';
+                if (kanbanNavigation) kanbanNavigation.style.display = 'flex';
+                if (prioridadeFarol) prioridadeFarol.style.display = 'block';
+            }
+
+            // Se não há página ativa definida, carregar abas primeiro
+            if (!paginaAtivaKanban) {
+                await carregarAbasKanban();
+                return; // carregarAbasKanban já chama renderColetasKanban novamente
+            }
+
             let dataToRender = filteredData || window.coletasAtivas || coletasData.filter(c => !c.arquivado);
 
             // Remover duplicatas
@@ -6902,8 +8216,16 @@
                 }).format(valor);
             };
 
-            // Renderizar colunas
-            kanbanBoard.innerHTML = ETAPAS.map(etapa => {
+            // Filtrar etapas da página ativa (paginaAtual já foi declarada acima)
+            if (!paginaAtual) {
+                paginaAtual = PAGINAS_KANBAN[paginaAtivaKanban];
+            }
+            const etapasDaPagina = ETAPAS.filter(etapa => 
+                paginaAtual && paginaAtual.etapas.includes(etapa.id)
+            );
+
+            // Renderizar colunas apenas das etapas da página ativa
+            kanbanBoard.innerHTML = etapasDaPagina.map(etapa => {
                 let coletas = coletasPorEtapa[etapa.id] || [];
                 
                 // ✅ ORDENAÇÃO: Aplicar ordenação se houver preferência salva
@@ -6921,8 +8243,8 @@
                         <div class="kanban-column-header">
                             <div class="kanban-column-title" style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
                                 <div style="display: flex; align-items: center; gap: 0.5rem;">
-                                    <i class="fas fa-layer-group"></i>
-                                    ${etapa.nome}
+                                <i class="fas fa-layer-group"></i>
+                                ${etapa.nome}
                                 </div>
                                 <div style="position: relative;">
                                     <button class="kanban-sort-btn ${ordenacaoAtual !== 'padrao' ? 'active' : ''}" 
@@ -6995,11 +8317,37 @@
                 `;
             }).join('');
 
-            // Adicionar event listeners de drag
+            // Adicionar event listeners de drag e botões
             setTimeout(() => {
                 document.querySelectorAll('.kanban-card').forEach(card => {
                     card.addEventListener('dragstart', handleKanbanDragStart);
                     card.addEventListener('dragend', handleKanbanDragEnd);
+                });
+                
+                // Adicionar event listeners aos botões de avançar etapa
+                document.querySelectorAll('button[onclick*="avancarEtapa"]').forEach(button => {
+                    const onclickAttr = button.getAttribute('onclick');
+                    if (onclickAttr && onclickAttr.includes('avancarEtapa')) {
+                        // Extrair o ID da coleta do onclick
+                        const match = onclickAttr.match(/avancarEtapa\(['"]([^'"]+)['"]\)/);
+                        if (match && match[1]) {
+                            const coletaId = match[1];
+                            button.removeAttribute('onclick'); // Remover onclick inline
+                            button.addEventListener('click', function(e) {
+                                e.stopPropagation();
+                                e.preventDefault();
+                                console.log('🔘 Botão clicado, chamando avancarEtapa para:', coletaId);
+                                if (typeof window.avancarEtapa === 'function') {
+                                    window.avancarEtapa(coletaId);
+                                } else if (typeof avancarEtapa === 'function') {
+                                    avancarEtapa(coletaId);
+                                } else {
+                                    console.error('❌ Função avancarEtapa não encontrada');
+                                    alert('Erro: Função avancarEtapa não encontrada. Recarregue a página.');
+                                }
+                            });
+                        }
+                    }
                 });
             }, 100);
             
@@ -7010,6 +8358,67 @@
             
             // Iniciar atualização de tempo parado
             iniciarAtualizacaoTempoParado();
+        }
+
+        // Função para trocar de página no Kanban
+        async function trocarPaginaKanban(paginaId) {
+            if (!PAGINAS_KANBAN[paginaId]) {
+                console.error('Página não encontrada:', paginaId);
+                return;
+            }
+
+            // Verificar permissão antes de trocar
+            const temPermissao = await verificarPermissaoPaginaKanban(paginaId);
+            if (!temPermissao) {
+                console.warn('⚠️ Usuário não tem permissão para acessar a página:', paginaId);
+                alert('Você não tem permissão para acessar esta página.');
+                return;
+            }
+
+            // Atualizar página ativa
+            paginaAtivaKanban = paginaId;
+
+            // Atualizar estado visual das abas
+            document.querySelectorAll('.kanban-page-tab').forEach(tab => {
+                if (tab.dataset.pagina === paginaId) {
+                    tab.classList.add('active');
+                } else {
+                    tab.classList.remove('active');
+                }
+            });
+
+            // Verificar se a nova página é o Funil Geral
+            const novaPagina = PAGINAS_KANBAN[paginaId];
+            const funilContainer = document.getElementById('funilGeralContainer');
+            const kanbanBoard = document.getElementById('kanbanBoard');
+            const kanbanNavigation = document.getElementById('kanbanNavigation');
+            const prioridadeFarol = document.getElementById('prioridadeFarol');
+            
+            if (novaPagina && novaPagina.isFunilGeral) {
+                // Mostrar funil geral e ocultar apenas o conteúdo do kanban (não as abas)
+                if (funilContainer) {
+                    funilContainer.style.display = 'block';
+                    funilContainer.classList.add('visible');
+                }
+                // Ocultar apenas o board e controles, mantendo as abas visíveis
+                if (kanbanBoard) kanbanBoard.style.display = 'none';
+                if (kanbanNavigation) kanbanNavigation.style.display = 'none';
+                if (prioridadeFarol) prioridadeFarol.style.display = 'none';
+                // Renderizar o funil geral
+                await renderizarFunilGeral();
+            } else {
+                // Mostrar kanban e ocultar funil geral
+                if (funilContainer) {
+                    funilContainer.style.display = 'none';
+                    funilContainer.classList.remove('visible');
+                }
+                // Mostrar o conteúdo do kanban
+                if (kanbanBoard) kanbanBoard.style.display = 'flex';
+                if (kanbanNavigation) kanbanNavigation.style.display = 'flex';
+                if (prioridadeFarol) prioridadeFarol.style.display = 'block';
+                // Re-renderizar o kanban com as etapas da nova página
+                await renderColetasKanban();
+            }
         }
         
         // Função para configurar navegação do Kanban
@@ -7459,6 +8868,147 @@
         }
 
         // Função para calcular tempo parado na etapa atual
+        /**
+         * Calcula o tempo em minutos que a coleta está na etapa atual
+         * @param {Object} coleta - Objeto da coleta
+         * @returns {number} - Tempo em minutos (0 se não conseguir calcular)
+         */
+        function calcularTempoMinutosEtapa(coleta) {
+            let tempoMinutos = 0;
+            
+            // ✅ Prioridade: usar tempo_acumulado_etapa se disponível e válido (considera múltiplas entradas)
+            if (coleta.tempo_acumulado_etapa !== undefined && 
+                coleta.tempo_acumulado_etapa !== null && 
+                !isNaN(coleta.tempo_acumulado_etapa) &&
+                coleta.tempo_acumulado_etapa >= 0) {
+                tempoMinutos = Math.floor(coleta.tempo_acumulado_etapa);
+                // ✅ MELHORIA: Se o tempo acumulado for 0 mas a coleta existe, calcular pelo fallback
+                if (tempoMinutos === 0 && coleta.data_entrada_etapa) {
+                    // Pode ser que o tempo acumulado seja 0 mas a coleta já está na etapa há algum tempo
+                    // Nesse caso, usar data_entrada_etapa para calcular
+                    const dataEntrada = new Date(coleta.data_entrada_etapa);
+                    if (!isNaN(dataEntrada.getTime())) {
+                        const agora = new Date();
+                        const diffMs = agora - dataEntrada;
+                        const tempoCalculado = Math.floor(diffMs / (1000 * 60));
+                        if (tempoCalculado > 0) {
+                            return tempoCalculado;
+                        }
+                    }
+                }
+                return tempoMinutos;
+            }
+            
+            // ✅ MELHORIA: Fallback melhorado - tentar múltiplas fontes de data
+            let dataEntrada = null;
+            
+            // 1. Tentar data_entrada_etapa
+            if (coleta.data_entrada_etapa) {
+                dataEntrada = new Date(coleta.data_entrada_etapa);
+                if (isNaN(dataEntrada.getTime())) {
+                    dataEntrada = null;
+                }
+            }
+            
+            // 2. Se não funcionou, tentar updated_at
+            if (!dataEntrada && coleta.updated_at) {
+                dataEntrada = new Date(coleta.updated_at);
+                if (isNaN(dataEntrada.getTime())) {
+                    dataEntrada = null;
+                }
+            }
+            
+            // 3. Último fallback: created_at
+            if (!dataEntrada && coleta.created_at) {
+                dataEntrada = new Date(coleta.created_at);
+                if (isNaN(dataEntrada.getTime())) {
+                    dataEntrada = null;
+                }
+            }
+            
+            if (!dataEntrada) {
+                console.warn('⚠️ Não foi possível calcular tempo da etapa para coleta:', coleta.id);
+                return 0;
+            }
+            
+            const agora = new Date();
+            const diffMs = agora - dataEntrada;
+            tempoMinutos = Math.floor(diffMs / (1000 * 60));
+            
+            // Garantir que não seja negativo
+            return Math.max(0, tempoMinutos);
+        }
+
+        /**
+         * Determina a prioridade automática baseada no tempo na etapa atual
+         * @param {Object} coleta - Objeto da coleta
+         * @returns {Object} - { nivel: string, cor: string, nome: string }
+         */
+        function determinarPrioridadeAutomatica(coleta) {
+            const tempoMinutos = calcularTempoMinutosEtapa(coleta);
+            
+            // Regras de prioridade baseadas no tempo na etapa atual
+            if (tempoMinutos >= 40) {
+                return {
+                    nivel: 'urgente',
+                    cor: '#dc3545', // Vermelho
+                    nome: 'Urgente',
+                    bgGradient: 'linear-gradient(135deg, #dc3545 0%, #c82333 100%)',
+                    borderColor: '#dc3545'
+                };
+            } else if (tempoMinutos >= 20) {
+                return {
+                    nivel: 'alta',
+                    cor: '#fd7e14', // Laranja
+                    nome: 'Alta',
+                    bgGradient: 'linear-gradient(135deg, #fd7e14 0%, #e8590c 100%)',
+                    borderColor: '#fd7e14'
+                };
+            } else if (tempoMinutos >= 10) {
+                return {
+                    nivel: 'normal',
+                    cor: '#ffc107', // Amarelo
+                    nome: 'Normal',
+                    bgGradient: 'linear-gradient(135deg, #ffc107 0%, #e0a800 100%)',
+                    borderColor: '#ffc107'
+                };
+            } else {
+                return {
+                    nivel: 'baixa',
+                    cor: '#ffffff', // Branco
+                    nome: 'Baixa',
+                    bgGradient: 'linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%)',
+                    borderColor: '#dee2e6'
+                };
+            }
+        }
+
+        /**
+         * Verifica se a coleta está em risco de perder cliente
+         * (Pode ser customizado conforme regras de negócio)
+         * @param {Object} coleta - Objeto da coleta
+         * @returns {boolean} - true se está em risco
+         */
+        function verificarRiscoPerderCliente(coleta) {
+            // Exemplo: Se está há mais de 2 horas na etapa e é um cliente importante
+            // Ou se está há mais de 4 horas em qualquer etapa crítica
+            const tempoMinutos = calcularTempoMinutosEtapa(coleta);
+            const etapasCriticas = ['comercial', 'price', 'cs', 'contratacao'];
+            const estaEmEtapaCritica = etapasCriticas.includes(coleta.etapa_atual);
+            
+            // Se está há mais de 2 horas (120 minutos) em etapa crítica
+            if (estaEmEtapaCritica && tempoMinutos >= 120) {
+                return true;
+            }
+            
+            // Se está há mais de 4 horas (240 minutos) em qualquer etapa
+            if (tempoMinutos >= 240) {
+                return true;
+            }
+            
+            return false;
+        }
+
         function calcularTempoParado(coleta) {
             // ✅ NOVO: Se tempo_acumulado_etapa estiver disponível, usar ele (considera múltiplas entradas)
             if (coleta.tempo_acumulado_etapa !== undefined && coleta.tempo_acumulado_etapa !== null) {
@@ -7511,40 +9061,64 @@
         }
         
         // Função para formatar tempo parado com cor baseada no tempo
-        function formatarTempoParado(tempoInfo, isDiaria, isUrgente) {
+        // ✅ ATUALIZADO: Agora usa a prioridade automática para determinar cores
+        function formatarTempoParado(tempoInfo, isDiaria, isUrgente, coleta = null) {
             if (!tempoInfo) return '';
             
             const { valor, unidade, plural } = tempoInfo;
             let cor = '#6c757d'; // Cinza padrão
             let bgColor = 'rgba(108, 117, 125, 0.1)';
             
-            // Cores baseadas no tempo parado
-            if (unidade === 'dia') {
-                if (valor >= 7) {
-                    cor = '#dc3545'; // Vermelho para mais de 7 dias
-                    bgColor = 'rgba(220, 53, 69, 0.15)';
-                } else if (valor >= 3) {
-                    cor = '#ffc107'; // Amarelo para 3-6 dias
-                    bgColor = 'rgba(255, 193, 7, 0.15)';
+            // ✅ NOVO: Se tiver coleta, usar prioridade automática para determinar cor
+            if (coleta) {
+                const prioridadeAuto = determinarPrioridadeAutomatica(coleta);
+                const riscoPerderCliente = verificarRiscoPerderCliente(coleta);
+                
+                if (riscoPerderCliente) {
+                    cor = 'rgba(255, 255, 255, 0.9)';
+                    bgColor = 'rgba(0, 0, 0, 0.3)';
+                } else if (prioridadeAuto.nivel === 'urgente') {
+                    cor = 'rgba(255, 255, 255, 0.9)';
+                    bgColor = 'rgba(220, 53, 69, 0.3)';
+                } else if (prioridadeAuto.nivel === 'alta') {
+                    cor = 'rgba(255, 255, 255, 0.9)';
+                    bgColor = 'rgba(253, 126, 20, 0.3)';
+                } else if (prioridadeAuto.nivel === 'normal') {
+                    cor = '#856404';
+                    bgColor = 'rgba(255, 193, 7, 0.3)';
                 } else {
-                    cor = '#28a745'; // Verde para menos de 3 dias
-                    bgColor = 'rgba(40, 167, 69, 0.15)';
-                }
-            } else if (unidade === 'hora') {
-                if (valor >= 24) {
-                    cor = '#ffc107'; // Amarelo para mais de 24 horas
-                    bgColor = 'rgba(255, 193, 7, 0.15)';
-                } else {
-                    cor = '#28a745'; // Verde para menos de 24 horas
-                    bgColor = 'rgba(40, 167, 69, 0.15)';
+                    cor = '#6c757d';
+                    bgColor = 'rgba(108, 117, 125, 0.1)';
                 }
             } else {
-                cor = '#28a745'; // Verde para minutos/segundos
-                bgColor = 'rgba(40, 167, 69, 0.15)';
+                // Fallback: cores baseadas no tempo parado (lógica antiga)
+                if (unidade === 'dia') {
+                    if (valor >= 7) {
+                        cor = '#dc3545'; // Vermelho para mais de 7 dias
+                        bgColor = 'rgba(220, 53, 69, 0.15)';
+                    } else if (valor >= 3) {
+                        cor = '#ffc107'; // Amarelo para 3-6 dias
+                        bgColor = 'rgba(255, 193, 7, 0.15)';
+                    } else {
+                        cor = '#28a745'; // Verde para menos de 3 dias
+                        bgColor = 'rgba(40, 167, 69, 0.15)';
+                    }
+                } else if (unidade === 'hora') {
+                    if (valor >= 24) {
+                        cor = '#ffc107'; // Amarelo para mais de 24 horas
+                        bgColor = 'rgba(255, 193, 7, 0.15)';
+                    } else {
+                        cor = '#28a745'; // Verde para menos de 24 horas
+                        bgColor = 'rgba(40, 167, 69, 0.15)';
+                    }
+                } else {
+                    cor = '#28a745'; // Verde para minutos/segundos
+                    bgColor = 'rgba(40, 167, 69, 0.15)';
+                }
             }
             
-            // Ajustar cores se for diária ou urgente (usar branco)
-            if (isDiaria || isUrgente) {
+            // Ajustar cores se for diária (sempre branco)
+            if (isDiaria) {
                 cor = 'rgba(255, 255, 255, 0.9)';
                 bgColor = 'rgba(255, 255, 255, 0.2)';
             }
@@ -7576,27 +9150,74 @@
             
             // Calcular tempo parado na etapa atual
             const tempoParado = calcularTempoParado(coleta);
-            const tempoParadoHTML = formatarTempoParado(tempoParado, isDiaria, isUrgente);
+            const tempoParadoHTML = formatarTempoParado(tempoParado, isDiaria, isUrgente, coleta);
             
-            // Estilo do card baseado se é diária ou urgente
-            // Prioridade: Se for diária E urgente, fica azul (diária tem prioridade)
-            // Se for apenas urgente (sem diária), fica vermelho
+            // ✅ NOVO: Determinar prioridade automática baseada no tempo na etapa atual
+            let prioridadeAuto;
+            try {
+                prioridadeAuto = determinarPrioridadeAutomatica(coleta);
+            } catch (error) {
+                console.warn('⚠️ Erro ao determinar prioridade automática, usando padrão:', error);
+                // Fallback: prioridade baixa (branco) se houver erro
+                prioridadeAuto = {
+                    nivel: 'baixa',
+                    cor: '#ffffff',
+                    nome: 'Baixa',
+                    bgGradient: 'linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%)',
+                    borderColor: '#dee2e6'
+                };
+            }
+            
+            const riscoPerderCliente = verificarRiscoPerderCliente(coleta);
+            
+            // Estilo do card baseado em prioridade automática
+            // Prioridade de cores:
+            // 1. Diária (sempre azul, independente de tempo)
+            // 2. Risco de perder cliente (preto)
+            // 3. Prioridade automática por tempo (baixa/normal/alta/urgente)
+            // 4. Prioridade manual urgente (vermelho, se não for diária)
             let cardStyle = '';
             let textColor = '';
+            let badgePrioridade = '';
             
             if (isDiaria) {
-                // Diária sempre azul, mesmo se for urgente
+                // Diária sempre azul, mesmo se for urgente ou com risco
                 cardStyle = 'background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%); color: white; border: 2px solid #0ea5e9; box-shadow: 0 4px 12px rgba(14, 165, 233, 0.3);';
                 textColor = 'color: white;';
-            } else if (isUrgente) {
-                // Urgente sem diária fica vermelho
-                cardStyle = 'background: linear-gradient(135deg, #dc3545 0%, #c82333 100%); color: white; border: 2px solid #dc3545; box-shadow: 0 4px 12px rgba(220, 53, 69, 0.3);';
+            } else if (riscoPerderCliente) {
+                // Risco de perder cliente - Preto
+                cardStyle = 'background: linear-gradient(135deg, #1a1a1a 0%, #000000 100%); color: white; border: 2px solid #000000; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);';
                 textColor = 'color: white;';
+                badgePrioridade = '<span style="background: rgba(255, 255, 255, 0.3); color: white; padding: 0.2rem 0.6rem; border-radius: 12px; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap; flex-shrink: 0; animation: piscarBadgeUrgente 1.5s ease-in-out infinite;"><i class="fas fa-exclamation-circle"></i> RISCO CLIENTE</span>';
+            } else if (prioridadeAuto.nivel === 'urgente' || (isUrgente && prioridadeAuto.nivel !== 'urgente')) {
+                // Urgente (automático ou manual) - Vermelho
+                cardStyle = `background: ${prioridadeAuto.bgGradient}; color: white; border: 2px solid ${prioridadeAuto.borderColor}; box-shadow: 0 4px 12px rgba(220, 53, 69, 0.3);`;
+                textColor = 'color: white;';
+                if (prioridadeAuto.nivel === 'urgente') {
+                    badgePrioridade = `<span style="background: rgba(255, 255, 255, 0.3); color: white; padding: 0.2rem 0.6rem; border-radius: 12px; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap; flex-shrink: 0;"><i class="fas fa-exclamation-triangle"></i> ${prioridadeAuto.nome.toUpperCase()}</span>`;
+                }
+            } else if (prioridadeAuto.nivel === 'alta') {
+                // Alta - Laranja
+                cardStyle = `background: ${prioridadeAuto.bgGradient}; color: white; border: 2px solid ${prioridadeAuto.borderColor}; box-shadow: 0 4px 12px rgba(253, 126, 20, 0.3);`;
+                textColor = 'color: white;';
+            } else if (prioridadeAuto.nivel === 'normal') {
+                // Normal - Amarelo
+                cardStyle = `background: ${prioridadeAuto.bgGradient}; color: #333; border: 2px solid ${prioridadeAuto.borderColor}; box-shadow: 0 2px 8px rgba(255, 193, 7, 0.2);`;
+                textColor = 'color: #333;';
+            } else {
+                // Baixa - Branco (padrão)
+                // ✅ CORREÇÃO: Garantir fundo branco sólido e texto escuro bem visível
+                cardStyle = `background: #ffffff !important; color: #212529 !important; border: 1px solid #dee2e6; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);`;
+                textColor = 'color: #212529 !important;';
             }
             
             // ✅ CARD LEVE: Apenas dados essenciais para performance
+            // ✅ CORREÇÃO: Adicionar classe para identificar cards brancos
+            const isCardBranco = prioridadeAuto.nivel === 'baixa' && !isDiaria && !riscoPerderCliente;
+            const cardClass = `kanban-card ${!podeMover ? 'no-drag' : ''} ${isCardBranco ? 'card-branco' : ''}`;
+            
             return `
-                <div class="kanban-card ${!podeMover ? 'no-drag' : ''}" 
+                <div class="${cardClass}" 
                      draggable="${podeMover}"
                      data-coleta-id="${coleta.id}"
                      data-etapa-atual="${coleta.etapa_atual}"
@@ -7604,46 +9225,47 @@
                      style="${cardStyle}">
                     <div class="kanban-card-header">
                         <div class="kanban-card-title" style="${textColor}; display: flex; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
-                            <span style="flex: 1; min-width: 0;">${escapeHtml(coleta.cliente || 'Sem cliente')}</span>
+                            <span style="flex: 1; min-width: 0; ${textColor};">${escapeHtml(coleta.cliente || 'Sem cliente')}</span>
                             ${isDiaria ? '<span style="background: rgba(255, 255, 255, 0.3); color: white; padding: 0.2rem 0.6rem; border-radius: 12px; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap; flex-shrink: 0;"><i class="fas fa-calendar-day"></i> DIÁRIA</span>' : ''}
-                            ${isUrgente ? '<span style="background: rgba(255, 255, 255, 0.3); color: white; padding: 0.2rem 0.6rem; border-radius: 12px; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap; flex-shrink: 0; animation: piscarBadgeUrgente 1.5s ease-in-out infinite;"><i class="fas fa-exclamation-triangle"></i> URGENTE</span>' : ''}
+                            ${badgePrioridade || ''}
+                            ${isUrgente && !badgePrioridade ? '<span style="background: rgba(255, 255, 255, 0.3); color: white; padding: 0.2rem 0.6rem; border-radius: 12px; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap; flex-shrink: 0; animation: piscarBadgeUrgente 1.5s ease-in-out infinite;"><i class="fas fa-exclamation-triangle"></i> URGENTE</span>' : ''}
                         </div>
                     </div>
                     
-                    <div class="kanban-card-body">
+                    <div class="kanban-card-body" style="${textColor}">
                         ${coleta.filial && coleta.numero_coleta ? `
-                            <div class="kanban-card-info" style="${isDiaria || isUrgente ? 'color: rgba(255, 255, 255, 0.9);' : ''}">
-                                <i class="fas fa-building"></i> ${coleta.filial} | 
-                                <i class="fas fa-hashtag"></i> ${coleta.numero_coleta}
+                            <div class="kanban-card-info" style="${textColor} !important;">
+                                <i class="fas fa-building" style="${prioridadeAuto.nivel === 'baixa' || prioridadeAuto.nivel === 'normal' ? 'color: #495057 !important;' : 'color: inherit;'}"></i> ${coleta.filial} | 
+                                <i class="fas fa-hashtag" style="${prioridadeAuto.nivel === 'baixa' || prioridadeAuto.nivel === 'normal' ? 'color: #495057 !important;' : 'color: inherit;'}"></i> ${coleta.numero_coleta}
                             </div>
                         ` : ''}
-                        <div class="kanban-card-info" style="${isDiaria || isUrgente ? 'color: rgba(255, 255, 255, 0.9);' : ''}">
-                            <i class="fas fa-map-marker-alt"></i> ${escapeHtml(coleta.origem || 'N/A')} → ${escapeHtml(coleta.destino || 'N/A')}
+                        <div class="kanban-card-info" style="${textColor} !important;">
+                            <i class="fas fa-map-marker-alt" style="${prioridadeAuto.nivel === 'baixa' || prioridadeAuto.nivel === 'normal' ? 'color: #495057 !important;' : 'color: inherit;'}"></i> ${escapeHtml(coleta.origem || 'N/A')} → ${escapeHtml(coleta.destino || 'N/A')}
                         </div>
                         ${coleta.valor ? `
-                            <div class="kanban-card-info" style="font-weight: 600; ${isDiaria || isUrgente ? 'color: white;' : 'color: #667eea;'}">
-                                <i class="fas fa-dollar-sign"></i> R$ ${(coleta.valor || 0).toFixed(2)}
+                            <div class="kanban-card-info" style="font-weight: 600; ${textColor} !important;">
+                                <i class="fas fa-dollar-sign" style="${prioridadeAuto.nivel === 'baixa' || prioridadeAuto.nivel === 'normal' ? (prioridadeAuto.nivel === 'normal' ? 'color: #856404 !important;' : 'color: #667eea !important;') : 'color: inherit;'}"></i> R$ ${(coleta.valor || 0).toFixed(2)}
                             </div>
                         ` : ''}
                         ${coleta.etapa_atual === 'contas_pagar' && coleta.contas_pagar_tipo ? `
-                            <div class="kanban-card-info" style="background: ${isUrgente || isDiaria ? 'rgba(255, 255, 255, 0.2);' : 'rgba(72, 12, 168, 0.1);'}; padding: 0.4rem 0.6rem; border-radius: 6px; margin-top: 0.5rem; border-left: 3px solid ${isUrgente || isDiaria ? 'white;' : '#480ca8;'}">
-                                <i class="fas fa-money-bill-wave" style="color: ${isUrgente || isDiaria ? 'white;' : '#480ca8;'}"></i> 
-                                <span style="color: ${isUrgente || isDiaria ? 'white;' : '#480ca8;'}; font-weight: 600; font-size: 0.85rem;">${escapeHtml(coleta.contas_pagar_tipo)}</span>
+                            <div class="kanban-card-info" style="background: ${prioridadeAuto.nivel === 'baixa' || prioridadeAuto.nivel === 'normal' ? 'rgba(72, 12, 168, 0.1);' : 'rgba(255, 255, 255, 0.2);'}; padding: 0.4rem 0.6rem; border-radius: 6px; margin-top: 0.5rem; border-left: 3px solid ${prioridadeAuto.nivel === 'baixa' || prioridadeAuto.nivel === 'normal' ? '#480ca8;' : 'white;'}">
+                                <i class="fas fa-money-bill-wave" style="color: ${prioridadeAuto.nivel === 'baixa' || prioridadeAuto.nivel === 'normal' ? '#480ca8;' : 'white;'}"></i> 
+                                <span style="color: ${prioridadeAuto.nivel === 'baixa' || prioridadeAuto.nivel === 'normal' ? '#480ca8;' : 'white;'}; font-weight: 600; font-size: 0.85rem;">${escapeHtml(coleta.contas_pagar_tipo)}</span>
                                 ${coleta.contas_pagar_pago ? `
-                                    <span style="color: ${isUrgente || isDiaria ? 'rgba(255, 255, 255, 0.9);' : '#28a745;'}; font-size: 0.75rem; margin-left: 0.5rem;">
+                                    <span style="color: ${prioridadeAuto.nivel === 'baixa' || prioridadeAuto.nivel === 'normal' ? '#28a745;' : 'rgba(255, 255, 255, 0.9);'}; font-size: 0.75rem; margin-left: 0.5rem;">
                                         <i class="fas fa-check-circle"></i> Pago
                                     </span>
                                 ` : `
-                                    <span style="color: ${isUrgente || isDiaria ? 'rgba(255, 255, 255, 0.8);' : '#ffc107;'}; font-size: 0.75rem; margin-left: 0.5rem;">
+                                    <span style="color: ${prioridadeAuto.nivel === 'baixa' || prioridadeAuto.nivel === 'normal' ? '#ffc107;' : 'rgba(255, 255, 255, 0.8);'}; font-size: 0.75rem; margin-left: 0.5rem;">
                                         <i class="fas fa-clock"></i> Pendente
                                     </span>
                                 `}
                             </div>
                         ` : ''}
                         ${coleta.titulo_contrato ? `
-                            <div class="kanban-card-info" style="background: ${isUrgente || isDiaria ? 'rgba(255, 255, 255, 0.2);' : 'rgba(253, 126, 20, 0.1);'}; padding: 0.4rem 0.6rem; border-radius: 6px; margin-top: 0.5rem; border-left: 3px solid ${isUrgente || isDiaria ? 'white;' : '#fd7e14;'}">
-                                <i class="fas fa-file-contract" style="color: ${isUrgente || isDiaria ? 'white;' : '#fd7e14;'}"></i> 
-                                <span style="color: ${isUrgente || isDiaria ? 'white;' : '#fd7e14;'}; font-weight: 600; font-size: 0.85rem; word-break: break-word;">${escapeHtml(coleta.titulo_contrato)}</span>
+                            <div class="kanban-card-info" style="background: ${prioridadeAuto.nivel === 'baixa' || prioridadeAuto.nivel === 'normal' ? 'rgba(253, 126, 20, 0.1);' : 'rgba(255, 255, 255, 0.2);'}; padding: 0.4rem 0.6rem; border-radius: 6px; margin-top: 0.5rem; border-left: 3px solid ${prioridadeAuto.nivel === 'baixa' || prioridadeAuto.nivel === 'normal' ? '#fd7e14;' : 'white;'}">
+                                <i class="fas fa-file-contract" style="color: ${prioridadeAuto.nivel === 'baixa' || prioridadeAuto.nivel === 'normal' ? '#fd7e14;' : 'white;'}"></i> 
+                                <span style="color: ${prioridadeAuto.nivel === 'baixa' || prioridadeAuto.nivel === 'normal' ? '#fd7e14;' : 'white;'}; font-weight: 600; font-size: 0.85rem; word-break: break-word;">${escapeHtml(coleta.titulo_contrato)}</span>
                             </div>
                         ` : ''}
                         ${tempoParadoHTML ? `
@@ -7653,9 +9275,9 @@
                         ` : ''}
                     </div>
                     
-                    <div class="kanban-card-footer">
-                        <span class="kanban-card-status ${statusClass}">${getStatusText(coleta.status)}</span>
-                        <button class="kanban-card-btn" onclick="event.stopPropagation(); abrirKanbanDrawer('${coleta.id}')" title="Ver detalhes">
+                    <div class="kanban-card-footer" style="${prioridadeAuto.nivel === 'baixa' || prioridadeAuto.nivel === 'normal' ? '' : 'border-top: 1px solid rgba(255, 255, 255, 0.2);'}">
+                        <span class="kanban-card-status ${statusClass}" style="${prioridadeAuto.nivel === 'baixa' || prioridadeAuto.nivel === 'normal' ? '' : 'background: rgba(255, 255, 255, 0.2) !important; color: white !important;'}">${getStatusText(coleta.status)}</span>
+                        <button class="kanban-card-btn" onclick="event.stopPropagation(); abrirKanbanDrawer('${coleta.id}')" title="Ver detalhes" style="${prioridadeAuto.nivel === 'baixa' || prioridadeAuto.nivel === 'normal' ? '' : 'background: rgba(255, 255, 255, 0.3) !important;'}">
                             <i class="fas fa-arrow-right"></i>
                         </button>
                     </div>
@@ -7765,7 +9387,7 @@
                             <i class="fas fa-comment"></i> Chat
                         </button>
                         ${temPermissao ? `
-                            <button onclick="event.stopPropagation(); avancarEtapa('${coleta.id}')" 
+                            <button onclick="event.stopPropagation(); event.preventDefault(); if(typeof avancarEtapa === 'function') { avancarEtapa('${coleta.id}'); } else if(typeof window.avancarEtapa === 'function') { window.avancarEtapa('${coleta.id}'); } else { console.error('❌ Função avancarEtapa não encontrada'); alert('Erro: Função avancarEtapa não encontrada. Recarregue a página.'); }" 
                                     style="background: #28a745; color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; font-size: 0.8rem; font-weight: 600;">
                                 <i class="fas fa-arrow-right"></i> Avançar
                             </button>
@@ -8314,7 +9936,7 @@
                 <!-- Botões de Ação -->
                 <div style="display: flex; gap: 1rem; flex-wrap: wrap; margin-top: 2rem; padding-top: 1.5rem; border-top: 2px solid #e5e7eb;">
                     ${temPermissao ? `
-                        <button onclick="avancarEtapa('${coleta.id}')" 
+                        <button onclick="if(typeof avancarEtapa === 'function') { avancarEtapa('${coleta.id}'); } else if(typeof window.avancarEtapa === 'function') { window.avancarEtapa('${coleta.id}'); } else { console.error('❌ Função avancarEtapa não encontrada'); alert('Erro: Função avancarEtapa não encontrada. Recarregue a página.'); }" 
                                 style="background: #28a745; color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 8px; cursor: pointer; font-weight: 600; display: flex; align-items: center; gap: 0.5rem;">
                             <i class="fas fa-arrow-right"></i> Avançar Etapa
                         </button>
@@ -9124,8 +10746,8 @@
                 }
             }
             
-            // ✅ VALIDAÇÃO: Não pode avançar para documentação, contas_pagar ou monitoramento sem aprovação no GR
-            const etapasQueRequeremAprovacaoGR = ['documentacao', 'contas_pagar', 'monitoramento'];
+            // ✅ VALIDAÇÃO: Não pode avançar para documentação ou monitoramento sem aprovação no GR
+            const etapasQueRequeremAprovacaoGR = ['documentacao', 'monitoramento'];
             if (etapasQueRequeremAprovacaoGR.includes(novaEtapaId)) {
                 // Verificar se o motorista foi aprovado no GR
                 if (!coleta.motorista_id) {
@@ -9147,12 +10769,22 @@
                 try {
                     const motorista = await buscarMotoristaPorId(coleta.motorista_id);
                     if (motorista) {
-                        const statusInfo = verificarStatusMotoristaPorColeta(motorista, coleta.id);
+                        // ✅ CORREÇÃO: Passar o objeto coleta completo, não apenas o ID
+                        const statusInfo = verificarStatusMotoristaPorColeta(motorista, coleta);
+                        console.log('🔍 Status do motorista verificado:', {
+                            coleta_id: coleta.id,
+                            etapa_atual: coleta.etapa_atual,
+                            gr_aprovado: coleta.gr_aprovado,
+                            status_motorista: statusInfo.status
+                        });
+                        
                         if (statusInfo.status === 'reprovado') {
                             showNotification('⚠️ O motorista vinculado está reprovado para esta coleta. Não é possível avançar para esta etapa.', 'warning');
                             return;
                         }
-                        if (statusInfo.status !== 'aprovado') {
+                        // ✅ CORREÇÃO: Se gr_aprovado === true, considerar aprovado mesmo se statusInfo não retornar 'aprovado'
+                        // Isso resolve o caso onde o motorista foi aprovado mas a função não detectou corretamente
+                        if (statusInfo.status !== 'aprovado' && coleta.gr_aprovado !== true) {
                             showNotification('⚠️ O motorista deve ser aprovado no GR antes de avançar para esta etapa.', 'warning');
                             return;
                         }
@@ -9239,6 +10871,14 @@
         }
 
         // ✅ FUNÇÕES DE ORDENAÇÃO DO KANBAN
+        // ✅ Função para alternar visibilidade do farol de prioridades
+        function toggleFarol() {
+            const farol = document.getElementById('prioridadeFarol');
+            if (farol) {
+                farol.classList.toggle('fechado');
+            }
+        }
+        
         function toggleSortMenu(etapaId, event) {
             event.stopPropagation();
             
@@ -9391,8 +11031,8 @@
                     }
                 }
                 
-                // ✅ VALIDAÇÃO: Não pode avançar para documentação, contas_pagar ou monitoramento sem aprovação no GR
-                const etapasQueRequeremAprovacaoGR = ['documentacao', 'contas_pagar', 'monitoramento'];
+                // ✅ VALIDAÇÃO: Não pode avançar para documentação ou monitoramento sem aprovação no GR
+                const etapasQueRequeremAprovacaoGR = ['documentacao', 'monitoramento'];
                 if (etapasQueRequeremAprovacaoGR.includes(etapaDestino)) {
                     // Verificar se o motorista foi aprovado no GR
                     if (!coleta.motorista_id) {
@@ -9414,12 +11054,21 @@
                     try {
                         const motorista = await buscarMotoristaPorId(coleta.motorista_id);
                         if (motorista) {
-                            const statusInfo = verificarStatusMotoristaPorColeta(motorista, coleta.id);
+                            // ✅ CORREÇÃO: Passar o objeto coleta completo, não apenas o ID
+                            const statusInfo = verificarStatusMotoristaPorColeta(motorista, coleta);
+                            console.log('🔍 Status do motorista verificado:', {
+                                coleta_id: coleta.id,
+                                etapa_atual: coleta.etapa_atual,
+                                gr_aprovado: coleta.gr_aprovado,
+                                status_motorista: statusInfo.status
+                            });
+                            
                             if (statusInfo.status === 'reprovado') {
                                 alert('⚠️ O motorista vinculado está reprovado para esta coleta. Não é possível avançar para esta etapa.');
                                 return;
                             }
-                            if (statusInfo.status !== 'aprovado') {
+                            // ✅ CORREÇÃO: Se gr_aprovado === true, considerar aprovado mesmo se statusInfo não retornar 'aprovado'
+                            if (statusInfo.status !== 'aprovado' && coleta.gr_aprovado !== true) {
                                 alert('⚠️ O motorista deve ser aprovado no GR antes de avançar para esta etapa.');
                                 return;
                             }
@@ -9493,11 +11142,17 @@
         document.addEventListener('DOMContentLoaded', async function() {
             console.log('🚚 Sistema de Coletas inicializando...');
             
-            // 🔐 Verificar permissão de acesso
-            const temPermissao = await verificarEAplicarPermissao('coletas');
-            if (!temPermissao) {
-                console.log('❌ Sem permissão para acessar coletas');
+            // ✅ RBAC: Verificar permissão de acesso ao menu de coletas
+            const temPermissaoMenu = await verificarEAplicarPermissao('coletas');
+            if (!temPermissaoMenu) {
+                console.log('❌ Sem permissão para acessar menu de coletas');
                 return; // A função verificarEAplicarPermissao já redireciona
+            }
+            
+            // ✅ RBAC: Validar acesso a pelo menos uma área do kanban
+            const temAcesso = await validarAcessoColetas();
+            if (!temAcesso) {
+                return; // Página já foi substituída pela mensagem de acesso negado
             }
 
             try {
@@ -9602,6 +11257,22 @@
                 
                 // Configurar listener em tempo real para atualizações de coletas
                 configurarRealtimeColetas();
+                
+                // Verificar se há hash #funil-geral na URL e fazer scroll
+                if (window.location.hash === '#funil-geral') {
+                    setTimeout(() => {
+                        const funilContainer = document.getElementById('funilGeralContainer');
+                        if (funilContainer && funilContainer.classList.contains('visible')) {
+                            funilContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                            // Destacar o funil por um momento
+                            funilContainer.style.transition = 'box-shadow 0.3s ease';
+                            funilContainer.style.boxShadow = '0 0 30px rgba(102, 126, 234, 0.6)';
+                            setTimeout(() => {
+                                funilContainer.style.boxShadow = '';
+                            }, 2000);
+                        }
+                    }, 1000); // Aguardar um pouco para garantir que o funil foi renderizado
+                }
                 
                 console.log('✅ Sistema de Coletas inicializado com sucesso!');
             } catch (error) {
@@ -9748,7 +11419,7 @@
                                 <div class="motorista-filters" style="background: linear-gradient(135deg, rgba(248, 250, 252, 0.8) 0%, rgba(241, 245, 249, 0.8) 100%); padding: 1.5rem; border-radius: 16px; margin-bottom: 1.5rem; border: 2px solid #e2e8f0; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);">
                                     <div style="font-weight: 700; color: #1e293b; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem; font-size: 1.1rem;">
                                         <i class="fas fa-filter" style="color: #667eea;"></i> Filtros de Busca
-                                    </div>
+                                        </div>
                                     <div class="row g-3">
                                         <div class="col-md-6">
                                             <label style="font-weight: 600; color: #475569; font-size: 0.9rem; margin-bottom: 0.5rem; display: block;">
@@ -9761,7 +11432,7 @@
                                                 <i class="fas fa-id-badge"></i> CNH
                                             </label>
                                             <input type="text" id="filtroCNH" class="form-control form-control-modern" placeholder="Digite o número da CNH...">
-                                        </div>
+                                    </div>
                                         <div class="col-md-6">
                                             <label style="font-weight: 600; color: #475569; font-size: 0.9rem; margin-bottom: 0.5rem; display: block;">
                                                 <i class="fas fa-car"></i> Categoria CNH
@@ -9800,8 +11471,8 @@
                                             <div class="motorista-info">
                                                 <div class="motorista-avatar">${iniciais}</div>
                                                 <div class="motorista-content">
-                                                    <div class="motorista-nome">${motorista.nome}</div>
-                                                    <div class="motorista-detalhes">
+                                                <div class="motorista-nome">${motorista.nome}</div>
+                                                <div class="motorista-detalhes">
                                                         ${motorista.cnh ? `<span><i class="fas fa-id-badge"></i> ${motorista.cnh}</span>` : ''}
                                                         ${motorista.categoria_cnh ? `<span><i class="fas fa-car"></i> ${motorista.categoria_cnh}</span>` : ''}
                                                         ${telefone ? `<span><i class="fas fa-phone"></i> ${telefoneFormatado}</span>` : ''}
@@ -12135,14 +13806,14 @@
                     // ✅ OTIMIZAÇÃO: Selecionar apenas campos necessários
                     const { data: dadosAntigos } = await supabaseClient
                         .from('coletas')
-                        .select('id, filial, numero_coleta, cliente, data_recebimento, data_entrega, origem, destino, valor, frete_motorista, km, tipos_veiculo, tipos_carroceria, status, etapa_atual, observacoes, prioridade, motorista_id, etapas_concluidas, arquivado, contas_pagar_tipo, diaria')
+                        .select('id, filial, numero_coleta, cliente, data_recebimento, data_entrega, origem, destino, tipo_produto, codigo_tabela, valor, frete_motorista, km, tipos_veiculo, tipos_carroceria, status, etapa_atual, observacoes, prioridade, motorista_id, etapas_concluidas, arquivado, contas_pagar_tipo, diaria')
                         .eq('id', currentEditingId)
                         .single();
                     
                     // ✅ UPDATE - FILTRA apenas campos VÁLIDOS
                     const camposValidos = [
                         'filial', 'numero_coleta', 'cliente', 'data_recebimento', 'data_entrega', 'origem', 'destino',
-                        'valor', 'frete_motorista', 'km', 'tipos_veiculo', 'tipos_carroceria', 'status', 'etapa_atual', 'observacoes',
+                        'tipo_produto', 'codigo_tabela', 'valor', 'frete_motorista', 'km', 'tipos_veiculo', 'tipos_carroceria', 'status', 'etapa_atual', 'observacoes',
                         'prioridade', 'motorista_id', 'etapas_concluidas', 'diaria'
                     ];
                     
@@ -13035,10 +14706,13 @@
                     return [];
                 }
                 
+                // ID é UUID - usar como string
+                const idString = String(coletaId);
+                
                 const { data, error } = await supabaseClient
                     .from('historico_coletas')
                     .select('*')
-                    .eq('coleta_id', coletaId)
+                    .eq('coleta_id', idString)
                     .order('created_at', { ascending: false });
 
                 if (error) throw error;
@@ -13206,6 +14880,634 @@
                 // Não lançar erro para não bloquear outras operações
             }
         }
+
+        // ========== FUNÇÕES PARA TRAJETÓRIA COMPLETA ==========
+        
+        /**
+         * Busca uma coleta por ID, número ou cliente (funciona mesmo com permissões limitadas)
+         * @param {string} termo - Termo de busca (ID, número da coleta, cliente, etc.)
+         * @returns {Promise<Object|null>} - Coleta encontrada ou null
+         */
+        async function buscarColetaPorTermo(termo) {
+            try {
+                if (!supabaseClient) {
+                    console.error('❌ Supabase não inicializado');
+                    return null;
+                }
+
+                const termoLimpo = termo.trim();
+                if (!termoLimpo) return null;
+
+                // Se o termo for numérico, buscar por número da coleta (não por ID, pois ID é UUID)
+                if (!isNaN(termoLimpo)) {
+                    // Buscar por número da coleta
+                    const { data: porNumero, error: errorNumero } = await supabaseClient
+                        .from('coletas')
+                        .select('*')
+                        .ilike('numero_coleta', `%${termoLimpo}%`)
+                        .limit(10);
+
+                    if (!errorNumero && porNumero && porNumero.length > 0) {
+                        // Se encontrar exatamente uma, retornar ela
+                        if (porNumero.length === 1) {
+                            return porNumero[0];
+                        }
+                        // Se encontrar múltiplas, retornar a primeira
+                        return porNumero[0];
+                    }
+                    
+                    // Se não encontrou por número da coleta, tentar buscar por ID se parecer UUID
+                    // UUIDs têm formato: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+                    const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+                    if (uuidPattern.test(termoLimpo)) {
+                        const { data: porId, error: errorId } = await supabaseClient
+                            .from('coletas')
+                            .select('*')
+                            .eq('id', termoLimpo)
+                            .maybeSingle();
+
+                        if (!errorId && porId) {
+                            return porId;
+                        }
+                    }
+                } else {
+                    // Se não for numérico, buscar por número da coleta também (pode conter letras)
+                    const { data: porNumero, error: errorNumero } = await supabaseClient
+                        .from('coletas')
+                        .select('*')
+                        .ilike('numero_coleta', `%${termoLimpo}%`)
+                        .limit(10);
+
+                    if (!errorNumero && porNumero && porNumero.length > 0) {
+                        if (porNumero.length === 1) {
+                            return porNumero[0];
+                        }
+                        return porNumero[0];
+                    }
+                }
+
+                // Buscar por cliente
+                const { data: porCliente, error: errorCliente } = await supabaseClient
+                    .from('coletas')
+                    .select('*')
+                    .ilike('cliente', `%${termoLimpo}%`)
+                    .limit(10);
+
+                if (!errorCliente && porCliente && porCliente.length > 0) {
+                    return porCliente[0];
+                }
+
+                // Se o termo parecer UUID, tentar buscar por ID
+                const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+                if (uuidPattern.test(termoLimpo)) {
+                    const { data: porId, error: errorId } = await supabaseClient
+                        .from('coletas')
+                        .select('*')
+                        .eq('id', termoLimpo)
+                        .maybeSingle();
+
+                    if (!errorId && porId) {
+                        return porId;
+                    }
+                }
+
+                return null;
+            } catch (error) {
+                console.error('❌ Erro ao buscar coleta:', error);
+                return null;
+            }
+        }
+
+        /**
+         * Busca histórico completo e calcula tempo em cada etapa
+         * @param {string} coletaId - ID da coleta (UUID)
+         * @returns {Promise<Array>} - Array com histórico de etapas e tempos
+         */
+        async function buscarTrajetoriaCompleta(coletaId) {
+            try {
+                if (!supabaseClient) {
+                    console.error('❌ Supabase não inicializado');
+                    return [];
+                }
+
+                // ID é UUID - usar como string
+                const idString = String(coletaId);
+
+                // Buscar histórico de movimentações
+                const { data: historico, error: errorHistorico } = await supabaseClient
+                    .from('historico_coletas')
+                    .select('*')
+                    .eq('coleta_id', idString)
+                    .order('created_at', { ascending: true });
+
+                if (errorHistorico) {
+                    console.error('❌ Erro ao buscar histórico:', errorHistorico);
+                }
+
+                // Buscar dados da coleta atual
+                    
+                const { data: coleta, error: errorColeta } = await supabaseClient
+                    .from('coletas')
+                    .select('*')
+                    .eq('id', idString)
+                    .maybeSingle();
+
+                if (errorColeta || !coleta) {
+                    console.error('❌ Erro ao buscar coleta:', errorColeta);
+                    return [];
+                }
+
+                const etapaAtual = coleta.etapa_atual;
+                const etapasComTempo = {};
+                
+                // Processar histórico para construir trajetória baseada em mudanças de etapa
+                // O histórico tem campos: etapa_anterior, etapa_atual (quando houver mudança)
+                if (historico && historico.length > 0) {
+                    historico.forEach((item) => {
+                        // Se o registro tem etapa_atual, significa que houve mudança para essa etapa
+                        const etapaId = item.etapa_atual;
+                        
+                        if (etapaId && ETAPAS.find(e => e.id === etapaId)) {
+                            // Se ainda não registramos entrada nesta etapa, registrar
+                            if (!etapasComTempo[etapaId] || !etapasComTempo[etapaId].dataEntrada) {
+                                etapasComTempo[etapaId] = {
+                                    etapa: etapaId,
+                                    nome: ETAPAS.find(e => e.id === etapaId)?.nome || etapaId,
+                                    dataEntrada: item.created_at,
+                                    dataSaida: null,
+                                    atualizadoPor: item.usuario_nome || item.usuario || 'Sistema',
+                                    isAtual: false // Será corrigido depois
+                                };
+                            }
+                            
+                            // Se houve mudança de etapa, marcar data de saída da etapa anterior
+                            if (item.etapa_anterior && item.etapa_anterior !== etapaId) {
+                                const etapaAnteriorId = item.etapa_anterior;
+                                if (ETAPAS.find(e => e.id === etapaAnteriorId)) {
+                                    if (!etapasComTempo[etapaAnteriorId]) {
+                                        etapasComTempo[etapaAnteriorId] = {
+                                            etapa: etapaAnteriorId,
+                                            nome: ETAPAS.find(e => e.id === etapaAnteriorId)?.nome || etapaAnteriorId,
+                                            dataEntrada: coleta.created_at, // Fallback para data de criação
+                                            dataSaida: null,
+                                            atualizadoPor: 'Sistema',
+                                            isAtual: false
+                                        };
+                                    }
+                                    // Se ainda não tinha data de saída, definir agora
+                                    if (!etapasComTempo[etapaAnteriorId].dataSaida) {
+                                        etapasComTempo[etapaAnteriorId].dataSaida = item.created_at;
+                                    }
+                                }
+                            }
+                        }
+                    });
+                }
+
+                // Adicionar etapa inicial se não estiver no histórico (coleta recém criada)
+                // Normalmente a primeira etapa é 'comercial'
+                const etapaInicial = historico && historico.length > 0 && historico[0].etapa_atual 
+                    ? historico[0].etapa_atual 
+                    : (etapaAtual || 'comercial');
+
+                if (!etapasComTempo[etapaInicial]) {
+                    etapasComTempo[etapaInicial] = {
+                        etapa: etapaInicial,
+                        nome: ETAPAS.find(e => e.id === etapaInicial)?.nome || etapaInicial,
+                        dataEntrada: coleta.created_at || coleta.data_entrada_etapa || new Date().toISOString(),
+                        dataSaida: null,
+                        atualizadoPor: coleta.created_by ? 'Criador' : 'Sistema',
+                        isAtual: false
+                    };
+                }
+
+                // Garantir que apenas 1 etapa seja marcada como atual
+                // Primeiro, garantir que todas as etapas tenham isAtual = false
+                Object.keys(etapasComTempo).forEach(etapaId => {
+                    etapasComTempo[etapaId].isAtual = false;
+                });
+
+                // Marcar etapa atual (apenas 1)
+                if (etapaAtual) {
+                    if (etapasComTempo[etapaAtual]) {
+                        etapasComTempo[etapaAtual].isAtual = true;
+                    } else {
+                        // Se etapa atual não está no histórico ainda (mudança muito recente)
+                        etapasComTempo[etapaAtual] = {
+                            etapa: etapaAtual,
+                            nome: ETAPAS.find(e => e.id === etapaAtual)?.nome || etapaAtual,
+                            dataEntrada: coleta.data_entrada_etapa || coleta.updated_at || coleta.created_at || new Date().toISOString(),
+                            dataSaida: null,
+                            atualizadoPor: coleta.updated_by ? 'Atualizador' : 'Sistema',
+                            isAtual: true
+                        };
+                    }
+                }
+
+                // Ordenar por ordem das etapas e calcular tempos
+                const trajetoriaOrdenada = ETAPAS
+                    .filter(e => etapasComTempo[e.id])
+                    .map(e => {
+                        const item = etapasComTempo[e.id];
+                        
+                        // Calcular tempo na etapa
+                        if (item.dataEntrada) {
+                            const entrada = new Date(item.dataEntrada);
+                            let saida = null;
+                            
+                            if (item.dataSaida) {
+                                // Etapa concluída: usar data de saída
+                                saida = new Date(item.dataSaida);
+                            } else if (item.isAtual) {
+                                // Etapa atual: usar data atual para cálculo
+                                saida = new Date();
+                            }
+                            
+                            if (saida) {
+                                const tempoMs = saida - entrada;
+                                const tempoMinutos = Math.max(0, Math.floor(tempoMs / (1000 * 60)));
+                                
+                                item.tempoMinutos = tempoMinutos;
+                                item.tempoFormatado = item.isAtual ? formatarTempo(tempoMinutos) + ' (em andamento)' : formatarTempo(tempoMinutos);
+                            } else {
+                                // Etapa sem saída e não atual (erro nos dados)
+                                item.tempoMinutos = 0;
+                                item.tempoFormatado = 'Sem tempo registrado';
+                            }
+                        } else {
+                            item.tempoMinutos = 0;
+                            item.tempoFormatado = 'Sem tempo registrado';
+                        }
+                        
+                        item.acao = item.isAtual ? 'Etapa Atual' : 'Concluída';
+                        return item;
+                    });
+
+                return trajetoriaOrdenada;
+            } catch (error) {
+                console.error('❌ Erro ao buscar trajetória completa:', error);
+                return [];
+            }
+        }
+
+        /**
+         * Busca informações do usuário que atualizou
+         * @param {string} userId - ID do usuário
+         * @returns {Promise<Object|null>} - Dados do usuário ou null
+         */
+        async function buscarUsuarioPorId(userId) {
+            try {
+                if (!userId || !supabaseClient) return null;
+
+                const { data, error } = await supabaseClient
+                    .from('user_profiles')
+                    .select('id, nome, email')
+                    .eq('id', userId)
+                    .maybeSingle();
+
+                if (error || !data) return null;
+                return data;
+            } catch (error) {
+                console.error('❌ Erro ao buscar usuário:', error);
+                return null;
+            }
+        }
+
+        /**
+         * Abre modal de trajetória completa da coleta
+         * @param {string} coletaId - ID da coleta
+         */
+        async function abrirModalTrajetoria(coletaId) {
+            const modal = document.getElementById('modalTrajetoriaColeta');
+            const conteudo = document.getElementById('conteudoTrajetoriaColeta');
+            
+            if (!modal || !conteudo) {
+                console.error('❌ Modal de trajetória não encontrado');
+                return;
+            }
+
+            // Mostrar modal com loading
+            modal.style.display = 'flex';
+            conteudo.innerHTML = `
+                <div style="text-align: center; padding: 2rem;">
+                    <i class="fas fa-spinner fa-spin" style="font-size: 2rem; color: #667eea;"></i>
+                    <p style="margin-top: 1rem; color: #666;">Carregando trajetória...</p>
+                </div>
+            `;
+
+            try {
+                // Buscar dados da coleta
+                // ID é UUID, não número - usar diretamente como string
+                const { data: coleta, error: errorColeta } = await supabaseClient
+                    .from('coletas')
+                    .select('*')
+                    .eq('id', String(coletaId))
+                    .maybeSingle();
+
+                if (errorColeta) {
+                    console.error('❌ Erro ao buscar coleta:', errorColeta);
+                    conteudo.innerHTML = `
+                        <div style="text-align: center; padding: 2rem; color: #dc3545;">
+                            <i class="fas fa-exclamation-triangle" style="font-size: 2rem; margin-bottom: 1rem;"></i>
+                            <p>Erro ao carregar dados da coleta.</p>
+                            <p style="font-size: 0.9rem; margin-top: 0.5rem; color: #666;">${errorColeta.message || 'ID não encontrado ou inválido'}</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                if (!coleta) {
+                    conteudo.innerHTML = `
+                        <div style="text-align: center; padding: 2rem; color: #dc3545;">
+                            <i class="fas fa-exclamation-triangle" style="font-size: 2rem; margin-bottom: 1rem;"></i>
+                            <p>Coleta não encontrada.</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                // Buscar trajetória
+                const trajetoria = await buscarTrajetoriaCompleta(coletaId);
+                
+                // Buscar histórico completo
+                const historico = await carregarHistorico(coletaId);
+
+                // Buscar informações do usuário que criou
+                const criadoPor = coleta.created_by ? await buscarUsuarioPorId(coleta.created_by) : null;
+                
+                // Buscar informações do usuário que atualizou
+                const atualizadoPor = coleta.updated_by ? await buscarUsuarioPorId(coleta.updated_by) : null;
+
+                // Renderizar conteúdo
+                renderizarTrajetoriaCompleta(coleta, trajetoria, historico, criadoPor, atualizadoPor);
+            } catch (error) {
+                console.error('❌ Erro ao abrir modal de trajetória:', error);
+                conteudo.innerHTML = `
+                    <div style="text-align: center; padding: 2rem; color: #dc3545;">
+                        <i class="fas fa-exclamation-triangle" style="font-size: 2rem; margin-bottom: 1rem;"></i>
+                        <p>Erro ao carregar trajetória: ${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        /**
+         * Renderiza o conteúdo da trajetória completa
+         */
+        function renderizarTrajetoriaCompleta(coleta, trajetoria, historico, criadoPor, atualizadoPor) {
+            const conteudo = document.getElementById('conteudoTrajetoriaColeta');
+            if (!conteudo) return;
+
+            // Função auxiliar para formatar moeda
+            const formatarMoeda = (valor) => {
+                if (valor === null || valor === undefined || valor === '') return 'R$ 0,00';
+                return `R$ ${parseFloat(valor || 0).toLocaleString('pt-BR', {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2
+                })}`;
+            };
+
+            // Função auxiliar para formatar data
+            const formatarData = (data) => {
+                if (!data) return 'Não informado';
+                try {
+                    return new Date(data).toLocaleString('pt-BR', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                    });
+                } catch (e) {
+                    return data;
+                }
+            };
+
+            const etapaAtual = ETAPAS.find(e => e.id === coleta.etapa_atual);
+            const etapaAtualNome = etapaAtual ? etapaAtual.nome : coleta.etapa_atual || 'Não definida';
+
+            let html = `
+                <!-- Informações Gerais da Coleta -->
+                <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 1.5rem; border-radius: 12px; margin-bottom: 2rem;">
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+                        <div>
+                            <div style="font-size: 0.85rem; opacity: 0.9; margin-bottom: 0.25rem;">Número da Coleta</div>
+                            <div style="font-size: 1.3rem; font-weight: 700;">${coleta.numero_coleta || 'N/A'}</div>
+                        </div>
+                        <div>
+                            <div style="font-size: 0.85rem; opacity: 0.9; margin-bottom: 0.25rem;">Cliente</div>
+                            <div style="font-size: 1.1rem; font-weight: 600;">${coleta.cliente || 'N/A'}</div>
+                        </div>
+                        <div>
+                            <div style="font-size: 0.85rem; opacity: 0.9; margin-bottom: 0.25rem;">Valor</div>
+                            <div style="font-size: 1.2rem; font-weight: 700;">${formatarMoeda(coleta.valor)}</div>
+                        </div>
+                        <div>
+                            <div style="font-size: 0.85rem; opacity: 0.9; margin-bottom: 0.25rem;">Etapa Atual</div>
+                            <div style="font-size: 1.1rem; font-weight: 600;">${etapaAtualNome}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Informações de Criação e Atualização -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 2rem;">
+                    <div style="background: #f8f9fa; padding: 1rem; border-radius: 8px; border-left: 4px solid #28a745;">
+                        <div style="font-size: 0.85rem; color: #6c757d; margin-bottom: 0.5rem;">
+                            <i class="fas fa-user-plus"></i> Criado por
+                        </div>
+                        <div style="font-weight: 600; color: #2d3748;">
+                            ${criadoPor ? (criadoPor.nome || criadoPor.email) : 'Sistema'}
+                        </div>
+                        <div style="font-size: 0.85rem; color: #6c757d; margin-top: 0.25rem;">
+                            ${formatarData(coleta.created_at)}
+                        </div>
+                    </div>
+                    <div style="background: #f8f9fa; padding: 1rem; border-radius: 8px; border-left: 4px solid #667eea;">
+                        <div style="font-size: 0.85rem; color: #6c757d; margin-bottom: 0.5rem;">
+                            <i class="fas fa-user-edit"></i> Última atualização por
+                        </div>
+                        <div style="font-weight: 600; color: #2d3748;">
+                            ${atualizadoPor ? (atualizadoPor.nome || atualizadoPor.email) : (coleta.updated_by || 'Sistema')}
+                        </div>
+                        <div style="font-size: 0.85rem; color: #6c757d; margin-top: 0.25rem;">
+                            ${formatarData(coleta.updated_at || coleta.data_atualizacao)}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Timeline da Trajetória -->
+                <div style="margin-bottom: 2rem;">
+                    <h3 style="color: #2d3748; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.5rem;">
+                        <i class="fas fa-route" style="color: #667eea;"></i>
+                        Trajetória Completa
+                    </h3>
+            `;
+
+            if (trajetoria.length === 0) {
+                html += `
+                    <div style="text-align: center; padding: 2rem; background: #f8f9fa; border-radius: 8px; color: #6c757d;">
+                        <i class="fas fa-info-circle" style="font-size: 2rem; margin-bottom: 1rem; opacity: 0.5;"></i>
+                        <p>Nenhuma movimentação registrada ainda.</p>
+                    </div>
+                `;
+            } else {
+                html += `
+                    <div style="position: relative; padding-left: 2rem;">
+                        <!-- Linha vertical da timeline -->
+                        <div style="position: absolute; left: 0.5rem; top: 0; bottom: 0; width: 2px; background: linear-gradient(to bottom, #667eea, #764ba2);"></div>
+                `;
+
+                trajetoria.forEach((item, index) => {
+                    const isAtual = !item.dataSaida;
+                    const isUltima = index === trajetoria.length - 1;
+                    
+                    html += `
+                        <div style="position: relative; margin-bottom: 2rem; padding-left: 2rem;">
+                            <!-- Ponto da timeline -->
+                            <div style="position: absolute; left: -1.5rem; top: 0.5rem; width: 1rem; height: 1rem; background: ${isAtual ? '#28a745' : '#667eea'}; border-radius: 50%; border: 3px solid white; box-shadow: 0 0 0 3px ${isAtual ? '#28a745' : '#667eea'}; z-index: 2;"></div>
+                            
+                            <!-- Card da etapa -->
+                            <div style="background: ${isAtual ? '#e8f5e9' : 'white'}; border: 2px solid ${isAtual ? '#28a745' : '#e0e0e0'}; border-radius: 12px; padding: 1.5rem; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                                <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem;">
+                                    <div>
+                                        <div style="font-size: 1.2rem; font-weight: 700; color: #2d3748; margin-bottom: 0.5rem;">
+                                            ${item.nome}
+                                            ${isAtual ? '<span style="background: #28a745; color: white; padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.75rem; margin-left: 0.5rem;">ATUAL</span>' : ''}
+                                        </div>
+                                        <div style="font-size: 0.9rem; color: #6c757d;">
+                                            <i class="fas fa-user"></i> ${item.atualizadoPor}
+                                        </div>
+                                    </div>
+                                    <div style="text-align: right;">
+                                        ${item.tempoFormatado ? `
+                                            <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 0.5rem 1rem; border-radius: 20px; font-weight: 600; font-size: 0.9rem; margin-bottom: 0.5rem;">
+                                                <i class="fas fa-clock"></i> ${item.tempoFormatado}
+                                            </div>
+                                        ` : ''}
+                                    </div>
+                                </div>
+                                
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; font-size: 0.9rem;">
+                                    <div>
+                                        <div style="color: #6c757d; margin-bottom: 0.25rem;">
+                                            <i class="fas fa-sign-in-alt"></i> Entrada
+                                        </div>
+                                        <div style="font-weight: 600; color: #2d3748;">
+                                            ${formatarData(item.dataEntrada)}
+                                        </div>
+                                    </div>
+                                    ${item.dataSaida ? `
+                                        <div>
+                                            <div style="color: #6c757d; margin-bottom: 0.25rem;">
+                                                <i class="fas fa-sign-out-alt"></i> Saída
+                                            </div>
+                                            <div style="font-weight: 600; color: #2d3748;">
+                                                ${formatarData(item.dataSaida)}
+                                            </div>
+                                        </div>
+                                    ` : `
+                                        <div>
+                                            <div style="color: #6c757d; margin-bottom: 0.25rem;">
+                                                <i class="fas fa-hourglass-half"></i> Status
+                                            </div>
+                                            <div style="font-weight: 600; color: #28a745;">
+                                                Em andamento
+                                            </div>
+                                        </div>
+                                    `}
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+
+                html += `</div>`;
+            }
+
+            html += `</div>`;
+
+            // Adicionar resumo de estatísticas
+            if (trajetoria.length > 0) {
+                const tempoTotal = trajetoria.reduce((sum, item) => sum + (item.tempoMinutos || 0), 0);
+                const etapasCompletas = trajetoria.filter(item => item.dataSaida).length;
+                
+                html += `
+                    <div style="background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); padding: 1.5rem; border-radius: 12px; margin-top: 2rem;">
+                        <h4 style="color: #2d3748; margin-bottom: 1rem;">
+                            <i class="fas fa-chart-line"></i> Resumo Estatístico
+                        </h4>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem;">
+                            <div style="text-align: center;">
+                                <div style="font-size: 2rem; font-weight: 700; color: #667eea;">${trajetoria.length}</div>
+                                <div style="font-size: 0.9rem; color: #6c757d;">Etapas Visitadas</div>
+                            </div>
+                            <div style="text-align: center;">
+                                <div style="font-size: 2rem; font-weight: 700; color: #28a745;">${etapasCompletas}</div>
+                                <div style="font-size: 0.9rem; color: #6c757d;">Etapas Concluídas</div>
+                            </div>
+                            <div style="text-align: center;">
+                                <div style="font-size: 2rem; font-weight: 700; color: #764ba2;">${formatarTempo(tempoTotal)}</div>
+                                <div style="font-size: 0.9rem; color: #6c757d;">Tempo Total</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            conteudo.innerHTML = html;
+        }
+
+        /**
+         * Fecha o modal de trajetória
+         */
+        function fecharModalTrajetoria() {
+            const modal = document.getElementById('modalTrajetoriaColeta');
+            if (modal) {
+                modal.style.display = 'none';
+            }
+        }
+
+        /**
+         * Busca uma coleta pelo termo de busca e abre o modal de trajetória
+         */
+        async function buscarECarregarTrajetoria() {
+            const searchInput = document.getElementById('searchFilter');
+            if (!searchInput) {
+                showNotification('Campo de busca não encontrado', 'error');
+                return;
+            }
+
+            const termo = searchInput.value.trim();
+            if (!termo) {
+                showNotification('Digite um termo de busca (número da coleta, cliente, etc.)', 'warning');
+                return;
+            }
+
+            try {
+                showNotification('Buscando coleta...', 'info');
+                
+                // Buscar coleta
+                const coleta = await buscarColetaPorTermo(termo);
+                
+                if (!coleta) {
+                    showNotification('Coleta não encontrada. Tente buscar por número da coleta, cliente ou ID.', 'warning');
+                    return;
+                }
+
+                // Abrir modal de trajetória
+                await abrirModalTrajetoria(coleta.id);
+                showNotification('Trajetória carregada com sucesso!', 'success');
+            } catch (error) {
+                console.error('❌ Erro ao buscar trajetória:', error);
+                showNotification('Erro ao buscar trajetória: ' + error.message, 'error');
+            }
+        }
+
+        // Expor funções globalmente
+        window.abrirModalTrajetoria = abrirModalTrajetoria;
+        window.fecharModalTrajetoria = fecharModalTrajetoria;
+        window.buscarColetaPorTermo = buscarColetaPorTermo;
+        window.buscarECarregarTrajetoria = buscarECarregarTrajetoria;
 
         // Função para carregar histórico no card
         async function carregarHistoricoParaCard(coletaId) {
@@ -13866,6 +16168,13 @@
                                 <i class="fas fa-history"></i> Últimas Movimentações
                             </div>
                             <div style="display: flex; gap: 0.5rem; align-items: center;">
+                                <button onclick="event.stopPropagation(); abrirModalTrajetoria('${coleta.id}')" 
+                                    style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%); color: white; border: none; padding: 0.3rem 0.6rem; border-radius: 6px; cursor: pointer; font-size: 0.75rem; font-weight: 600; transition: transform 0.2s; display: flex; align-items: center; gap: 0.3rem;" 
+                                    onmouseover="this.style.transform='scale(1.05)'" 
+                                    onmouseout="this.style.transform='scale(1)'"
+                                    title="Ver trajetória completa da coleta">
+                                    <i class="fas fa-route"></i> Trajetória
+                                </button>
                                 <button onclick="event.stopPropagation(); abrirModalHistoricoCompleto('${coleta.id}')" 
                                     style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 0.3rem 0.6rem; border-radius: 6px; cursor: pointer; font-size: 0.75rem; font-weight: 600; transition: transform 0.2s;" 
                                     onmouseover="this.style.transform='scale(1.05)'" 
@@ -14477,11 +16786,19 @@
             document.getElementById('numeroColeta').value = coleta.numero_coleta || '';
             
             // Filtrar clientes baseado na filial e depois selecionar o cliente
-            filtrarClientesPorFilial();
+            // Carregar clientes da filial
+            await filtrarClientesPorFilial();
+            
             // Aguardar um pouco para garantir que as opções foram carregadas antes de selecionar
             setTimeout(() => {
-            document.getElementById('cliente').value = coleta.cliente || '';
-            }, 100);
+                const clienteSelect = document.getElementById('cliente');
+                clienteSelect.value = coleta.cliente || '';
+                
+                // Se houver cliente selecionado, preencher origem e destino
+                if (coleta.cliente) {
+                    preencherOrigemDestino();
+                }
+            }, 500);
             
             // Converter data_recebimento (timestamp) para formato de input date (YYYY-MM-DD)
             let dataRecebimentoValue = '';
@@ -14505,8 +16822,64 @@
             }
             document.getElementById('dataEntrega').value = dataEntregaValue;
             
-            document.getElementById('origem').value = coleta.origem || '';
-            document.getElementById('destino').value = coleta.destino || '';
+            // Preencher origem e destino (agora são selects)
+            const origemSelect = document.getElementById('origem');
+            const destinoSelect = document.getElementById('destino');
+            
+            // Se já tiver origem/destino cadastrados, tentar encontrar nas opções ou criar nova
+            if (coleta.origem) {
+                origemSelect.disabled = false;
+                // Verificar se já existe a opção
+                const origemExists = Array.from(origemSelect.options).some(opt => opt.value === coleta.origem);
+                if (!origemExists && origemSelect.options.length === 1) {
+                    // Criar nova opção se não existir
+                    const option = document.createElement('option');
+                    option.value = coleta.origem;
+                    option.textContent = coleta.origem;
+                    origemSelect.appendChild(option);
+                }
+                origemSelect.value = coleta.origem;
+            }
+            
+            if (coleta.destino) {
+                destinoSelect.disabled = false;
+                // Verificar se já existe a opção
+                const destinoExists = Array.from(destinoSelect.options).some(opt => opt.value === coleta.destino);
+                if (!destinoExists && destinoSelect.options.length === 1) {
+                    // Criar nova opção se não existir
+                    const option = document.createElement('option');
+                    option.value = coleta.destino;
+                    option.textContent = coleta.destino;
+                    destinoSelect.appendChild(option);
+                }
+                destinoSelect.value = coleta.destino;
+            }
+            
+            // Preencher tipo de produto e código da tabela
+            const tipoProdutoSelect = document.getElementById('tipoProduto');
+            const codigoTabelaInput = document.getElementById('codigoTabela');
+            
+            if (tipoProdutoSelect) {
+                // Se já tiver tipo de produto cadastrado, tentar encontrar nas opções ou criar nova
+                if (coleta.tipo_produto || coleta.tipoProduto) {
+                    tipoProdutoSelect.disabled = false;
+                    const tipoProdutoValue = coleta.tipo_produto || coleta.tipoProduto;
+                    const tipoProdutoExists = Array.from(tipoProdutoSelect.options).some(opt => opt.value === tipoProdutoValue);
+                    if (!tipoProdutoExists && tipoProdutoSelect.options.length === 1) {
+                        // Criar nova opção se não existir
+                        const option = document.createElement('option');
+                        option.value = tipoProdutoValue;
+                        option.textContent = tipoProdutoValue;
+                        tipoProdutoSelect.appendChild(option);
+                    }
+                    tipoProdutoSelect.value = tipoProdutoValue;
+                }
+            }
+            
+            if (codigoTabelaInput) {
+                codigoTabelaInput.value = coleta.codigo_tabela || coleta.codigoTabela || '';
+            }
+            
             document.getElementById('valor').value = coleta.valor || '';
             document.getElementById('freteMotorista').value = coleta.frete_motorista || '';
             document.getElementById('km').value = coleta.km || '';
@@ -14833,13 +17206,15 @@
                 data_entrega: dataEntrega || null,
                 origem: rawData.origem,
                 destino: rawData.destino,
+                tipo_produto: rawData.tipoProduto || null,
+                codigo_tabela: rawData.codigoTabela || null,
                 valor: parseFloat(rawData.valor) || 0,
                 frete_motorista: parseFloat(rawData.freteMotorista) || 0,
                 km: parseFloat(rawData.km) || 0,
                 tipos_veiculo: tiposVeiculoSelecionados,
                 tipos_carroceria: tiposCarroceriaSelecionados,
                 status: rawData.status,
-                etapa_atual: rawData.etapaAtual,
+                etapa_atual: rawData.etapaAtual, 
                 prioridade: prioridadeFinal,
                 observacoes: rawData.observacoes,
                 diaria: isDiariaData
@@ -15342,8 +17717,28 @@
 
         // FUNÇÃO SIMPLES - usa a API instead do Supabase direto
         async function avancarEtapa(coletaId) {
+            console.log('🚀 avancarEtapa chamado para coleta:', coletaId);
+            
+            if (!coletaId) {
+                console.error('❌ avancarEtapa: coletaId não fornecido');
+                showNotification('Erro: ID da coleta não encontrado', 'error');
+                return;
+            }
+            
             const coleta = coletasData.find(c => c.id === coletaId);
-            if (!coleta) return;
+            if (!coleta) {
+                console.error('❌ Coleta não encontrada:', coletaId);
+                showNotification('Erro: Coleta não encontrada', 'error');
+                return;
+            }
+            
+            console.log('📋 Dados da coleta antes de validar:', {
+                id: coleta.id,
+                etapa_atual: coleta.etapa_atual,
+                motorista_id: coleta.motorista_id,
+                gr_aprovado: coleta.gr_aprovado,
+                tipo_gr_aprovado: typeof coleta.gr_aprovado
+            });
 
             // 🔐 Verificar permissão para a etapa atual
             if (!temPermissaoEtapa(coleta.etapa_atual)) {
@@ -15377,50 +17772,137 @@
             if (etapaAtualIndex < ETAPAS.length - 1) {
                 const proximaEtapaId = ETAPAS[etapaAtualIndex + 1].id;
                 
-                // ✅ VALIDAÇÃO: Não pode avançar para documentação, contas_pagar ou monitoramento sem aprovação no GR
-                const etapasQueRequeremAprovacaoGR = ['documentacao', 'contas_pagar', 'monitoramento'];
+                console.log('🔍 Avançando etapa:', {
+                    etapaAtual: coleta.etapa_atual,
+                    proximaEtapa: proximaEtapaId,
+                    motorista_id: coleta.motorista_id,
+                    gr_aprovado: coleta.gr_aprovado
+                });
+                
+                // ✅ VALIDAÇÃO: Não pode avançar para documentação ou monitoramento sem aprovação no GR
+                const etapasQueRequeremAprovacaoGR = ['documentacao', 'monitoramento'];
                 if (etapasQueRequeremAprovacaoGR.includes(proximaEtapaId)) {
                     // Verificar se o motorista foi aprovado no GR
                     if (!coleta.motorista_id) {
+                        console.log('❌ Bloqueado: Sem motorista vinculado');
                         showNotification('⚠️ Para avançar para esta etapa, é necessário ter um motorista vinculado e aprovado no GR.', 'warning');
                         return;
                     }
                     
                     // Verificar se passou pelo GR e foi aprovado
-                    if (coleta.gr_aprovado !== true) {
-                        if (coleta.gr_aprovado === false) {
-                            showNotification('⚠️ Esta coleta foi reprovada pelo GR. Não é possível avançar para esta etapa. É necessário aprovar o motorista no GR primeiro.', 'warning');
-                        } else {
-                            showNotification('⚠️ Para avançar para esta etapa, o motorista deve ser aprovado no GR primeiro.', 'warning');
-                        }
-                        return;
-                    }
+                    // ✅ CORREÇÃO: Buscar dados atualizados do banco antes de validar
+                    // O objeto em memória pode estar desatualizado
+                    let grAprovadoFinal = false;
+                    let coletaAtualizada = null; // Declarar no escopo correto
+                    let valorBancoGrAprovado = null;
                     
-                    // Verificar também se o motorista não está reprovado para esta coleta
                     try {
-                        const motorista = await buscarMotoristaPorId(coleta.motorista_id);
-                        if (motorista) {
-                            const statusInfo = verificarStatusMotoristaPorColeta(motorista, coleta.id);
-                            if (statusInfo.status === 'reprovado') {
-                                showNotification('⚠️ O motorista vinculado está reprovado para esta coleta. Não é possível avançar para esta etapa.', 'warning');
-                                return;
-                            }
-                            if (statusInfo.status !== 'aprovado') {
-                                showNotification('⚠️ O motorista deve ser aprovado no GR antes de avançar para esta etapa.', 'warning');
-                                return;
-                            }
+                        console.log('🔍 Buscando dados atualizados do banco para coleta:', coletaId, 'próxima etapa:', proximaEtapaId);
+                        const { data: coletaAtualizadaTemp, error: errorBusca } = await supabaseClient
+                            .from('coletas')
+                            .select('gr_aprovado, motorista_id')
+                            .eq('id', coletaId)
+                            .single();
+                        
+                        coletaAtualizada = coletaAtualizadaTemp; // Atribuir à variável do escopo correto
+                        
+                        console.log('🔍 Dados buscados do banco:', {
+                            coletaAtualizada,
+                            errorBusca,
+                            gr_aprovado_banco: coletaAtualizada?.gr_aprovado,
+                            tipo_gr_aprovado_banco: typeof coletaAtualizada?.gr_aprovado,
+                            proximaEtapa: proximaEtapaId
+                        });
+                        
+                        if (errorBusca) {
+                            console.warn('⚠️ Erro ao buscar coleta atualizada:', errorBusca);
+                            // Se não conseguir buscar, usar o valor em memória
+                            grAprovadoFinal = coleta.gr_aprovado === true || coleta.gr_aprovado === 'true' || coleta.gr_aprovado === 1;
+                            console.log('⚠️ Usando valor em memória devido a erro:', grAprovadoFinal);
+                        } else if (coletaAtualizada) {
+                            // Atualizar objeto em memória
+                            coleta.gr_aprovado = coletaAtualizada.gr_aprovado;
+                            coleta.motorista_id = coletaAtualizada.motorista_id || coleta.motorista_id;
+                            
+                            // Verificar se está aprovado usando o valor do banco
+                            valorBancoGrAprovado = coletaAtualizada.gr_aprovado;
+                            grAprovadoFinal = valorBancoGrAprovado === true || 
+                                            valorBancoGrAprovado === 'true' || 
+                                            valorBancoGrAprovado === 1 ||
+                                            valorBancoGrAprovado === '1' ||
+                                            String(valorBancoGrAprovado).toLowerCase() === 'true';
+                            
+                            console.log('✅ Valor do banco processado:', {
+                                valorBancoGrAprovado,
+                                tipo: typeof valorBancoGrAprovado,
+                                grAprovadoFinal,
+                                igual_a_true: valorBancoGrAprovado === true,
+                                igual_a_string_true: valorBancoGrAprovado === 'true',
+                                igual_a_1: valorBancoGrAprovado === 1
+                            });
+                        } else {
+                            // Se não encontrou no banco, usar valor em memória
+                            console.warn('⚠️ Coleta não encontrada no banco, usando valor em memória');
+                            grAprovadoFinal = coleta.gr_aprovado === true || coleta.gr_aprovado === 'true' || coleta.gr_aprovado === 1;
                         }
                     } catch (err) {
-                        console.warn('⚠️ Erro ao verificar status do motorista:', err);
-                        showNotification('⚠️ Erro ao verificar status do motorista. Não é possível avançar.', 'warning');
-                        return;
+                        console.warn('⚠️ Erro ao buscar coleta atualizada:', err);
+                        // Em caso de erro, usar valor em memória
+                        grAprovadoFinal = coleta.gr_aprovado === true || coleta.gr_aprovado === 'true' || coleta.gr_aprovado === 1;
                     }
+                    
+                    console.log('🔍 Resultado da validação GR (FINAL):', {
+                        proximaEtapa: proximaEtapaId,
+                        grAprovadoFinal,
+                        gr_aprovado_memoria: coleta.gr_aprovado,
+                        tipo_memoria: typeof coleta.gr_aprovado,
+                        valor_banco: valorBancoGrAprovado,
+                        tipo_banco: typeof valorBancoGrAprovado,
+                        coletaAtualizada_existe: !!coletaAtualizada
+                    });
+                    
+                    if (!grAprovadoFinal) {
+                        console.log('❌ Bloqueado: GR não aprovado', { 
+                            coletaId: coletaId,
+                            gr_aprovado: coleta.gr_aprovado, 
+                            tipo: typeof coleta.gr_aprovado,
+                            igual_a_true: coleta.gr_aprovado === true,
+                            igual_a_string_true: coleta.gr_aprovado === 'true',
+                            igual_a_1: coleta.gr_aprovado === 1,
+                            grAprovadoFinal: grAprovadoFinal,
+                            valor_banco: coletaAtualizada?.gr_aprovado
+                        });
+                        if (coleta.gr_aprovado === false || coleta.gr_aprovado === 'false' || coleta.gr_aprovado === 0) {
+                            showNotification('⚠️ Esta coleta foi reprovada pelo GR. Não é possível avançar para esta etapa. É necessário aprovar o motorista no GR primeiro.', 'warning');
+                        } else {
+                            showNotification('⚠️ Para avançar para esta etapa, o motorista deve ser aprovado no GR primeiro. Status atual: ' + (coleta.gr_aprovado === null || coleta.gr_aprovado === undefined ? 'Pendente' : String(coleta.gr_aprovado)), 'warning');
+                        }
+                                return;
+                            }
+                    
+                    console.log('✅ Validações passaram: Motorista vinculado e GR aprovado');
                 }
                 
                 // ✅ VALIDAÇÃO: Se a próxima etapa for contas_pagar, solicitar tipo de pagamento
                 if (proximaEtapaId === 'contas_pagar') {
+                    console.log('📋 PRÓXIMA ETAPA É CONTAS_PAGAR - Abrindo modal de tipo de pagamento para coleta:', coletaId);
+                    console.log('📋 Dados antes de abrir modal:', {
+                        coletaId,
+                        proximaEtapaId,
+                        gr_aprovado: coleta.gr_aprovado,
+                        motorista_id: coleta.motorista_id
+                    });
                     etapaPendenteTipoPagamento = proximaEtapaId;
                     coletaPendenteTipoPagamento = coletaId;
+                    
+                    // Verificar se o modal existe antes de abrir
+                    const modal = document.getElementById('modalTipoPagamento');
+                    if (!modal) {
+                        console.error('❌ Modal de tipo de pagamento não encontrado no DOM');
+                        showNotification('Erro: Modal de tipo de pagamento não encontrado. Recarregue a página.', 'error');
+                        return;
+                    }
+                    
                     abrirModalTipoPagamento();
                     return;
                 }
@@ -15454,12 +17936,16 @@
             } catch (error) {
                     console.error('❌ Erro:', error);
                     currentEditingId = null;
-                    showNotification('Erro ao avançar etapa', 'error');
+                    showNotification('Erro ao avançar etapa: ' + error.message, 'error');
                 }
             } else {
                 showNotification('🚫 Última etapa já alcançada', 'info');
             }
         }
+        
+        // Garantir que a função está disponível globalmente
+        window.avancarEtapa = avancarEtapa;
+        console.log('✅ Função avancarEtapa definida globalmente:', typeof window.avancarEtapa);
 
         function openMoverEtapaModal(coletaId) {
             const coleta = coletasData.find(c => c.id === coletaId);
@@ -15540,8 +18026,26 @@
 
         function abrirModalTipoPagamento() {
             const modal = document.getElementById('modalTipoPagamento');
+            if (!modal) {
+                console.error('❌ Modal de tipo de pagamento não encontrado');
+                showNotification('Erro: Modal não encontrado. Recarregue a página.', 'error');
+                return;
+            }
+            
+            const select = document.getElementById('tipoPagamentoSelect');
+            if (select) {
+                select.value = '';
+            }
+            
+            console.log('📋 Abrindo modal de tipo de pagamento');
             modal.style.display = 'flex';
-            document.getElementById('tipoPagamentoSelect').value = '';
+            
+            // Garantir que o modal está visível
+            setTimeout(() => {
+                if (modal.style.display !== 'flex') {
+                    modal.style.display = 'flex';
+                }
+            }, 100);
         }
         
         // Event listener para fechar modal ao clicar fora (configurado uma vez)
@@ -15823,8 +18327,8 @@
                 }
             }
             
-            // ✅ VALIDAÇÃO: Não pode avançar para documentação, contas_pagar ou monitoramento sem aprovação no GR
-            const etapasQueRequeremAprovacaoGR = ['documentacao', 'contas_pagar', 'monitoramento'];
+            // ✅ VALIDAÇÃO: Não pode avançar para documentação ou monitoramento sem aprovação no GR
+            const etapasQueRequeremAprovacaoGR = ['documentacao', 'monitoramento'];
             if (etapasQueRequeremAprovacaoGR.includes(novaEtapaId)) {
                 // Verificar se o motorista foi aprovado no GR
                 if (!coleta.motorista_id) {
@@ -15846,12 +18350,22 @@
                 try {
                     const motorista = await buscarMotoristaPorId(coleta.motorista_id);
                     if (motorista) {
-                        const statusInfo = verificarStatusMotoristaPorColeta(motorista, coleta.id);
+                        // ✅ CORREÇÃO: Passar o objeto coleta completo, não apenas o ID
+                        const statusInfo = verificarStatusMotoristaPorColeta(motorista, coleta);
+                        console.log('🔍 Status do motorista verificado:', {
+                            coleta_id: coleta.id,
+                            etapa_atual: coleta.etapa_atual,
+                            gr_aprovado: coleta.gr_aprovado,
+                            status_motorista: statusInfo.status
+                        });
+                        
                         if (statusInfo.status === 'reprovado') {
                             showNotification('⚠️ O motorista vinculado está reprovado para esta coleta. Não é possível avançar para esta etapa.', 'warning');
                             return;
                         }
-                        if (statusInfo.status !== 'aprovado') {
+                        // ✅ CORREÇÃO: Se gr_aprovado === true, considerar aprovado mesmo se statusInfo não retornar 'aprovado'
+                        // Isso resolve o caso onde o motorista foi aprovado mas a função não detectou corretamente
+                        if (statusInfo.status !== 'aprovado' && coleta.gr_aprovado !== true) {
                             showNotification('⚠️ O motorista deve ser aprovado no GR antes de avançar para esta etapa.', 'warning');
                             return;
                         }
@@ -16293,6 +18807,12 @@
 
             // Atualizar Canceladas
             const canceladasCount = canceladas.length;
+            
+            // Atualizar funil geral se estiver visível (apenas quando a aba Funil Geral estiver ativa)
+            const funilContainer = document.getElementById('funilGeralContainer');
+            if (funilContainer && funilContainer.classList.contains('visible') && paginaAtivaKanban === 'funil_geral') {
+                renderizarFunilGeral();
+            }
             const canceladasValor = calcularValorTotal(canceladas);
             document.getElementById('canceladasCount').textContent = canceladasCount;
             document.getElementById('canceladasValor').textContent = formatarMoeda(canceladasValor);
@@ -17456,8 +19976,9 @@
          * @returns {number} - Tempo acumulado em minutos
          */
         function calcularTempoAcumuladoEtapa(coletaId, etapaId, historico, etapaAtual) {
+            // ✅ MELHORIA: Se não há histórico, retornar null para usar fallback
             if (!historico || historico.length === 0) {
-                return 0;
+                return null; // Retornar null para indicar que deve usar fallback
             }
             
             // Ordenar histórico por data (mais antigo primeiro)
@@ -17469,37 +19990,60 @@
             let entradaEtapa = null;
             const agora = new Date();
             
-            // Padrões para identificar mudanças de etapa
-            // Formato real: "Coleta movida de \"[ETAPA_ORIGEM]\" para \"[ETAPA_DESTINO]\" via Kanban"
-            // ou "Etapa voltou de [ETAPA_ORIGEM] para [ETAPA_DESTINO]"
-            const etapaNome = ETAPAS.find(e => e.id === etapaId)?.nome || etapaId;
+            // Buscar informações da etapa
+            const etapaInfo = ETAPAS.find(e => e.id === etapaId);
+            const etapaNome = etapaInfo?.nome || etapaId;
+            
+            // ✅ MELHORIA: Padrões mais abrangentes para identificar mudanças de etapa
+            // Múltiplos formatos possíveis:
+            // - "Coleta movida de \"X\" para \"[ETAPA]\" via Kanban"
+            // - "Etapa voltou de X para [ETAPA]"
+            // - "Etapa alterada para [ETAPA]"
+            // - "Etapa avançada para [ETAPA]"
+            // - "→ [ETAPA]"
+            // - Qualquer texto contendo o nome ou ID da etapa
             
             // Percorrer histórico cronologicamente
             for (let i = 0; i < historicoOrdenado.length; i++) {
                 const registro = historicoOrdenado[i];
                 if (!registro.detalhes) continue;
                 
-                const detalhes = registro.detalhes;
+                const detalhes = registro.detalhes.toLowerCase();
+                const etapaNomeLower = etapaNome.toLowerCase();
+                const etapaIdLower = etapaId.toLowerCase();
                 
-                // Verificar se entrou na etapa (padrão: "para \"[ETAPA_DESTINO]\"")
-                // Formato: "Coleta movida de \"X\" para \"[ETAPA]\" via Kanban"
-                const padraoEntrada1 = new RegExp(`para\\s*["']${etapaNome}["']`, 'i');
-                const padraoEntrada2 = new RegExp(`para\\s*["']${etapaId}["']`, 'i');
-                const padraoEntrada3 = new RegExp(`voltou.*?para\\s*["']${etapaNome}["']`, 'i');
-                const entrouNaEtapa = padraoEntrada1.test(detalhes) || padraoEntrada2.test(detalhes) || padraoEntrada3.test(detalhes);
+                // ✅ MELHORIA: Padrões mais flexíveis para entrada na etapa
+                const padraoEntrada1 = new RegExp(`para\\s*["']?${etapaNomeLower.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}["']?`, 'i');
+                const padraoEntrada2 = new RegExp(`para\\s*["']?${etapaIdLower.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}["']?`, 'i');
+                const padraoEntrada3 = new RegExp(`voltou.*?para\\s*["']?${etapaNomeLower.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}["']?`, 'i');
+                const padraoEntrada4 = new RegExp(`→\\s*["']?${etapaNomeLower.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}["']?`, 'i');
+                const padraoEntrada5 = new RegExp(`alterada.*?para\\s*["']?${etapaNomeLower.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}["']?`, 'i');
+                const padraoEntrada6 = new RegExp(`avançada.*?para\\s*["']?${etapaNomeLower.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}["']?`, 'i');
                 
-                // Verificar se saiu da etapa (padrão: "de \"[ETAPA_ORIGEM]\"")
-                // Formato: "Coleta movida de \"[ETAPA]\" para \"X\" via Kanban"
-                const padraoSaida1 = new RegExp(`de\\s*["']${etapaNome}["']`, 'i');
-                const padraoSaida2 = new RegExp(`de\\s*["']${etapaId}["']`, 'i');
-                const saiuDaEtapa = padraoSaida1.test(detalhes) || padraoSaida2.test(detalhes);
+                const entrouNaEtapa = padraoEntrada1.test(detalhes) || 
+                                      padraoEntrada2.test(detalhes) || 
+                                      padraoEntrada3.test(detalhes) ||
+                                      padraoEntrada4.test(detalhes) ||
+                                      padraoEntrada5.test(detalhes) ||
+                                      padraoEntrada6.test(detalhes);
+                
+                // ✅ MELHORIA: Padrões mais flexíveis para saída da etapa
+                const padraoSaida1 = new RegExp(`de\\s*["']?${etapaNomeLower.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}["']?`, 'i');
+                const padraoSaida2 = new RegExp(`de\\s*["']?${etapaIdLower.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}["']?`, 'i');
+                const padraoSaida3 = new RegExp(`saiu.*?de\\s*["']?${etapaNomeLower.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}["']?`, 'i');
+                
+                const saiuDaEtapa = padraoSaida1.test(detalhes) || 
+                                    padraoSaida2.test(detalhes) ||
+                                    padraoSaida3.test(detalhes);
                 
                 // Se saiu da etapa e estava dentro dela
                 if (saiuDaEtapa && entradaEtapa !== null) {
                     // Saiu da etapa - somar o tempo que ficou
                     const saidaEtapa = new Date(registro.created_at);
                     const tempoPeriodo = (saidaEtapa.getTime() - entradaEtapa.getTime()) / (1000 * 60);
-                    tempoAcumulado += tempoPeriodo;
+                    if (tempoPeriodo > 0) { // Validar que o tempo é positivo
+                        tempoAcumulado += tempoPeriodo;
+                    }
                     entradaEtapa = null; // Resetar para próxima entrada
                 }
                 
@@ -17513,10 +20057,19 @@
             // Se ainda está na etapa (entradaEtapa !== null), somar tempo até agora
             if (entradaEtapa !== null && etapaAtual === etapaId) {
                 const tempoAtual = (agora.getTime() - entradaEtapa.getTime()) / (1000 * 60);
-                tempoAcumulado += tempoAtual;
+                if (tempoAtual > 0) { // Validar que o tempo é positivo
+                    tempoAcumulado += tempoAtual;
+                }
             }
             
-            return tempoAcumulado;
+            // ✅ MELHORIA: Se não encontrou nenhuma entrada na etapa, retornar null para usar fallback
+            if (entradaEtapa === null && etapaAtual === etapaId) {
+                // Pode ser que a coleta nunca tenha mudado de etapa (está na etapa inicial)
+                // Nesse caso, retornar null para usar fallback (created_at)
+                return null;
+            }
+            
+            return tempoAcumulado > 0 ? tempoAcumulado : null;
         }
         
         // Função para enriquecer coletas com data de entrada na etapa e tempo acumulado
@@ -17549,15 +20102,41 @@
                     const historico = historicoPorColeta[coleta.id] || [];
                     
                     // ✅ NOVO: Calcular tempo acumulado na etapa atual
-                    const tempoAcumuladoMinutos = calcularTempoAcumuladoEtapa(
+                    let tempoAcumuladoMinutos = calcularTempoAcumuladoEtapa(
                         coleta.id, 
                         coleta.etapa_atual, 
                         historico, 
                         coleta.etapa_atual
                     );
                     
+                    // ✅ MELHORIA: Se não conseguiu calcular pelo histórico, usar fallback
+                    if (tempoAcumuladoMinutos === null || tempoAcumuladoMinutos === undefined) {
+                        // Calcular tempo desde created_at ou updated_at
+                        const dataReferencia = coleta.updated_at || coleta.created_at;
+                        if (dataReferencia) {
+                            const agora = new Date();
+                            const dataRef = new Date(dataReferencia);
+                            tempoAcumuladoMinutos = (agora.getTime() - dataRef.getTime()) / (1000 * 60);
+                            
+                            // ✅ DEBUG: Log para identificar coletas usando fallback
+                            if (historico.length === 0) {
+                                console.log(`⚠️ Coleta ${coleta.id} (${coleta.cliente}) na etapa "${coleta.etapa_atual}": Sem histórico, usando fallback (${Math.floor(tempoAcumuladoMinutos)} min desde ${dataReferencia})`);
+                            } else {
+                                console.log(`⚠️ Coleta ${coleta.id} (${coleta.cliente}) na etapa "${coleta.etapa_atual}": Não encontrou entrada na etapa no histórico (${historico.length} registros), usando fallback (${Math.floor(tempoAcumuladoMinutos)} min)`);
+                            }
+                        } else {
+                            tempoAcumuladoMinutos = 0;
+                            console.warn(`❌ Coleta ${coleta.id} (${coleta.cliente}): Sem data de referência para calcular tempo`);
+                        }
+                    } else {
+                        // ✅ DEBUG: Log para coletas que calcularam corretamente
+                        if (tempoAcumuladoMinutos > 0) {
+                            console.log(`✅ Coleta ${coleta.id} (${coleta.cliente}) na etapa "${coleta.etapa_atual}": ${Math.floor(tempoAcumuladoMinutos)} minutos acumulados`);
+                        }
+                    }
+                    
                     // Armazenar tempo acumulado
-                    coleta.tempo_acumulado_etapa = tempoAcumuladoMinutos;
+                    coleta.tempo_acumulado_etapa = Math.max(0, tempoAcumuladoMinutos); // Garantir que não seja negativo
                     
                     // Para compatibilidade, manter data_entrada_etapa (última entrada)
                     // Mas vamos calcular uma data "virtual" baseada no tempo acumulado
@@ -17596,7 +20175,7 @@
                         const dataVirtual = new Date(agora.getTime() - (tempoAcumuladoMinutos * 60 * 1000));
                         coleta.data_entrada_etapa = dataVirtual.toISOString();
                     } else {
-                        coleta.data_entrada_etapa = dataEntradaEtapa;
+                    coleta.data_entrada_etapa = dataEntradaEtapa;
                     }
                 });
             } catch (error) {
@@ -17629,7 +20208,7 @@
                             const tempoParado = calcularTempoParado(coleta);
                             const isDiaria = coleta.diaria === true || coleta.diaria === 'true' || coleta.diaria === 1;
                             const isUrgente = coleta.prioridade === 'urgente';
-                            const tempoParadoHTML = formatarTempoParado(tempoParado, isDiaria, isUrgente);
+                            const tempoParadoHTML = formatarTempoParado(tempoParado, isDiaria, isUrgente, coleta);
                             
                             if (tempoParadoHTML) {
                                 // Atualizar badge de tempo parado no card

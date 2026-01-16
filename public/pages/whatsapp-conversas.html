@@ -1,0 +1,645 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Conversas WhatsApp - Portal de Ferramentas</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../js/permissions.js"></script>
+    <style>
+        :root {
+            --primary-color: #667eea;
+            --secondary-color: #764ba2;
+            --success-color: #11998e;
+            --danger-color: #dc3545;
+            --warning-color: #ffc107;
+            --bg-light: #f8f9fa;
+            --text-dark: #333;
+            --text-light: #666;
+            --border-color: #dee2e6;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 2rem;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+            display: flex;
+            height: calc(100vh - 4rem);
+        }
+
+        /* Sidebar de Chats */
+        .chats-sidebar {
+            width: 350px;
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            background: var(--bg-light);
+        }
+
+        .chats-header {
+            padding: 1.5rem;
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .chats-header h2 {
+            font-size: 1.25rem;
+            font-weight: 600;
+        }
+
+        .sync-btn {
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.3s;
+        }
+
+        .sync-btn:hover {
+            background: rgba(255,255,255,0.3);
+        }
+
+        .sync-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .chats-search {
+            padding: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .chats-search input {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            font-size: 0.95rem;
+        }
+
+        .chats-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0.5rem;
+        }
+
+        .chat-item {
+            padding: 1rem;
+            border-radius: 12px;
+            margin-bottom: 0.5rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: white;
+            border: 1px solid transparent;
+        }
+
+        .chat-item:hover {
+            background: #f0f0f0;
+            border-color: var(--primary-color);
+        }
+
+        .chat-item.active {
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
+            border-color: var(--primary-color);
+        }
+
+        .chat-item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+
+        .chat-item-name {
+            font-weight: 600;
+            color: var(--text-dark);
+            font-size: 0.95rem;
+        }
+
+        .chat-item-time {
+            font-size: 0.8rem;
+            color: var(--text-light);
+        }
+
+        .chat-item-preview {
+            font-size: 0.85rem;
+            color: var(--text-light);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .chat-item-badge {
+            background: var(--primary-color);
+            color: white;
+            border-radius: 12px;
+            padding: 0.25rem 0.5rem;
+            font-size: 0.75rem;
+            margin-top: 0.5rem;
+            display: inline-block;
+        }
+
+        /* Área de Mensagens */
+        .messages-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: white;
+        }
+
+        .messages-header {
+            padding: 1.5rem;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .messages-header h3 {
+            font-size: 1.1rem;
+            color: var(--text-dark);
+        }
+
+        .messages-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 1.5rem;
+            background: #f5f5f5;
+        }
+
+        .message {
+            display: flex;
+            margin-bottom: 1rem;
+            animation: fadeIn 0.3s;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .message.from-me {
+            justify-content: flex-end;
+        }
+
+        .message-content {
+            max-width: 70%;
+            padding: 0.75rem 1rem;
+            border-radius: 12px;
+            background: white;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .message.from-me .message-content {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+        }
+
+        .message-time {
+            font-size: 0.75rem;
+            color: var(--text-light);
+            margin-top: 0.25rem;
+            text-align: right;
+        }
+
+        .message.from-me .message-time {
+            color: rgba(255,255,255,0.8);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 3rem;
+            color: var(--text-light);
+        }
+
+        .empty-state i {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+            opacity: 0.5;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 2rem;
+            color: var(--text-light);
+        }
+
+        .loading i {
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .error-message {
+            background: #fee;
+            color: var(--danger-color);
+            padding: 1rem;
+            border-radius: 8px;
+            margin: 1rem;
+            border-left: 4px solid var(--danger-color);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Sidebar de Chats -->
+        <div class="chats-sidebar">
+            <div class="chats-header">
+                <h2><i class="fab fa-whatsapp"></i> Conversas</h2>
+                <button class="sync-btn" id="syncBtn" onclick="sincronizarConversas()">
+                    <i class="fas fa-sync-alt"></i> Sincronizar
+                </button>
+            </div>
+            <div class="chats-search">
+                <input type="text" id="searchChats" placeholder="Buscar conversas..." oninput="filtrarChats()">
+            </div>
+            <div class="chats-list" id="chatsList">
+                <div class="loading">
+                    <i class="fas fa-spinner"></i>
+                    <p>Carregando conversas...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Área de Mensagens -->
+        <div class="messages-area">
+            <div class="messages-header">
+                <h3 id="chatName">Selecione uma conversa</h3>
+            </div>
+            <div class="messages-container" id="messagesContainer">
+                <div class="empty-state">
+                    <i class="fas fa-comments"></i>
+                    <p>Selecione uma conversa para ver as mensagens</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let chatsData = [];
+        let currentChatId = null;
+        let supabaseClient = null;
+
+        // Inicializar Supabase (se necessário para outras funcionalidades)
+        async function inicializarSupabase() {
+            // Supabase será usado apenas se necessário para outras funcionalidades
+            // As conversas são buscadas diretamente da Evolution API via backend
+        }
+
+        // Carregar conversas diretamente da Evolution API
+        async function carregarConversas() {
+            const chatsList = document.getElementById('chatsList');
+            chatsList.innerHTML = '<div class="loading"><i class="fas fa-spinner"></i><p>Carregando conversas da Evolution API...</p></div>';
+
+            try {
+                // Buscar diretamente da Evolution API (fonte única)
+                const response = await fetch('/api/evolution/chats', {
+                    credentials: 'include'
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(errorData.error || 'Erro ao carregar conversas');
+                }
+
+                const result = await response.json();
+                
+                if (!result.success) {
+                    throw new Error(result.error || 'Erro desconhecido');
+                }
+
+                // Usar dados diretamente da Evolution API
+                chatsData = result.chats || [];
+
+                // Salvar no cache local (localStorage) para performance
+                try {
+                    localStorage.setItem('whatsapp_chats_cache', JSON.stringify({
+                        data: chatsData,
+                        timestamp: Date.now(),
+                        expiresIn: 5 * 60 * 1000 // Cache de 5 minutos
+                    }));
+                } catch (cacheError) {
+                    console.warn('⚠️ Não foi possível salvar no cache local:', cacheError);
+                }
+
+                renderizarChats(chatsData);
+
+            } catch (error) {
+                console.error('❌ Erro ao carregar conversas:', error);
+                
+                // Tentar usar cache local se disponível
+                try {
+                    const cached = localStorage.getItem('whatsapp_chats_cache');
+                    if (cached) {
+                        const cacheData = JSON.parse(cached);
+                        const cacheAge = Date.now() - cacheData.timestamp;
+                        
+                        if (cacheAge < cacheData.expiresIn) {
+                            console.log('📦 Usando cache local...');
+                            chatsData = cacheData.data;
+                            renderizarChats(chatsData);
+                            return;
+                        }
+                    }
+                } catch (cacheError) {
+                    console.warn('⚠️ Erro ao ler cache:', cacheError);
+                }
+
+                chatsList.innerHTML = `
+                    <div class="error-message">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <p>Erro ao carregar conversas: ${error.message}</p>
+                        <p style="font-size: 0.85rem; margin-top: 0.5rem;">Verifique se sua instância Evolution API está configurada e acessível via ngrok.</p>
+                        <button onclick="sincronizarConversas()" style="margin-top: 1rem; padding: 0.5rem 1rem; background: var(--primary-color); color: white; border: none; border-radius: 8px; cursor: pointer;">
+                            <i class="fas fa-sync-alt"></i> Tentar Novamente
+                        </button>
+                    </div>
+                `;
+            }
+        }
+
+        // Renderizar lista de chats
+        function renderizarChats(chats) {
+            const chatsList = document.getElementById('chatsList');
+            
+            if (!chats || chats.length === 0) {
+                chatsList.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-comments"></i>
+                        <p>Nenhuma conversa encontrada</p>
+                        <p style="font-size: 0.85rem; margin-top: 0.5rem;">Clique em "Sincronizar" para buscar conversas</p>
+                    </div>
+                `;
+                return;
+            }
+
+            chatsList.innerHTML = chats.map(chat => {
+                const chatId = chat.id || chat.remoteJid || chat.jid;
+                const chatName = chat.name || chat.pushName || chat.subject || 'Sem nome';
+                const lastMessage = chat.lastMessage?.message?.conversation || 
+                                  chat.lastMessage?.message?.extendedTextMessage?.text || 
+                                  chat.lastMessage || 
+                                  'Sem mensagens';
+                const timestamp = chat.lastMessage?.messageTimestamp || chat.timestamp || Date.now();
+                const unreadCount = chat.unreadCount || 0;
+                const isGroup = chat.isGroup || false;
+
+                const date = new Date(timestamp * 1000);
+                const timeStr = formatarData(date);
+
+                return `
+                    <div class="chat-item" onclick="selecionarChat('${chatId}', '${chatName.replace(/'/g, "\\'")}')">
+                        <div class="chat-item-header">
+                            <div class="chat-item-name">
+                                ${isGroup ? '<i class="fas fa-users"></i> ' : '<i class="fas fa-user"></i> '}
+                                ${chatName}
+                            </div>
+                            <div class="chat-item-time">${timeStr}</div>
+                        </div>
+                        <div class="chat-item-preview">${lastMessage}</div>
+                        ${unreadCount > 0 ? `<span class="chat-item-badge">${unreadCount}</span>` : ''}
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Selecionar chat
+        async function selecionarChat(chatId, chatName) {
+            currentChatId = chatId;
+            document.getElementById('chatName').textContent = chatName;
+
+            // Atualizar UI
+            document.querySelectorAll('.chat-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            event.currentTarget.classList.add('active');
+
+            // Carregar mensagens
+            await carregarMensagens(chatId);
+        }
+
+        // Carregar mensagens diretamente da Evolution API
+        async function carregarMensagens(chatId) {
+            const messagesContainer = document.getElementById('messagesContainer');
+            messagesContainer.innerHTML = '<div class="loading"><i class="fas fa-spinner"></i><p>Carregando mensagens da Evolution API...</p></div>';
+
+            try {
+                // Buscar diretamente da Evolution API (fonte única)
+                const response = await fetch(`/api/evolution/chats/${encodeURIComponent(chatId)}/messages?limit=50`, {
+                    credentials: 'include'
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(errorData.error || 'Erro ao carregar mensagens');
+                }
+
+                const result = await response.json();
+                
+                if (!result.success) {
+                    throw new Error(result.error || 'Erro desconhecido');
+                }
+
+                // Usar mensagens diretamente da Evolution API
+                const messages = result.messages || [];
+
+                // Salvar no cache local para este chat específico
+                try {
+                    localStorage.setItem(`whatsapp_messages_${chatId}`, JSON.stringify({
+                        data: messages,
+                        timestamp: Date.now(),
+                        expiresIn: 2 * 60 * 1000 // Cache de 2 minutos para mensagens
+                    }));
+                } catch (cacheError) {
+                    console.warn('⚠️ Não foi possível salvar mensagens no cache:', cacheError);
+                }
+
+                renderizarMensagens(messages);
+
+            } catch (error) {
+                console.error('❌ Erro ao carregar mensagens:', error);
+                
+                // Tentar usar cache local se disponível
+                try {
+                    const cached = localStorage.getItem(`whatsapp_messages_${chatId}`);
+                    if (cached) {
+                        const cacheData = JSON.parse(cached);
+                        const cacheAge = Date.now() - cacheData.timestamp;
+                        
+                        if (cacheAge < cacheData.expiresIn) {
+                            console.log('📦 Usando cache local de mensagens...');
+                            renderizarMensagens(cacheData.data);
+                            return;
+                        }
+                    }
+                } catch (cacheError) {
+                    console.warn('⚠️ Erro ao ler cache de mensagens:', cacheError);
+                }
+
+                messagesContainer.innerHTML = `
+                    <div class="error-message">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <p>Erro ao carregar mensagens: ${error.message}</p>
+                        <p style="font-size: 0.85rem; margin-top: 0.5rem;">Verifique se a Evolution API está acessível.</p>
+                    </div>
+                `;
+            }
+        }
+
+        // Renderizar mensagens
+        function renderizarMensagens(messages) {
+            const messagesContainer = document.getElementById('messagesContainer');
+            
+            if (!messages || messages.length === 0) {
+                messagesContainer.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-comment-slash"></i>
+                        <p>Nenhuma mensagem encontrada</p>
+                    </div>
+                `;
+                return;
+            }
+
+            // Ordenar mensagens por timestamp (mais antigas primeiro)
+            messages.sort((a, b) => {
+                const tsA = a.messageTimestamp || a.timestamp || 0;
+                const tsB = b.messageTimestamp || b.timestamp || 0;
+                return tsA - tsB;
+            });
+
+            messagesContainer.innerHTML = messages.map(msg => {
+                const fromMe = msg.key?.fromMe || msg.fromMe || false;
+                const messageText = msg.message?.conversation || 
+                                 msg.message?.extendedTextMessage?.text || 
+                                 msg.message?.imageMessage?.caption ||
+                                 msg.message?.videoMessage?.caption ||
+                                 '[Mídia não suportada]';
+                const timestamp = msg.messageTimestamp || msg.timestamp || Date.now();
+                const date = new Date(timestamp * 1000);
+                const timeStr = formatarHora(date);
+
+                return `
+                    <div class="message ${fromMe ? 'from-me' : ''}">
+                        <div class="message-content">
+                            <div>${messageText}</div>
+                            <div class="message-time">${timeStr}</div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            // Scroll para o final
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        // Sincronizar conversas
+        async function sincronizarConversas() {
+            const syncBtn = document.getElementById('syncBtn');
+            syncBtn.disabled = true;
+            syncBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sincronizando...';
+
+            try {
+                const response = await fetch('/api/evolution/sync', {
+                    method: 'POST',
+                    credentials: 'include'
+                });
+
+                if (!response.ok) {
+                    throw new Error('Erro ao sincronizar');
+                }
+
+                const result = await response.json();
+                
+                if (!result.success) {
+                    throw new Error(result.error || 'Erro desconhecido');
+                }
+
+                // Recarregar conversas após sincronização
+                await carregarConversas();
+
+                alert(`Sincronização concluída!\n${result.chats} conversas\n${result.messages} mensagens`);
+
+            } catch (error) {
+                console.error('❌ Erro ao sincronizar:', error);
+                alert('Erro ao sincronizar: ' + error.message);
+            } finally {
+                syncBtn.disabled = false;
+                syncBtn.innerHTML = '<i class="fas fa-sync-alt"></i> Sincronizar';
+            }
+        }
+
+        // Filtrar chats
+        function filtrarChats() {
+            const searchTerm = document.getElementById('searchChats').value.toLowerCase();
+            const filtered = chatsData.filter(chat => {
+                const name = (chat.name || chat.pushName || chat.subject || '').toLowerCase();
+                const lastMessage = (chat.lastMessage?.message?.conversation || '').toLowerCase();
+                return name.includes(searchTerm) || lastMessage.includes(searchTerm);
+            });
+            renderizarChats(filtered);
+        }
+
+        // Formatar data
+        function formatarData(date) {
+            const now = new Date();
+            const diff = now - date;
+            const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+
+            if (days === 0) {
+                return formatarHora(date);
+            } else if (days === 1) {
+                return 'Ontem';
+            } else if (days < 7) {
+                return `${days} dias atrás`;
+            } else {
+                return date.toLocaleDateString('pt-BR');
+            }
+        }
+
+        // Formatar hora
+        function formatarHora(date) {
+            return date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+        }
+
+        // Inicializar ao carregar página
+        document.addEventListener('DOMContentLoaded', async () => {
+            // Verificar permissão
+            const temPermissao = await verificarEAplicarPermissao('coletas');
+            if (!temPermissao) {
+                return;
+            }
+
+            await inicializarSupabase();
+            await carregarConversas();
+        });
+    </script>
+</body>
+</html>
+
+

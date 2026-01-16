@@ -169,6 +169,58 @@
             width: 100%;
         }
 
+        /* Estilos para submenu dropdown */
+        .dropdown-submenu {
+            position: relative;
+        }
+
+        .dropdown-submenu > .dropdown-item.dropdown-toggle::after {
+            transform: rotate(-90deg);
+            float: right;
+            margin-top: 0.5em;
+            margin-left: 0.5em;
+        }
+
+        .dropdown-submenu-content {
+            position: absolute;
+            top: 0;
+            left: 100%;
+            margin-top: -1px;
+            min-width: 200px;
+            background: rgba(15, 15, 35, 0.95);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            border-radius: 8px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            z-index: 1001;
+            padding: 0.5rem 0;
+        }
+
+        .dropdown-submenu-content .dropdown-item {
+            color: var(--text-secondary);
+            padding: 0.5rem 1rem;
+            transition: var(--transition);
+            display: block;
+            text-decoration: none;
+        }
+
+        .dropdown-submenu-content .dropdown-item:hover {
+            background: rgba(102, 126, 234, 0.2);
+            color: var(--text-primary);
+        }
+
+        .dropdown-submenu-content .dropdown-item i {
+            width: 20px;
+            text-align: center;
+        }
+
+        /* Ajuste para o dropdown do usuário */
+        .navbar-nav .dropdown-menu {
+            background: rgba(15, 15, 35, 0.95);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+        }
+
         /* Botão de tema futurístico */
         .theme-toggle {
             background: var(--glass);
@@ -1268,7 +1320,19 @@
                             <li><a class="dropdown-item" href="painel.html"><i class="fas fa-tachometer-alt me-2"></i>Painel</a></li>
                             <li><a class="dropdown-item" href="cadastro.html"><i class="fas fa-truck me-2"></i>Motoristas</a></li>
                             <li><a class="dropdown-item" href="motoristas-falhas.html"><i class="fas fa-exclamation-triangle me-2"></i>Motoristas com Falhas</a></li>
-                            <li><a class="dropdown-item" href="coletas.html"><i class="fas fa-headset me-2"></i>Coletas</a></li>
+                            <li class="dropdown-submenu">
+                                <a class="dropdown-item dropdown-toggle" href="#" id="coletasMenuLink" onclick="event.preventDefault();">
+                                    <i class="fas fa-headset me-2"></i>Coletas
+                                </a>
+                                <ul class="dropdown-menu dropdown-submenu-content" id="coletasSubmenu" style="display: none;">
+                                    <li><a class="dropdown-item" href="coletas.html"><i class="fas fa-list me-2"></i>Coletas</a></li>
+                                    <li id="funilGeralMenuItem" style="display: none;">
+                                        <a class="dropdown-item" href="coletas.html#funil-geral" onclick="scrollToFunilGeral(); return false;">
+                                            <i class="fas fa-filter me-2"></i>Funil Geral
+                                        </a>
+                                    </li>
+                                </ul>
+                            </li>
                             <li><a class="dropdown-item" href="relatorios.html"><i class="fas fa-chart-bar me-2"></i>Relatórios</a></li>
                             <li><a class="dropdown-item" href="chamados.html"><i class="fas fa-ticket-alt me-2"></i>Chamados</a></li>
                             <li><a class="dropdown-item" href="crm.html"><i class="fas fa-users me-2"></i>CRM</a></li>
@@ -1579,6 +1643,9 @@
             
             // Verificar autenticação
             await verificarAutenticacao();
+            
+            // Inicializar submenu do Funil Geral (após autenticação)
+            await inicializarSubmenuFunilGeral();
             
             // Carregar dados
             await carregarDados();
@@ -2108,6 +2175,82 @@
             const temPermissao = permissoes.includes(permission);
             console.log(`🔑 Permissão específica ${permission}:`, temPermissao);
             return temPermissao;
+        }
+
+        // ========== CONTROLE DO SUBMENU FUNIL GERAL ==========
+        async function inicializarSubmenuFunilGeral() {
+            try {
+                const funilGeralMenuItem = document.getElementById('funilGeralMenuItem');
+                const coletasSubmenu = document.getElementById('coletasSubmenu');
+                const coletasMenuLink = document.getElementById('coletasMenuLink');
+                
+                if (!funilGeralMenuItem || !coletasSubmenu || !coletasMenuLink) {
+                    console.warn('⚠️ Elementos do submenu não encontrados');
+                    return;
+                }
+
+                // Verificar se o usuário tem permissão de configuracoes
+                const temPermissao = await usuarioTemPermissao('configuracoes');
+                
+                if (temPermissao) {
+                    // Mostrar item do funil geral
+                    funilGeralMenuItem.style.display = 'block';
+                    
+                    // Adicionar evento de hover para mostrar submenu
+                    coletasMenuLink.addEventListener('mouseenter', () => {
+                        coletasSubmenu.style.display = 'block';
+                    });
+                    
+                    // Esconder submenu quando sair
+                    const coletasSubmenuParent = coletasSubmenu.closest('.dropdown-submenu');
+                    if (coletasSubmenuParent) {
+                        coletasSubmenuParent.addEventListener('mouseleave', () => {
+                            coletasSubmenu.style.display = 'none';
+                        });
+                    }
+                    
+                    // Manter submenu visível quando hover no próprio submenu
+                    coletasSubmenu.addEventListener('mouseenter', () => {
+                        coletasSubmenu.style.display = 'block';
+                    });
+                    
+                    console.log('✅ Submenu Funil Geral habilitado para usuário com permissão');
+                } else {
+                    // Ocultar item do funil geral
+                    funilGeralMenuItem.style.display = 'none';
+                    // Se não tem permissão, fazer o link principal funcionar normalmente
+                    coletasMenuLink.href = 'coletas.html';
+                    coletasMenuLink.onclick = null;
+                    console.log('❌ Submenu Funil Geral oculto - usuário sem permissão');
+                }
+            } catch (error) {
+                console.error('❌ Erro ao inicializar submenu Funil Geral:', error);
+            }
+        }
+
+        // Função para scroll até o funil geral na página de coletas
+        function scrollToFunilGeral() {
+            // Verificar se estamos na página de coletas
+            if (window.location.pathname.includes('coletas.html')) {
+                // Aguardar um pouco para garantir que a página carregou
+                setTimeout(() => {
+                    const funilContainer = document.getElementById('funilGeralContainer');
+                    if (funilContainer) {
+                        funilContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        // Destacar o funil por um momento
+                        funilContainer.style.transition = 'box-shadow 0.3s ease';
+                        funilContainer.style.boxShadow = '0 0 30px rgba(102, 126, 234, 0.6)';
+                        setTimeout(() => {
+                            funilContainer.style.boxShadow = '';
+                        }, 2000);
+                    } else {
+                        console.warn('⚠️ Funil Geral não encontrado na página');
+                    }
+                }, 500);
+            } else {
+                // Se não estiver na página de coletas, redirecionar com hash
+                window.location.href = 'coletas.html#funil-geral';
+            }
         }
 
         function carregarPermissoesUsuario() {

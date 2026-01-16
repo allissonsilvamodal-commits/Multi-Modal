@@ -8366,6 +8366,13 @@ app.get('/coletas.html', requireAuth, (req, res) => {
   res.sendFile(path.join(__dirname, 'public/pages/coletas.html'));
 });
 
+app.get('/whatsapp-conversas.html', requireAuth, (req, res) => {
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate, max-age=0');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  res.sendFile(path.join(__dirname, 'public/pages/whatsapp-conversas.html'));
+});
+
 app.get('/settings.html', requireAuth, (req, res) => {
   res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate, max-age=0');
   res.setHeader('Pragma', 'no-cache');
@@ -8761,6 +8768,294 @@ app.get('/api/user/info', requireAuth, async (req, res) => {
 });
 
 // ========== ROTAS DO EVOLUTION API ==========
+
+// ========== ESPELHAMENTO DE CONVERSAS DO WHATSAPP ==========
+
+/**
+ * Endpoint para buscar chats/conversas da Evolution API
+ * GET /api/evolution/chats
+ */
+app.get('/api/evolution/chats', requireAuth, async (req, res) => {
+  console.log('📱 [DEBUG] Rota /api/evolution/chats chamada');
+  try {
+    // ✅ Usar a mesma abordagem do sistema de disparo (que já funciona)
+    const usuario = req.session.usuario;
+    if (!usuario) {
+      return res.status(401).json({ success: false, error: 'Não autenticado' });
+    }
+
+    const config = await getEvolutionConfigByUser(usuario);
+    
+    // ✅ Usar a mesma validação do sistema de disparo
+    if (!isValidApiConfig(config)) {
+      return res.status(500).json({
+        success: false,
+        error: `❌ Configuração incompleta para ${usuario}`,
+        details: config.error || 'Configuração Evolution não encontrada. Configure em Settings > Evolution API.'
+      });
+    }
+
+    // Buscar chats da Evolution API
+    // ✅ A Evolution API pode usar diferentes formatos de rota
+    // Vamos tentar o formato mais comum primeiro, depois alternativas
+    
+    // Formato 1: GET /chat/fetchChats/{instance} (padrão esperado)
+    let chatsUrl = `${config.apiUrl}/chat/fetchChats/${config.instanceName}`;
+    console.log('📱 Tentando buscar chats (formato 1):', chatsUrl);
+    
+    let response = await fetchWithTimeout(chatsUrl, {
+      method: 'GET',
+      headers: {
+        'apikey': config.apiKey,
+        'Content-Type': 'application/json'
+      }
+    }, 30000);
+
+    // Se falhar com 404, tentar formato alternativo: POST com body
+    if (!response.ok && response.status === 404) {
+      console.log('⚠️ Formato 1 falhou (404), tentando formato POST...');
+      chatsUrl = `${config.apiUrl}/chat/fetchChats`;
+      
+      response = await fetchWithTimeout(chatsUrl, {
+        method: 'POST',
+        headers: {
+          'apikey': config.apiKey,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          instance: config.instanceName
+        })
+      }, 30000);
+    }
+    
+    console.log('📋 Config:', {
+      apiUrl: config.apiUrl,
+      instanceName: config.instanceName,
+      hasApiKey: !!config.apiKey,
+      urlFinal: chatsUrl,
+      status: response.status
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('❌ Erro ao buscar chats:', response.status, errorText);
+      console.error('📋 Detalhes da requisição:', {
+        url: chatsUrl,
+        method: 'GET',
+        instanceName: config.instanceName,
+        apiUrl: config.apiUrl
+      });
+      
+      // Se for 404, pode ser que a rota esteja incorreta ou a instância não existe
+      if (response.status === 404) {
+        // Tentar verificar se a instância existe primeiro
+        const statusUrl = `${config.apiUrl}/instance/connectionState/${config.instanceName}`;
+        let instanceExists = false;
+        try {
+          const statusResponse = await fetchWithTimeout(statusUrl, {
+            method: 'GET',
+            headers: {
+              'apikey': config.apiKey,
+              'Content-Type': 'application/json'
+            }
+          }, 10000);
+          instanceExists = statusResponse.ok;
+        } catch (e) {
+          console.warn('⚠️ Não foi possível verificar status da instância:', e.message);
+        }
+        
+        return res.status(404).json({
+          success: false,
+          error: 'Rota não encontrada na Evolution API',
+          details: `A rota para buscar chats não foi encontrada.`,
+          troubleshooting: {
+            instanciaExiste: instanceExists,
+            instanciaNome: config.instanceName,
+            apiUrl: config.apiUrl,
+            urlTentada: chatsUrl,
+            sugestoes: [
+              'Verifique se a instância está conectada no Evolution Manager',
+              'Confirme a URL da Evolution API está correta',
+              'Verifique a documentação da Evolution API para a rota correta de buscar chats',
+              'Teste a rota manualmente no Postman ou curl',
+              'A rota pode ser diferente na sua versão da Evolution API'
+            ]
+          }
+        });
+      }
+      
+      return res.status(response.status).json({
+        success: false,
+        error: 'Erro ao buscar conversas',
+        details: errorText,
+        status: response.status
+      });
+    }
+
+    const chats = await response.json();
+    console.log(`✅ ${chats?.length || 0} chats encontrados da Evolution API`);
+
+    // ✅ OTIMIZAÇÃO: Não salvar no banco por padrão - usar Evolution API como fonte única
+    // O armazenamento no banco é opcional e pode ser ativado apenas quando necessário
+    // (ex: para integração com coletas, backup específico, etc)
+
+    res.json({
+      success: true,
+      chats: chats || [],
+      total: chats?.length || 0,
+      source: 'evolution_api' // Indicar que veio diretamente da API
+    });
+
+  } catch (error) {
+    console.error('❌ Erro ao buscar chats:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Erro ao buscar conversas',
+      details: error.message
+    });
+  }
+});
+
+/**
+ * Endpoint para buscar mensagens de um chat específico
+ * GET /api/evolution/chats/:chatId/messages
+ */
+app.get('/api/evolution/chats/:chatId/messages', requireAuth, async (req, res) => {
+  try {
+    // ✅ Usar a mesma abordagem do sistema de disparo (que já funciona)
+    const usuario = req.session.usuario;
+    if (!usuario) {
+      return res.status(401).json({ success: false, error: 'Não autenticado' });
+    }
+
+    const { chatId } = req.params;
+    const { limit = 50, page = 1 } = req.query;
+
+    const config = await getEvolutionConfigByUser(usuario);
+    
+    // ✅ Usar a mesma validação do sistema de disparo
+    if (!isValidApiConfig(config)) {
+      return res.status(500).json({
+        success: false,
+        error: `❌ Configuração incompleta para ${usuario}`,
+        details: config.error || 'Configuração Evolution não encontrada'
+      });
+    }
+
+    // Buscar mensagens da Evolution API
+    const messagesUrl = `${config.apiUrl}/chat/fetchMessages/${config.instanceName}`;
+    console.log('💬 Buscando mensagens do chat:', chatId);
+
+    const response = await fetchWithTimeout(messagesUrl, {
+      method: 'POST',
+      headers: {
+        'apikey': config.apiKey,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        remoteJid: chatId,
+        limit: parseInt(limit),
+        page: parseInt(page)
+      })
+    }, 30000);
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('❌ Erro ao buscar mensagens:', response.status, errorText);
+      return res.status(response.status).json({
+        success: false,
+        error: 'Erro ao buscar mensagens',
+        details: errorText
+      });
+    }
+
+    const messages = await response.json();
+    console.log(`✅ ${messages?.length || 0} mensagens encontradas da Evolution API`);
+
+    // ✅ OTIMIZAÇÃO: Não salvar no banco por padrão - usar Evolution API como fonte única
+    // As mensagens são buscadas diretamente da Evolution API sempre que necessário
+
+    res.json({
+      success: true,
+      messages: messages || [],
+      total: messages?.length || 0,
+      chatId: chatId,
+      source: 'evolution_api' // Indicar que veio diretamente da API
+    });
+
+  } catch (error) {
+    console.error('❌ Erro ao buscar mensagens:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Erro ao buscar mensagens',
+      details: error.message
+    });
+  }
+});
+
+/**
+ * Endpoint para sincronizar todas as conversas e mensagens
+ * POST /api/evolution/sync
+ */
+app.post('/api/evolution/sync', requireAuth, async (req, res) => {
+  try {
+    // ✅ Usar a mesma abordagem do sistema de disparo (que já funciona)
+    const usuario = req.session.usuario;
+    if (!usuario) {
+      return res.status(401).json({ success: false, error: 'Não autenticado' });
+    }
+
+    const config = await getEvolutionConfigByUser(usuario);
+    
+    // ✅ Usar a mesma validação do sistema de disparo
+    if (!isValidApiConfig(config)) {
+      return res.status(500).json({
+        success: false,
+        error: `❌ Configuração incompleta para ${usuario}`,
+        details: config.error || 'Configuração Evolution não encontrada'
+      });
+    }
+
+    console.log('🔄 Iniciando sincronização de conversas da Evolution API...');
+
+    // Buscar todos os chats diretamente da Evolution API
+    const chatsUrl = `${config.apiUrl}/chat/fetchChats/${config.instanceName}`;
+    const chatsResponse = await fetchWithTimeout(chatsUrl, {
+      method: 'GET',
+      headers: {
+        'apikey': config.apiKey,
+        'Content-Type': 'application/json'
+      }
+    }, 30000);
+
+    if (!chatsResponse.ok) {
+      const errorText = await chatsResponse.text();
+      throw new Error(`Erro ao buscar chats: ${errorText}`);
+    }
+
+    const chats = await chatsResponse.json();
+    console.log(`✅ ${chats?.length || 0} chats encontrados`);
+
+    // ✅ OTIMIZAÇÃO: Não salvar no banco - apenas retornar os dados da API
+    // A sincronização aqui significa apenas "atualizar cache" ou "verificar disponibilidade"
+
+    res.json({
+      success: true,
+      message: 'Conversas atualizadas da Evolution API',
+      chats: chats?.length || 0,
+      source: 'evolution_api',
+      note: 'Dados buscados diretamente da Evolution API. Não há necessidade de armazenar no banco.'
+    });
+
+  } catch (error) {
+    console.error('❌ Erro na sincronização:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Erro ao sincronizar conversas',
+      details: error.message
+    });
+  }
+});
 
 // 🔧 ENDPOINT PARA TESTAR CONFIGURAÇÃO DA EVOLUTION
 app.get('/api/evolution-config', requireAuth, async (req, res) => {
@@ -10242,6 +10537,183 @@ app.post('/webhook/send-supabase', (req, res, next) => {
   }
 });
 
+// ========== ENDPOINTS PARA BUSCAR CONVERSAS DO BANCO LOCAL ==========
+
+/**
+ * Buscar chats do banco de dados local
+ * GET /api/evolution/chats/local
+ */
+app.get('/api/evolution/chats/local', requireAuth, async (req, res) => {
+  try {
+    const { user, error: authError } = await getUserFromRequest(req);
+    if (authError || !user) {
+      return res.status(401).json({ success: false, error: 'Não autenticado' });
+    }
+
+    const { data: chats, error } = await supabaseAdmin
+      .from('whatsapp_chats')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('updated_at', { ascending: false });
+
+    if (error) {
+      console.error('❌ Erro ao buscar chats do banco:', error);
+      return res.status(500).json({
+        success: false,
+        error: 'Erro ao buscar conversas do banco'
+      });
+    }
+
+    res.json({
+      success: true,
+      chats: chats || [],
+      total: chats?.length || 0
+    });
+
+  } catch (error) {
+    console.error('❌ Erro ao buscar chats do banco:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Erro ao buscar conversas',
+      details: error.message
+    });
+  }
+});
+
+/**
+ * Buscar mensagens de um chat do banco de dados local
+ * GET /api/evolution/chats/:chatId/messages/local
+ */
+app.get('/api/evolution/chats/:chatId/messages/local', requireAuth, async (req, res) => {
+  try {
+    const { user, error: authError } = await getUserFromRequest(req);
+    if (authError || !user) {
+      return res.status(401).json({ success: false, error: 'Não autenticado' });
+    }
+
+    const { chatId } = req.params;
+    const { limit = 50 } = req.query;
+
+    const { data: messages, error } = await supabaseAdmin
+      .from('whatsapp_messages')
+      .select('*')
+      .eq('user_id', user.id)
+      .eq('chat_id', chatId)
+      .order('message_timestamp', { ascending: false })
+      .limit(parseInt(limit));
+
+    if (error) {
+      console.error('❌ Erro ao buscar mensagens do banco:', error);
+      return res.status(500).json({
+        success: false,
+        error: 'Erro ao buscar mensagens do banco'
+      });
+    }
+
+    res.json({
+      success: true,
+      messages: (messages || []).reverse(), // Reverter para ordem cronológica
+      total: messages?.length || 0,
+      chatId: chatId
+    });
+
+  } catch (error) {
+    console.error('❌ Erro ao buscar mensagens do banco:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Erro ao buscar mensagens',
+      details: error.message
+    });
+  }
+});
+
+/**
+ * Webhook para receber mensagens da Evolution API em tempo real
+ * POST /api/evolution/webhook
+ */
+app.post('/api/evolution/webhook', async (req, res) => {
+  try {
+    const webhookData = req.body;
+    console.log('📨 Webhook recebido da Evolution API:', JSON.stringify(webhookData, null, 2));
+
+    // Verificar tipo de evento
+    const eventType = webhookData.event || webhookData.type;
+    const instanceName = webhookData.instance || webhookData.instanceName;
+
+    if (eventType === 'messages.upsert' || eventType === 'message') {
+      const message = webhookData.data || webhookData.message || webhookData;
+      
+      if (message.key && message.message) {
+        const chatId = message.key.remoteJid || message.remoteJid;
+        const messageId = message.key.id || message.id;
+        const fromMe = message.key.fromMe || false;
+        const timestamp = message.messageTimestamp || message.timestamp || Date.now();
+        
+        // Buscar user_id associado à instância
+        const { data: configData } = await supabaseAdmin
+          .from('user_evolution_apis')
+          .select('user_id')
+          .eq('instance_name', instanceName)
+          .eq('active', true)
+          .maybeSingle();
+
+        if (configData && configData.user_id) {
+          // Salvar mensagem no banco
+          const messageText = message.message?.conversation || 
+                             message.message?.extendedTextMessage?.text || 
+                             message.message?.imageMessage?.caption ||
+                             message.message?.videoMessage?.caption ||
+                             '[Mídia]';
+
+          const { error: insertError } = await supabaseAdmin
+            .from('whatsapp_messages')
+            .upsert({
+              instance_name: instanceName,
+              chat_id: chatId,
+              message_id: messageId,
+              remote_jid: chatId,
+              from_me: fromMe,
+              message_timestamp: timestamp,
+              message_type: message.messageType || 'conversation',
+              message_text: messageText,
+              message_data: message.message,
+              user_id: configData.user_id,
+              created_at: new Date(timestamp * 1000).toISOString()
+            }, {
+              onConflict: 'instance_name,message_id',
+              ignoreDuplicates: false
+            });
+
+          if (insertError) {
+            console.error('❌ Erro ao salvar mensagem do webhook:', insertError);
+          } else {
+            console.log('✅ Mensagem salva via webhook:', messageId);
+          }
+
+          // Atualizar último timestamp do chat
+          await supabaseAdmin
+            .from('whatsapp_chats')
+            .update({
+              last_message: messageText,
+              last_message_timestamp: timestamp,
+              updated_at: new Date().toISOString()
+            })
+            .eq('instance_name', instanceName)
+            .eq('chat_id', chatId);
+        }
+      }
+    }
+
+    // Sempre retornar 200 para a Evolution API
+    res.status(200).json({ success: true, received: true });
+
+  } catch (error) {
+    console.error('❌ Erro ao processar webhook:', error);
+    // Sempre retornar 200 para evitar retentativas
+    res.status(200).json({ success: false, error: error.message });
+  }
+});
+
 // ========== ALERTA DE EMERGÊNCIA ==========
 app.post('/api/emergencia/acionar', async (req, res) => {
   try {
@@ -10818,12 +11290,95 @@ app.delete('/webhook/limpar-contatos', requireAuth, (req, res) => {
   });
 });
 
+// ========== HELPER: VALIDAÇÃO RBAC PARA COLETAS ==========
+/**
+ * Mapeia etapas de coletas para permissões de menu (RBAC)
+ */
+const MAPEAMENTO_ETAPA_MENU = {
+  // Área Comercial
+  'comercial': 'comercial',
+  'price': 'comercial',
+  'cs': 'comercial',
+  
+  // Área Administrativo
+  'controladoria': 'cadastro',
+  'gr': 'cadastro',
+  'servicos_adicionais': 'cadastro',
+  
+  // Área Financeiro
+  'contas_pagar': 'contas-pagar',
+  'contas_receber': 'contas-pagar',
+  
+  // Área Operação
+  'contratacao': 'coletas',
+  'documentacao': 'coletas',
+  'monitoramento': 'coletas',
+  'finalizar_operacao': 'coletas'
+};
+
+/**
+ * Valida se o usuário tem permissão para acessar uma coleta baseado na etapa
+ * @param {Object} user - Dados do usuário
+ * @param {string} etapaAtual - Etapa atual da coleta
+ * @returns {Promise<{permitido: boolean, permissaoRequerida: string}>}
+ */
+async function validarPermissaoColeta(user, etapaAtual) {
+  try {
+    // Se for admin, permite tudo
+    const { data: userProfile } = await supabaseAdmin
+      .from('user_profiles')
+      .select('role')
+      .eq('id', user.id)
+      .maybeSingle();
+    
+    const isAdmin = userProfile?.role === 'admin' || user.isAdmin === true;
+    if (isAdmin) {
+      return { permitido: true, permissaoRequerida: null };
+    }
+    
+    // Mapear etapa para permissão de menu
+    const permissaoRequerida = MAPEAMENTO_ETAPA_MENU[etapaAtual];
+    
+    if (!permissaoRequerida) {
+      console.warn(`⚠️ Etapa '${etapaAtual}' não mapeada para permissão de menu`);
+      return { permitido: false, permissaoRequerida: null };
+    }
+    
+    // Buscar permissões do usuário
+    const { data: permissoes, error } = await supabaseAdmin
+      .from('permissoes_portal')
+      .select('permissao_id')
+      .eq('usuario_id', user.id)
+      .eq('permissao_id', permissaoRequerida);
+    
+    if (error) {
+      console.error('❌ Erro ao buscar permissões:', error);
+      return { permitido: false, permissaoRequerida };
+    }
+    
+    const temPermissao = permissoes && permissoes.length > 0;
+    
+    console.log(`🔐 Validação RBAC: Etapa '${etapaAtual}' → Menu '${permissaoRequerida}': ${temPermissao ? 'PERMITIDO' : 'NEGADO'}`);
+    
+    return { permitido: temPermissao, permissaoRequerida };
+  } catch (error) {
+    console.error('❌ Erro ao validar permissão de coleta:', error);
+    return { permitido: false, permissaoRequerida: null };
+  }
+}
+
 // ========== SISTEMA DE COLETAS COM SUPABASE ==========
 app.get('/api/coletas', requireAuth, async (req, res) => {
   try {
-    console.log('🔍 Buscando coletas no Supabase para:', req.session.usuario);
+    // ✅ RBAC: Obter usuário autenticado
+    const { user, error: authError } = await getUserFromRequest(req);
+    if (authError || !user) {
+      return res.status(401).json({ error: 'Não autenticado' });
+    }
     
-    const { data, error } = await supabase
+    console.log('🔍 Buscando coletas no Supabase para:', user.email || user.id);
+    
+    const { data: coletas, error } = await supabase
       .from('coletas')
       .select('*')
       .order('created_at', { ascending: false });
@@ -10833,8 +11388,17 @@ app.get('/api/coletas', requireAuth, async (req, res) => {
       return res.status(500).json({ error: error.message });
     }
 
-    console.log(`✅ ${data?.length || 0} coletas encontradas`);
-    res.json(data || []);
+    // ✅ RBAC: Filtrar coletas baseado em permissões de menu
+    const coletasPermitidas = [];
+    for (const coleta of (coletas || [])) {
+      const { permitido } = await validarPermissaoColeta(user, coleta.etapa_atual);
+      if (permitido) {
+        coletasPermitidas.push(coleta);
+      }
+    }
+
+    console.log(`✅ ${coletasPermitidas.length} de ${coletas?.length || 0} coletas permitidas para o usuário`);
+    res.json(coletasPermitidas);
     
   } catch (error) {
     console.error('❌ Erro interno:', error);
@@ -10844,8 +11408,26 @@ app.get('/api/coletas', requireAuth, async (req, res) => {
 
 app.post('/api/coletas', requireAuth, async (req, res) => {
   try {
+    // ✅ RBAC: Obter usuário autenticado
+    const { user, error: authError } = await getUserFromRequest(req);
+    if (authError || !user) {
+      return res.status(401).json({ error: 'Não autenticado' });
+    }
+    
     const coletaData = req.body;
-    console.log('➕ Criando coleta para:', req.session.usuario);
+    console.log('➕ Criando coleta para:', user.email || user.id);
+    
+    // ✅ RBAC: Validar permissão para a etapa inicial da coleta
+    const etapaInicial = coletaData.etapaAtual || coletaData.etapa_atual || 'comercial';
+    const { permitido, permissaoRequerida } = await validarPermissaoColeta(user, etapaInicial);
+    
+    if (!permitido) {
+      console.warn(`❌ Acesso negado: Usuário sem permissão para menu '${permissaoRequerida}' (etapa: ${etapaInicial})`);
+      return res.status(403).json({ 
+        error: 'Acesso negado', 
+        detalhes: `Você não tem permissão para criar coletas na área ${etapaInicial}. Permissão requerida: ${permissaoRequerida}` 
+      });
+    }
 
     // Validação dos dados obrigatórios
     const camposObrigatorios = ['filial', 'cliente', 'dataRecebimento', 'origem', 'destino'];
@@ -10916,10 +11498,44 @@ app.post('/api/coletas', requireAuth, async (req, res) => {
 
 app.put('/api/coletas/:id', requireAuth, async (req, res) => {
   try {
+    // ✅ RBAC: Obter usuário autenticado
+    const { user, error: authError } = await getUserFromRequest(req);
+    if (authError || !user) {
+      return res.status(401).json({ error: 'Não autenticado' });
+    }
+    
     const coletaId = req.params.id;
     const coletaData = req.body;
     
     console.log('✏️ Atualizando coleta:', coletaId);
+    
+    // ✅ RBAC: Buscar coleta para validar permissão
+    const { data: coletaExistente, error: fetchError } = await supabase
+      .from('coletas')
+      .select('etapa_atual')
+      .eq('id', coletaId)
+      .maybeSingle();
+    
+    if (fetchError) {
+      console.error('❌ Erro ao buscar coleta:', fetchError);
+      return res.status(500).json({ error: 'Erro ao buscar coleta' });
+    }
+    
+    if (!coletaExistente) {
+      return res.status(404).json({ error: 'Coleta não encontrada' });
+    }
+    
+    // Validar permissão para etapa atual
+    const etapaAtual = coletaData.etapa_atual || coletaExistente.etapa_atual;
+    const { permitido, permissaoRequerida } = await validarPermissaoColeta(user, etapaAtual);
+    
+    if (!permitido) {
+      console.warn(`❌ Acesso negado: Usuário sem permissão para menu '${permissaoRequerida}' (etapa: ${etapaAtual})`);
+      return res.status(403).json({ 
+        error: 'Acesso negado', 
+        detalhes: `Você não tem permissão para acessar coletas na área ${etapaAtual}. Permissão requerida: ${permissaoRequerida}` 
+      });
+    }
 
     // Validação de tipos de dados
     if (coletaData.km && isNaN(parseFloat(coletaData.km))) {
@@ -17129,13 +17745,27 @@ app.get('/api/settings/permissoes/:usuarioId', async (req, res) => {
       throw errorITs;
     }
 
-    console.log(`✅ Permissões encontradas: ${(permissoesPortal || []).length} portal, ${(permissoesColetas || []).length} coletas, ${(permissoesITs || []).length} ITs`);
+    // Buscar permissões de áreas do kanban usando admin (contorna RLS)
+    // Permissões de áreas do kanban são armazenadas na tabela permissoes_portal com permissao_id começando com 'kanban_'
+    const { data: permissoesAreasKanban, error: errorAreasKanban } = await supabaseAdmin
+      .from('permissoes_portal')
+      .select('permissao_id')
+      .eq('usuario_id', usuarioId)
+      .like('permissao_id', 'kanban_%');
+
+    if (errorAreasKanban) {
+      console.error('❌ Erro ao buscar permissões de áreas do kanban:', errorAreasKanban);
+      throw errorAreasKanban;
+    }
+
+    console.log(`✅ Permissões encontradas: ${(permissoesPortal || []).length} portal, ${(permissoesColetas || []).length} coletas, ${(permissoesITs || []).length} ITs, ${(permissoesAreasKanban || []).length} áreas kanban`);
 
     res.json({
       success: true,
       permissoesPortal: permissoesPortal || [],
       permissoesColetas: permissoesColetas || [],
-      permissoesITs: permissoesITs || []
+      permissoesITs: permissoesITs || [],
+      permissoesAreasKanban: permissoesAreasKanban || []
     });
   } catch (error) {
     console.error('❌ Erro ao buscar permissões:', error);
@@ -17301,6 +17931,86 @@ app.post('/api/settings/permissoes/coleta', async (req, res) => {
     res.status(500).json({ 
       success: false, 
       error: error.message || 'Erro ao salvar permissão de coleta' 
+    });
+  }
+});
+
+// ========== ENDPOINT PARA SALVAR/REMOVER PERMISSÃO DE ÁREA DO KANBAN ==========
+app.post('/api/settings/permissoes/area-kanban', async (req, res) => {
+  try {
+    // Verificar autenticação e se é admin
+    const { user, error: authError } = await getUserFromRequest(req);
+    if (authError || !user) {
+      return res.status(401).json({ success: false, error: 'Não autenticado' });
+    }
+
+    // Verificar se é admin
+    const { data: userProfile } = await supabaseAdmin
+      .from('user_profiles')
+      .select('role')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    const isAdmin = userProfile?.role === 'admin' || user.isAdmin === true;
+    if (!isAdmin) {
+      return res.status(403).json({ success: false, error: 'Acesso negado. Apenas administradores podem alterar permissões.' });
+    }
+
+    const { usuarioId, areaId, permitido } = req.body;
+    
+    if (!usuarioId || !areaId || permitido === undefined) {
+      return res.status(400).json({ success: false, error: 'Dados inválidos. usuarioId, areaId e permitido são obrigatórios.' });
+    }
+
+    console.log(`💾 ${permitido ? 'Concedendo' : 'Removendo'} permissão de área do kanban ${areaId} para usuário ${usuarioId}`);
+
+    if (permitido) {
+      // Verificar se a permissão já existe
+      const { data: existing, error: checkError } = await supabaseAdmin
+        .from('permissoes_portal')
+        .select('id')
+        .eq('usuario_id', usuarioId)
+        .eq('permissao_id', areaId)
+        .maybeSingle();
+
+      if (checkError && checkError.code !== 'PGRST116') {
+        throw checkError;
+      }
+
+      // Se não existe, inserir
+      if (!existing) {
+        const { data, error } = await supabaseAdmin
+          .from('permissoes_portal')
+          .insert([{
+            usuario_id: usuarioId,
+            tipo: 'permissao',
+            permissao_id: areaId
+          }]);
+
+        if (error) throw error;
+        console.log('✅ Permissão de área do kanban inserida com sucesso');
+        res.json({ success: true, message: 'Permissão concedida com sucesso', data });
+      } else {
+        console.log('⚠️ Permissão de área do kanban já existe');
+        res.json({ success: true, message: 'Permissão já existe', data: existing });
+      }
+    } else {
+      // Remover permissão
+      const { error } = await supabaseAdmin
+        .from('permissoes_portal')
+        .delete()
+        .eq('usuario_id', usuarioId)
+        .eq('permissao_id', areaId);
+
+      if (error) throw error;
+      console.log('✅ Permissão de área do kanban removida com sucesso');
+      res.json({ success: true, message: 'Permissão removida com sucesso' });
+    }
+  } catch (error) {
+    console.error('❌ Erro ao salvar permissão de área do kanban:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: error.message || 'Erro ao salvar permissão de área do kanban' 
     });
   }
 });
@@ -20480,22 +21190,95 @@ app.get('/api/clientes', requireAuth, async (req, res) => {
       return res.status(401).json({ success: false, error: 'Não autenticado' });
     }
 
-    // Permitir filtrar apenas ativos via query parameter (padrão: todos)
-    const apenasAtivos = req.query.apenasAtivos === 'true';
+    // Parâmetros de filtro
+    const filial = req.query.filial;
+    const operacao = req.query.operacao;
+    const status = req.query.status; // 'ativo', 'inativo' ou undefined
+    const busca = req.query.busca; // Busca por nome ou CNPJ
+    const cidadeOrigem = req.query.cidade_origem;
+    const cidadeDestino = req.query.cidade_destino;
+    const tipoVeiculo = req.query.tipo_veiculo;
+    const tipoProduto = req.query.tipo_produto;
+    const ufOrigem = req.query.uf_origem;
+    const ufDestino = req.query.uf_destino;
 
+    // Parâmetros de paginação
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 20;
+    const offset = (page - 1) * limit;
+
+    // Construir query
     let query = supabaseAdmin
       .from('clientes')
-      .select('id, nome, filial, operacao, ativo, created_at, updated_at');
+      .select('id, cnpj, nome, razao_social, cidade_origem, uf_origem, cidade_destino, uf_destino, tipo_produto, codigo_tabela, tipo_veiculo, filial, operacao, ativo, atualizado_por, ultima_atualizacao, created_at, updated_at', { count: 'exact' });
 
-    if (apenasAtivos) {
-      query = query.eq('ativo', true);
+    // Aplicar filtros
+    if (filial) {
+      query = query.eq('filial', filial);
     }
 
-    const { data: clientes, error } = await query.order('nome', { ascending: true });
+    if (operacao) {
+      query = query.eq('operacao', operacao);
+    }
+
+    if (status === 'ativo') {
+      query = query.eq('ativo', true);
+    } else if (status === 'inativo') {
+      query = query.eq('ativo', false);
+    }
+
+    if (cidadeOrigem) {
+      query = query.ilike('cidade_origem', `%${cidadeOrigem}%`);
+    }
+
+    if (cidadeDestino) {
+      query = query.ilike('cidade_destino', `%${cidadeDestino}%`);
+    }
+
+    if (ufOrigem) {
+      query = query.eq('uf_origem', ufOrigem);
+    }
+
+    if (ufDestino) {
+      query = query.eq('uf_destino', ufDestino);
+    }
+
+    if (tipoVeiculo) {
+      query = query.eq('tipo_veiculo', tipoVeiculo);
+    }
+
+    if (tipoProduto) {
+      query = query.ilike('tipo_produto', `%${tipoProduto}%`);
+    }
+
+    if (busca) {
+      // Buscar por razao_social ou CNPJ
+      query = query.or(`razao_social.ilike.%${busca}%,nome.ilike.%${busca}%,cnpj.ilike.%${busca}%`);
+    }
+
+    // Aplicar paginação
+    query = query.order('razao_social', { ascending: true })
+                 .order('nome', { ascending: true })
+                 .range(offset, offset + limit - 1);
+
+    const { data: clientes, error, count } = await query;
 
     if (error) throw error;
 
-    res.json({ success: true, clientes: clientes || [] });
+    const totalPages = Math.ceil((count || 0) / limit);
+
+    res.json({ 
+      success: true, 
+      clientes: clientes || [],
+      pagination: {
+        page,
+        limit,
+        total: count || 0,
+        totalPages,
+        hasNextPage: page < totalPages,
+        hasPreviousPage: page > 1
+      }
+    });
   } catch (error) {
     console.error('❌ Erro ao buscar clientes:', error);
     res.status(500).json({ success: false, error: 'Erro ao buscar clientes' });
@@ -20513,9 +21296,10 @@ app.get('/api/clientes/exportar-excel', requireAuth, async (req, res) => {
     // Buscar todos os clientes ativos
     const { data: clientes, error } = await supabaseAdmin
       .from('clientes')
-      .select('id, nome, filial, operacao, ativo, created_at')
+      .select('id, cnpj, nome, razao_social, cidade_origem, uf_origem, cidade_destino, uf_destino, tipo_produto, codigo_tabela, tipo_veiculo, filial, operacao, ativo, atualizado_por, ultima_atualizacao, created_at')
       .eq('ativo', true)
       .order('filial', { ascending: true })
+      .order('razao_social', { ascending: true })
       .order('nome', { ascending: true });
 
     if (error) throw error;
@@ -20587,7 +21371,7 @@ app.get('/api/clientes/exportar-excel', requireAuth, async (req, res) => {
       if (clientesFilial.length > 0) {
         // Preparar dados da planilha
         const sheetData = [
-          ['Nome do Cliente', 'Operação', 'Data de Cadastro']
+          ['Razão Social', 'CNPJ', 'Cidade de Origem', 'UF Origem', 'Cidade de Destino', 'UF Destino', 'Tipo de Produto', 'Código da Tabela', 'Tipo Veículo', 'Operação', 'Data de Cadastro', 'Atualizado por', 'Última Atualização']
         ];
 
         clientesFilial.forEach(cliente => {
@@ -20598,11 +21382,25 @@ app.get('/api/clientes/exportar-excel', requireAuth, async (req, res) => {
           const dataCadastro = cliente.created_at 
             ? new Date(cliente.created_at).toLocaleDateString('pt-BR')
             : '';
+          
+          const ultimaAtualizacao = cliente.ultima_atualizacao 
+            ? new Date(cliente.ultima_atualizacao).toLocaleString('pt-BR')
+            : (cliente.updated_at ? new Date(cliente.updated_at).toLocaleString('pt-BR') : '');
 
           sheetData.push([
-            cliente.nome,
+            cliente.razao_social || cliente.nome,
+            cliente.cnpj || '',
+            cliente.cidade_origem || '',
+            cliente.uf_origem || '',
+            cliente.cidade_destino || '',
+            cliente.uf_destino || '',
+            cliente.tipo_produto || '',
+            cliente.codigo_tabela || '',
+            cliente.tipo_veiculo || '',
             nomeOperacao,
-            dataCadastro
+            dataCadastro,
+            cliente.atualizado_por || '',
+            ultimaAtualizacao
           ]);
         });
 
@@ -20611,9 +21409,19 @@ app.get('/api/clientes/exportar-excel', requireAuth, async (req, res) => {
         
         // Ajustar largura das colunas
         sheet['!cols'] = [
-          { wch: 40 }, // Nome do Cliente
-          { wch: 35 }, // Operação
-          { wch: 15 }  // Data de Cadastro
+          { wch: 40 }, // Razão Social
+          { wch: 18 }, // CNPJ
+          { wch: 25 }, // Cidade de Origem
+          { wch: 10 }, // UF Origem
+          { wch: 25 }, // Cidade de Destino
+          { wch: 10 }, // UF Destino
+          { wch: 30 }, // Tipo de Produto
+          { wch: 15 }, // Código da Tabela
+          { wch: 15 }, // Tipo Veículo
+          { wch: 30 }, // Operação
+          { wch: 15 }, // Data de Cadastro
+          { wch: 20 }, // Atualizado por
+          { wch: 20 }  // Última Atualização
         ];
 
         // Adicionar planilha ao workbook
@@ -20666,20 +21474,64 @@ app.get('/api/clientes/modelo-csv', requireAuth, async (req, res) => {
       'PARATIBE': ['operacoes_paratibe', 'qualidade', 'price', 'comercial', 'rh', 'contas_pagar', 'contas_receber', 'ti', 'seguranca', 'manutencao', 'estoque', 'compras', 'cs', 'frota', 'documentacao', 'administrativo', 'outros']
     };
 
-    // Criar linhas do CSV
-    const linhas = ['Nome,Filial,Operacao'];
+    // Criar linhas do CSV com todos os campos (formato correto)
+    // Formato: CNPJ, Razão Social, Cidade de Origem, Cidade de Destino, Tipo de Produto, Atualizado por, Ultima Atualização, Código da Tabela, UF Cidade de Origem, UF Cidade de Destino, Tipo veículo, Filial, Operação
+    const linhas = ['CNPJ,Razão Social,Cidade de Origem,Cidade de Destino,Tipo de Produto,Atualizado por,Ultima Atualização,Código da Tabela,UF Cidade de Origem,UF Cidade de Destino,Tipo veículo,Filial,Operação'];
     
-    filiais.forEach(filial => {
-      const operacoes = operacoesPorFilial[filial] || [];
-      
-      operacoes.forEach((operacao, index) => {
-        // Criar nome de exemplo baseado na filial e operação
-        const nomeExemplo = `CLIENTE EXEMPLO ${filial} - ${operacao.replace('operacoes_', '').replace('_', ' ').toUpperCase()}`;
-        linhas.push(`${nomeExemplo},${filial},${operacao}`);
-      });
-      
-      // Adicionar um exemplo sem operação para cada filial
-      linhas.push(`CLIENTE EXEMPLO ${filial} - SEM OPERAÇÃO,${filial},`);
+    // Exemplos de dados conforme formato fornecido pelo usuário
+    const exemplos = [
+      {
+        cnpj: '21.877.243/0008-59',
+        razaoSocial: 'ARRUDA E MELO COMERCIO E DISTRIBUICAO DE ALIMENTOS',
+        cidadeOrigem: 'JABOATAO DOS GUARARAPES-PE',
+        cidadeDestino: 'SAO LUIS-MA',
+        tipoProduto: 'ARRUDA E MELO PE OUTBOUND',
+        atualizadoPor: 'Tatiane',
+        ultimaAtualizacao: '2024-01-10 17:49:15.0',
+        codigoTabela: '3695',
+        ufOrigem: 'PE',
+        ufDestino: 'MA',
+        tipoVeiculo: '3/4',
+        filial: 'JBO',
+        operacao: 'operacoes_jbo'
+      },
+      {
+        cnpj: '07.526.557/0001-00',
+        razaoSocial: 'AMBEV S.A.',
+        cidadeOrigem: 'RECIFE-PE',
+        cidadeDestino: 'SAO PAULO-SP',
+        tipoProduto: 'AMBEV PE OUTROS',
+        atualizadoPor: 'Sistema',
+        ultimaAtualizacao: '2024-01-15 10:30:00.0',
+        codigoTabela: '2372',
+        ufOrigem: 'PE',
+        ufDestino: 'SP',
+        tipoVeiculo: 'Toco',
+        filial: 'JBO',
+        operacao: 'operacoes_jbo'
+      },
+      {
+        cnpj: '12.345.678/0001-90',
+        razaoSocial: 'TRANSPORTADORA EXEMPLO LTDA',
+        cidadeOrigem: 'MACEIO-AL',
+        cidadeDestino: 'SALVADOR-BA',
+        tipoProduto: 'CISBRA TRANSFERENCIA',
+        atualizadoPor: 'João Silva',
+        ultimaAtualizacao: '2024-01-20 14:15:30.0',
+        codigoTabela: '4484',
+        ufOrigem: 'AL',
+        ufDestino: 'BA',
+        tipoVeiculo: 'Carreta',
+        filial: 'AL',
+        operacao: 'operacoes_al'
+      }
+    ];
+    
+    // Adicionar exemplos ao CSV
+    exemplos.forEach(exemplo => {
+      linhas.push(
+        `${exemplo.cnpj},${exemplo.razaoSocial},${exemplo.cidadeOrigem},${exemplo.cidadeDestino},${exemplo.tipoProduto},${exemplo.atualizadoPor},${exemplo.ultimaAtualizacao},${exemplo.codigoTabela},${exemplo.ufOrigem},${exemplo.ufDestino},${exemplo.tipoVeiculo},${exemplo.filial},${exemplo.operacao}`
+      );
     });
 
     const csvContent = linhas.join('\n');
@@ -20730,7 +21582,7 @@ app.post('/api/clientes/importar-csv', requireAuth, upload.single('csv'), async 
 
     // Verificar se tem cabeçalho
     const header = lines[0].toLowerCase();
-    const hasHeader = header.includes('nome') && (header.includes('filial') || header.includes('filial'));
+    const hasHeader = header.includes('cnpj') || header.includes('nome') || header.includes('razão social') || header.includes('razao social');
     const startLine = hasHeader ? 1 : 0;
 
     if (lines.length <= startLine) {
@@ -20747,6 +21599,27 @@ app.post('/api/clientes/importar-csv', requireAuth, upload.single('csv'), async 
     ];
 
     const filiaisValidas = ['JBO', 'CABO', 'AL', 'SP', 'BA', 'CE', 'SE', 'PB', 'PE', 'AMBEV', 'US', 'PARATIBE'];
+    const ufsValidas = ['AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO'];
+
+    // ✅ Função para normalizar CNPJ (aceita com ou sem máscara) - definida uma vez para reutilização
+    function normalizarCNPJ(cnpjInput) {
+      if (!cnpjInput) return null;
+      
+      // Converter para string se não for
+      const cnpjStr = String(cnpjInput).trim();
+      if (!cnpjStr || cnpjStr === 'null' || cnpjStr === 'undefined' || cnpjStr === '') return null;
+      
+      // Remover todos os caracteres não numéricos
+      const apenasNumeros = cnpjStr.replace(/\D/g, '');
+      
+      // Verificar se tem 14 dígitos
+      if (apenasNumeros.length !== 14) {
+        return null;
+      }
+      
+      // Aplicar máscara: 00.000.000/0000-00
+      return `${apenasNumeros.substring(0, 2)}.${apenasNumeros.substring(2, 5)}.${apenasNumeros.substring(5, 8)}/${apenasNumeros.substring(8, 12)}-${apenasNumeros.substring(12, 14)}`;
+    }
 
     let sucessos = 0;
     let falhas = 0;
@@ -20759,23 +21632,124 @@ app.post('/api/clientes/importar-csv', requireAuth, upload.single('csv'), async 
       if (!line) continue;
 
       try {
-        // Parse CSV (simples - pode melhorar com biblioteca)
-        const columns = line.split(',').map(col => col.trim().replace(/^"|"$/g, ''));
+        // Parse CSV melhorado - trata vírgulas dentro de aspas
+        const columns = [];
+        let current = '';
+        let insideQuotes = false;
         
-        if (columns.length < 2) {
+        for (let j = 0; j < line.length; j++) {
+          const char = line[j];
+          if (char === '"') {
+            insideQuotes = !insideQuotes;
+          } else if (char === ',' && !insideQuotes) {
+            columns.push(current.trim().replace(/^"|"$/g, ''));
+            current = '';
+          } else {
+            current += char;
+          }
+        }
+        // Adicionar última coluna
+        columns.push(current.trim().replace(/^"|"$/g, ''));
+
+        // Formato esperado: CNPJ, Razão Social, Cidade de Origem, Cidade de Destino, Tipo de Produto, Atualizado por, Ultima Atualização, Código da Tabela, UF Cidade de Origem, UF Cidade de Destino, Tipo veículo, Filial, Operação
+        // Formato antigo (compatibilidade): CNPJ, Nome, Cidade Origem, UF Origem, Cidade Destino, UF Destino, Tipo Produto, Código Tabela, Filial, Operação, Tipo Veículo
+        
+        // Detectar formato pelo cabeçalho ou número de colunas
+        const headerLower = hasHeader ? lines[0].toLowerCase() : '';
+        const isFormatoNovo = headerLower.includes('razão social') || headerLower.includes('razao social') || 
+                              headerLower.includes('atualizado por') || headerLower.includes('ultima atualização');
+        
+        let cnpj, razaoSocial, cidadeOrigem, ufOrigem, cidadeDestino, ufDestino, tipoProduto, codigoTabela, filial, operacao, tipoVeiculo, atualizadoPor, ultimaAtualizacao;
+        
+        if (isFormatoNovo && columns.length >= 11) {
+          // Formato novo: CNPJ, Razão Social, Cidade de Origem, Cidade de Destino, Tipo de Produto, Atualizado por, Ultima Atualização, Código da Tabela, UF Cidade de Origem, UF Cidade de Destino, Tipo veículo, Filial, Operação
+          cnpj = (columns[0] || '').trim();
+          razaoSocial = (columns[1] || '').trim();
+          cidadeOrigem = (columns[2] || '').trim();
+          cidadeDestino = (columns[3] || '').trim();
+          tipoProduto = (columns[4] || '').trim();
+          atualizadoPor = (columns[5] || '').trim();
+          ultimaAtualizacao = (columns[6] || '').trim();
+          codigoTabela = (columns[7] || '').trim();
+          ufOrigem = (columns[8] || '').trim();
+          ufDestino = (columns[9] || '').trim();
+          tipoVeiculo = (columns[10] || '').trim();
+          filial = (columns[11] || '').trim() || null;
+          operacao = (columns[12] || '').trim() || null;
+        } else if (columns.length >= 11) {
+          // Formato antigo: CNPJ, Nome, Cidade Origem, UF Origem, Cidade Destino, UF Destino, Tipo Produto, Código Tabela, Filial, Operação, Tipo Veículo
+          cnpj = (columns[0] || '').trim();
+          razaoSocial = (columns[1] || '').trim(); // Nome vira razao_social
+          cidadeOrigem = (columns[2] || '').trim();
+          ufOrigem = (columns[3] || '').trim();
+          cidadeDestino = (columns[4] || '').trim();
+          ufDestino = (columns[5] || '').trim();
+          tipoProduto = (columns[6] || '').trim();
+          codigoTabela = (columns[7] || '').trim();
+          filial = (columns[8] || '').trim();
+          operacao = (columns[9] || '').trim();
+          tipoVeiculo = (columns[10] || '').trim();
+          atualizadoPor = null;
+          ultimaAtualizacao = null;
+        } else {
           falhas++;
-          detalhesFalhas.push(`Linha ${i + 1}: Formato inválido (esperado: Nome, Filial, Operação)`);
+          detalhesFalhas.push(`Linha ${i + 1}: Formato inválido - encontradas ${columns.length} colunas (esperado: 13 colunas). Formato novo: CNPJ, Razão Social, Cidade de Origem, Cidade de Destino, Tipo de Produto, Atualizado por, Ultima Atualização, Código da Tabela, UF Cidade de Origem, UF Cidade de Destino, Tipo veículo, Filial, Operação. Linha: "${line.substring(0, 100)}..."`);
           continue;
         }
 
-        const nome = columns[0] || '';
-        const filial = columns[1] || '';
-        const operacao = columns[2] || '';
-
-        // Validações
-        if (!nome || nome.length < 2 || nome.length > 200) {
+        // Normalizar CNPJ (aceita com ou sem máscara)
+        const cnpjOriginal = cnpj;
+        const cnpjNormalizado = normalizarCNPJ(cnpj);
+        if (!cnpjNormalizado) {
           falhas++;
-          detalhesFalhas.push(`Linha ${i + 1}: Nome inválido (${nome})`);
+          // Debug: mostrar o CNPJ original e o que foi extraído
+          const apenasNumeros = (cnpjOriginal || '').toString().replace(/\D/g, '');
+          detalhesFalhas.push(`Linha ${i + 1}: CNPJ inválido "${cnpjOriginal || '(vazio)'}" (extraído: "${apenasNumeros}" - ${apenasNumeros.length} dígitos). Deve ter 14 dígitos. Formatos aceitos: 00.000.000/0000-00 ou 00000000000000`);
+          continue;
+        }
+        
+        // Usar CNPJ normalizado
+        cnpj = cnpjNormalizado;
+
+        if (!razaoSocial || razaoSocial.length < 2 || razaoSocial.length > 200) {
+          falhas++;
+          detalhesFalhas.push(`Linha ${i + 1}: Razão Social inválida (${razaoSocial})`);
+          continue;
+        }
+
+        if (!cidadeOrigem || cidadeOrigem.length < 2 || cidadeOrigem.length > 100) {
+          falhas++;
+          detalhesFalhas.push(`Linha ${i + 1}: Cidade de origem inválida (${cidadeOrigem})`);
+          continue;
+        }
+
+        if (!ufOrigem || !ufsValidas.includes(ufOrigem)) {
+          falhas++;
+          detalhesFalhas.push(`Linha ${i + 1}: UF de origem inválida (${ufOrigem})`);
+          continue;
+        }
+
+        if (!cidadeDestino || cidadeDestino.length < 2 || cidadeDestino.length > 100) {
+          falhas++;
+          detalhesFalhas.push(`Linha ${i + 1}: Cidade de destino inválida (${cidadeDestino})`);
+          continue;
+        }
+
+        if (!ufDestino || !ufsValidas.includes(ufDestino)) {
+          falhas++;
+          detalhesFalhas.push(`Linha ${i + 1}: UF de destino inválida (${ufDestino})`);
+          continue;
+        }
+
+        if (!tipoProduto || tipoProduto.length < 2 || tipoProduto.length > 100) {
+          falhas++;
+          detalhesFalhas.push(`Linha ${i + 1}: Tipo de produto inválido (${tipoProduto})`);
+          continue;
+        }
+
+        if (!codigoTabela || codigoTabela.length < 1 || codigoTabela.length > 50) {
+          falhas++;
+          detalhesFalhas.push(`Linha ${i + 1}: Código da tabela inválido (${codigoTabela})`);
           continue;
         }
 
@@ -20791,12 +21765,22 @@ app.post('/api/clientes/importar-csv', requireAuth, upload.single('csv'), async 
           continue;
         }
 
-        // Verificar se cliente já existe
+        // Obter nome do usuário para atualizado_por (se não vier do CSV)
+        const { data: userProfile } = await supabaseAdmin
+          .from('user_profiles')
+          .select('nome')
+          .eq('id', user.id)
+          .maybeSingle();
+        
+        const nomeUsuario = atualizadoPor || userProfile?.nome || user.email || 'Sistema';
+        const agora = new Date().toISOString();
+        const dataAtualizacao = ultimaAtualizacao || agora;
+
+        // Verificar se cliente já existe (por CNPJ)
         const { data: clienteExistente, error: checkError } = await supabaseAdmin
           .from('clientes')
-          .select('id, nome, filial')
-          .eq('nome', nome.trim())
-          .eq('filial', filial)
+          .select('id, cnpj, nome, razao_social, filial')
+          .eq('cnpj', cnpj.trim())
           .maybeSingle();
 
         if (checkError && checkError.code !== 'PGRST116') {
@@ -20808,29 +21792,52 @@ app.post('/api/clientes/importar-csv', requireAuth, upload.single('csv'), async 
           const { error: updateError } = await supabaseAdmin
             .from('clientes')
             .update({
+              nome: razaoSocial.trim(), // Manter nome para compatibilidade
+              razao_social: razaoSocial.trim(),
+              cidade_origem: cidadeOrigem.trim(),
+              uf_origem: ufOrigem,
+              cidade_destino: cidadeDestino.trim(),
+              uf_destino: ufDestino,
+              tipo_produto: tipoProduto.trim(),
+              codigo_tabela: codigoTabela.trim(),
+              tipo_veiculo: tipoVeiculo.trim(),
+              filial: filial || clienteExistente.filial,
               operacao: operacao && operacao.trim() !== '' ? operacao.trim() : null,
               ativo: true,
-              updated_at: new Date().toISOString()
+              atualizado_por: nomeUsuario,
+              ultima_atualizacao: dataAtualizacao,
+              updated_at: agora
             })
             .eq('id', clienteExistente.id);
 
           if (updateError) throw updateError;
           sucessos++;
-          detalhesSucessos.push(`${nome} (${filial}) - Atualizado`);
+          detalhesSucessos.push(`${razaoSocial} (${cnpj}) - Atualizado`);
         } else {
           // Inserir novo
           const { error: insertError } = await supabaseAdmin
             .from('clientes')
             .insert({
-              nome: nome.trim(),
+              cnpj: cnpj.trim(),
+              nome: razaoSocial.trim(), // Manter nome para compatibilidade
+              razao_social: razaoSocial.trim(),
+              cidade_origem: cidadeOrigem.trim(),
+              uf_origem: ufOrigem,
+              cidade_destino: cidadeDestino.trim(),
+              uf_destino: ufDestino,
+              tipo_produto: tipoProduto.trim(),
+              codigo_tabela: codigoTabela.trim(),
+              tipo_veiculo: tipoVeiculo.trim(),
               filial: filial,
               operacao: operacao && operacao.trim() !== '' ? operacao.trim() : null,
-              ativo: true
+              ativo: true,
+              atualizado_por: nomeUsuario,
+              ultima_atualizacao: dataAtualizacao
             });
 
           if (insertError) throw insertError;
           sucessos++;
-          detalhesSucessos.push(`${nome} (${filial}) - Criado`);
+          detalhesSucessos.push(`${razaoSocial} (${cnpj}) - Criado`);
         }
 
       } catch (error) {
@@ -20867,9 +21874,10 @@ app.get('/api/clientes/filial/:filial', async (req, res) => {
 
     const { data: clientes, error } = await supabaseAdmin
       .from('clientes')
-      .select('id, nome, filial, operacao, ativo')
+      .select('id, cnpj, nome, razao_social, cidade_origem, uf_origem, cidade_destino, uf_destino, tipo_produto, codigo_tabela, tipo_veiculo, filial, operacao, ativo')
       .eq('filial', filial)
       .eq('ativo', true)
+      .order('razao_social', { ascending: true })
       .order('nome', { ascending: true });
 
     if (error) throw error;
@@ -20982,10 +21990,10 @@ app.post('/api/clientes', async (req, res) => {
       return res.status(401).json({ success: false, error: 'Não autenticado' });
     }
 
-    // Verificar se é admin
+    // Verificar se é admin e obter dados do usuário
     const { data: userProfile } = await supabaseAdmin
       .from('user_profiles')
-      .select('role')
+      .select('role, nome')
       .eq('id', user.id)
       .maybeSingle();
 
@@ -20994,11 +22002,69 @@ app.post('/api/clientes', async (req, res) => {
       return res.status(403).json({ success: false, error: 'Apenas administradores podem criar clientes' });
     }
 
-    const { nome, filial, operacao, ativo = true } = req.body;
+    let { cnpj, nome, razao_social, cidade_origem, uf_origem, cidade_destino, uf_destino, tipo_produto, codigo_tabela, tipo_veiculo, filial, operacao, ativo = true } = req.body;
 
-    // Validações
-    if (!nome || typeof nome !== 'string' || nome.trim().length < 2 || nome.trim().length > 200) {
-      return res.status(400).json({ success: false, error: 'Nome do cliente deve ter entre 2 e 200 caracteres' });
+    // ✅ Função para normalizar CNPJ (aceita com ou sem máscara)
+    function normalizarCNPJ(cnpjInput) {
+      if (!cnpjInput || typeof cnpjInput !== 'string') return null;
+      
+      // Remover todos os caracteres não numéricos
+      const apenasNumeros = cnpjInput.trim().replace(/\D/g, '');
+      
+      // Verificar se tem 14 dígitos
+      if (apenasNumeros.length !== 14) {
+        return null;
+      }
+      
+      // Aplicar máscara: 00.000.000/0000-00
+      return `${apenasNumeros.substring(0, 2)}.${apenasNumeros.substring(2, 5)}.${apenasNumeros.substring(5, 8)}/${apenasNumeros.substring(8, 12)}-${apenasNumeros.substring(12, 14)}`;
+    }
+
+    // Normalizar CNPJ (aceita com ou sem máscara)
+    const cnpjNormalizado = normalizarCNPJ(cnpj);
+    if (!cnpjNormalizado) {
+      return res.status(400).json({ success: false, error: 'CNPJ inválido. Deve ter 14 dígitos. Formatos aceitos: 00.000.000/0000-00 ou 00000000000000' });
+    }
+    
+    // Usar CNPJ normalizado
+    cnpj = cnpjNormalizado;
+
+    // Validar razao_social (prioridade) ou nome (compatibilidade)
+    if (!razao_social && !nome) {
+      return res.status(400).json({ success: false, error: 'Razão Social é obrigatória' });
+    }
+    
+    const razaoSocialFinal = razao_social || nome;
+    if (typeof razaoSocialFinal !== 'string' || razaoSocialFinal.trim().length < 2 || razaoSocialFinal.trim().length > 200) {
+      return res.status(400).json({ success: false, error: 'Razão Social deve ter entre 2 e 200 caracteres' });
+    }
+    
+    // Obter nome do usuário para atualizado_por (já obtido acima)
+    const nomeUsuario = userProfile?.nome || user.email || 'Sistema';
+
+    if (!cidade_origem || typeof cidade_origem !== 'string' || cidade_origem.trim().length < 2 || cidade_origem.trim().length > 100) {
+      return res.status(400).json({ success: false, error: 'Cidade de origem deve ter entre 2 e 100 caracteres' });
+    }
+
+    const ufsValidas = ['AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO'];
+    if (!uf_origem || !ufsValidas.includes(uf_origem)) {
+      return res.status(400).json({ success: false, error: 'UF de origem inválida' });
+    }
+
+    if (!cidade_destino || typeof cidade_destino !== 'string' || cidade_destino.trim().length < 2 || cidade_destino.trim().length > 100) {
+      return res.status(400).json({ success: false, error: 'Cidade de destino deve ter entre 2 e 100 caracteres' });
+    }
+
+    if (!uf_destino || !ufsValidas.includes(uf_destino)) {
+      return res.status(400).json({ success: false, error: 'UF de destino inválida' });
+    }
+
+    if (!tipo_produto || typeof tipo_produto !== 'string' || tipo_produto.trim().length < 2 || tipo_produto.trim().length > 100) {
+      return res.status(400).json({ success: false, error: 'Tipo de produto deve ter entre 2 e 100 caracteres' });
+    }
+
+    if (!codigo_tabela || typeof codigo_tabela !== 'string' || codigo_tabela.trim().length < 1 || codigo_tabela.trim().length > 50) {
+      return res.status(400).json({ success: false, error: 'Código da tabela deve ter entre 1 e 50 caracteres' });
     }
 
     const filiaisValidas = ['JBO', 'CABO', 'AL', 'SP', 'BA', 'CE', 'SE', 'PB', 'PE', 'AMBEV', 'US', 'PARATIBE'];
@@ -21018,12 +22084,11 @@ app.post('/api/clientes', async (req, res) => {
       return res.status(400).json({ success: false, error: 'Operação inválida' });
     }
 
-    // Verificar se já existe cliente com mesmo nome e filial
+    // Verificar se já existe cliente com mesmo CNPJ
     const { data: clienteExistente, error: checkError } = await supabaseAdmin
       .from('clientes')
       .select('id')
-      .eq('nome', nome.trim())
-      .eq('filial', filial)
+      .eq('cnpj', cnpj.trim())
       .maybeSingle();
 
     if (checkError && checkError.code !== 'PGRST116') {
@@ -21031,17 +22096,29 @@ app.post('/api/clientes', async (req, res) => {
     }
 
     if (clienteExistente) {
-      return res.status(400).json({ success: false, error: 'Já existe um cliente com este nome nesta filial' });
+      return res.status(400).json({ success: false, error: 'Já existe um cliente com este CNPJ' });
     }
 
     // Criar cliente
+    const agora = new Date().toISOString();
     const { data: novoCliente, error } = await supabaseAdmin
       .from('clientes')
       .insert({
-        nome: nome.trim(),
+        cnpj: cnpj.trim(),
+        nome: nome || razaoSocialFinal.trim(), // Manter nome para compatibilidade
+        razao_social: razaoSocialFinal.trim(),
+        cidade_origem: cidade_origem.trim(),
+        uf_origem: uf_origem,
+        cidade_destino: cidade_destino.trim(),
+        uf_destino: uf_destino,
+        tipo_produto: tipo_produto.trim(),
+        codigo_tabela: codigo_tabela.trim(),
+        tipo_veiculo: tipo_veiculo.trim(),
         filial,
         operacao: operacao && operacao.trim() !== '' ? operacao.trim() : null,
-        ativo: ativo === true || ativo === 'true'
+        ativo: ativo === true || ativo === 'true',
+        atualizado_por: nomeUsuario,
+        ultima_atualizacao: agora
       })
       .select()
       .single();
@@ -21063,10 +22140,10 @@ app.put('/api/clientes/:id', async (req, res) => {
       return res.status(401).json({ success: false, error: 'Não autenticado' });
     }
 
-    // Verificar se é admin
+    // Verificar se é admin e obter dados do usuário
     const { data: userProfile } = await supabaseAdmin
       .from('user_profiles')
-      .select('role')
+      .select('role, nome')
       .eq('id', user.id)
       .maybeSingle();
 
@@ -21076,17 +22153,88 @@ app.put('/api/clientes/:id', async (req, res) => {
     }
 
     const { id } = req.params;
-    const { nome, filial, operacao, ativo } = req.body;
+    const { cnpj, nome, razao_social, cidade_origem, uf_origem, cidade_destino, uf_destino, tipo_produto, codigo_tabela, tipo_veiculo, filial, operacao, ativo } = req.body;
+
+    const ufsValidas = ['AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO'];
+    const filiaisValidas = ['JBO', 'CABO', 'AL', 'SP', 'BA', 'CE', 'SE', 'PB', 'PE', 'AMBEV', 'US', 'PARATIBE'];
+    const operacoesValidas = [
+      'operacoes_jbo', 'operacoes_cabo', 'operacoes_sp', 'operacoes_ba', 'operacoes_se',
+      'operacoes_al', 'operacoes_pe', 'operacoes_pb', 'operacoes_ce', 'operacoes_ambev',
+      'operacoes_us', 'operacoes_paratibe', 'qualidade', 'price', 'comercial', 'rh',
+      'contas_pagar', 'contas_receber', 'ti', 'seguranca', 'manutencao', 'estoque',
+      'compras', 'cs', 'frota', 'documentacao', 'administrativo', 'outros'
+    ];
+
+    // ✅ Função para normalizar CNPJ (aceita com ou sem máscara)
+    function normalizarCNPJ(cnpjInput) {
+      if (!cnpjInput || typeof cnpjInput !== 'string') return null;
+      
+      // Remover todos os caracteres não numéricos
+      const apenasNumeros = cnpjInput.trim().replace(/\D/g, '');
+      
+      // Verificar se tem 14 dígitos
+      if (apenasNumeros.length !== 14) {
+        return null;
+      }
+      
+      // Aplicar máscara: 00.000.000/0000-00
+      return `${apenasNumeros.substring(0, 2)}.${apenasNumeros.substring(2, 5)}.${apenasNumeros.substring(5, 8)}/${apenasNumeros.substring(8, 12)}-${apenasNumeros.substring(12, 14)}`;
+    }
 
     // Validações
-    if (nome !== undefined) {
-      if (typeof nome !== 'string' || nome.trim().length < 2 || nome.trim().length > 200) {
-        return res.status(400).json({ success: false, error: 'Nome do cliente deve ter entre 2 e 200 caracteres' });
+    if (cnpj !== undefined) {
+      const cnpjNormalizado = normalizarCNPJ(cnpj);
+      if (!cnpjNormalizado) {
+        return res.status(400).json({ success: false, error: 'CNPJ inválido. Deve ter 14 dígitos. Formatos aceitos: 00.000.000/0000-00 ou 00000000000000' });
+      }
+      // Atualizar cnpj com o valor normalizado
+      cnpj = cnpjNormalizado;
+    }
+
+    // Validar razao_social (prioridade) ou nome (compatibilidade)
+    const razaoSocialFinal = razao_social !== undefined ? razao_social : (nome !== undefined ? nome : null);
+    if (razaoSocialFinal !== null && razaoSocialFinal !== undefined) {
+      if (typeof razaoSocialFinal !== 'string' || razaoSocialFinal.trim().length < 2 || razaoSocialFinal.trim().length > 200) {
+        return res.status(400).json({ success: false, error: 'Razão Social deve ter entre 2 e 200 caracteres' });
+      }
+    }
+    
+    // Obter nome do usuário para atualizado_por (já obtido acima)
+    const nomeUsuario = userProfile?.nome || user.email || 'Sistema';
+
+    if (cidade_origem !== undefined) {
+      if (typeof cidade_origem !== 'string' || cidade_origem.trim().length < 2 || cidade_origem.trim().length > 100) {
+        return res.status(400).json({ success: false, error: 'Cidade de origem deve ter entre 2 e 100 caracteres' });
+      }
+    }
+
+    if (uf_origem !== undefined && !ufsValidas.includes(uf_origem)) {
+      return res.status(400).json({ success: false, error: 'UF de origem inválida' });
+    }
+
+    if (cidade_destino !== undefined) {
+      if (typeof cidade_destino !== 'string' || cidade_destino.trim().length < 2 || cidade_destino.trim().length > 100) {
+        return res.status(400).json({ success: false, error: 'Cidade de destino deve ter entre 2 e 100 caracteres' });
+      }
+    }
+
+    if (uf_destino !== undefined && !ufsValidas.includes(uf_destino)) {
+      return res.status(400).json({ success: false, error: 'UF de destino inválida' });
+    }
+
+    if (tipo_produto !== undefined) {
+      if (typeof tipo_produto !== 'string' || tipo_produto.trim().length < 2 || tipo_produto.trim().length > 100) {
+        return res.status(400).json({ success: false, error: 'Tipo de produto deve ter entre 2 e 100 caracteres' });
+      }
+    }
+
+    if (codigo_tabela !== undefined) {
+      if (typeof codigo_tabela !== 'string' || codigo_tabela.trim().length < 1 || codigo_tabela.trim().length > 50) {
+        return res.status(400).json({ success: false, error: 'Código da tabela deve ter entre 1 e 50 caracteres' });
       }
     }
 
     if (filial !== undefined) {
-      const filiaisValidas = ['JBO', 'CABO', 'AL', 'SP', 'BA', 'CE', 'SE', 'PB', 'PE', 'AMBEV', 'US', 'PARATIBE'];
       if (!filiaisValidas.includes(filial)) {
         return res.status(400).json({ success: false, error: 'Filial inválida' });
       }
@@ -21094,13 +22242,6 @@ app.put('/api/clientes/:id', async (req, res) => {
 
     // Validar operação se fornecida (opcional)
     if (operacao !== undefined) {
-      const operacoesValidas = [
-        'operacoes_jbo', 'operacoes_cabo', 'operacoes_sp', 'operacoes_ba', 'operacoes_se',
-        'operacoes_al', 'operacoes_pe', 'operacoes_pb', 'operacoes_ce', 'operacoes_ambev',
-        'operacoes_us', 'operacoes_paratibe', 'qualidade', 'price', 'comercial', 'rh',
-        'contas_pagar', 'contas_receber', 'ti', 'seguranca', 'manutencao', 'estoque',
-        'compras', 'cs', 'frota', 'documentacao', 'administrativo', 'outros'
-      ];
       if (operacao && operacao.trim() !== '' && !operacoesValidas.includes(operacao)) {
         return res.status(400).json({ success: false, error: 'Operação inválida' });
       }
@@ -21109,7 +22250,7 @@ app.put('/api/clientes/:id', async (req, res) => {
     // Verificar se cliente existe
     const { data: clienteExistente, error: checkError } = await supabaseAdmin
       .from('clientes')
-      .select('id, nome, filial')
+      .select('id, nome, filial, cnpj')
       .eq('id', id)
       .maybeSingle();
 
@@ -21118,35 +22259,53 @@ app.put('/api/clientes/:id', async (req, res) => {
       return res.status(404).json({ success: false, error: 'Cliente não encontrado' });
     }
 
-    // Se nome ou filial mudaram, verificar duplicatas
-    if ((nome !== undefined && nome.trim() !== clienteExistente.nome) || 
-        (filial !== undefined && filial !== clienteExistente.filial)) {
-      const nomeFinal = nome !== undefined ? nome.trim() : clienteExistente.nome;
-      const filialFinal = filial !== undefined ? filial : clienteExistente.filial;
-
-      const { data: duplicado, error: dupError } = await supabaseAdmin
+    // Se CNPJ mudou, verificar duplicatas
+    if (cnpj !== undefined && cnpj.trim() !== clienteExistente.cnpj) {
+      const { data: duplicadoCNPJ, error: dupCNPJError } = await supabaseAdmin
         .from('clientes')
         .select('id')
-        .eq('nome', nomeFinal)
-        .eq('filial', filialFinal)
+        .eq('cnpj', cnpj.trim())
         .neq('id', id)
         .maybeSingle();
 
-      if (dupError && dupError.code !== 'PGRST116') {
-        throw dupError;
+      if (dupCNPJError && dupCNPJError.code !== 'PGRST116') {
+        throw dupCNPJError;
       }
 
-      if (duplicado) {
-        return res.status(400).json({ success: false, error: 'Já existe um cliente com este nome nesta filial' });
+      if (duplicadoCNPJ) {
+        return res.status(400).json({ success: false, error: 'Já existe um cliente com este CNPJ' });
       }
     }
 
     // Preparar dados para atualização
+    const agora = new Date().toISOString();
     const dadosAtualizacao = {};
-    if (nome !== undefined) dadosAtualizacao.nome = nome.trim();
+    if (cnpj !== undefined) dadosAtualizacao.cnpj = cnpj.trim();
+    if (razao_social !== undefined) {
+      dadosAtualizacao.razao_social = razao_social.trim();
+      // Manter nome para compatibilidade
+      dadosAtualizacao.nome = razao_social.trim();
+    } else if (nome !== undefined) {
+      dadosAtualizacao.nome = nome.trim();
+      // Se não tiver razao_social, usar nome
+      if (!clienteExistente.razao_social) {
+        dadosAtualizacao.razao_social = nome.trim();
+      }
+    }
+    if (cidade_origem !== undefined) dadosAtualizacao.cidade_origem = cidade_origem.trim();
+    if (uf_origem !== undefined) dadosAtualizacao.uf_origem = uf_origem;
+    if (cidade_destino !== undefined) dadosAtualizacao.cidade_destino = cidade_destino.trim();
+    if (uf_destino !== undefined) dadosAtualizacao.uf_destino = uf_destino;
+    if (tipo_produto !== undefined) dadosAtualizacao.tipo_produto = tipo_produto.trim();
+    if (codigo_tabela !== undefined) dadosAtualizacao.codigo_tabela = codigo_tabela.trim();
+    if (tipo_veiculo !== undefined) dadosAtualizacao.tipo_veiculo = tipo_veiculo.trim();
     if (filial !== undefined) dadosAtualizacao.filial = filial;
     if (operacao !== undefined) dadosAtualizacao.operacao = operacao && operacao.trim() !== '' ? operacao.trim() : null;
     if (ativo !== undefined) dadosAtualizacao.ativo = ativo === true || ativo === 'true';
+    
+    // Sempre atualizar campos de auditoria
+    dadosAtualizacao.atualizado_por = nomeUsuario;
+    dadosAtualizacao.ultima_atualizacao = agora;
 
     // Atualizar cliente
     const { data: clienteAtualizado, error } = await supabaseAdmin
@@ -21513,6 +22672,12 @@ app.use('*', (req, res) => {
   if (req.originalUrl === '/favicon.ico') {
     return res.status(204).end();
   }
+  
+  // Log para debug - verificar se está interceptando rotas da API
+  if (req.originalUrl.startsWith('/api/')) {
+    console.log('⚠️ [DEBUG] Rota catch-all interceptou:', req.originalUrl, req.method);
+  }
+  
   res.status(404).json({ 
     error: 'Rota não encontrada',
     path: req.originalUrl
