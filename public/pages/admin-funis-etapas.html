@@ -1,0 +1,2453 @@
+image.png<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerenciar Funis e Etapas - Admin</title>
+    
+    <!-- Bootstrap 5 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --success-gradient: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            --danger-gradient: linear-gradient(135deg, #dc3545 0%, #ff4b2b 100%);
+            --glass-bg: rgba(255, 255, 255, 0.95);
+            --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.12);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 2rem 1rem;
+        }
+
+        .container-main {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .page-header {
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            border-radius: 16px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: var(--shadow-md);
+            position: relative;
+        }
+
+        .btn-voltar {
+            position: absolute;
+            top: 2rem;
+            right: 2rem;
+            padding: 0.625rem 1.25rem;
+            border-radius: 8px;
+            border: none;
+            background: rgba(102, 126, 234, 0.1);
+            color: #667eea;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            text-decoration: none;
+        }
+
+        .btn-voltar:hover {
+            background: rgba(102, 126, 234, 0.2);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-voltar i {
+            font-size: 0.875rem;
+        }
+
+        @media (max-width: 768px) {
+            .btn-voltar {
+                position: static;
+                margin-top: 1rem;
+                width: 100%;
+                justify-content: center;
+            }
+        }
+
+        .page-title {
+            font-size: 2rem;
+            font-weight: 700;
+            background: var(--primary-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 0.5rem;
+        }
+
+        .card-modern {
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            border-radius: 16px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            box-shadow: var(--shadow-md);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .card-header-modern {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid rgba(102, 126, 234, 0.1);
+        }
+
+        .card-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #333;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .btn-modern {
+            padding: 0.625rem 1.25rem;
+            border-radius: 8px;
+            border: none;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn-primary-modern {
+            background: var(--primary-gradient);
+            color: white;
+        }
+
+        .btn-primary-modern:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-success-modern {
+            background: var(--success-gradient);
+            color: white;
+        }
+
+        .btn-danger-modern {
+            background: var(--danger-gradient);
+            color: white;
+        }
+
+        .btn-secondary-modern {
+            background: #6c757d;
+            color: white;
+        }
+
+        .funil-item {
+            background: white;
+            border-radius: 12px;
+            padding: 1.25rem;
+            margin-bottom: 1rem;
+            border: 2px solid rgba(102, 126, 234, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        .funil-item:hover {
+            border-color: rgba(102, 126, 234, 0.3);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .funil-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .funil-info {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .funil-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            background: var(--primary-gradient);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.25rem;
+        }
+
+        .funil-details h4 {
+            margin: 0;
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .funil-details p {
+            margin: 0.25rem 0 0 0;
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        .funil-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .etapas-list {
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid rgba(0, 0, 0, 0.1);
+        }
+
+        .etapa-item {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 0.875rem 1rem;
+            margin-bottom: 0.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-left: 4px solid #667eea;
+        }
+
+        .etapa-info {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .etapa-ordem {
+            background: var(--primary-gradient);
+            color: white;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 0.875rem;
+        }
+
+        .etapa-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .btn-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+
+        .btn-icon-automation {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            border: none;
+            padding: 0.5rem 0.75rem;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 0.9rem;
+        }
+
+        .btn-icon-automation:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(240, 147, 251, 0.3);
+        }
+
+        .btn-icon-edit {
+            background: #ffc107;
+            color: white;
+        }
+
+        .btn-icon-delete {
+            background: #dc3545;
+            color: white;
+        }
+
+        .btn-icon:hover {
+            transform: scale(1.1);
+        }
+
+        /* === Mapa visual de automações (canvas simples) === */
+        .flow-toggle {
+            display: flex;
+            justify-content: space-between;
+            gap: 0.75rem;
+            margin-bottom: 0.75rem;
+            flex-wrap: wrap;
+        }
+
+        .flow-toggle .btn-toggle {
+            padding: 0.4rem 0.9rem;
+            border-radius: 999px;
+            border: 1px solid #e2e8f0;
+            background: #f8fafc;
+            font-size: 0.85rem;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            transition: all 0.2s ease;
+        }
+
+        .flow-toggle .btn-toggle.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #fff;
+            border-color: transparent;
+            box-shadow: 0 4px 10px rgba(102, 126, 234, 0.3);
+        }
+
+        .flow-canvas {
+            margin-top: 0.75rem;
+            padding: 1rem;
+            border-radius: 16px;
+            background: radial-gradient(circle at top left, rgba(102, 126, 234, 0.08), transparent 60%),
+                        radial-gradient(circle at bottom right, rgba(118, 75, 162, 0.08), transparent 60%),
+                        #f9fafb;
+            border: 1px dashed rgba(148, 163, 184, 0.8);
+            min-height: 220px;
+            overflow-x: auto;
+        }
+
+        /* Pré-visualização da automação no modal */
+        .automation-preview-card {
+            margin-top: 0.75rem;
+            padding: 0.75rem 0.9rem;
+            border-radius: 12px;
+            background: #f9fafb;
+            border: 1px dashed rgba(148, 163, 184, 0.9);
+        }
+
+        .automation-preview-title {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: #1f2937;
+            margin-bottom: 0.25rem;
+        }
+
+        .automation-preview-title i {
+            color: #6366f1;
+        }
+
+        .automation-preview-body {
+            font-size: 0.78rem;
+            color: #4b5563;
+            line-height: 1.4;
+        }
+
+        .flow-row {
+            display: flex;
+            flex-wrap: nowrap;
+            align-items: stretch;
+            gap: 1.5rem;
+            padding-bottom: 0.5rem;
+        }
+
+        .flow-funnel {
+            min-width: 240px;
+            max-width: 260px;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 14px;
+            padding: 0.75rem 0.75rem 0.6rem;
+            box-shadow: 0 12px 25px rgba(15, 23, 42, 0.08);
+            border: 1px solid rgba(148, 163, 184, 0.4);
+            backdrop-filter: blur(6px);
+            display: flex;
+            flex-direction: column;
+            gap: 0.4rem;
+        }
+
+        .flow-funnel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.25rem;
+        }
+
+        .flow-funnel-title {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #1e293b;
+        }
+
+        .flow-funnel-badge {
+            font-size: 0.7rem;
+            padding: 0.15rem 0.5rem;
+            border-radius: 999px;
+            background: rgba(79, 70, 229, 0.08);
+            color: #4f46e5;
+        }
+
+        .flow-stages {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+
+        .flow-node {
+            position: relative;
+            padding: 0.35rem 0.55rem;
+            border-radius: 10px;
+            background: #f9fafb;
+            border: 1px solid rgba(148, 163, 184, 0.5);
+            font-size: 0.8rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 0.4rem;
+        }
+
+        .flow-node-main {
+            display: flex;
+            flex-direction: column;
+            gap: 0.1rem;
+        }
+
+        .flow-node-id {
+            font-size: 0.7rem;
+            color: #6b7280;
+        }
+
+        .flow-node-badges {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.2rem;
+        }
+
+        .flow-badge {
+            font-size: 0.65rem;
+            padding: 0.1rem 0.35rem;
+            border-radius: 999px;
+            background: #e5e7eb;
+            color: #374151;
+        }
+
+        .flow-badge.outgoing {
+            background: rgba(34, 197, 94, 0.12);
+            color: #15803d;
+        }
+
+        .flow-badge.incoming {
+            background: rgba(59, 130, 246, 0.12);
+            color: #1d4ed8;
+        }
+
+        .flow-connections {
+            margin-top: 0.6rem;
+            padding-top: 0.5rem;
+            border-top: 1px dashed rgba(148, 163, 184, 0.6);
+        }
+
+        .flow-connection {
+            font-size: 0.75rem;
+            padding: 0.2rem 0;
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+            color: #4b5563;
+        }
+
+        .flow-connection strong {
+            font-weight: 600;
+        }
+
+        .flow-connection .arrow {
+            color: #4f46e5;
+        }
+
+        @media (max-width: 768px) {
+            .flow-funnel {
+                min-width: 220px;
+            }
+        }
+
+        .modal-content {
+            border-radius: 16px;
+            border: none;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+        }
+
+        .form-group {
+            margin-bottom: 1.25rem;
+        }
+
+        .form-label {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 0.5rem;
+        }
+
+        .form-control {
+            border-radius: 8px;
+            border: 2px solid #e0e0e0;
+            padding: 0.75rem 1rem;
+            transition: all 0.3s ease;
+        }
+
+        .form-control:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 3rem 1rem;
+            color: #999;
+        }
+
+        .empty-state i {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+            opacity: 0.3;
+        }
+
+        .badge-status {
+            padding: 0.375rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .badge-active {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .badge-inactive {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .tabs-container {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            padding: 0.5rem;
+            border-radius: 12px;
+            box-shadow: var(--shadow-md);
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 0.875rem 1.5rem;
+            border: none;
+            background: transparent;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            color: #666;
+        }
+
+        .tab-btn.active {
+            background: var(--primary-gradient);
+            color: white;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-main">
+        <!-- Header -->
+        <div class="page-header">
+            <a href="/portal.html" class="btn-voltar">
+                <i class="fas fa-arrow-left"></i> Voltar ao Portal
+            </a>
+            <h1 class="page-title">
+                <i class="fas fa-sitemap"></i> Gerenciar Funis e Etapas
+            </h1>
+            <p class="text-muted">Configure os funis e etapas do sistema de coletas</p>
+        </div>
+
+        <!-- Tabs -->
+        <div class="tabs-container">
+            <button class="tab-btn active" data-tab="funis" onclick="switchTab('funis')">
+                <i class="fas fa-project-diagram"></i> Funis
+            </button>
+            <button class="tab-btn" data-tab="etapas" onclick="switchTab('etapas')">
+                <i class="fas fa-list-ol"></i> Etapas
+            </button>
+            <button class="tab-btn" data-tab="automatizacoes" onclick="switchTab('automatizacoes')">
+                <i class="fas fa-robot"></i> Automações
+            </button>
+        </div>
+
+        <!-- Tab: Funis -->
+        <div id="tab-funis" class="tab-content active">
+            <div class="card-modern">
+                <div class="card-header-modern">
+                    <h3 class="card-title">
+                        <i class="fas fa-project-diagram"></i> Funis Cadastrados
+                    </h3>
+                    <button class="btn-modern btn-primary-modern" onclick="abrirModalFunil()">
+                        <i class="fas fa-plus"></i> Novo Funil
+                    </button>
+                </div>
+
+                <div id="funis-list">
+                    <div class="empty-state">
+                        <i class="fas fa-spinner fa-spin"></i>
+                        <p>Carregando funis...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab: Etapas -->
+        <div id="tab-etapas" class="tab-content">
+            <div class="card-modern">
+                <div class="card-header-modern">
+                    <h3 class="card-title">
+                        <i class="fas fa-list-ol"></i> Etapas Cadastradas
+                    </h3>
+                    <button class="btn-modern btn-primary-modern" onclick="abrirModalEtapa()">
+                        <i class="fas fa-plus"></i> Nova Etapa
+                    </button>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Filtrar por Funil:</label>
+                    <select id="filtro-funil" class="form-control" onchange="carregarEtapas()">
+                        <option value="">Todos os funis</option>
+                    </select>
+                </div>
+
+                <div id="etapas-list">
+                    <div class="empty-state">
+                        <i class="fas fa-spinner fa-spin"></i>
+                        <p>Carregando etapas...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab: Automações -->
+        <div id="tab-automatizacoes" class="tab-content">
+            <div class="card-modern">
+                <div class="card-header-modern">
+                    <h3 class="card-title">
+                        <i class="fas fa-robot"></i> Automações de Etapas
+                    </h3>
+                    <button class="btn-modern btn-primary-modern" onclick="abrirModalAutomatizacao()">
+                        <i class="fas fa-plus"></i> Nova Automação
+                    </button>
+                </div>
+
+                <div class="mb-3 flow-toggle">
+                    <div style="flex: 1; min-width: 200px;">
+                        <label class="form-label">Filtrar por:</label>
+                        <select id="filtro-automatizacao" class="form-control" onchange="carregarAutomatizacoes()">
+                            <option value="">Todas as automações</option>
+                            <option value="origem">Por etapa de origem</option>
+                            <option value="destino">Por etapa de destino</option>
+                        </select>
+                    </div>
+                    <div style="display:flex; gap:0.5rem; align-items:flex-end;">
+                        <button type="button" class="btn-toggle active" id="btnViewLista" onclick="switchAutomacoesView('lista')">
+                            <i class="fas fa-list"></i> Lista
+                        </button>
+                        <button type="button" class="btn-toggle" id="btnViewMapa" onclick="switchAutomacoesView('mapa')">
+                            <i class="fas fa-project-diagram"></i> Mapa visual (beta)
+                        </button>
+                    </div>
+                </div>
+
+                <div id="automatizacoes-list">
+                    <div class="empty-state">
+                        <i class="fas fa-spinner fa-spin"></i>
+                        <p>Carregando automações...</p>
+                    </div>
+                </div>
+
+                <div id="automatizacoes-mapa" style="display:none;">
+                    <div class="flow-canvas" id="flowCanvas">
+                        <div class="empty-state">
+                            <i class="fas fa-project-diagram"></i>
+                            <p>Carregando mapa visual...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Funil -->
+    <div class="modal fade" id="modalFunil" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalFunilTitle">Novo Funil</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="formFunil">
+                        <input type="hidden" id="funil-id">
+                        <div class="form-group">
+                            <label class="form-label">Página ID *</label>
+                            <select id="funil-pagina-id" class="form-control" required>
+                                <option value="operacao">Operação</option>
+                                <option value="comercial">Comercial</option>
+                                <option value="administrativo">Administrativo</option>
+                                <option value="financeiro">Financeiro</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Nome do Funil *</label>
+                            <input type="text" id="funil-nome" class="form-control" required placeholder="Ex: Contratação">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Ícone (Font Awesome)</label>
+                            <input type="text" id="funil-icone" class="form-control" placeholder="fa-file-contract" value="fa-cogs">
+                            <small class="text-muted">Ex: fa-file-contract, fa-file-alt, fa-eye</small>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Ordem</label>
+                            <input type="number" id="funil-ordem" class="form-control" value="0" min="0">
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" onclick="salvarFunil()">Salvar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Etapa -->
+    <div class="modal fade" id="modalEtapa" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalEtapaTitle">Nova Etapa</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="formEtapa">
+                        <input type="hidden" id="etapa-id">
+                        <div class="form-group">
+                            <label class="form-label">Funil *</label>
+                            <select id="etapa-funil-id" class="form-control" required>
+                                <option value="">Selecione um funil</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">ID da Etapa *</label>
+                            <input type="text" id="etapa-etapa-id" class="form-control" required placeholder="Ex: contratacao_jaboatao" 
+                                   oninput="this.value = this.value.toLowerCase().replace(/[^a-z0-9_]/g, '_').replace(/\s+/g, '_')"
+                                   pattern="[a-z0-9_]+" 
+                                   title="Apenas letras minúsculas, números e underscore">
+                            <small class="text-muted">ID único (será convertido automaticamente para minúsculas, sem espaços, use underscore)</small>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Nome da Etapa *</label>
+                            <input type="text" id="etapa-nome" class="form-control" required placeholder="Ex: Jaboatão">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Ordem</label>
+                            <input type="number" id="etapa-ordem" class="form-control" value="0" min="0">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Cor (opcional)</label>
+                            <input type="color" id="etapa-cor" class="form-control" style="height: 50px;">
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" onclick="salvarEtapa()">Salvar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Automação -->
+    <div class="modal fade" id="modalAutomatizacao" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalAutomatizacaoTitle">Nova Automação</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="formAutomatizacao">
+                        <input type="hidden" id="automatizacao-id">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label class="form-label">Etapa de Origem *</label>
+                                    <select id="automatizacao-etapa-origem" class="form-control" required>
+                                        <option value="">Selecione...</option>
+                                    </select>
+                                    <small class="text-muted">Etapa de onde a coleta está saindo</small>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label class="form-label">Etapa de Destino *</label>
+                                    <select id="automatizacao-etapa-destino" class="form-control" required>
+                                        <option value="">Selecione...</option>
+                                    </select>
+                                    <small class="text-muted">Etapa para onde a coleta está indo</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Gatilho (Trigger) *</label>
+                            <select id="automatizacao-trigger" class="form-control" required onchange="atualizarCamposTrigger()">
+                                <option value="">Selecione quando a automação deve ser acionada...</option>
+                                <option value="ao_entrar">🟢 Ao entrar na etapa (quando coleta chega na etapa)</option>
+                                <option value="ao_sair">🔴 Ao sair da etapa (quando coleta sai da etapa)</option>
+                                <option value="ao_avancar">➡️ Ao clicar em avançar (ação manual do usuário)</option>
+                                <option value="tempo_estagnado">⏱️ Tempo estagnado (quando fica X tempo sem movimento)</option>
+                                <option value="campo_alterado">📝 Campo alterado (quando um campo específico muda)</option>
+                                <option value="agendado">📅 Agendado (em horários/dias específicos)</option>
+                            </select>
+                            <small class="text-muted">Defina quando a automação deve ser executada</small>
+                        </div>
+                        <div id="campos-trigger-tempo" style="display: none;">
+                            <div class="form-group">
+                                <label class="form-label">Tempo de Estagnação (horas)</label>
+                                <input type="number" id="automatizacao-tempo-estagnado" class="form-control" min="1" placeholder="Ex: 24 (24 horas)">
+                                <small class="text-muted">Após quantas horas sem movimento a automação será acionada</small>
+                            </div>
+                        </div>
+                        <div id="campos-trigger-campo" style="display: none;">
+                            <div class="form-group">
+                                <label class="form-label">Campo a Monitorar</label>
+                                <select id="automatizacao-campo-monitorar" class="form-control">
+                                    <option value="">Selecione...</option>
+                                    <option value="motorista_id">Motorista vinculado</option>
+                                    <option value="gr_aprovado">Status GR (Aprovado/Reprovado)</option>
+                                    <option value="contas_pagar_tipo">Tipo de pagamento</option>
+                                    <option value="filial">Filial</option>
+                                    <option value="cliente">Cliente</option>
+                                    <option value="valor">Valor do frete</option>
+                                    <option value="status">Status geral</option>
+                                </select>
+                                <small class="text-muted">Campo que quando alterado, acionará a automação</small>
+                            </div>
+                        </div>
+                        <div id="campos-trigger-agendamento" style="display: none;">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label class="form-label">Horário (HH:MM)</label>
+                                        <input type="time" id="automatizacao-horario" class="form-control">
+                                        <small class="text-muted">Horário específico para executar</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label class="form-label">Dias da Semana</label>
+                                        <select id="automatizacao-dias-semana" class="form-control" multiple size="7">
+                                            <option value="0">Domingo</option>
+                                            <option value="1">Segunda</option>
+                                            <option value="2">Terça</option>
+                                            <option value="3">Quarta</option>
+                                            <option value="4">Quinta</option>
+                                            <option value="5">Sexta</option>
+                                            <option value="6">Sábado</option>
+                                        </select>
+                                        <small class="text-muted">Segure Ctrl/Cmd para selecionar múltiplos</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Tipo de Regra *</label>
+                            <select id="automatizacao-tipo-regra" class="form-control" required onchange="atualizarCamposRegra()">
+                                <option value="">Selecione...</option>
+                                <option value="sempre">Sempre (aplicar sempre)</option>
+                                <option value="filial">Por Filial</option>
+                                <option value="cliente">Por Cliente</option>
+                                <option value="valor">Por Valor</option>
+                                <option value="origem">Por Origem</option>
+                                <option value="destino">Por Destino</option>
+                                <option value="tags">Por Tags/Etiquetas</option>
+                            </select>
+                            <small class="text-muted">Condição que determina quando aplicar a automação</small>
+                        </div>
+                        <div id="campos-condicao" style="display: none;">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label class="form-label" id="label-condicao">Condição</label>
+                                        <input type="text" id="automatizacao-condicao" class="form-control" placeholder="Ex: CABO, PARATIBE" list="automatizacao-tags-list">
+                                        <small class="text-muted" id="help-condicao">Valor para comparar</small>
+                                        <!-- Lista de sugestões de tags/etiquetas para evitar erros de digitação -->
+                                        <datalist id="automatizacao-tags-list">
+                                            <option value="adiantamento"></option>
+                                            <option value="saldo"></option>
+                                            <option value="diaria_descarga_ajudante"></option>
+                                            <option value="pedagio"></option>
+                                            <option value="gnre"></option>
+                                        </datalist>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label class="form-label">Operador</label>
+                                        <select id="automatizacao-operador" class="form-control">
+                                            <option value="igual">Igual</option>
+                                            <option value="diferente">Diferente</option>
+                                            <option value="contem">Contém</option>
+                                            <option value="nao_contem">Não contém</option>
+                                            <option value="maior">Maior que</option>
+                                            <option value="menor">Menor que</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="form-group" id="campo-valor-condicao" style="display: none;">
+                                <label class="form-label">Valor para Comparação</label>
+                                <input type="number" id="automatizacao-valor-condicao" class="form-control" step="0.01" placeholder="Ex: 1000.00">
+                                <small class="text-muted">Usado apenas para regras de valor</small>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Etapa Resultado *</label>
+                            <select id="automatizacao-etapa-resultado" class="form-control" required>
+                                <option value="">Selecione...</option>
+                            </select>
+                            <small class="text-muted">Etapa para onde a coleta será redirecionada se a condição for atendida</small>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label class="form-label">Ordem de Execução</label>
+                                    <input type="number" id="automatizacao-ordem" class="form-control" value="0" min="0">
+                                    <small class="text-muted">Ordem de avaliação (menor = primeiro)</small>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label class="form-label">Descrição</label>
+                                    <input type="text" id="automatizacao-descricao" class="form-control" placeholder="Ex: Direcionar coletas de Cabo para etapa Cabo">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Pré-visualização da automação em estilo IF/THEN -->
+                        <div id="automatizacao-preview" class="automation-preview-card mt-2" style="display:none;">
+                            <div class="automation-preview-title">
+                                <i class="fas fa-magic"></i>
+                                <span>Como esta automação vai funcionar</span>
+                            </div>
+                            <div class="automation-preview-body" id="automatizacao-preview-text">
+                                <!-- preenchido via JS -->
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" onclick="salvarAutomatizacao()">Salvar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        let funis = [];
+        let etapas = [];
+        let funilEditando = null;
+        let etapaEditando = null;
+
+        // Verificar autenticação
+        function verificarAuth() {
+            const userData = localStorage.getItem('loggedInUser');
+            if (!userData) {
+                window.location.href = '/pages/login.html';
+                return false;
+            }
+            const user = JSON.parse(userData);
+            if (!user.isAdmin && user.role !== 'admin') {
+                alert('Acesso negado. Apenas administradores podem acessar esta página.');
+                window.location.href = '/pages/index.html';
+                return false;
+            }
+            return true;
+        }
+
+        // Switch tabs
+        function switchTab(tab) {
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            
+            // Encontrar e ativar o botão correspondente à aba
+            const activeButton = document.querySelector(`.tab-btn[data-tab="${tab}"]`);
+            if (activeButton) {
+                activeButton.classList.add('active');
+            }
+            
+            const tabContent = document.getElementById(`tab-${tab}`);
+            if (tabContent) {
+                tabContent.classList.add('active');
+            }
+            
+            if (tab === 'funis') {
+                carregarFunis();
+            } else if (tab === 'etapas') {
+                carregarEtapas();
+            } else if (tab === 'automatizacoes') {
+                carregarAutomatizacoes();
+            }
+        }
+        
+        // Expor função globalmente
+        window.switchTab = switchTab;
+
+        // Carregar funis
+        async function carregarFunis() {
+            try {
+                const response = await fetch('/api/admin/funis', {
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('token') || ''}`
+                    }
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    funis = data.funis || [];
+                    
+                    // Se há mensagem sobre tabela não encontrada, mostrar botão para criar
+                    if (data.message && data.message.includes('Tabela não encontrada')) {
+                        document.getElementById('funis-list').innerHTML = `
+                            <div class="empty-state">
+                                <i class="fas fa-database"></i>
+                                <h4>Tabelas não encontradas</h4>
+                                <p>As tabelas de funis e etapas ainda não foram criadas no banco de dados.</p>
+                                <button class="btn-modern btn-primary-modern mt-3" onclick="criarTabelas()">
+                                    <i class="fas fa-plus-circle"></i> Criar Tabelas
+                                </button>
+                                <p class="mt-3 text-muted" style="font-size: 0.875rem;">
+                                    Ou execute manualmente: <code>node scripts/migrations/criar-tabelas-funis-etapas.js</code>
+                                </p>
+                            </div>
+                        `;
+                        return;
+                    }
+                    
+                    renderizarFunis();
+                    // Atualizar selects de funis (filtro e modal de etapas)
+                    atualizarSelectFunil();
+                } else {
+                    throw new Error(data.error || 'Erro ao carregar funis');
+                }
+            } catch (error) {
+                console.error('Erro ao carregar funis:', error);
+                const errorMessage = error.message || 'Erro desconhecido';
+                const isTableError = errorMessage.includes('does not exist') || errorMessage.includes('Tabela não encontrada');
+                
+                document.getElementById('funis-list').innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <h4>${isTableError ? 'Tabelas não encontradas' : 'Erro ao carregar funis'}</h4>
+                        <p>${errorMessage}</p>
+                        ${isTableError ? `
+                            <button class="btn-modern btn-primary-modern mt-3" onclick="criarTabelas()">
+                                <i class="fas fa-plus-circle"></i> Criar Tabelas
+                            </button>
+                        ` : ''}
+                    </div>
+                `;
+            }
+        }
+
+        // Criar tabelas
+        async function criarTabelas() {
+            if (!confirm('Deseja criar as tabelas de funis e etapas no banco de dados?')) return;
+
+            try {
+                showNotification('🔄 Criando tabelas...', 'info');
+                
+                const response = await fetch('/api/admin/criar-tabelas-funis-etapas', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+
+                const data = await response.json();
+                
+                if (data.success) {
+                    showNotification('✅ Tabelas criadas com sucesso!', 'success');
+                    setTimeout(() => {
+                        carregarFunis();
+                        carregarEtapas();
+                    }, 1000);
+                } else {
+                    if (data.sql) {
+                        // Mostrar SQL para execução manual
+                        const sqlText = data.sql;
+                        const modal = document.createElement('div');
+                        modal.className = 'modal fade';
+                        modal.innerHTML = `
+                            <div class="modal-dialog modal-lg">
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                        <h5 class="modal-title">SQL para Executar Manualmente</h5>
+                                        <button type="button" class="btn-close" onclick="this.closest('.modal').remove()"></button>
+                                    </div>
+                                    <div class="modal-body">
+                                        <p>Execute o SQL abaixo no Supabase Dashboard:</p>
+                                        <ol>
+                                            <li>Acesse: <a href="https://supabase.com/dashboard" target="_blank">Supabase Dashboard</a></li>
+                                            <li>Selecione seu projeto</li>
+                                            <li>Vá em: SQL Editor > New Query</li>
+                                            <li>Cole o SQL abaixo</li>
+                                            <li>Execute (Run ou Ctrl+Enter)</li>
+                                        </ol>
+                                        <textarea class="form-control mt-3" rows="20" readonly style="font-family: monospace; font-size: 0.875rem;">${sqlText}</textarea>
+                                        <button class="btn btn-primary mt-3" onclick="navigator.clipboard.writeText(\`${sqlText.replace(/`/g, '\\`')}\`); alert('SQL copiado!');">
+                                            <i class="fas fa-copy"></i> Copiar SQL
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                        document.body.appendChild(modal);
+                        const bsModal = new bootstrap.Modal(modal);
+                        bsModal.show();
+                    } else {
+                        throw new Error(data.error || 'Erro ao criar tabelas');
+                    }
+                }
+            } catch (error) {
+                console.error('Erro ao criar tabelas:', error);
+                showNotification('❌ Erro ao criar tabelas: ' + error.message, 'error');
+            }
+        }
+
+        // Função auxiliar para notificações
+        function showNotification(message, type = 'info') {
+            // Criar elemento de notificação simples
+            const notification = document.createElement('div');
+            notification.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                padding: 1rem 1.5rem;
+                background: ${type === 'success' ? '#28a745' : type === 'error' ? '#dc3545' : '#17a2b8'};
+                color: white;
+                border-radius: 8px;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+                z-index: 10000;
+                animation: slideIn 0.3s ease;
+            `;
+            notification.textContent = message;
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.style.animation = 'slideOut 0.3s ease';
+                setTimeout(() => notification.remove(), 300);
+            }, 3000);
+        }
+
+        // Renderizar funis
+        function renderizarFunis() {
+            const container = document.getElementById('funis-list');
+            
+            if (funis.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-inbox"></i>
+                        <p>Nenhum funil cadastrado ainda.</p>
+                        <button class="btn-modern btn-primary-modern mt-3" onclick="abrirModalFunil()">
+                            <i class="fas fa-plus"></i> Criar Primeiro Funil
+                        </button>
+                    </div>
+                `;
+                return;
+            }
+
+            // Agrupar por página
+            const funisPorPagina = {};
+            funis.forEach(funil => {
+                if (!funisPorPagina[funil.pagina_id]) {
+                    funisPorPagina[funil.pagina_id] = [];
+                }
+                funisPorPagina[funil.pagina_id].push(funil);
+            });
+
+            let html = '';
+            Object.keys(funisPorPagina).forEach(paginaId => {
+                html += `<h5 class="mb-3 mt-4" style="color: #667eea; text-transform: uppercase;">${paginaId}</h5>`;
+                funisPorPagina[paginaId].forEach(funil => {
+                    const etapasCount = funil.coletas_etapas ? funil.coletas_etapas.filter(e => e.ativo).length : 0;
+                    html += `
+                        <div class="funil-item">
+                            <div class="funil-header">
+                                <div class="funil-info">
+                                    <div class="funil-icon">
+                                        <i class="fas ${funil.icone || 'fa-cogs'}"></i>
+                                    </div>
+                                    <div class="funil-details">
+                                        <h4>${funil.nome}</h4>
+                                        <p>
+                                            <span class="badge-status ${funil.ativo ? 'badge-active' : 'badge-inactive'}">
+                                                ${funil.ativo ? 'Ativo' : 'Inativo'}
+                                            </span>
+                                            • ${etapasCount} etapa(s)
+                                        </p>
+                                    </div>
+                                </div>
+                                <div class="funil-actions">
+                                    <button class="btn-icon btn-icon-edit" onclick="editarFunil('${funil.id}')" title="Editar">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button class="btn-icon btn-icon-delete" onclick="deletarFunil('${funil.id}')" title="Deletar">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            ${etapasCount > 0 ? `
+                                <div class="etapas-list">
+                                    ${funil.coletas_etapas.filter(e => e.ativo).map(etapa => `
+                                        <div class="etapa-item">
+                                            <div class="etapa-info">
+                                                <div class="etapa-ordem">${etapa.ordem}</div>
+                                                <div>
+                                                    <strong>${etapa.nome}</strong>
+                                                    <small class="text-muted d-block">${etapa.etapa_id}</small>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            ` : ''}
+                        </div>
+                    `;
+                });
+            });
+
+            container.innerHTML = html;
+        }
+
+        // Carregar etapas
+        async function carregarEtapas() {
+            try {
+                const filtroFunil = document.getElementById('filtro-funil').value;
+                const url = filtroFunil ? `/api/admin/funis?pagina_id=operacao` : '/api/admin/funis';
+                
+                const response = await fetch(url, {
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('token') || ''}`
+                    }
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    funis = data.funis || [];
+                    atualizarSelectFunil();
+                    
+                    // Buscar todas as etapas
+                    let todasEtapas = [];
+                    for (const funil of funis) {
+                        if (funil.coletas_etapas) {
+                            funil.coletas_etapas.forEach(etapa => {
+                                todasEtapas.push({ ...etapa, funil_nome: funil.nome });
+                            });
+                        }
+                    }
+                    
+                    if (filtroFunil) {
+                        todasEtapas = todasEtapas.filter(e => e.funil_id === filtroFunil);
+                    }
+                    
+                    etapas = todasEtapas;
+                    renderizarEtapas();
+                } else {
+                    throw new Error(data.error || 'Erro ao carregar etapas');
+                }
+            } catch (error) {
+                console.error('Erro ao carregar etapas:', error);
+                const errorMessage = error.message || 'Erro desconhecido';
+                const isTableError = errorMessage.includes('does not exist') || errorMessage.includes('Tabela não encontrada');
+                
+                document.getElementById('etapas-list').innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <h4>${isTableError ? 'Tabelas não encontradas' : 'Erro ao carregar etapas'}</h4>
+                        <p>${errorMessage}</p>
+                        ${isTableError ? `
+                            <button class="btn-modern btn-primary-modern mt-3" onclick="criarTabelas()">
+                                <i class="fas fa-plus-circle"></i> Criar Tabelas
+                            </button>
+                        ` : ''}
+                    </div>
+                `;
+            }
+        }
+
+        // Atualizar select de funil
+        function atualizarSelectFunil() {
+            const select = document.getElementById('filtro-funil');
+            const selectModal = document.getElementById('etapa-funil-id');
+            
+            if (!select || !selectModal) {
+                console.warn('⚠️ Selects de funil não encontrados');
+                return;
+            }
+            
+            let html = '<option value="">Todos os funis</option>';
+            let htmlModal = '<option value="">Selecione um funil</option>';
+            
+            const funisAtivos = funis.filter(f => f.ativo);
+            
+            console.log('🔄 Atualizando select de funis. Total de funis:', funis.length, 'Ativos:', funisAtivos.length);
+            
+            if (funisAtivos.length === 0) {
+                htmlModal = '<option value="">Nenhum funil disponível. Crie um funil primeiro.</option>';
+            } else {
+                funisAtivos.forEach(funil => {
+                    html += `<option value="${funil.id}">${funil.nome}</option>`;
+                    htmlModal += `<option value="${funil.id}">${funil.nome}</option>`;
+                });
+            }
+            
+            if (select) select.innerHTML = html;
+            if (selectModal) {
+                selectModal.innerHTML = htmlModal;
+                console.log('✅ Select do modal de etapas atualizado com', funisAtivos.length, 'funis');
+            }
+        }
+
+        // Renderizar etapas
+        function renderizarEtapas() {
+            const container = document.getElementById('etapas-list');
+            
+            if (etapas.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-inbox"></i>
+                        <p>Nenhuma etapa cadastrada ainda.</p>
+                        <button class="btn-modern btn-primary-modern mt-3" onclick="abrirModalEtapa()">
+                            <i class="fas fa-plus"></i> Criar Primeira Etapa
+                        </button>
+                    </div>
+                `;
+                return;
+            }
+
+            // Agrupar por funil
+            const etapasPorFunil = {};
+            etapas.forEach(etapa => {
+                if (!etapasPorFunil[etapa.funil_nome]) {
+                    etapasPorFunil[etapa.funil_nome] = [];
+                }
+                etapasPorFunil[etapa.funil_nome].push(etapa);
+            });
+
+            let html = '';
+            Object.keys(etapasPorFunil).forEach(funilNome => {
+                html += `<h5 class="mb-3 mt-4" style="color: #667eea;">${funilNome}</h5>`;
+                etapasPorFunil[funilNome].sort((a, b) => a.ordem - b.ordem).forEach(etapa => {
+                    html += `
+                        <div class="etapa-item">
+                            <div class="etapa-info">
+                                <div class="etapa-ordem">${etapa.ordem}</div>
+                                <div>
+                                    <strong>${etapa.nome}</strong>
+                                    <small class="text-muted d-block">${etapa.etapa_id}</small>
+                                </div>
+                            </div>
+                            <div class="etapa-actions">
+                                <span class="badge-status ${etapa.ativo ? 'badge-active' : 'badge-inactive'}">
+                                    ${etapa.ativo ? 'Ativo' : 'Inativo'}
+                                </span>
+                                <button class="btn-icon btn-icon-automation" onclick="abrirModalAutomatizacaoPorEtapa('${etapa.id}', '${etapa.etapa_id}')" title="Gerenciar Automações">
+                                    <i class="fas fa-robot"></i>
+                                </button>
+                                <button class="btn-icon btn-icon-edit" onclick="editarEtapa('${etapa.id}')" title="Editar">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button class="btn-icon btn-icon-delete" onclick="deletarEtapa('${etapa.id}')" title="Deletar">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                });
+            });
+
+            container.innerHTML = html;
+        }
+
+        // Abrir modal funil
+        function abrirModalFunil(funilId = null) {
+            funilEditando = funilId;
+            const modal = new bootstrap.Modal(document.getElementById('modalFunil'));
+            const title = document.getElementById('modalFunilTitle');
+            const form = document.getElementById('formFunil');
+            
+            form.reset();
+            document.getElementById('funil-id').value = '';
+            
+            if (funilId) {
+                const funil = funis.find(f => f.id === funilId);
+                if (funil) {
+                    title.textContent = 'Editar Funil';
+                    document.getElementById('funil-id').value = funil.id;
+                    document.getElementById('funil-pagina-id').value = funil.pagina_id;
+                    document.getElementById('funil-nome').value = funil.nome;
+                    document.getElementById('funil-icone').value = funil.icone || 'fa-cogs';
+                    document.getElementById('funil-ordem').value = funil.ordem || 0;
+                }
+            } else {
+                title.textContent = 'Novo Funil';
+            }
+            
+            modal.show();
+        }
+
+        // Salvar funil
+        async function salvarFunil() {
+            const id = document.getElementById('funil-id').value;
+            const paginaId = document.getElementById('funil-pagina-id').value.trim();
+            const nome = document.getElementById('funil-nome').value.trim();
+            const icone = document.getElementById('funil-icone').value.trim() || 'fa-cogs';
+            const ordem = parseInt(document.getElementById('funil-ordem').value) || 0;
+
+            // Validação dos campos obrigatórios
+            if (!paginaId) {
+                alert('Por favor, selecione uma página.');
+                document.getElementById('funil-pagina-id').focus();
+                return;
+            }
+
+            if (!nome) {
+                alert('Por favor, informe o nome do funil.');
+                document.getElementById('funil-nome').focus();
+                return;
+            }
+
+            const data = {
+                pagina_id: paginaId,
+                nome: nome,
+                icone: icone,
+                ordem: ordem
+            };
+
+            try {
+                let response;
+                if (id) {
+                    response = await fetch(`/api/admin/funis/${id}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(data)
+                    });
+                } else {
+                    response = await fetch('/api/admin/funis', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(data)
+                    });
+                }
+
+                // Verificar se a resposta é JSON válido
+                let result;
+                try {
+                    result = await response.json();
+                } catch (jsonError) {
+                    const text = await response.text();
+                    throw new Error(`Erro ao processar resposta do servidor: ${text || response.statusText}`);
+                }
+                
+                if (result.success) {
+                    fecharModalSeguro('modalFunil');
+                    await carregarFunis(); // Aguardar carregar funis antes de atualizar selects
+                    atualizarSelectFunil(); // Atualizar select do modal de etapas
+                    carregarEtapas(); // Recarregar para atualizar select
+                    alert('Funil salvo com sucesso!');
+                } else {
+                    let errorMsg = result.error || result.details || 'Erro ao salvar funil';
+                    
+                    // Se houver informações sobre funil existente, adicionar à mensagem
+                    if (result.funil_existente) {
+                        errorMsg += `\n\nFunil existente:\n- Nome: ${result.funil_existente.nome}\n- Página: ${result.funil_existente.pagina_id}\n- Status: ${result.funil_existente.ativo ? 'Ativo' : 'Inativo'}`;
+                    }
+                    
+                    throw new Error(errorMsg);
+                }
+            } catch (error) {
+                console.error('Erro ao salvar funil:', error);
+                console.error('Dados enviados:', data);
+                
+                // Mostrar mensagem de erro mais detalhada
+                let mensagemErro = error.message;
+                if (error.message.includes('Já existe um funil')) {
+                    mensagemErro += '\n\nSugestão: Use um nome diferente ou edite o funil existente.';
+                }
+                
+                alert('Erro ao salvar funil:\n\n' + mensagemErro);
+            }
+        }
+
+        // Editar funil
+        function editarFunil(id) {
+            abrirModalFunil(id);
+        }
+
+        // Deletar funil
+        async function deletarFunil(id) {
+            if (!confirm('Tem certeza que deseja desativar este funil?')) return;
+
+            try {
+                const response = await fetch(`/api/admin/funis/${id}`, {
+                    method: 'DELETE'
+                });
+
+                const result = await response.json();
+                
+                if (result.success) {
+                    await carregarFunis();
+                    atualizarSelectFunil();
+                    carregarEtapas();
+                    alert('Funil desativado com sucesso!');
+                } else {
+                    throw new Error(result.error || 'Erro ao deletar funil');
+                }
+            } catch (error) {
+                console.error('Erro ao deletar funil:', error);
+                alert('Erro ao deletar funil: ' + error.message);
+            }
+        }
+
+        // Função auxiliar para fechar modal corretamente (removendo foco antes)
+        function fecharModalSeguro(modalElementId) {
+            const modalElement = document.getElementById(modalElementId);
+            if (!modalElement) return;
+            
+            // Remover foco de qualquer elemento dentro do modal
+            const elementoFocado = modalElement.querySelector(':focus');
+            if (elementoFocado) {
+                elementoFocado.blur();
+            }
+            
+            // Também remover foco de todos os inputs dentro do modal
+            const inputs = modalElement.querySelectorAll('input, select, textarea, button');
+            inputs.forEach(input => {
+                if (document.activeElement === input) {
+                    input.blur();
+                }
+            });
+            
+            // Fechar o modal
+            const modal = bootstrap.Modal.getInstance(modalElement);
+            if (modal) {
+                modal.hide();
+            }
+        }
+        
+        // Configurar event listeners para modais fecharem corretamente
+        document.addEventListener('DOMContentLoaded', function() {
+            // Adicionar listeners para quando modais estão sendo escondidos (antes de aplicar aria-hidden)
+            const modais = ['modalFunil', 'modalEtapa', 'modalAutomatizacao'];
+            modais.forEach(modalId => {
+                const modalElement = document.getElementById(modalId);
+                if (modalElement) {
+                    // Listener para quando o modal está sendo escondido (antes de aplicar aria-hidden)
+                    modalElement.addEventListener('hide.bs.modal', function() {
+                        // Remover foco de qualquer elemento dentro do modal antes de esconder
+                        const elementoFocado = this.querySelector(':focus');
+                        if (elementoFocado) {
+                            elementoFocado.blur();
+                        }
+                        // Remover foco de todos os inputs dentro do modal
+                        const inputs = this.querySelectorAll('input, select, textarea, button');
+                        inputs.forEach(input => {
+                            if (document.activeElement === input) {
+                                input.blur();
+                            }
+                        });
+                    });
+                    
+                    // Listener para quando o modal foi completamente escondido
+                    modalElement.addEventListener('hidden.bs.modal', function() {
+                        // Garantir que nenhum elemento dentro do modal tenha foco
+                        const elementoFocado = this.querySelector(':focus');
+                        if (elementoFocado) {
+                            elementoFocado.blur();
+                        }
+                    });
+                }
+            });
+        });
+
+        // Abrir modal etapa
+        async function abrirModalEtapa(etapaId = null) {
+            etapaEditando = etapaId;
+            const modal = new bootstrap.Modal(document.getElementById('modalEtapa'));
+            const title = document.getElementById('modalEtapaTitle');
+            const form = document.getElementById('formEtapa');
+            
+            form.reset();
+            document.getElementById('etapa-id').value = '';
+            
+            // Garantir que os funis estão carregados antes de preencher o select
+            if (funis.length === 0) {
+                await carregarFunis();
+            }
+            
+            atualizarSelectFunil();
+            
+            if (etapaId) {
+                const etapa = etapas.find(e => e.id === etapaId);
+                if (etapa) {
+                    title.textContent = 'Editar Etapa';
+                    document.getElementById('etapa-id').value = etapa.id;
+                    document.getElementById('etapa-funil-id').value = etapa.funil_id;
+                    document.getElementById('etapa-etapa-id').value = etapa.etapa_id;
+                    document.getElementById('etapa-nome').value = etapa.nome;
+                    document.getElementById('etapa-ordem').value = etapa.ordem || 0;
+                    document.getElementById('etapa-cor').value = etapa.cor || '#667eea';
+                }
+            } else {
+                title.textContent = 'Nova Etapa';
+            }
+            
+            modal.show();
+        }
+
+        // Salvar etapa
+        async function salvarEtapa() {
+            const id = document.getElementById('etapa-id').value;
+            const funilId = document.getElementById('etapa-funil-id').value;
+            let etapaId = document.getElementById('etapa-etapa-id').value.trim();
+            const nome = document.getElementById('etapa-nome').value.trim();
+            const ordem = parseInt(document.getElementById('etapa-ordem').value) || 0;
+            const cor = document.getElementById('etapa-cor').value || null;
+
+            // Validação dos campos obrigatórios
+            if (!funilId) {
+                alert('Por favor, selecione um funil.');
+                document.getElementById('etapa-funil-id').focus();
+                return;
+            }
+
+            if (!etapaId) {
+                alert('Por favor, informe o ID da etapa.');
+                document.getElementById('etapa-etapa-id').focus();
+                return;
+            }
+
+            if (!nome) {
+                alert('Por favor, informe o nome da etapa.');
+                document.getElementById('etapa-nome').focus();
+                return;
+            }
+
+            // Converter etapa_id para minúsculas e remover espaços
+            etapaId = etapaId.toLowerCase().replace(/\s+/g, '_');
+            
+            // Validar formato do etapa_id (apenas letras minúsculas, números e underscore)
+            if (!/^[a-z0-9_]+$/.test(etapaId)) {
+                alert('O ID da etapa contém caracteres inválidos. Use apenas letras, números e underscore.\n\nID sugerido: ' + etapaId);
+                document.getElementById('etapa-etapa-id').value = etapaId;
+                document.getElementById('etapa-etapa-id').focus();
+                return;
+            }
+            
+            // Atualizar o campo com o valor convertido (caso o usuário tenha digitado maiúsculas)
+            const etapaIdInput = document.getElementById('etapa-etapa-id');
+            if (etapaIdInput.value.trim() !== etapaId) {
+                etapaIdInput.value = etapaId;
+            }
+
+            const data = {
+                funil_id: funilId,
+                etapa_id: etapaId,
+                nome: nome,
+                ordem: ordem,
+                cor: cor
+            };
+
+            try {
+                let response;
+                if (id) {
+                    response = await fetch(`/api/admin/etapas/${id}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(data)
+                    });
+                } else {
+                    response = await fetch('/api/admin/etapas', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(data)
+                    });
+                }
+
+                const result = await response.json();
+                
+                if (result.success) {
+                    fecharModalSeguro('modalEtapa');
+                    carregarEtapas();
+                    carregarFunis(); // Recarregar para atualizar contagem
+                    alert('Etapa salva com sucesso!');
+                } else {
+                    throw new Error(result.error || 'Erro ao salvar etapa');
+                }
+            } catch (error) {
+                console.error('Erro ao salvar etapa:', error);
+                alert('Erro ao salvar etapa: ' + error.message);
+            }
+        }
+
+        // Editar etapa
+        function editarEtapa(id) {
+            abrirModalEtapa(id);
+        }
+
+        // Deletar etapa
+        async function deletarEtapa(id) {
+            if (!confirm('Tem certeza que deseja desativar esta etapa?')) return;
+
+            try {
+                const response = await fetch(`/api/admin/etapas/${id}`, {
+                    method: 'DELETE'
+                });
+
+                const result = await response.json();
+                
+                if (result.success) {
+                    carregarEtapas();
+                    carregarFunis();
+                    alert('Etapa desativada com sucesso!');
+                } else {
+                    throw new Error(result.error || 'Erro ao deletar etapa');
+                }
+            } catch (error) {
+                console.error('Erro ao deletar etapa:', error);
+                alert('Erro ao deletar etapa: ' + error.message);
+            }
+        }
+
+        // ========== FUNÇÕES DE AUTOMAÇÕES ==========
+        
+        // Carregar automações
+        async function carregarAutomatizacoes() {
+            try {
+                const response = await fetch('/api/admin/automatizacoes');
+                const data = await response.json();
+                
+                if (data.success) {
+                    automatizacoes = data.automatizacoes || [];
+                    renderizarAutomatizacoes();
+                    renderizarMapaAutomatizacoes();
+                } else {
+                    throw new Error(data.error || 'Erro ao carregar automações');
+                }
+            } catch (error) {
+                console.error('Erro ao carregar automações:', error);
+                document.getElementById('automatizacoes-list').innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <p>Erro ao carregar automações: ${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        // Alternar entre visão em lista e mapa visual
+        function switchAutomacoesView(view) {
+            const lista = document.getElementById('automatizacoes-list');
+            const mapa = document.getElementById('automatizacoes-mapa');
+            const btnLista = document.getElementById('btnViewLista');
+            const btnMapa = document.getElementById('btnViewMapa');
+
+            if (!lista || !mapa || !btnLista || !btnMapa) return;
+
+            if (view === 'mapa') {
+                lista.style.display = 'none';
+                mapa.style.display = 'block';
+                btnLista.classList.remove('active');
+                btnMapa.classList.add('active');
+                renderizarMapaAutomatizacoes();
+            } else {
+                lista.style.display = 'block';
+                mapa.style.display = 'none';
+                btnLista.classList.add('active');
+                btnMapa.classList.remove('active');
+            }
+        }
+
+        // Renderizar automações
+        function renderizarAutomatizacoes() {
+            const container = document.getElementById('automatizacoes-list');
+            
+            if (automatizacoes.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-robot"></i>
+                        <p>Nenhuma automação cadastrada ainda.</p>
+                        <button class="btn-modern btn-primary-modern mt-3" onclick="abrirModalAutomatizacao()">
+                            <i class="fas fa-plus"></i> Criar Primeira Automação
+                        </button>
+                    </div>
+                `;
+                return;
+            }
+
+            let html = '';
+            automatizacoes.forEach(auto => {
+                const tipoRegraLabels = {
+                    'sempre': 'Sempre',
+                    'filial': 'Por Filial',
+                    'cliente': 'Por Cliente',
+                    'valor': 'Por Valor',
+                    'origem': 'Por Origem',
+                    'destino': 'Por Destino'
+                };
+                
+                const operadorLabels = {
+                    'igual': '=',
+                    'diferente': '≠',
+                    'contem': 'contém',
+                    'nao_contem': 'não contém',
+                    'maior': '>',
+                    'menor': '<'
+                };
+                
+                const triggerLabels = {
+                    'ao_entrar': '🟢 Ao entrar na etapa',
+                    'ao_sair': '🔴 Ao sair da etapa',
+                    'ao_avancar': '➡️ Ao clicar em avançar',
+                    'tempo_estagnado': '⏱️ Tempo estagnado',
+                    'campo_alterado': '📝 Campo alterado',
+                    'agendado': '📅 Agendado'
+                };
+
+                html += `
+                    <div class="funil-item">
+                        <div class="funil-header">
+                            <div class="funil-info">
+                                <div class="funil-icon" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+                                    <i class="fas fa-robot"></i>
+                                </div>
+                                <div class="funil-details">
+                                    <h4>${auto.descricao || 'Automação sem descrição'}</h4>
+                                    <p class="text-muted">
+                                        <strong>De:</strong> ${auto.etapa_origem_id} → 
+                                        <strong>Para:</strong> ${auto.etapa_destino_id} → 
+                                        <strong>Resultado:</strong> ${auto.etapa_resultado_id}
+                                    </p>
+                                    <p class="text-muted">
+                                        <strong>Gatilho:</strong> ${triggerLabels[auto.trigger] || auto.trigger || 'Ao avançar'}
+                                        ${auto.tempo_estagnado_horas ? ` (${auto.tempo_estagnado_horas}h)` : ''}
+                                        ${auto.campo_monitorar ? ` - Campo: ${auto.campo_monitorar}` : ''}
+                                        ${auto.horario_agendamento ? ` - Horário: ${auto.horario_agendamento}` : ''}
+                                    </p>
+                                    <p class="text-muted">
+                                        <strong>Tipo:</strong> ${tipoRegraLabels[auto.tipo_regra] || auto.tipo_regra}
+                                        ${auto.condicao ? ` | <strong>Condição:</strong> ${auto.condicao} ${operadorLabels[auto.operador] || auto.operador}` : ''}
+                                        ${auto.valor_condicao ? ` ${auto.valor_condicao}` : ''}
+                                    </p>
+                                </div>
+                            </div>
+                            <div class="funil-actions">
+                                <button class="btn-modern btn-secondary-modern" onclick="editarAutomatizacao('${auto.id}')">
+                                    <i class="fas fa-edit"></i> Editar
+                                </button>
+                                <button class="btn-modern btn-danger-modern" onclick="deletarAutomatizacao('${auto.id}')">
+                                    <i class="fas fa-trash"></i> Deletar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            container.innerHTML = html;
+        }
+
+        // Renderizar mapa visual de automações (canvas simples)
+        function renderizarMapaAutomatizacoes() {
+            const canvas = document.getElementById('flowCanvas');
+            if (!canvas) return;
+
+            if (!automatizacoes || automatizacoes.length === 0) {
+                canvas.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-project-diagram"></i>
+                        <p>Nenhuma automação cadastrada ainda.</p>
+                        <small class="text-muted">Crie automações para visualizar o fluxo entre etapas.</small>
+                    </div>
+                `;
+                return;
+            }
+
+            // Mapear etapas por id para mostrar nomes bonitos
+            const etapasById = {};
+            if (Array.isArray(etapas)) {
+                etapas.forEach(e => {
+                    if (e.etapa_id) {
+                        etapasById[e.etapa_id] = e;
+                    }
+                });
+            }
+
+            // Labels auxiliares para exibir informações dos blocos
+            const tipoRegraLabels = {
+                'sempre': 'Sempre',
+                'filial': 'Por Filial',
+                'cliente': 'Por Cliente',
+                'valor': 'Por Valor',
+                'origem': 'Por Origem',
+                'destino': 'Por Destino',
+                'tags': 'Por Tags/Etiquetas'
+            };
+
+            const triggerLabels = {
+                'ao_entrar': '🟢 Ao entrar',
+                'ao_sair': '🔴 Ao sair',
+                'ao_avancar': '➡️ Ao avançar',
+                'tempo_estagnado': '⏱️ Tempo parado',
+                'campo_alterado': '📝 Campo alterado',
+                'agendado': '📅 Agendado'
+            };
+
+            // Agrupar automações por funil da etapa de origem (se disponível)
+            const funisMap = {};
+            automatizacoes.forEach(auto => {
+                const etapaOrigem = etapasById[auto.etapa_origem_id];
+                const funilNome = etapaOrigem?.funil_nome || 'Outros';
+                if (!funisMap[funilNome]) {
+                    funisMap[funilNome] = {
+                        nome: funilNome,
+                        etapas: {}
+                    };
+                }
+
+                // Garantir nós de origem e destino
+                ['etapa_origem_id', 'etapa_destino_id'].forEach(key => {
+                    const etapaId = auto[key];
+                    if (!etapaId) return;
+                    if (!funisMap[funilNome].etapas[etapaId]) {
+                        const eInfo = etapasById[etapaId];
+                        funisMap[funilNome].etapas[etapaId] = {
+                            id: etapaId,
+                            nome: eInfo?.nome || etapaId,
+                            outgoing: 0,
+                            incoming: 0
+                        };
+                    }
+                });
+
+                if (auto.etapa_origem_id && funisMap[funilNome].etapas[auto.etapa_origem_id]) {
+                    funisMap[funilNome].etapas[auto.etapa_origem_id].outgoing += 1;
+                }
+                if (auto.etapa_destino_id && funisMap[funilNome].etapas[auto.etapa_destino_id]) {
+                    funisMap[funilNome].etapas[auto.etapa_destino_id].incoming += 1;
+                }
+            });
+
+            let html = '<div class="flow-row">';
+
+            Object.keys(funisMap).forEach(funilNome => {
+                const funil = funisMap[funilNome];
+                const etapasArray = Object.values(funil.etapas);
+
+                html += `
+                    <div class="flow-funnel">
+                        <div class="flow-funnel-header">
+                            <div class="flow-funnel-title">${funil.nome}</div>
+                            <span class="flow-funnel-badge">${etapasArray.length} etapa(s)</span>
+                        </div>
+                        <div class="flow-stages">
+                `;
+
+                etapasArray.sort((a, b) => a.nome.localeCompare(b.nome)).forEach(node => {
+                    html += `
+                        <div class="flow-node" onclick="abrirModalAutomatizacaoPorEtapa('${node.id}', '${node.id}')" title="Criar automação a partir desta etapa">
+                            <div class="flow-node-main">
+                                <div>${node.nome}</div>
+                                <div class="flow-node-id">${node.id}</div>
+                            </div>
+                            <div class="flow-node-badges">
+                                ${node.outgoing ? `<span class="flow-badge outgoing">saídas: ${node.outgoing}</span>` : ''}
+                                ${node.incoming ? `<span class="flow-badge incoming">entradas: ${node.incoming}</span>` : ''}
+                            </div>
+                        </div>
+                    `;
+                });
+
+                // Lista de conexões desse funil
+                const conexoes = automatizacoes.filter(a => {
+                    const etapaOrigem = etapasById[a.etapa_origem_id];
+                    const fNome = etapaOrigem?.funil_nome || 'Outros';
+                    return fNome === funilNome;
+                });
+
+                if (conexoes.length > 0) {
+                    html += `<div class="flow-connections">`;
+                    conexoes.forEach(a => {
+                        const origemNome = etapasById[a.etapa_origem_id]?.nome || a.etapa_origem_id;
+                        const destinoNome = etapasById[a.etapa_destino_id]?.nome || a.etapa_destino_id;
+                        const gatilhoLabel = triggerLabels[a.trigger] || triggerLabels['ao_avancar'];
+                        const tipoLabel = tipoRegraLabels[a.tipo_regra] || a.tipo_regra;
+                        const condicaoTexto = a.tipo_regra === 'tags'
+                            ? (a.valor_condicao || a.condicao || '')
+                            : (a.condicao || '');
+
+                        // Texto estilo IF/THEN
+                        let ifTexto = '';
+                        if (a.tipo_regra === 'sempre') {
+                            ifTexto = 'Sempre que essa transição acontecer';
+                        } else if (condicaoTexto) {
+                            ifTexto = `SE ${tipoLabel} = "${condicaoTexto}"`;
+                        } else {
+                            ifTexto = `SE condição de ${tipoLabel} for atendida`;
+                        }
+                        const thenTexto = `ENTÃO mover para "${destinoNome}"`;
+
+                        html += `
+                            <div class="flow-connection" onclick="editarAutomatizacao('${a.id}')" title="Editar automação">
+                                <span class="arrow">➜</span>
+                                <div>
+                                    <div><strong>${origemNome}</strong> → <strong>${destinoNome}</strong></div>
+                                    <div class="flow-node-badges" style="margin-top: 2px;">
+                                        <span class="flow-badge">${gatilhoLabel}</span>
+                                        <span class="flow-badge">${tipoLabel}</span>
+                                        ${condicaoTexto ? `<span class="flow-badge">${condicaoTexto}</span>` : ''}
+                                    </div>
+                                    <div style="font-size:0.7rem; color:#6b7280; margin-top:2px;">
+                                        ${ifTexto} • ${thenTexto}
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    });
+                    html += `</div>`;
+                }
+
+                html += `
+                        </div>
+                    </div>
+                `;
+            });
+
+            html += '</div>';
+            canvas.innerHTML = html;
+        }
+
+        // Expor função de troca de visão no escopo global, se necessário
+        window.switchAutomacoesView = switchAutomacoesView;
+
+        // Abrir modal de automação
+        async function abrirModalAutomatizacao(id = null) {
+            automatizacaoEditando = id;
+            const modal = new bootstrap.Modal(document.getElementById('modalAutomatizacao'));
+            const title = document.getElementById('modalAutomatizacaoTitle');
+            
+            // Carregar etapas nos selects
+            await carregarEtapasParaSelect();
+            
+            if (id) {
+                title.textContent = 'Editar Automação';
+                const auto = automatizacoes.find(a => a.id === id);
+                if (auto) {
+                    document.getElementById('automatizacao-id').value = auto.id;
+                    document.getElementById('automatizacao-etapa-origem').value = auto.etapa_origem_id;
+                    document.getElementById('automatizacao-etapa-destino').value = auto.etapa_destino_id;
+                    document.getElementById('automatizacao-tipo-regra').value = auto.tipo_regra;
+                    document.getElementById('automatizacao-condicao').value = auto.condicao || '';
+                    document.getElementById('automatizacao-operador').value = auto.operador || 'igual';
+                    document.getElementById('automatizacao-valor-condicao').value = auto.valor_condicao || '';
+                    document.getElementById('automatizacao-etapa-resultado').value = auto.etapa_resultado_id;
+                    document.getElementById('automatizacao-ordem').value = auto.ordem || 0;
+                    document.getElementById('automatizacao-descricao').value = auto.descricao || '';
+                    atualizarCamposRegra();
+                    atualizarCamposTrigger();
+                    atualizarPreviewAutomatizacao();
+                }
+            } else {
+                title.textContent = 'Nova Automação';
+                document.getElementById('formAutomatizacao').reset();
+                document.getElementById('automatizacao-id').value = '';
+                atualizarCamposRegra();
+                atualizarCamposTrigger();
+                atualizarPreviewAutomatizacao();
+            }
+            
+            modal.show();
+        }
+
+        // Carregar etapas para os selects
+        async function carregarEtapasParaSelect() {
+            try {
+                const response = await fetch('/api/admin/etapas');
+                const data = await response.json();
+                
+                if (data.success && data.etapas) {
+                    const todasEtapas = [];
+                    data.etapas.forEach(funil => {
+                        if (funil.coletas_etapas) {
+                            funil.coletas_etapas.forEach(etapa => {
+                                todasEtapas.push({
+                                    id: etapa.etapa_id,
+                                    nome: etapa.nome
+                                });
+                            });
+                        }
+                    });
+                    
+                    // Preencher selects
+                    const selects = [
+                        'automatizacao-etapa-origem',
+                        'automatizacao-etapa-destino',
+                        'automatizacao-etapa-resultado'
+                    ];
+                    
+                    selects.forEach(selectId => {
+                        const select = document.getElementById(selectId);
+                        if (select) {
+                            const currentValue = select.value;
+                            select.innerHTML = '<option value="">Selecione...</option>';
+                            todasEtapas.forEach(etapa => {
+                                const option = document.createElement('option');
+                                option.value = etapa.id;
+                                option.textContent = `${etapa.nome} (${etapa.id})`;
+                                select.appendChild(option);
+                            });
+                            if (currentValue) {
+                                select.value = currentValue;
+                            }
+                        }
+                    });
+                }
+            } catch (error) {
+                console.error('Erro ao carregar etapas para select:', error);
+            }
+        }
+
+        // Abrir modal de automação para uma etapa específica
+        async function abrirModalAutomatizacaoPorEtapa(etapaId, etapaEtapaId) {
+            // etapaId pode ser o ID interno (UUID) ou o etapa_id
+            let etapa = etapas.find(e => e.id === etapaId);
+            if (!etapa) {
+                etapa = etapas.find(e => e.etapa_id === etapaId);
+            }
+            if (!etapa) {
+                alert('Etapa não encontrada');
+                return;
+            }
+            
+            // Abrir o modal de automação
+            automatizacaoEditando = null;
+            const modal = new bootstrap.Modal(document.getElementById('modalAutomatizacao'));
+            const title = document.getElementById('modalAutomatizacaoTitle');
+            
+            // Carregar etapas nos selects
+            await carregarEtapasParaSelect();
+            
+            // Pre-preencher a etapa de origem com a etapa selecionada
+            const form = document.getElementById('formAutomatizacao');
+            if (form) form.reset();
+            document.getElementById('automatizacao-id').value = '';
+            document.getElementById('automatizacao-etapa-origem').value = etapa.etapa_id;
+            
+            // Definir trigger padrão
+            const triggerSelect = document.getElementById('automatizacao-trigger');
+            if (triggerSelect) {
+                triggerSelect.value = 'ao_avancar';
+                atualizarCamposTrigger();
+            }
+            atualizarCamposRegra();
+            
+            title.textContent = `Nova Automação - ${etapa.nome}`;
+            modal.show();
+        }
+
+        // Atualizar preview visual da automação (estilo IF/THEN) no modal
+        function atualizarPreviewAutomatizacao() {
+            const previewCard = document.getElementById('automatizacao-preview');
+            const previewText = document.getElementById('automatizacao-preview-text');
+            if (!previewCard || !previewText) return;
+
+            const origemSel = document.getElementById('automatizacao-etapa-origem');
+            const destinoSel = document.getElementById('automatizacao-etapa-destino');
+            const triggerSel = document.getElementById('automatizacao-trigger');
+            const tipoRegraSel = document.getElementById('automatizacao-tipo-regra');
+            const condInput = document.getElementById('automatizacao-condicao');
+            const valorCondInput = document.getElementById('automatizacao-valor-condicao');
+            const resultadoSel = document.getElementById('automatizacao-etapa-resultado');
+
+            const origemNome = origemSel && origemSel.value
+                ? (origemSel.options[origemSel.selectedIndex].text || origemSel.value)
+                : 'Etapa de origem';
+            const destinoNome = destinoSel && destinoSel.value
+                ? (destinoSel.options[destinoSel.selectedIndex].text || destinoSel.value)
+                : 'Etapa de destino';
+            const resultadoNome = resultadoSel && resultadoSel.value
+                ? (resultadoSel.options[resultadoSel.selectedIndex].text || resultadoSel.value)
+                : destinoNome;
+
+            const trigger = triggerSel?.value || 'ao_avancar';
+            const tipoRegra = tipoRegraSel?.value || 'sempre';
+            const condicaoTextoBase = condInput?.value || '';
+            const valorCondicao = valorCondInput?.value || '';
+            const condicaoTexto = tipoRegra === 'valor' ? valorCondicao || condicaoTextoBase : condicaoTextoBase;
+
+            const triggerLabels = {
+                'ao_entrar': '🟢 Ao entrar na etapa',
+                'ao_sair': '🔴 Ao sair da etapa',
+                'ao_avancar': '➡️ Ao clicar em avançar',
+                'tempo_estagnado': '⏱️ Quando ficar parado (tempo estagnado)',
+                'campo_alterado': '📝 Quando um campo for alterado',
+                'agendado': '📅 Em horário agendado'
+            };
+
+            const tipoRegraLabels = {
+                'sempre': 'sempre',
+                'filial': 'filial',
+                'cliente': 'cliente',
+                'valor': 'valor',
+                'origem': 'origem',
+                'destino': 'destino',
+                'tags': 'tags/etiquetas'
+            };
+
+            const triggerTexto = triggerLabels[trigger] || '➡️ Ao avançar';
+
+            let ifTexto = '';
+            if (tipoRegra === 'sempre' || !tipoRegra) {
+                ifTexto = 'Sempre que essa transição acontecer';
+            } else if (condicaoTexto) {
+                ifTexto = `SE ${tipoRegraLabels[tipoRegra] || tipoRegra} = "${condicaoTexto}"`;
+            } else {
+                ifTexto = `SE a condição de ${tipoRegraLabels[tipoRegra] || tipoRegra} for atendida`;
+            }
+
+            const thenTexto = `ENTÃO mover da etapa "${origemNome}" para "${resultadoNome}"`;
+
+            previewText.innerHTML = `
+                <div><strong>${triggerTexto}</strong></div>
+                <div style="margin-top:2px;">${ifTexto}</div>
+                <div style="margin-top:2px;">${thenTexto}</div>
+            `;
+
+            previewCard.style.display = 'block';
+        }
+
+        // Atualizar campos baseado no trigger selecionado
+        function atualizarCamposTrigger() {
+            const trigger = document.getElementById('automatizacao-trigger')?.value;
+            const camposTempo = document.getElementById('campos-trigger-tempo');
+            const camposCampo = document.getElementById('campos-trigger-campo');
+            const camposAgendamento = document.getElementById('campos-trigger-agendamento');
+            
+            // Esconder todos os campos específicos
+            if (camposTempo) camposTempo.style.display = 'none';
+            if (camposCampo) camposCampo.style.display = 'none';
+            if (camposAgendamento) camposAgendamento.style.display = 'none';
+            
+            // Mostrar campos específicos do trigger
+            if (trigger === 'tempo_estagnado' && camposTempo) {
+                camposTempo.style.display = 'block';
+            } else if (trigger === 'campo_alterado' && camposCampo) {
+                camposCampo.style.display = 'block';
+            } else if (trigger === 'agendado' && camposAgendamento) {
+                camposAgendamento.style.display = 'block';
+            }
+
+            atualizarPreviewAutomatizacao();
+        }
+
+        // Atualizar campos de regra baseado no tipo
+        function atualizarCamposRegra() {
+            const tipoRegra = document.getElementById('automatizacao-tipo-regra').value;
+            const camposCondicao = document.getElementById('campos-condicao');
+            const campoValorCondicao = document.getElementById('campo-valor-condicao');
+            const labelCondicao = document.getElementById('label-condicao');
+            const helpCondicao = document.getElementById('help-condicao');
+            const campoCondicao = document.getElementById('automatizacao-condicao');
+            
+            if (tipoRegra === 'sempre') {
+                camposCondicao.style.display = 'none';
+            } else {
+                camposCondicao.style.display = 'block';
+                
+                if (tipoRegra === 'valor') {
+                    campoValorCondicao.style.display = 'block';
+                    labelCondicao.textContent = 'Operador';
+                    helpCondicao.textContent = 'Operador de comparação numérica';
+                } else if (tipoRegra === 'tags') {
+                    campoValorCondicao.style.display = 'none';
+                    labelCondicao.textContent = 'Tag/Etiqueta';
+                    helpCondicao.textContent = 'Selecione na lista ou digite exatamente a tag/etiqueta (adiantamento, saldo, diaria_descarga_ajudante, pedagio, gnre). Verifica em tipos_carroceria, tipos_veiculo, contas_pagar_tipo e observacoes.';
+                    if (campoCondicao) {
+                        campoCondicao.placeholder = 'Ex: adiantamento (use a lista para evitar erro de digitação)';
+                    }
+                } else {
+                    campoValorCondicao.style.display = 'none';
+                    labelCondicao.textContent = 'Condição';
+                    helpCondicao.textContent = tipoRegra === 'filial' 
+                        ? 'Nome da filial (ex: CABO, PARATIBE)' 
+                        : tipoRegra === 'cliente' 
+                        ? 'Nome do cliente'
+                        : tipoRegra === 'origem'
+                        ? 'Cidade de origem'
+                        : tipoRegra === 'destino'
+                        ? 'Cidade de destino'
+                        : 'Valor para comparar';
+                }
+            }
+
+            atualizarPreviewAutomatizacao();
+        }
+
+        // Salvar automação
+        async function salvarAutomatizacao() {
+            try {
+                const form = document.getElementById('formAutomatizacao');
+                if (!form.checkValidity()) {
+                    form.reportValidity();
+                    return;
+                }
+
+                const tipoRegra = document.getElementById('automatizacao-tipo-regra').value;
+                
+                const trigger = document.getElementById('automatizacao-trigger')?.value;
+                const tempoEstagnado = document.getElementById('automatizacao-tempo-estagnado')?.value;
+                const campoMonitorar = document.getElementById('automatizacao-campo-monitorar')?.value;
+                const horario = document.getElementById('automatizacao-horario')?.value;
+                const diasSemana = Array.from(document.getElementById('automatizacao-dias-semana')?.selectedOptions || [])
+                    .map(opt => parseInt(opt.value));
+                
+                const dados = {
+                    etapa_origem_id: document.getElementById('automatizacao-etapa-origem').value,
+                    etapa_destino_id: document.getElementById('automatizacao-etapa-destino').value,
+                    tipo_regra: tipoRegra,
+                    // Para tags, usar valor_condicao ao invés de condicao
+                    condicao: tipoRegra === 'tags' ? null : (document.getElementById('automatizacao-condicao').value || null),
+                    valor_condicao: tipoRegra === 'tags' ? document.getElementById('automatizacao-condicao').value || null : (document.getElementById('automatizacao-valor-condicao').value || null),
+                    operador: document.getElementById('automatizacao-operador').value,
+                    etapa_resultado_id: document.getElementById('automatizacao-etapa-resultado').value,
+                    ordem: parseInt(document.getElementById('automatizacao-ordem').value) || 0,
+                    descricao: document.getElementById('automatizacao-descricao').value || null,
+                    // ✅ NOVO: Campos de trigger
+                    trigger: trigger || 'ao_avancar', // Default: ao avançar (comportamento atual)
+                    tempo_estagnado_horas: trigger === 'tempo_estagnado' && tempoEstagnado ? parseInt(tempoEstagnado) : null,
+                    campo_monitorar: trigger === 'campo_alterado' ? campoMonitorar : null,
+                    horario_agendamento: trigger === 'agendado' ? horario : null,
+                    dias_semana: trigger === 'agendado' && diasSemana.length > 0 ? diasSemana : null
+                };
+
+                const id = document.getElementById('automatizacao-id').value;
+                const url = id ? `/api/admin/automatizacoes/${id}` : '/api/admin/automatizacoes';
+                const method = id ? 'PUT' : 'POST';
+
+                const response = await fetch(url, {
+                    method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(dados)
+                });
+
+                const result = await response.json();
+                
+                if (result.success) {
+                    fecharModalSeguro('modalAutomatizacao');
+                    carregarAutomatizacoes();
+                    alert('Automação salva com sucesso!');
+                } else {
+                    throw new Error(result.error || 'Erro ao salvar automação');
+                }
+            } catch (error) {
+                console.error('Erro ao salvar automação:', error);
+                alert('Erro ao salvar automação: ' + error.message);
+            }
+        }
+
+        // Editar automação
+        function editarAutomatizacao(id) {
+            abrirModalAutomatizacao(id);
+        }
+
+        // Deletar automação
+        async function deletarAutomatizacao(id) {
+            if (!confirm('Tem certeza que deseja deletar esta automação?')) return;
+
+            try {
+                const response = await fetch(`/api/admin/automatizacoes/${id}`, {
+                    method: 'DELETE'
+                });
+
+                const result = await response.json();
+                
+                if (result.success) {
+                    carregarAutomatizacoes();
+                    alert('Automação deletada com sucesso!');
+                } else {
+                    throw new Error(result.error || 'Erro ao deletar automação');
+                }
+            } catch (error) {
+                console.error('Erro ao deletar automação:', error);
+                alert('Erro ao deletar automação: ' + error.message);
+            }
+        }
+
+        // Garantir que switchTab está disponível globalmente
+        // A função switchTab já foi definida anteriormente e já inclui a lógica de automações
+
+        // Inicializar
+        if (verificarAuth()) {
+            carregarFunis();
+            carregarEtapas();
+        }
+    </script>
+</body>
+</html>
+

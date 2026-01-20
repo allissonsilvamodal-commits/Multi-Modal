@@ -6331,6 +6331,976 @@ app.post('/api/motoristas/solicitacoes/:solicitacaoId/atender', async (req, res)
   }
 });
 
+// ========== ENDPOINT PARA CRIAR TABELAS DE FUNIS E ETAPAS ==========
+app.post('/api/admin/criar-tabelas-funis-etapas', requireAuth, async (req, res) => {
+  try {
+    // Verificar se é admin
+    const userData = req.session.user || JSON.parse(req.headers['x-user-data'] || '{}');
+    if (!userData.isAdmin && userData.role !== 'admin') {
+      return res.status(403).json({ success: false, error: 'Acesso negado. Apenas administradores.' });
+    }
+
+    console.log('🔧 Criando tabelas de funis e etapas...');
+
+    // SQL para criar tabela de funis
+    const createFunilsSQL = `
+CREATE TABLE IF NOT EXISTS coletas_funis (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  pagina_id TEXT NOT NULL,
+  nome TEXT NOT NULL,
+  icone TEXT DEFAULT 'fa-cogs',
+  ordem INTEGER DEFAULT 0,
+  ativo BOOLEAN DEFAULT true,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(pagina_id, nome)
+);
+
+CREATE INDEX IF NOT EXISTS idx_coletas_funis_pagina ON coletas_funis(pagina_id);
+CREATE INDEX IF NOT EXISTS idx_coletas_funis_ativo ON coletas_funis(ativo);
+    `.trim();
+
+    // SQL para criar tabela de etapas
+    const createEtapasSQL = `
+CREATE TABLE IF NOT EXISTS coletas_etapas (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  funil_id UUID NOT NULL REFERENCES coletas_funis(id) ON DELETE CASCADE,
+  etapa_id TEXT NOT NULL UNIQUE,
+  nome TEXT NOT NULL,
+  ordem INTEGER DEFAULT 0,
+  ativo BOOLEAN DEFAULT true,
+  cor TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(funil_id, etapa_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_coletas_etapas_funil ON coletas_etapas(funil_id);
+CREATE INDEX IF NOT EXISTS idx_coletas_etapas_ativo ON coletas_etapas(ativo);
+CREATE INDEX IF NOT EXISTS idx_coletas_etapas_etapa_id ON coletas_etapas(etapa_id);
+    `.trim();
+
+    // Ler arquivo SQL completo
+    const fs = require('fs');
+    const path = require('path');
+    const sqlPath = path.join(__dirname, 'scripts', 'sql', 'criar-tabelas-funis-etapas.sql');
+    
+    let sqlCompleto = '';
+    if (fs.existsSync(sqlPath)) {
+      sqlCompleto = fs.readFileSync(sqlPath, 'utf8');
+    } else {
+      sqlCompleto = createFunilsSQL + '\n\n' + createEtapasSQL;
+    }
+
+    // Tentar executar via RPC
+    try {
+      // Primeiro, tentar criar a função RPC se não existir
+      const createFunctionSQL = `
+CREATE OR REPLACE FUNCTION exec_sql(sql_query text)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+  EXECUTE sql_query;
+END;
+$$;
+      `.trim();
+
+      // Tentar criar função RPC (pode falhar se não tiver permissão)
+      try {
+        await supabaseAdmin.rpc('exec_sql', { sql_query: createFunctionSQL });
+      } catch (funcError) {
+        // Se falhar, a função pode já existir ou não ter permissão
+        console.log('ℹ️ Função RPC pode já existir ou não ter permissão para criar');
+      }
+
+      // Executar SQL completo
+      const { error: sqlError } = await supabaseAdmin.rpc('exec_sql', {
+        sql_query: sqlCompleto
+      });
+
+      if (sqlError) {
+        // Se a função não existe, fornecer SQL completo
+        if (sqlError.message?.includes('function') && sqlError.message?.includes('does not exist')) {
+          throw new Error('FUNCAO_RPC_NAO_EXISTE');
+        }
+        throw sqlError;
+      }
+
+      // Inserir dados iniciais
+      await inserirDadosIniciaisFunis();
+
+      return res.json({
+        success: true,
+        message: 'Tabelas criadas com sucesso!'
+      });
+    } catch (rpcError) {
+      console.warn('⚠️ RPC não disponível ou erro ao executar');
+      
+      // Se for erro de função não existir, fornecer SQL completo incluindo criação da função
+      if (rpcError.message === 'FUNCAO_RPC_NAO_EXISTE' || rpcError.message?.includes('function') && rpcError.message?.includes('does not exist')) {
+        const sqlComFuncao = `
+-- Criar função RPC primeiro
+CREATE OR REPLACE FUNCTION exec_sql(sql_query text)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+  EXECUTE sql_query;
+END;
+$$;
+
+-- Depois executar o SQL das tabelas
+${sqlCompleto}
+        `.trim();
+        
+        return res.json({
+          success: false,
+          error: 'Função RPC não existe. Execute o SQL completo no Supabase Dashboard.',
+          sql: sqlComFuncao,
+          arquivo_sql: 'scripts/sql/criar-tabelas-funis-etapas.sql',
+          instrucoes: [
+            '1. Acesse: https://supabase.com/dashboard',
+            '2. Selecione seu projeto',
+            '3. Vá em: SQL Editor > New Query',
+            '4. Cole o SQL fornecido abaixo',
+            '5. Execute (Run ou Ctrl+Enter)',
+            '6. Aguarde confirmação de sucesso'
+          ]
+        });
+      }
+      
+      return res.json({
+        success: false,
+        error: 'RPC não disponível. Execute o SQL manualmente no Supabase Dashboard.',
+        sql: sqlCompleto,
+        arquivo_sql: 'scripts/sql/criar-tabelas-funis-etapas.sql',
+        instrucoes: [
+          '1. Acesse: https://supabase.com/dashboard',
+          '2. Selecione seu projeto',
+          '3. Vá em: SQL Editor > New Query',
+          '4. Cole o SQL fornecido',
+          '5. Execute (Run ou Ctrl+Enter)'
+        ],
+        details: rpcError.message
+      });
+    }
+  } catch (error) {
+    console.error('❌ Erro ao criar tabelas:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Erro ao criar tabelas',
+      details: error.message || error.toString()
+    });
+  }
+});
+
+async function inserirDadosIniciaisFunis() {
+  try {
+    // Verificar se já existem dados
+    const { data: funisExistentes } = await supabaseAdmin
+      .from('coletas_funis')
+      .select('id')
+      .eq('pagina_id', 'operacao')
+      .limit(1);
+
+    if (funisExistentes && funisExistentes.length > 0) {
+      console.log('✅ Dados iniciais já existem');
+      return;
+    }
+
+    // Criar sub-funis
+    const subFunis = [
+      { nome: 'Contratação', icone: 'fa-file-contract', ordem: 1 },
+      { nome: 'Documentação', icone: 'fa-file-alt', ordem: 2 },
+      { nome: 'Monitoramento', icone: 'fa-eye', ordem: 3 }
+    ];
+
+    for (const subFunil of subFunis) {
+      const { data: criado } = await supabaseAdmin
+        .from('coletas_funis')
+        .insert({
+          pagina_id: 'operacao',
+          nome: subFunil.nome,
+          icone: subFunil.icone,
+          ordem: subFunil.ordem,
+          ativo: true
+        })
+        .select()
+        .single();
+
+      if (criado) {
+        // Criar etapas
+        let etapas = [];
+        if (subFunil.nome === 'Contratação') {
+          etapas = [
+            { etapa_id: 'contratacao_jaboatao', nome: 'Jaboatão', ordem: 1 },
+            { etapa_id: 'contratacao_usina', nome: 'Usina', ordem: 2 },
+            { etapa_id: 'contratacao_paraiba', nome: 'Paraíba', ordem: 3 },
+            { etapa_id: 'contratacao_bahia', nome: 'Bahia', ordem: 4 },
+            { etapa_id: 'contratacao_ambev', nome: 'Ambev', ordem: 5 },
+            { etapa_id: 'contratacao_cabo', nome: 'Cabo', ordem: 6 },
+            { etapa_id: 'contratacao_paratibe', nome: 'Paratibe', ordem: 7 }
+          ];
+        } else if (subFunil.nome === 'Documentação') {
+          etapas = [
+            { etapa_id: 'documentacao_adiantamento', nome: 'Adiantamento', ordem: 1 },
+            { etapa_id: 'documentacao_saldo', nome: 'Saldo', ordem: 2 },
+            { etapa_id: 'documentacao_diaria', nome: 'Diária', ordem: 3 }
+          ];
+        } else if (subFunil.nome === 'Monitoramento') {
+          etapas = [
+            { etapa_id: 'monitoramento_iniciar', nome: 'Iniciar Monitoramento', ordem: 1 },
+            { etapa_id: 'monitoramento_acompanhar', nome: 'Acompanhar Operação', ordem: 2 },
+            { etapa_id: 'monitoramento_finalizar', nome: 'Finalizar Operação', ordem: 3 }
+          ];
+        }
+
+        for (const etapa of etapas) {
+          await supabaseAdmin
+            .from('coletas_etapas')
+            .upsert({
+              funil_id: criado.id,
+              etapa_id: etapa.etapa_id,
+              nome: etapa.nome,
+              ordem: etapa.ordem,
+              ativo: true
+            }, { onConflict: 'etapa_id' });
+        }
+      }
+    }
+  } catch (error) {
+    console.warn('⚠️ Erro ao inserir dados iniciais:', error.message);
+  }
+}
+
+// ========== ENDPOINTS PARA GERENCIAR FUNIS E ETAPAS ==========
+// GET - Buscar funis formatados para o kanban (público para o frontend)
+app.get('/api/coletas/funis-kanban', async (req, res) => {
+  try {
+    const { pagina_id } = req.query;
+    
+    // Buscar funis ativos
+    let query = supabaseAdmin
+      .from('coletas_funis')
+      .select('*, coletas_etapas(*)')
+      .eq('ativo', true)
+      .order('ordem', { ascending: true });
+    
+    if (pagina_id) {
+      query = query.eq('pagina_id', pagina_id);
+    }
+    
+    const { data: funis, error } = await query;
+    
+    if (error) {
+      // Se a tabela não existe, retornar array vazio
+      if (error.code === '42P01' || error.message?.includes('does not exist')) {
+        return res.json({ success: true, funis: [], etapas: [] });
+      }
+      throw error;
+    }
+    
+    // Formatar dados para o kanban
+    const funisFormatados = (funis || []).map(funil => ({
+      id: funil.id,
+      pagina_id: funil.pagina_id,
+      nome: funil.nome,
+      icone: funil.icone,
+      ordem: funil.ordem,
+      etapas: (funil.coletas_etapas || [])
+        .filter(e => e.ativo)
+        .sort((a, b) => a.ordem - b.ordem)
+        .map(etapa => ({
+          id: etapa.etapa_id,
+          nome: etapa.nome,
+          ordem: etapa.ordem,
+          cor: etapa.cor
+        }))
+    }));
+    
+    // Extrair todas as etapas únicas
+    const todasEtapas = [];
+    (funis || []).forEach(funil => {
+      if (funil.coletas_etapas) {
+        funil.coletas_etapas
+          .filter(e => e.ativo)
+          .forEach(etapa => {
+            if (!todasEtapas.find(e => e.id === etapa.etapa_id)) {
+              todasEtapas.push({
+                id: etapa.etapa_id,
+                nome: etapa.nome,
+                ordem: etapa.ordem,
+                cor: etapa.cor
+              });
+            }
+          });
+      }
+    });
+    
+    res.json({ 
+      success: true, 
+      funis: funisFormatados,
+      etapas: todasEtapas.sort((a, b) => a.ordem - b.ordem)
+    });
+  } catch (error) {
+    console.error('❌ Erro ao buscar funis para kanban:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Erro ao buscar funis',
+      details: error.message || error.toString()
+    });
+  }
+});
+
+// GET - Listar todos os funis de uma página (admin)
+app.get('/api/admin/funis', requireAuth, async (req, res) => {
+  try {
+    const { pagina_id } = req.query;
+    
+    // Verificar se a tabela existe
+    let query = supabaseAdmin
+      .from('coletas_funis')
+      .select('*, coletas_etapas(*)')
+      .eq('ativo', true)
+      .order('ordem', { ascending: true });
+    
+    if (pagina_id) {
+      query = query.eq('pagina_id', pagina_id);
+    }
+    
+    const { data, error } = await query;
+    
+    if (error) {
+      // Se a tabela não existe, retornar array vazio com mensagem
+      if (error.code === '42P01' || error.message?.includes('does not exist') || error.message?.includes('relation') && error.message?.includes('does not exist')) {
+        console.warn('⚠️ Tabela coletas_funis não existe ainda. Execute a migration primeiro.');
+        return res.json({ 
+          success: true, 
+          funis: [],
+          message: 'Tabela não encontrada. Execute a migration: node scripts/migrations/criar-tabelas-funis-etapas.js'
+        });
+      }
+      throw error;
+    }
+    
+    res.json({ success: true, funis: data || [] });
+  } catch (error) {
+    console.error('❌ Erro ao listar funis:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Erro ao listar funis',
+      details: error.message || error.toString(),
+      hint: 'Verifique se as tabelas foram criadas executando: node scripts/migrations/criar-tabelas-funis-etapas.js'
+    });
+  }
+});
+
+// POST - Criar novo funil
+app.post('/api/admin/funis', requireAuth, async (req, res) => {
+  try {
+    const { pagina_id, nome, icone, ordem } = req.body;
+    
+    if (!pagina_id || !nome) {
+      return res.status(400).json({ success: false, error: 'pagina_id e nome são obrigatórios' });
+    }
+    
+    const { data, error } = await supabaseAdmin
+      .from('coletas_funis')
+      .insert({
+        pagina_id,
+        nome,
+        icone: icone || 'fa-cogs',
+        ordem: ordem || 0,
+        ativo: true
+      })
+      .select()
+      .single();
+    
+    if (error) {
+      console.error('❌ Erro do Supabase ao criar funil:', error);
+      
+      if (error.code === '42P01' || error.message?.includes('does not exist') || (error.message?.includes('relation') && error.message?.includes('does not exist'))) {
+        return res.status(500).json({ 
+          success: false, 
+          error: 'Tabela não encontrada',
+          details: 'Execute a migration primeiro: node scripts/migrations/criar-tabelas-funis-etapas.js',
+          code: error.code
+        });
+      }
+      
+      // Erro de constraint (ex: UNIQUE violation)
+      if (error.code === '23505') {
+        // Tentar buscar o funil existente para mostrar mais informações
+        try {
+          const { data: funilExistente } = await supabaseAdmin
+            .from('coletas_funis')
+            .select('id, nome, pagina_id, ativo')
+            .eq('pagina_id', pagina_id)
+            .ilike('nome', nome.trim())
+            .limit(1)
+            .single();
+          
+          if (funilExistente) {
+            return res.status(400).json({ 
+              success: false, 
+              error: `Já existe um funil com o nome "${funilExistente.nome}" na página "${pagina_id}"`,
+              details: `ID do funil existente: ${funilExistente.id}`,
+              code: error.code,
+              funil_existente: funilExistente
+            });
+          }
+        } catch (e) {
+          // Se não conseguir buscar, usar mensagem genérica
+        }
+        
+        return res.status(400).json({ 
+          success: false, 
+          error: `Já existe um funil com o nome "${nome}" na página "${pagina_id}"`,
+          details: 'Cada página pode ter apenas um funil com cada nome. Use um nome diferente ou edite o funil existente.',
+          code: error.code,
+          hint: error.hint
+        });
+      }
+      
+      throw error;
+    }
+    
+    res.json({ success: true, funil: data });
+  } catch (error) {
+    console.error('❌ Erro ao criar funil:', error);
+    console.error('❌ Stack trace:', error.stack);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Erro ao criar funil',
+      details: error.message || error.toString(),
+      code: error.code,
+      hint: error.hint
+    });
+  }
+});
+
+// PUT - Atualizar funil
+app.put('/api/admin/funis/:id', requireAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { nome, icone, ordem, ativo } = req.body;
+    
+    const updateData = {};
+    if (nome !== undefined) updateData.nome = nome;
+    if (icone !== undefined) updateData.icone = icone;
+    if (ordem !== undefined) updateData.ordem = ordem;
+    if (ativo !== undefined) updateData.ativo = ativo;
+    updateData.updated_at = new Date().toISOString();
+    
+    const { data, error } = await supabaseAdmin
+      .from('coletas_funis')
+      .update(updateData)
+      .eq('id', id)
+      .select()
+      .single();
+    
+    if (error) throw error;
+    
+    res.json({ success: true, funil: data });
+  } catch (error) {
+    console.error('❌ Erro ao atualizar funil:', error);
+    res.status(500).json({ success: false, error: 'Erro ao atualizar funil' });
+  }
+});
+
+// DELETE - Deletar funil (soft delete)
+app.delete('/api/admin/funis/:id', requireAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const { error } = await supabaseAdmin
+      .from('coletas_funis')
+      .update({ ativo: false, updated_at: new Date().toISOString() })
+      .eq('id', id);
+    
+    if (error) throw error;
+    
+    res.json({ success: true, message: 'Funil desativado com sucesso' });
+  } catch (error) {
+    console.error('❌ Erro ao deletar funil:', error);
+    res.status(500).json({ success: false, error: 'Erro ao deletar funil' });
+  }
+});
+
+// GET - Listar todas as etapas (retorna funis com etapas aninhadas)
+app.get('/api/admin/etapas', requireAuth, async (req, res) => {
+  try {
+    const { pagina_id } = req.query;
+    
+    // Verificar se a tabela existe
+    let query = supabaseAdmin
+      .from('coletas_funis')
+      .select('*, coletas_etapas(*)')
+      .eq('ativo', true)
+      .order('ordem', { ascending: true });
+    
+    if (pagina_id) {
+      query = query.eq('pagina_id', pagina_id);
+    }
+    
+    const { data, error } = await query;
+    
+    if (error) {
+      // Se a tabela não existe, retornar array vazio com mensagem
+      if (error.code === '42P01' || error.message?.includes('does not exist') || error.message?.includes('relation') && error.message?.includes('does not exist')) {
+        console.warn('⚠️ Tabela coletas_funis não existe ainda. Execute a migration primeiro.');
+        return res.json({ 
+          success: true, 
+          etapas: [],
+          message: 'Tabela não encontrada. Execute a migration: node scripts/migrations/criar-tabelas-funis-etapas.js'
+        });
+      }
+      throw error;
+    }
+    
+    res.json({ success: true, etapas: data || [] });
+  } catch (error) {
+    console.error('❌ Erro ao listar etapas:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Erro ao listar etapas',
+      details: error.message || error.toString(),
+      hint: 'Verifique se as tabelas foram criadas executando: node scripts/migrations/criar-tabelas-funis-etapas.js'
+    });
+  }
+});
+
+// POST - Criar nova etapa
+app.post('/api/admin/etapas', requireAuth, async (req, res) => {
+  try {
+    const { funil_id, etapa_id, nome, ordem, cor } = req.body;
+    
+    if (!funil_id || !etapa_id || !nome) {
+      return res.status(400).json({ success: false, error: 'funil_id, etapa_id e nome são obrigatórios' });
+    }
+    
+    const { data, error } = await supabaseAdmin
+      .from('coletas_etapas')
+      .insert({
+        funil_id,
+        etapa_id,
+        nome,
+        ordem: ordem || 0,
+        cor: cor || null,
+        ativo: true
+      })
+      .select()
+      .single();
+    
+    if (error) throw error;
+    
+    res.json({ success: true, etapa: data });
+  } catch (error) {
+    console.error('❌ Erro ao criar etapa:', error);
+    res.status(500).json({ success: false, error: 'Erro ao criar etapa' });
+  }
+});
+
+// PUT - Atualizar etapa
+app.put('/api/admin/etapas/:id', requireAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { nome, ordem, cor, ativo } = req.body;
+    
+    const updateData = {};
+    if (nome !== undefined) updateData.nome = nome;
+    if (ordem !== undefined) updateData.ordem = ordem;
+    if (cor !== undefined) updateData.cor = cor;
+    if (ativo !== undefined) updateData.ativo = ativo;
+    updateData.updated_at = new Date().toISOString();
+    
+    const { data, error } = await supabaseAdmin
+      .from('coletas_etapas')
+      .update(updateData)
+      .eq('id', id)
+      .select()
+      .single();
+    
+    if (error) throw error;
+    
+    res.json({ success: true, etapa: data });
+  } catch (error) {
+    console.error('❌ Erro ao atualizar etapa:', error);
+    res.status(500).json({ success: false, error: 'Erro ao atualizar etapa' });
+  }
+});
+
+// DELETE - Deletar etapa (soft delete)
+app.delete('/api/admin/etapas/:id', requireAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const { error } = await supabaseAdmin
+      .from('coletas_etapas')
+      .update({ ativo: false, updated_at: new Date().toISOString() })
+      .eq('id', id);
+    
+    if (error) throw error;
+    
+    res.json({ success: true, message: 'Etapa desativada com sucesso' });
+  } catch (error) {
+    console.error('❌ Erro ao deletar etapa:', error);
+    res.status(500).json({ success: false, error: 'Erro ao deletar etapa' });
+  }
+});
+
+// ========== ENDPOINTS PARA GERENCIAR AUTOMAÇÕES DE ETAPAS ==========
+// GET - Listar automações
+app.get('/api/admin/automatizacoes', requireAuth, async (req, res) => {
+  try {
+    const { etapa_origem_id, etapa_destino_id } = req.query;
+    
+    let query = supabaseAdmin
+      .from('coletas_etapas_automatizacoes')
+      .select('*')
+      .eq('ativo', true)
+      .order('ordem', { ascending: true });
+    
+    if (etapa_origem_id) {
+      query = query.eq('etapa_origem_id', etapa_origem_id);
+    }
+    if (etapa_destino_id) {
+      query = query.eq('etapa_destino_id', etapa_destino_id);
+    }
+    
+    const { data, error } = await query;
+    
+    if (error) {
+      if (error.code === '42P01' || error.message?.includes('does not exist')) {
+        return res.json({ success: true, automatizacoes: [], message: 'Tabela não encontrada. Execute a migration primeiro.' });
+      }
+      throw error;
+    }
+    
+    res.json({ success: true, automatizacoes: data || [] });
+  } catch (error) {
+    console.error('❌ Erro ao listar automações:', error);
+    res.status(500).json({ success: false, error: 'Erro ao listar automações' });
+  }
+});
+
+// POST - Criar automação
+app.post('/api/admin/automatizacoes', requireAuth, async (req, res) => {
+  try {
+    const {
+      etapa_origem_id,
+      etapa_destino_id,
+      tipo_regra,
+      condicao,
+      valor_condicao,
+      operador,
+      etapa_resultado_id,
+      ordem,
+      descricao,
+      // 🆕 Campos de gatilho (trigger)
+      trigger,
+      tempo_estagnado_horas,
+      campo_monitorar,
+      horario_agendamento,
+      dias_semana
+    } = req.body;
+    
+    if (!etapa_origem_id || !etapa_destino_id || !tipo_regra || !etapa_resultado_id) {
+      return res.status(400).json({ success: false, error: 'etapa_origem_id, etapa_destino_id, tipo_regra e etapa_resultado_id são obrigatórios' });
+    }
+    
+    const { data, error } = await supabaseAdmin
+      .from('coletas_etapas_automatizacoes')
+      .insert({
+        etapa_origem_id,
+        etapa_destino_id,
+        tipo_regra,
+        condicao: condicao || null,
+        valor_condicao: valor_condicao || null,
+        operador: operador || 'igual',
+        etapa_resultado_id,
+        ordem: ordem || 0,
+        descricao: descricao || null,
+        ativo: true,
+        // 🆕 Salvar gatilhos (com defaults seguros)
+        trigger: trigger || 'ao_avancar',
+        tempo_estagnado_horas: tempo_estagnado_horas || null,
+        campo_monitorar: campo_monitorar || null,
+        horario_agendamento: horario_agendamento || null,
+        dias_semana: dias_semana || null
+      })
+      .select()
+      .single();
+    
+    if (error) throw error;
+    
+    res.json({ success: true, automatizacao: data });
+  } catch (error) {
+    console.error('❌ Erro ao criar automação:', error);
+    console.error('📦 Payload recebido:', JSON.stringify(req.body, null, 2));
+    res.status(500).json({ success: false, error: 'Erro ao criar automação', details: error.message });
+  }
+});
+
+// PUT - Atualizar automação
+app.put('/api/admin/automatizacoes/:id', requireAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const {
+      etapa_origem_id,
+      etapa_destino_id,
+      tipo_regra,
+      condicao,
+      valor_condicao,
+      operador,
+      etapa_resultado_id,
+      ordem,
+      descricao,
+      ativo,
+      // 🆕 Campos de gatilho (trigger)
+      trigger,
+      tempo_estagnado_horas,
+      campo_monitorar,
+      horario_agendamento,
+      dias_semana
+    } = req.body;
+    
+    const updateData = { updated_at: new Date().toISOString() };
+    if (etapa_origem_id !== undefined) updateData.etapa_origem_id = etapa_origem_id;
+    if (etapa_destino_id !== undefined) updateData.etapa_destino_id = etapa_destino_id;
+    if (tipo_regra !== undefined) updateData.tipo_regra = tipo_regra;
+    if (condicao !== undefined) updateData.condicao = condicao;
+    if (valor_condicao !== undefined) updateData.valor_condicao = valor_condicao;
+    if (operador !== undefined) updateData.operador = operador;
+    if (etapa_resultado_id !== undefined) updateData.etapa_resultado_id = etapa_resultado_id;
+    if (ordem !== undefined) updateData.ordem = ordem;
+    if (descricao !== undefined) updateData.descricao = descricao;
+    if (ativo !== undefined) updateData.ativo = ativo;
+    // 🆕 Atualizar campos de gatilho, se enviados
+    if (trigger !== undefined) updateData.trigger = trigger;
+    if (tempo_estagnado_horas !== undefined) updateData.tempo_estagnado_horas = tempo_estagnado_horas;
+    if (campo_monitorar !== undefined) updateData.campo_monitorar = campo_monitorar;
+    if (horario_agendamento !== undefined) updateData.horario_agendamento = horario_agendamento;
+    if (dias_semana !== undefined) updateData.dias_semana = dias_semana;
+    
+    const { data, error } = await supabaseAdmin
+      .from('coletas_etapas_automatizacoes')
+      .update(updateData)
+      .eq('id', id)
+      .select()
+      .single();
+    
+    if (error) throw error;
+    
+    res.json({ success: true, automatizacao: data });
+  } catch (error) {
+    console.error('❌ Erro ao atualizar automação:', error);
+    console.error('📦 Payload recebido (update):', JSON.stringify(req.body, null, 2));
+    res.status(500).json({ success: false, error: 'Erro ao atualizar automação', details: error.message });
+  }
+});
+
+// DELETE - Deletar automação (soft delete)
+app.delete('/api/admin/automatizacoes/:id', requireAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const { error } = await supabaseAdmin
+      .from('coletas_etapas_automatizacoes')
+      .update({ ativo: false, updated_at: new Date().toISOString() })
+      .eq('id', id);
+    
+    if (error) throw error;
+    
+    res.json({ success: true, message: 'Automação desativada com sucesso' });
+  } catch (error) {
+    console.error('❌ Erro ao deletar automação:', error);
+    res.status(500).json({ success: false, error: 'Erro ao deletar automação' });
+  }
+});
+
+/**
+ * Executa automações quando uma coleta muda de etapa
+ * @param {string} coletaId - ID da coleta
+ * @param {string} etapaOrigem - Etapa de origem
+ * @param {string} etapaDestino - Etapa de destino
+ * @param {object} coletaData - Dados da coleta (filial, cliente, valor, etc.)
+ * @returns {Promise<string|null>} - ID da etapa resultante ou null se nenhuma automação aplicou
+ */
+async function executarAutomatizacoes(coletaId, etapaOrigem, etapaDestino, coletaData) {
+  try {
+    // Buscar automações ativas para esta transição
+    const { data: automatizacoes, error } = await supabaseAdmin
+      .from('coletas_etapas_automatizacoes')
+      .select('*')
+      .eq('etapa_origem_id', etapaOrigem)
+      .eq('etapa_destino_id', etapaDestino)
+      .eq('ativo', true)
+      .order('ordem', { ascending: true });
+    
+    if (error) {
+      console.error('❌ Erro ao buscar automações:', error);
+      return null;
+    }
+    
+    if (!automatizacoes || automatizacoes.length === 0) {
+      return null; // Nenhuma automação encontrada
+    }
+    
+    // Avaliar cada automação na ordem
+    for (const automacao of automatizacoes) {
+      let condicaoAtendida = false;
+
+      // 🆕 Respeitar gatilho (trigger) básico
+      // - 'ao_entrar': quando a coleta está ENTRANDO na etapa_destino (já garantido pelo filtro)
+      // - 'ao_sair'  : quando está SAINDO da etapa_origem       (já garantido pelo filtro)
+      // - 'ao_avancar' ou null: comportamento padrão (transição origem -> destino)
+      // Por enquanto, todos os três funcionam com a mesma chamada (mudar etapa),
+      // apenas filtramos se houver algum trigger futuro especial.
+      const trigger = automacao.trigger || 'ao_avancar';
+      if (!['ao_entrar', 'ao_sair', 'ao_avancar', 'tempo_estagnado', 'campo_alterado', 'agendado'].includes(trigger)) {
+        // Trigger desconhecido, ignora automação
+        continue;
+      }
+
+      switch (automacao.tipo_regra) {
+        case 'sempre':
+          condicaoAtendida = true;
+          break;
+          
+        case 'filial':
+          if (coletaData.filial) {
+            const filialColeta = coletaData.filial.toUpperCase().trim();
+            const filialCondicao = (automacao.condicao || '').toUpperCase().trim();
+            
+            if (automacao.operador === 'igual') {
+              condicaoAtendida = filialColeta === filialCondicao;
+            } else if (automacao.operador === 'contem') {
+              condicaoAtendida = filialColeta.includes(filialCondicao) || filialCondicao.includes(filialColeta);
+            } else if (automacao.operador === 'diferente') {
+              condicaoAtendida = filialColeta !== filialCondicao;
+            }
+          }
+          break;
+          
+        case 'cliente':
+          if (coletaData.cliente && automacao.condicao) {
+            const clienteColeta = coletaData.cliente.toUpperCase().trim();
+            const clienteCondicao = automacao.condicao.toUpperCase().trim();
+            
+            if (automacao.operador === 'igual') {
+              condicaoAtendida = clienteColeta === clienteCondicao;
+            } else if (automacao.operador === 'contem') {
+              condicaoAtendida = clienteColeta.includes(clienteCondicao) || clienteCondicao.includes(clienteColeta);
+            }
+          }
+          break;
+          
+        case 'valor':
+          if (coletaData.valor && automacao.valor_condicao) {
+            const valorColeta = parseFloat(coletaData.valor);
+            const valorCondicao = parseFloat(automacao.valor_condicao);
+            
+            if (automacao.operador === 'maior') {
+              condicaoAtendida = valorColeta > valorCondicao;
+            } else if (automacao.operador === 'menor') {
+              condicaoAtendida = valorColeta < valorCondicao;
+            } else if (automacao.operador === 'igual') {
+              condicaoAtendida = Math.abs(valorColeta - valorCondicao) < 0.01; // Tolerância para comparação de float
+            }
+          }
+          break;
+          
+        case 'origem':
+          if (coletaData.origem && automacao.condicao) {
+            const origemColeta = coletaData.origem.toUpperCase().trim();
+            const origemCondicao = automacao.condicao.toUpperCase().trim();
+            
+            if (automacao.operador === 'igual') {
+              condicaoAtendida = origemColeta === origemCondicao;
+            } else if (automacao.operador === 'contem') {
+              condicaoAtendida = origemColeta.includes(origemCondicao) || origemCondicao.includes(origemColeta);
+            }
+          }
+          break;
+          
+        case 'destino':
+          if (coletaData.destino && automacao.condicao) {
+            const destinoColeta = coletaData.destino.toUpperCase().trim();
+            const destinoCondicao = automacao.condicao.toUpperCase().trim();
+            
+            if (automacao.operador === 'igual') {
+              condicaoAtendida = destinoColeta === destinoCondicao;
+            } else if (automacao.operador === 'contem') {
+              condicaoAtendida = destinoColeta.includes(destinoCondicao) || destinoCondicao.includes(destinoColeta);
+            }
+          }
+          break;
+
+        // 🆕 Regras por tags / etiquetas
+        case 'tags': {
+          // Podemos receber as tags tanto em condicao quanto em valor_condicao (UI usa valor_condicao)
+          const origemTags = automacao.valor_condicao || automacao.condicao;
+          if (origemTags) {
+            const tagsCondicao = origemTags.split(',').map(tag => tag.trim().toUpperCase()).filter(Boolean);
+            let coletaTags = [];
+
+            // Coletar tags de diferentes campos da coleta (já implementado antes)
+            if (Array.isArray(coletaData.tipos_carroceria)) {
+              coletaTags.push(...coletaData.tipos_carroceria.map(t => String(t).toUpperCase()));
+            }
+            if (Array.isArray(coletaData.tipos_veiculo)) {
+              coletaTags.push(...coletaData.tipos_veiculo.map(t => String(t).toUpperCase()));
+            }
+            if (typeof coletaData.contas_pagar_tipo === 'string') {
+              coletaTags.push(coletaData.contas_pagar_tipo.toUpperCase());
+            } else if (Array.isArray(coletaData.contas_pagar_tipo)) {
+              coletaTags.push(...coletaData.contas_pagar_tipo.map(t => String(t).toUpperCase()));
+            }
+            if (coletaData.observacoes) {
+              const obsUpper = String(coletaData.observacoes).toUpperCase();
+              tagsCondicao.forEach(tag => {
+                if (obsUpper.includes(tag)) {
+                  coletaTags.push(tag);
+                }
+              });
+            }
+
+            // Remover duplicatas
+            coletaTags = [...new Set(coletaTags)];
+
+            if (automacao.operador === 'igual') {
+              // Todas as tags da condição devem estar presentes na coleta
+              condicaoAtendida = tagsCondicao.every(tag => coletaTags.includes(tag));
+            } else if (automacao.operador === 'contem') {
+              // Pelo menos uma tag da condição deve estar presente
+              condicaoAtendida = tagsCondicao.some(tag => coletaTags.includes(tag));
+            } else if (automacao.operador === 'nao_contem') {
+              // Nenhuma tag da condição deve estar presente
+              condicaoAtendida = !tagsCondicao.some(tag => coletaTags.includes(tag));
+            }
+          }
+          break;
+        }
+      }
+      
+      // Se a condição foi atendida, retornar a etapa resultado
+      if (condicaoAtendida) {
+        console.log(`✅ Automação aplicada: ${automacao.descricao || automacao.id} - Coleta ${coletaId} redirecionada para ${automacao.etapa_resultado_id}`);
+        return automacao.etapa_resultado_id;
+      }
+    }
+    
+    return null; // Nenhuma automação aplicou
+  } catch (error) {
+    console.error('❌ Erro ao executar automações:', error);
+    return null;
+  }
+}
+
 // ========== ENDPOINT PARA CRIAR TABELA DE SOLICITAÇÕES ==========
 // Endpoint para criar tabela - pode ser chamado via MCP ou diretamente
 app.post('/api/admin/criar-tabela-solicitacoes', async (req, res) => {
@@ -6815,6 +7785,221 @@ COMMENT ON COLUMN coletas.data_entrega IS 'Data de entrega da coleta ao destino 
       success: false,
       error: 'Erro ao executar migração: ' + error.message,
       sql: migrationSQL || 'Verifique o arquivo migration_adicionar_data_entrega_coletas.sql'
+    });
+  }
+});
+
+// ========== ENDPOINT PARA REMOVER CONSTRAINT DE ETAPA_ATUAL ==========
+app.post('/api/admin/remover-constraint-etapa-atual', requireAuth, async (req, res) => {
+  try {
+    // Verificar se é admin
+    const { user, error: authError } = await getUserFromRequest(req);
+    if (authError || !user || (!user.isAdmin && user.role !== 'admin')) {
+      return res.status(403).json({ success: false, error: 'Acesso negado. Apenas administradores.' });
+    }
+
+    console.log('🔧 Removendo constraint coletas_etapa_atual_check...');
+
+    // SQL para remover a constraint
+    const migrationSQL = `
+DO $$ 
+BEGIN
+    -- Verificar se a constraint existe e removê-la
+    IF EXISTS (
+        SELECT 1 
+        FROM pg_constraint 
+        WHERE conname = 'coletas_etapa_atual_check'
+        AND conrelid = 'coletas'::regclass
+    ) THEN
+        ALTER TABLE coletas 
+        DROP CONSTRAINT coletas_etapa_atual_check;
+        
+        RAISE NOTICE 'Constraint coletas_etapa_atual_check removida com sucesso';
+    ELSE
+        RAISE NOTICE 'Constraint coletas_etapa_atual_check não existe';
+    END IF;
+END $$;
+    `.trim();
+
+    // Tentar executar via RPC exec_sql
+    console.log('⏳ Tentando executar migração via RPC exec_sql...');
+    const { data: rpcData, error: rpcError } = await supabaseAdmin.rpc('exec_sql', {
+      sql_query: migrationSQL
+    });
+
+    if (!rpcError) {
+      console.log('✅ Constraint removida com sucesso via RPC!');
+      return res.json({
+        success: true,
+        message: 'Constraint coletas_etapa_atual_check removida com sucesso',
+        method: 'rpc'
+      });
+    }
+
+    console.log('⚠️ RPC não disponível, tentando método alternativo...');
+
+    // Método alternativo: tentar executar diretamente
+    try {
+      // Verificar se podemos fazer uma query simples para testar
+      const { error: testError } = await supabaseAdmin
+        .from('coletas')
+        .select('id')
+        .limit(1);
+
+      if (testError && testError.message.includes('coletas_etapa_atual_check')) {
+        return res.status(500).json({
+          success: false,
+          error: 'Constraint ainda existe e está bloqueando. Execute o SQL manualmente no Supabase Dashboard.',
+          sql: migrationSQL
+        });
+      }
+
+      return res.json({
+        success: true,
+        message: 'Constraint pode não existir ou já foi removida. Verifique manualmente.',
+        sql: migrationSQL
+      });
+
+    } catch (altError) {
+      console.error('❌ Erro no método alternativo:', altError);
+      return res.status(500).json({
+        success: false,
+        error: 'Erro ao remover constraint: ' + (altError.message || 'Erro desconhecido'),
+        details: altError.message,
+        sql: migrationSQL
+      });
+    }
+
+  } catch (error) {
+    console.error('❌ Erro ao remover constraint:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Erro ao remover constraint: ' + (error.message || 'Erro desconhecido'),
+      details: error.message
+    });
+  }
+});
+
+// ========== ENDPOINT PARA ADICIONAR COLUNA FUNIL_ID À TABELA COLETAS ==========
+app.post('/api/admin/adicionar-funil-id-coletas', requireAuth, async (req, res) => {
+  try {
+    // Verificar se é admin
+    const { user, error: authError } = await getUserFromRequest(req);
+    if (authError || !user || (!user.isAdmin && user.role !== 'admin')) {
+      return res.status(403).json({ success: false, error: 'Acesso negado. Apenas administradores.' });
+    }
+
+    console.log('🔧 Verificando se coluna funil_id existe na tabela coletas...');
+
+    // Verificar se a coluna já existe
+    const { data: coletas, error: verifError } = await supabaseAdmin
+      .from('coletas')
+      .select('id, etapa_atual, funil_id')
+      .limit(1);
+
+    if (!verifError && coletas && coletas.length > 0 && 'funil_id' in coletas[0]) {
+      console.log('✅ Coluna funil_id já existe na tabela coletas!');
+      return res.json({
+        success: true,
+        message: 'Coluna funil_id já existe na tabela coletas',
+        colunaExiste: true
+      });
+    }
+
+    // SQL da migração (inclui remover constraint de etapa_atual)
+    const migrationSQL = `
+DO $$ 
+BEGIN
+    -- Remover constraint de etapa_atual se existir (para permitir etapas dinâmicas)
+    IF EXISTS (
+        SELECT 1 
+        FROM pg_constraint 
+        WHERE conname = 'coletas_etapa_atual_check'
+        AND conrelid = 'coletas'::regclass
+    ) THEN
+        ALTER TABLE coletas 
+        DROP CONSTRAINT coletas_etapa_atual_check;
+        
+        RAISE NOTICE 'Constraint coletas_etapa_atual_check removida com sucesso';
+    END IF;
+
+    -- Adicionar coluna funil_id se não existir
+    IF NOT EXISTS (
+        SELECT 1 
+        FROM information_schema.columns 
+        WHERE table_name = 'coletas' 
+        AND column_name = 'funil_id'
+    ) THEN
+        ALTER TABLE coletas 
+        ADD COLUMN funil_id UUID REFERENCES coletas_funis(id) ON DELETE SET NULL;
+        
+        CREATE INDEX IF NOT EXISTS idx_coletas_funil_id ON coletas(funil_id) WHERE funil_id IS NOT NULL;
+        
+        RAISE NOTICE 'Coluna funil_id adicionada com sucesso à tabela coletas';
+    ELSE
+        RAISE NOTICE 'Coluna funil_id já existe na tabela coletas';
+    END IF;
+END $$;
+
+COMMENT ON COLUMN coletas.funil_id IS 'ID do funil ao qual a coleta pertence';
+    `.trim();
+
+    // Tentar executar via RPC exec_sql
+    console.log('⏳ Tentando executar migração via RPC exec_sql...');
+    const { data: rpcData, error: rpcError } = await supabaseAdmin.rpc('exec_sql', {
+      sql_query: migrationSQL
+    });
+
+    if (!rpcError) {
+      console.log('✅ Migração executada com sucesso via RPC!');
+      return res.json({
+        success: true,
+        message: 'Coluna funil_id adicionada com sucesso à tabela coletas',
+        method: 'rpc',
+        colunaExiste: true
+      });
+    }
+
+    console.log('⚠️ RPC não disponível, tentando método alternativo...');
+
+    // Método alternativo: verificar se coluna existe
+    try {
+      const { data: verifyData, error: verifyError } = await supabaseAdmin
+        .from('coletas')
+        .select('id, etapa_atual, funil_id')
+        .limit(1);
+
+      if (!verifyError && verifyData && verifyData.length > 0 && 'funil_id' in verifyData[0]) {
+        console.log('✅ Coluna funil_id verificada com sucesso!');
+        return res.json({
+          success: true,
+          message: 'Coluna funil_id já existe na tabela coletas',
+          colunaExiste: true
+        });
+      }
+
+      return res.status(500).json({
+        success: false,
+        error: 'Coluna não foi criada. Execute o SQL manualmente no Supabase Dashboard.',
+        sql: migrationSQL
+      });
+
+    } catch (altError) {
+      console.error('❌ Erro no método alternativo:', altError);
+      return res.status(500).json({
+        success: false,
+        error: 'Erro ao adicionar coluna funil_id: ' + (altError.message || 'Erro desconhecido'),
+        details: altError.message,
+        sql: migrationSQL
+      });
+    }
+
+  } catch (error) {
+    console.error('❌ Erro ao adicionar coluna funil_id:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Erro ao adicionar coluna funil_id: ' + (error.message || 'Erro desconhecido'),
+      details: error.message
     });
   }
 });
@@ -8378,6 +9563,20 @@ app.get('/settings.html', requireAuth, (req, res) => {
   res.setHeader('Pragma', 'no-cache');
   res.setHeader('Expires', '0');
   res.sendFile(path.join(__dirname, 'public/pages/settings.html'));
+});
+
+app.get('/admin-funis-etapas.html', requireAuth, async (req, res) => {
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate, max-age=0');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  res.sendFile(path.join(__dirname, 'public/pages/admin-funis-etapas.html'));
+});
+
+app.get('/pages/admin-funis-etapas.html', requireAuth, async (req, res) => {
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate, max-age=0');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  res.sendFile(path.join(__dirname, 'public/pages/admin-funis-etapas.html'));
 });
 
 app.get('/relatorios.html', requireAuth, (req, res) => {
@@ -11496,6 +12695,163 @@ app.post('/api/coletas', requireAuth, async (req, res) => {
   }
 });
 
+// POST - Mover coleta de etapa (com automações)
+app.post('/api/coletas/:id/mover-etapa', requireAuth, async (req, res) => {
+  try {
+    const { user, error: authError } = await getUserFromRequest(req);
+    if (authError || !user) {
+      return res.status(401).json({ error: 'Não autenticado' });
+    }
+    
+    const coletaId = req.params.id;
+    const { etapa_destino, funil_id } = req.body;
+    
+    console.log('🔄 Mover etapa - Dados recebidos:', {
+      coletaId,
+      etapa_destino,
+      funil_id,
+      userId: user?.id
+    });
+    
+    if (!coletaId) {
+      return res.status(400).json({ error: 'ID da coleta é obrigatório' });
+    }
+    
+    if (!etapa_destino) {
+      return res.status(400).json({ error: 'etapa_destino é obrigatório' });
+    }
+    
+    // Buscar coleta atual - usar supabaseAdmin para contornar RLS
+    const { data: coleta, error: fetchError } = await supabaseAdmin
+      .from('coletas')
+      .select('*')
+      .eq('id', coletaId)
+      .maybeSingle();
+    
+    if (fetchError) {
+      console.error('❌ Erro ao buscar coleta:', fetchError);
+      console.error('❌ Detalhes do erro:', JSON.stringify(fetchError, null, 2));
+      return res.status(500).json({ error: 'Erro ao buscar coleta', details: fetchError.message });
+    }
+    
+    if (!coleta) {
+      console.error('❌ Coleta não encontrada:', coletaId);
+      // Tentar buscar com limite para verificar se existe
+      const { data: coletasCheck, error: checkError } = await supabaseAdmin
+        .from('coletas')
+        .select('id')
+        .eq('id', coletaId)
+        .limit(1);
+      
+      console.error('❌ Verificação adicional - Coletas encontradas:', coletasCheck?.length || 0);
+      if (checkError) {
+        console.error('❌ Erro na verificação:', checkError);
+      }
+      
+      return res.status(404).json({ error: 'Coleta não encontrada', details: `Nenhuma coleta encontrada com ID: ${coletaId}` });
+    }
+    
+    const etapaOrigem = coleta.etapa_atual;
+    
+    // ✅ BUSCAR FUNIL CORRETO DA ETAPA
+    // Sempre buscar o funil correto da etapa de destino, independente do funil_id fornecido
+    // Isso garante que a coleta seja movida para o funil correto
+    let funilIdFinal = null;
+    
+    // Buscar o funil da etapa de destino
+    const { data: etapaInfo, error: etapaError } = await supabaseAdmin
+      .from('coletas_etapas')
+      .select('funil_id')
+      .eq('id', etapa_destino)
+      .eq('ativo', true)
+      .maybeSingle();
+    
+    if (etapaInfo && etapaInfo.funil_id) {
+      funilIdFinal = etapaInfo.funil_id;
+      console.log(`🔍 Funil da etapa "${etapa_destino}": ${funilIdFinal}`);
+      
+      // Se foi fornecido um funil_id diferente, avisar mas usar o correto
+      if (funil_id && funil_id !== funilIdFinal) {
+        const { data: funilFornecido } = await supabaseAdmin
+          .from('coletas_funis')
+          .select('nome')
+          .eq('id', funil_id)
+          .maybeSingle();
+        
+        const { data: funilCorreto } = await supabaseAdmin
+          .from('coletas_funis')
+          .select('nome')
+          .eq('id', funilIdFinal)
+          .maybeSingle();
+        
+        console.warn(`⚠️ Funil fornecido (${funilFornecido?.nome || funil_id}) difere do funil da etapa (${funilCorreto?.nome || funilIdFinal}). Usando funil correto.`);
+      }
+    } else if (funil_id) {
+      // Se não encontrou a etapa mas foi fornecido funil_id, usar o fornecido
+      funilIdFinal = funil_id;
+      console.log(`⚠️ Etapa "${etapa_destino}" não encontrada, usando funil fornecido: ${funil_id}`);
+    }
+    
+    // Executar automações
+    const etapaResultado = await executarAutomatizacoes(
+      coletaId,
+      etapaOrigem,
+      etapa_destino,
+      coleta
+    );
+    
+    // Usar etapa resultado se automação aplicou, senão usar etapa destino
+    const etapaFinal = etapaResultado || etapa_destino;
+    
+    // Preparar dados de atualização
+    const updateData = {
+      etapa_atual: etapaFinal,
+      updated_at: new Date().toISOString()
+    };
+    
+    // Se funil_id foi encontrado (fornecido ou buscado), atualizar também
+    if (funilIdFinal) {
+      updateData.funil_id = funilIdFinal;
+    }
+    
+    // Atualizar coleta - usar supabaseAdmin para contornar RLS
+    const { data: updated, error: updateError } = await supabaseAdmin
+      .from('coletas')
+      .update(updateData)
+      .eq('id', coletaId)
+      .select()
+      .maybeSingle();
+    
+    if (updateError) {
+      console.error('❌ Erro ao atualizar coleta:', updateError);
+      return res.status(500).json({ error: 'Erro ao atualizar coleta', details: updateError.message });
+    }
+    
+    if (!updated) {
+      console.error('❌ Coleta não foi atualizada:', coletaId);
+      return res.status(500).json({ error: 'Erro ao atualizar coleta - nenhum resultado retornado' });
+    }
+    
+    // Log se automação foi aplicada
+    if (etapaResultado && etapaResultado !== etapa_destino) {
+      console.log(`🤖 Automação aplicada: Coleta ${coletaId} redirecionada de ${etapa_destino} para ${etapaResultado}`);
+    }
+    
+    res.json({ 
+      success: true, 
+      coleta: updated,
+      etapa_original: etapa_destino,
+      etapa_final: etapaFinal,
+      automacao_aplicada: !!etapaResultado,
+      funil_id: funil_id || null
+    });
+    
+  } catch (error) {
+    console.error('❌ Erro ao mover coleta:', error);
+    res.status(500).json({ error: 'Erro ao mover coleta' });
+  }
+});
+
 app.put('/api/coletas/:id', requireAuth, async (req, res) => {
   try {
     // ✅ RBAC: Obter usuário autenticado
@@ -11576,6 +12932,34 @@ app.put('/api/coletas/:id', requireAuth, async (req, res) => {
         }
       }
     });
+
+    // ✅ AUTOMAÇÕES: Se a etapa está sendo alterada, executar automações
+    let etapaFinal = updateData.etapaAtual || coletaExistente.etapa_atual;
+    if (updateData.etapaAtual && updateData.etapaAtual !== coletaExistente.etapa_atual) {
+      // Buscar dados completos da coleta para as automações
+      const { data: coletaCompleta } = await supabase
+        .from('coletas')
+        .select('*')
+        .eq('id', coletaId)
+        .single();
+      
+      if (coletaCompleta) {
+        // Executar automações
+        const etapaResultado = await executarAutomatizacoes(
+          coletaId,
+          coletaExistente.etapa_atual, // etapa origem
+          updateData.etapaAtual, // etapa destino
+          coletaCompleta // dados da coleta
+        );
+        
+        // Se uma automação aplicou, usar a etapa resultado
+        if (etapaResultado) {
+          console.log(`🤖 Automação aplicada: ${coletaId} redirecionado de ${updateData.etapaAtual} para ${etapaResultado}`);
+          etapaFinal = etapaResultado;
+          updateData.etapaAtual = etapaResultado;
+        }
+      }
+    }
 
     const { data, error } = await supabase
       .from('coletas')
