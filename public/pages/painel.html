@@ -1129,6 +1129,33 @@
                 </div>
             </div>
 
+            <!-- Card de Cadastro de Motoristas -->
+            <div class="modern-card">
+                <div class="card-header">
+                    <i class="fas fa-user-plus me-2"></i>
+                    Cadastro de Motoristas
+                </div>
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-md-8">
+                            <h5 class="mb-2">
+                                <i class="fas fa-truck me-2 text-primary"></i>
+                                Cadastrar Novo Motorista
+                            </h5>
+                            <p class="text-muted mb-0">
+                                Adicione novos motoristas ao sistema com informações completas sobre veículo, contatos e documentação.
+                            </p>
+                        </div>
+                        <div class="col-md-4 text-end">
+                            <button class="btn btn-modern btn-modern-primary btn-lg" onclick="abrirModalCadastroMotorista()">
+                                <i class="fas fa-plus-circle me-2"></i>
+                                Novo Cadastro
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Vehicle Classes -->
         <div class="modern-card">
           <div class="card-header">
@@ -1993,10 +2020,8 @@ const estados = [
             graneleiro: 'Graneleiro',
             plataforma: 'Plataforma',
             prancha: 'Prancha',
-            bitrem: 'Bitrem',
             carreta: 'Carreta',
             carreta_ls: 'Carreta LS',
-            rodotrem: 'Rodotrem',
             vanderleia: 'Vanderleia',
             apenas_cavalo: 'Apenas Cavalo',
             cegonheiro: 'Cegonheiro',
@@ -5339,9 +5364,487 @@ const estados = [
                 icon.className = savedTheme === 'dark' ? 'fas fa-sun' : 'fas fa-moon';
             }
         });
+
+        // ========== FUNÇÕES PARA CADASTRO DE MOTORISTAS ==========
+        function abrirModalCadastroMotorista() {
+            const modal = new bootstrap.Modal(document.getElementById('modalCadastroMotorista'));
+            modal.show();
+            // Limpar formulário
+            document.getElementById('formCadastroMotoristaPainel').reset();
+            // Resetar seleção de classe
+            document.querySelectorAll('.vehicle-class-modal').forEach(el => el.classList.remove('active'));
+            document.getElementById('tipo_veiculo_modal').disabled = true;
+            document.getElementById('tipo_carroceria_modal').disabled = true;
+            document.getElementById('tipo_veiculo_modal').innerHTML = '<option value="">Selecione a classe do veículo primeiro</option>';
+            document.getElementById('tipo_carroceria_modal').innerHTML = '<option value="">Selecione a classe do veículo primeiro</option>';
+        }
+
+        // Selecionar classe de veículo no modal
+        function selecionarClasseModal(classe) {
+            document.querySelectorAll('.vehicle-class-modal').forEach(el => el.classList.remove('active'));
+            document.querySelector(`.vehicle-class-modal[data-class="${classe}"]`).classList.add('active');
+            
+            // Habilitar selects
+            document.getElementById('tipo_veiculo_modal').disabled = false;
+            document.getElementById('tipo_carroceria_modal').disabled = false;
+            
+            // Carregar tipos de veículo e carroceria baseado na classe
+            const tiposVeiculo = {
+                leve: ['fiorino', '3_4', 'toco', 'vlc'],
+                medio: ['bitruck', 'truck'],
+                pesado: ['carreta', 'carreta ls','vanderleia','bitrem', 'rodotrem']
+            };
+            
+                const tiposCarroceria = {
+                    leve: ['baú', 'baú Frigorífico', 'baú Refrigerado', 'cacamba', 'prancha'],
+                    medio: ['baú', 'sider', 'graneleiro', 'grade baixa', 'tanque', 'basculante', 'plataforma'],
+                    pesado: ['baú', 'sider', 'graneleiro', 'grade baixa', 'tanque', 'cacamba', 'apenas cavalo', 'cegonheiro', 'gaiola', 'porta container 20', 'porta container 40', 'basculante']
+                };
+            
+            const selectVeiculo = document.getElementById('tipo_veiculo_modal');
+            const selectCarroceria = document.getElementById('tipo_carroceria_modal');
+            
+            selectVeiculo.innerHTML = '<option value="">Selecione</option>';
+            tiposVeiculo[classe].forEach(tipo => {
+                const option = document.createElement('option');
+                option.value = tipo;
+                option.textContent = tipo.charAt(0).toUpperCase() + tipo.slice(1).replace('_', '/');
+                selectVeiculo.appendChild(option);
+            });
+            
+            selectCarroceria.innerHTML = '<option value="">Selecione</option>';
+            tiposCarroceria[classe].forEach(tipo => {
+                const option = document.createElement('option');
+                option.value = tipo;
+                option.textContent = tipo.charAt(0).toUpperCase() + tipo.slice(1);
+                selectCarroceria.appendChild(option);
+            });
+        }
+
+        // Funções auxiliares para obter dados do usuário
+        async function getCurrentUserId() {
+            try {
+                if (supabaseClient) {
+                    const { data: { session } } = await supabaseClient.auth.getSession();
+                    if (session?.user?.id) {
+                        return session.user.id;
+                    }
+                }
+                // Fallback: tentar obter do localStorage
+                const loggedInUser = localStorage.getItem('loggedInUser');
+                if (loggedInUser) {
+                    const userData = JSON.parse(loggedInUser);
+                    return userData.id || userData.userId;
+                }
+                return null;
+            } catch (error) {
+                console.error('Erro ao obter ID do usuário:', error);
+                return null;
+            }
+        }
+
+        async function getCurrentUserDepartment() {
+            try {
+                if (supabaseClient) {
+                    const userId = await getCurrentUserId();
+                    if (userId) {
+                        const { data: profile } = await supabaseClient
+                            .from('user_profiles')
+                            .select('departamento')
+                            .eq('id', userId)
+                            .single();
+                        return profile?.departamento || null;
+                    }
+                }
+                return null;
+            } catch (error) {
+                console.error('Erro ao obter departamento do usuário:', error);
+                return null;
+            }
+        }
+
+        async function cadastrarMotoristaPainel() {
+            const classeSelecionada = document.querySelector('.vehicle-class-modal.active');
+            
+            if (!classeSelecionada) {
+                alert('Selecione a classe do veículo');
+                return;
+            }
+            
+            const dados = {
+                nome: document.getElementById('nome_modal').value.trim(),
+                cnh: document.getElementById('cnh_modal').value.trim() || null,
+                categoria_cnh: document.getElementById('categoria_cnh_modal').value || null,
+                telefone1: document.getElementById('telefone1_modal').value.trim(),
+                telefone2: document.getElementById('telefone2_modal').value.trim() || null,
+                estado: document.getElementById('estado_modal').value || null,
+                tipo_veiculo: document.getElementById('tipo_veiculo_modal').value,
+                tipo_carroceria: document.getElementById('tipo_carroceria_modal').value,
+                placa_cavalo: document.getElementById('placa_cavalo_modal').value.trim() || null,
+                placa_carreta1: document.getElementById('placa_carreta1_modal').value.trim() || null,
+                placa_carreta2: document.getElementById('placa_carreta2_modal').value.trim() || null,
+                placa_carreta3: document.getElementById('placa_carreta3_modal').value.trim() || null,
+                status: document.getElementById('status_modal').value || 'ativo',
+                classe_veiculo: classeSelecionada.dataset.class
+            };
+
+            if (!dados.nome || !dados.telefone1 || !dados.tipo_veiculo || !dados.tipo_carroceria) {
+                alert('Preencha todos os campos obrigatórios (*)');
+                return;
+            }
+
+            // Validar telefone
+            const validarTelefone = (valor) => {
+                if (!valor) return null;
+                const apenasNumeros = valor.replace(/\D/g, '');
+                if (apenasNumeros.length === 13 && apenasNumeros.startsWith('55')) {
+                    return apenasNumeros;
+                }
+                if (apenasNumeros.length === 11) {
+                    return '55' + apenasNumeros;
+                }
+                throw new Error('Telefone inválido. Use formato: 55+DDD+9+Número');
+            };
+
+            try {
+                dados.telefone1 = validarTelefone(dados.telefone1);
+                if (dados.telefone2) {
+                    dados.telefone2 = validarTelefone(dados.telefone2);
+                }
+            } catch (error) {
+                alert(error.message);
+                return;
+            }
+
+            // Validar CNH
+            if (dados.cnh) {
+                const apenasNumeros = dados.cnh.replace(/\D/g, '');
+                if (apenasNumeros.length !== 11) {
+                    alert('CNH deve conter exatamente 11 dígitos numéricos');
+                    return;
+                }
+                dados.cnh = apenasNumeros;
+            }
+
+            // Validar placas
+            const validarPlaca = (valor) => {
+                if (!valor) return null;
+                const placaLimpa = valor.toUpperCase().replace(/\s/g, '').replace(/[^A-Z0-9]/g, '');
+                const formatoAntigo = /^[A-Z]{3}[0-9]{4}$/;
+                const formatoNovo = /^[A-Z]{3}[0-9][A-Z0-9][0-9]{2}$/;
+                if (placaLimpa.length === 7 && (formatoAntigo.test(placaLimpa) || formatoNovo.test(placaLimpa))) {
+                    return placaLimpa;
+                }
+                throw new Error('Placa inválida. Use formato brasileiro (ex: ABC1234 ou ABC1D23)');
+            };
+
+            try {
+                if (dados.placa_cavalo) dados.placa_cavalo = validarPlaca(dados.placa_cavalo);
+                if (dados.placa_carreta1) dados.placa_carreta1 = validarPlaca(dados.placa_carreta1);
+                if (dados.placa_carreta2) dados.placa_carreta2 = validarPlaca(dados.placa_carreta2);
+                if (dados.placa_carreta3) dados.placa_carreta3 = validarPlaca(dados.placa_carreta3);
+            } catch (error) {
+                alert(error.message);
+                return;
+            }
+
+            // Cadastrar usando Supabase diretamente
+            try {
+                if (!supabaseClient) {
+                    await inicializarSupabase();
+                    if (!supabaseClient) {
+                        throw new Error('Não foi possível inicializar o Supabase');
+                    }
+                }
+
+                const userId = await getCurrentUserId();
+                const userDepartment = await getCurrentUserDepartment();
+
+                const motoristaData = {
+                    ...dados,
+                    data_cadastro: new Date().toISOString(),
+                    data_atualizacao: new Date().toISOString(),
+                    usuario_id: userId,
+                    created_by: userId,
+                    created_by_departamento: userDepartment
+                };
+
+                // Verificar se o telefone já existe
+                const { data: telefoneExistente } = await supabaseClient
+                    .from('motoristas')
+                    .select('id, nome, telefone1, telefone2')
+                    .or(`telefone1.eq.${dados.telefone1},telefone2.eq.${dados.telefone1}`)
+                    .maybeSingle();
+
+                if (telefoneExistente) {
+                    alert(`❌ O número de telefone ${dados.telefone1} já está cadastrado para o motorista: ${telefoneExistente.nome || 'N/A'}`);
+                    return;
+                }
+
+                if (dados.telefone2) {
+                    const { data: telefone2Existente } = await supabaseClient
+                        .from('motoristas')
+                        .select('id, nome, telefone1, telefone2')
+                        .or(`telefone1.eq.${dados.telefone2},telefone2.eq.${dados.telefone2}`)
+                        .maybeSingle();
+
+                    if (telefone2Existente) {
+                        alert(`❌ O número de telefone ${dados.telefone2} já está cadastrado para o motorista: ${telefone2Existente.nome || 'N/A'}`);
+                        return;
+                    }
+                }
+
+                const { data, error } = await supabaseClient
+                    .from('motoristas')
+                    .insert([motoristaData])
+                    .select();
+
+                if (error) {
+                    throw error;
+                }
+
+                alert('✅ Motorista cadastrado com sucesso! ID: ' + data[0].id);
+                const modal = bootstrap.Modal.getInstance(document.getElementById('modalCadastroMotorista'));
+                modal.hide();
+                
+                // Limpar formulário
+                document.getElementById('formCadastroMotoristaPainel').reset();
+                document.querySelectorAll('.vehicle-class-modal').forEach(el => el.classList.remove('active'));
+                document.getElementById('tipo_veiculo_modal').disabled = true;
+                document.getElementById('tipo_carroceria_modal').disabled = true;
+                
+                // Recarregar lista de motoristas se a função existir
+                if (typeof carregarMotoristas === 'function') {
+                    carregarMotoristas();
+                }
+            } catch (error) {
+                console.error('Erro ao cadastrar motorista:', error);
+                alert('❌ Erro ao cadastrar motorista: ' + (error.message || 'Erro desconhecido'));
+            }
+        }
 </script>
 <!-- Chat IA -->
 <link rel="stylesheet" href="../css/chat-ia.css">
 <script src="../js/chat-ia.js"></script>
+    <!-- Modal de Cadastro de Motoristas -->
+    <div class="modal fade" id="modalCadastroMotorista" tabindex="-1" aria-labelledby="modalCadastroMotoristaLabel" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalCadastroMotoristaLabel">
+                        <i class="fas fa-user-plus me-2"></i>
+                        Cadastrar Novo Motorista
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                </div>
+                <div class="modal-body">
+                    <!-- Resumo de Campos Obrigatórios -->
+                    <div class="alert alert-info mb-4" role="alert">
+                        <h6 class="alert-heading mb-2">
+                            <i class="fas fa-info-circle me-2"></i>
+                            Campos Obrigatórios
+                        </h6>
+                        <p class="mb-2 small">Os seguintes campos são obrigatórios para o cadastro:</p>
+                        <ul class="mb-0 small">
+                            <li><strong>Nome Completo</strong> - Nome completo do motorista</li>
+                            <li><strong>Telefone 1</strong> - Telefone principal (formato: 55+DDD+9+Número)</li>
+                            <li><strong>Classe do Veículo</strong> - Selecione Leve, Médio ou Pesado</li>
+                            <li><strong>Tipo de Veículo</strong> - Após selecionar a classe</li>
+                            <li><strong>Tipo de Carroceria</strong> - Após selecionar a classe</li>
+                        </ul>
+                    </div>
+                    
+                    <form id="formCadastroMotoristaPainel">
+                        <!-- Informações Pessoais -->
+                        <div class="mb-4">
+                            <h6 class="mb-3"><i class="fas fa-id-card me-2"></i>Informações Pessoais</h6>
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label">
+                                        Nome Completo <span class="text-danger">*</span>
+                                    </label>
+                                    <input type="text" id="nome_modal" class="form-control form-control-modern" required placeholder="Digite o nome completo" maxlength="100">
+                                    <small class="text-muted">Campo obrigatório</small>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">CNH</label>
+                                    <input type="text" id="cnh_modal" class="form-control form-control-modern" placeholder="Número da CNH" maxlength="11" pattern="[0-9]{11}">
+                                    <small class="text-muted">Opcional</small>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">Categoria CNH</label>
+                                    <select id="categoria_cnh_modal" class="form-select form-select-modern">
+                                        <option value="">Selecione</option>
+                                        <option value="A">A - Motos</option>
+                                        <option value="B">B - Carros</option>
+                                        <option value="C">C - Caminhões</option>
+                                        <option value="D">D - Ônibus</option>
+                                        <option value="E">E - Carreta</option>
+                                    </select>
+                                    <small class="text-muted">Opcional</small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Contatos -->
+                        <div class="mb-4">
+                            <h6 class="mb-3"><i class="fas fa-phone me-2"></i>Contatos</h6>
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <label class="form-label">
+                                        Telefone 1 <span class="text-danger">*</span>
+                                    </label>
+                                    <input type="text" id="telefone1_modal" class="form-control form-control-modern" required placeholder="5511999999999" maxlength="13">
+                                    <small class="text-muted">Campo obrigatório (formato: 55+DDD+9+Número)</small>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">Telefone 2</label>
+                                    <input type="text" id="telefone2_modal" class="form-control form-control-modern" placeholder="5511888888888" maxlength="13">
+                                    <small class="text-muted">Opcional</small>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">Estado (DDD)</label>
+                                    <select id="estado_modal" class="form-select form-select-modern">
+                                        <option value="">Selecione o estado</option>
+                                        <option value="SP">São Paulo</option>
+                                        <option value="RJ">Rio de Janeiro</option>
+                                        <option value="MG">Minas Gerais</option>
+                                        <option value="ES">Espírito Santo</option>
+                                        <option value="PR">Paraná</option>
+                                        <option value="SC">Santa Catarina</option>
+                                        <option value="RS">Rio Grande do Sul</option>
+                                        <option value="MS">Mato Grosso do Sul</option>
+                                        <option value="MT">Mato Grosso</option>
+                                        <option value="GO">Goiás</option>
+                                        <option value="DF">Distrito Federal</option>
+                                        <option value="BA">Bahia</option>
+                                        <option value="SE">Sergipe</option>
+                                        <option value="AL">Alagoas</option>
+                                        <option value="PE">Pernambuco</option>
+                                        <option value="PB">Paraíba</option>
+                                        <option value="RN">Rio Grande do Norte</option>
+                                        <option value="CE">Ceará</option>
+                                        <option value="PI">Piauí</option>
+                                        <option value="MA">Maranhão</option>
+                                        <option value="PA">Pará</option>
+                                        <option value="AP">Amapá</option>
+                                        <option value="AM">Amazonas</option>
+                                        <option value="RR">Roraima</option>
+                                        <option value="AC">Acre</option>
+                                        <option value="RO">Rondônia</option>
+                                        <option value="TO">Tocantins</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Veículo -->
+                        <div class="mb-4">
+                            <h6 class="mb-3">
+                                <i class="fas fa-truck me-2"></i>Veículo
+                                <small class="text-muted ms-2">(Selecione a classe do veículo primeiro)</small>
+                            </h6>
+                            <!-- Classes de Veículo -->
+                            <div class="d-flex gap-3 mb-3">
+                                <div class="vehicle-class-modal" data-class="leve" onclick="selecionarClasseModal('leve')" style="flex: 1; padding: 1rem; border: 2px solid #dee2e6; border-radius: 8px; cursor: pointer; text-align: center; transition: all 0.3s;">
+                                    <i class="fas fa-truck-pickup fa-2x mb-2"></i>
+                                    <div class="fw-bold">Leves</div>
+                                    <small class="text-muted">Fiorino, 3/4, Toco, VLC</small>
+                                </div>
+                                <div class="vehicle-class-modal" data-class="medio" onclick="selecionarClasseModal('medio')" style="flex: 1; padding: 1rem; border: 2px solid #dee2e6; border-radius: 8px; cursor: pointer; text-align: center; transition: all 0.3s;">
+                                    <i class="fas fa-truck fa-2x mb-2"></i>
+                                    <div class="fw-bold">Médios</div>
+                                    <small class="text-muted">Bitruck, Truck</small>
+                                </div>
+                                <div class="vehicle-class-modal" data-class="pesado" onclick="selecionarClasseModal('pesado')" style="flex: 1; padding: 1rem; border: 2px solid #dee2e6; border-radius: 8px; cursor: pointer; text-align: center; transition: all 0.3s;">
+                                    <i class="fas fa-truck-moving fa-2x mb-2"></i>
+                                    <div class="fw-bold">Pesados</div>
+                                    <small class="text-muted">Bitrem, Carreta, Rodotrem</small>
+                                </div>
+                            </div>
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label">
+                                        Tipo de Veículo <span class="text-danger">*</span>
+                                    </label>
+                                    <select id="tipo_veiculo_modal" class="form-select form-select-modern" required disabled>
+                                        <option value="">Selecione a classe do veículo primeiro</option>
+                                    </select>
+                                    <small class="text-muted">Campo obrigatório - Selecione a classe do veículo acima primeiro</small>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">
+                                        Tipo de Carroceria <span class="text-danger">*</span>
+                                    </label>
+                                    <select id="tipo_carroceria_modal" class="form-select form-select-modern" required disabled>
+                                        <option value="">Selecione a classe do veículo primeiro</option>
+                                    </select>
+                                    <small class="text-muted">Campo obrigatório - Selecione a classe do veículo acima primeiro</small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Placas -->
+                        <div class="mb-4">
+                            <h6 class="mb-3"><i class="fas fa-id-card-alt me-2"></i>Placas</h6>
+                            <p class="text-muted small mb-3">Todos os campos de placas são opcionais</p>
+                            <div class="row g-3">
+                                <div class="col-md-3">
+                                    <label class="form-label">Placa do Cavalo</label>
+                                    <input type="text" id="placa_cavalo_modal" class="form-control form-control-modern" placeholder="ABC1D23" maxlength="7" style="text-transform: uppercase;">
+                                    <small class="text-muted">Opcional</small>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">Placa da Carreta 1</label>
+                                    <input type="text" id="placa_carreta1_modal" class="form-control form-control-modern" placeholder="XYZ4W56" maxlength="7" style="text-transform: uppercase;">
+                                    <small class="text-muted">Opcional</small>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">Placa da Carreta 2</label>
+                                    <input type="text" id="placa_carreta2_modal" class="form-control form-control-modern" placeholder="QRS7T89" maxlength="7" style="text-transform: uppercase;">
+                                    <small class="text-muted">Opcional</small>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">Placa da Carreta 3</label>
+                                    <input type="text" id="placa_carreta3_modal" class="form-control form-control-modern" placeholder="LMN8P10" maxlength="7" style="text-transform: uppercase;">
+                                    <small class="text-muted">Opcional</small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Status -->
+                        <div class="mb-4">
+                            <h6 class="mb-3"><i class="fas fa-cog me-2"></i>Configuração do Sistema</h6>
+                            <div class="row g-3">
+                                <div class="col-md-12">
+                                    <label class="form-label">Status</label>
+                                    <select id="status_modal" class="form-select form-select-modern">
+                                        <option value="ativo">Ativo</option>
+                                        <option value="inativo">Inativo</option>
+                                        <option value="bloqueado">Bloqueado</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-modern btn-modern-outline" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-2"></i>Cancelar
+                    </button>
+                    <button type="button" class="btn btn-modern btn-modern-success" onclick="cadastrarMotoristaPainel()">
+                        <i class="fas fa-save me-2"></i>Cadastrar Motorista
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        .vehicle-class-modal.active {
+            border-color: var(--primary) !important;
+            background: rgba(67, 97, 238, 0.1) !important;
+        }
+    </style>
 </body>
 </html>
