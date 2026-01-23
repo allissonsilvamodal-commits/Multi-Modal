@@ -406,15 +406,25 @@
 
             try {
                 // Tentar buscar via API pública primeiro
+                console.log('🔍 Tentando buscar coleta via API pública:', coletaId);
                 const apiResponse = await fetch(`/api/coletas/public/${coletaId}`, {
-                    credentials: 'include'
+                    method: 'GET',
+                    credentials: 'include',
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json'
+                    }
                 });
+                
+                console.log('📡 Resposta da API pública:', apiResponse.status, apiResponse.statusText);
                 
                 if (apiResponse.ok) {
                     const apiData = await apiResponse.json();
-                    if (apiData.success) {
+                    console.log('✅ Dados recebidos da API:', apiData);
+                    
+                    if (apiData.success && apiData.coleta) {
                         coletaData = apiData.coleta;
-                        motoristaData = apiData.motorista;
+                        motoristaData = apiData.motorista || null;
                         preencherInformacoes();
                         
                         // Tentar verificar se termo já foi aceito (opcional, não bloqueia)
@@ -422,39 +432,55 @@
                             console.warn('Não foi possível verificar termo:', err);
                         });
                         return;
+                    } else {
+                        console.warn('⚠️ API retornou OK mas sem dados válidos:', apiData);
+                    }
+                } else {
+                    const errorData = await apiResponse.json().catch(() => ({ error: 'Erro desconhecido' }));
+                    console.error(`❌ API pública retornou ${apiResponse.status}:`, errorData);
+                    
+                    // Se for 404, tentar continuar mesmo sem dados completos
+                    if (apiResponse.status === 404) {
+                        console.warn('⚠️ Coleta não encontrada na API pública, tentando continuar...');
                     }
                 }
                 
-                // Se API falhar, tentar Supabase diretamente
+                // Se API falhar, tentar Supabase diretamente (pode falhar por RLS, mas tentamos)
                 if (supabaseClient) {
-                    const { data, error } = await supabaseClient
-                        .from('coletas')
-                        .select('id, numero_coleta, cliente, origem, destino, motorista_id, motorista_nome')
-                        .eq('id', coletaId)
-                        .single();
+                    try {
+                        const { data, error } = await supabaseClient
+                            .from('coletas')
+                            .select('id, numero_coleta, cliente, origem, destino, motorista_id, motorista_nome')
+                            .eq('id', coletaId)
+                            .single();
 
-                    if (!error && data) {
-                        coletaData = data;
-                        
-                        // Tentar buscar motorista se houver motorista_id
-                        if (data.motorista_id) {
-                            try {
-                                const { data: motorista, error: motoristaError } = await supabaseClient
-                                    .from('motoristas')
-                                    .select('id, nome, cnh')
-                                    .eq('id', data.motorista_id)
-                                    .single();
-                                
-                                if (!motoristaError && motorista) {
-                                    motoristaData = motorista;
+                        if (!error && data) {
+                            coletaData = data;
+                            
+                            // Tentar buscar motorista se houver motorista_id
+                            if (data.motorista_id) {
+                                try {
+                                    const { data: motorista, error: motoristaError } = await supabaseClient
+                                        .from('motoristas')
+                                        .select('id, nome, cnh')
+                                        .eq('id', data.motorista_id)
+                                        .single();
+                                    
+                                    if (!motoristaError && motorista) {
+                                        motoristaData = motorista;
+                                    }
+                                } catch (motoristaErr) {
+                                    console.warn('Não foi possível buscar motorista:', motoristaErr);
                                 }
-                            } catch (motoristaErr) {
-                                console.warn('Não foi possível buscar motorista:', motoristaErr);
                             }
+                            
+                            preencherInformacoes();
+                            return;
+                        } else if (error) {
+                            console.warn('⚠️ Erro ao buscar coleta via Supabase (pode ser RLS):', error.message);
                         }
-                        
-                        preencherInformacoes();
-                        return;
+                    } catch (supabaseErr) {
+                        console.warn('⚠️ Erro ao tentar buscar via Supabase:', supabaseErr.message);
                     }
                 }
                 
@@ -583,12 +609,8 @@
             btnAceitar.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processando...';
 
             try {
-                // Obter IP e User Agent
-                const ipResponse = await fetch('https://api.ipify.org?format=json').catch(() => ({ json: () => ({ ip: 'desconhecido' }) }));
-                const ipData = await ipResponse.json();
-                const ipAddress = ipData.ip || 'desconhecido';
-
-                // Tentar obter token de autenticação
+                // IP será obtido no servidor (req.ip) para evitar problemas de CSP
+                // Tentar obter token de autenticação (opcional - não é obrigatório para aceitar termo)
                 let authToken = null;
                 try {
                     if (supabaseClient) {
@@ -608,7 +630,7 @@
                     headers['Authorization'] = `Bearer ${authToken}`;
                 }
 
-                // Enviar aceite do termo
+                // Enviar aceite do termo (não requer autenticação se tiver motorista_id na coleta)
                 const response = await fetch('/api/rastreamento/aceitar-termo', {
                     method: 'POST',
                     headers: headers,
@@ -616,12 +638,14 @@
                     body: JSON.stringify({
                         coletaId: coletaId,
                         termoVersao: '1.0',
-                        ipAddress: ipAddress,
                         userAgent: navigator.userAgent
+                        // IP será obtido no servidor
                     })
                 });
 
+                console.log('📡 Resposta do servidor:', response.status, response.statusText);
                 const result = await response.json();
+                console.log('📦 Dados da resposta:', result);
 
                 if (response.ok && result.success) {
                     mostrarSucesso('Termo aceito com sucesso! Iniciando rastreamento...');
@@ -636,21 +660,48 @@
                     setTimeout(() => {
                         window.location.href = `portal-motorista.html?coleta=${coletaId}&iniciarRastreamento=true`;
                     }, 1500);
-                } else {
-                    // Se erro 401, pode ser que precise autenticar
-                    if (response.status === 401) {
-                        mostrarErro('Você precisa estar autenticado como motorista para aceitar o termo. Por favor, faça login no portal do motorista primeiro.');
+                } else if (response.status === 409) {
+                    // Tratar 409 especificamente - pode ser termo já aceito
+                    console.log('⚠️ Status 409 recebido, verificando se termo já foi aceito');
+                    if (result.message && (result.message.includes('já aceito') || result.message.includes('já foi aceito'))) {
+                        mostrarSucesso('Termo já foi aceito anteriormente. Redirecionando...');
+                        setTimeout(() => {
+                            window.location.href = `portal-motorista.html?coleta=${coletaId}&iniciarRastreamento=true`;
+                        }, 1500);
+                        return;
                     } else {
-                        throw new Error(result.error || 'Erro ao aceitar termo');
+                        // Outro tipo de conflito
+                        throw new Error(result.error || 'Conflito ao aceitar termo. Tente novamente.');
                     }
+                } else {
+                    // Tratar diferentes tipos de erro
+                    let errorMessage = result.error || 'Erro ao aceitar termo';
+                    
+                    if (response.status === 401) {
+                        errorMessage = 'Você precisa estar autenticado como motorista para aceitar o termo. Por favor, faça login no portal do motorista primeiro.';
+                    } else if (response.status === 404) {
+                        errorMessage = result.error || 'Coleta ou motorista não encontrado. Verifique se o link está correto.';
+                    } else if (response.status === 409) {
+                        // 409 pode ser termo já aceito ou outro conflito
+                        if (result.message && result.message.includes('já aceito')) {
+                            // Se o termo já foi aceito, redirecionar mesmo assim
+                            mostrarSucesso('Termo já foi aceito anteriormente. Redirecionando...');
+                            setTimeout(() => {
+                                window.location.href = `portal-motorista.html?coleta=${coletaId}&iniciarRastreamento=true`;
+                            }, 1500);
+                            return;
+                        } else {
+                            errorMessage = result.error || 'Não foi possível aceitar o termo. Verifique se você é o motorista designado para esta coleta.';
+                        }
+                    } else if (response.status === 400) {
+                        errorMessage = result.error || 'Dados inválidos. Verifique se o link está correto.';
+                    }
+                    
+                    throw new Error(errorMessage);
                 }
             } catch (error) {
                 console.error('Erro ao aceitar termo:', error);
-                if (error.message.includes('autenticado') || error.message.includes('login')) {
-                    mostrarErro('Você precisa estar autenticado como motorista para aceitar o termo. Por favor, faça login no portal do motorista primeiro.');
-                } else {
-                    mostrarErro('Erro ao processar aceite do termo: ' + (error.message || 'Tente novamente.'));
-                }
+                mostrarErro('Erro ao processar aceite do termo: ' + (error.message || 'Tente novamente.'));
                 btnAceitar.disabled = false;
                 btnAceitar.innerHTML = '<i class="fas fa-check-circle"></i> Aceitar e Iniciar Rastreamento';
             }

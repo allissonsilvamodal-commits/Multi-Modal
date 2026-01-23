@@ -4988,9 +4988,14 @@ app.get('/api/coletas/public/:coletaId', async (req, res) => {
   try {
     const { coletaId } = req.params;
     
+    if (!coletaId) {
+      return res.status(400).json({ success: false, error: 'ID da coleta não fornecido' });
+    }
+    
     console.log('🔍 Buscando dados públicos da coleta:', coletaId);
     
-    const { data: coleta, error } = await supabase
+    // Usar supabaseAdmin para bypass de RLS (Row Level Security)
+    const { data: coleta, error } = await supabaseAdmin
       .from('coletas')
       .select('id, numero_coleta, cliente, origem, destino, motorista_id, motorista_nome')
       .eq('id', coletaId)
@@ -4998,27 +5003,39 @@ app.get('/api/coletas/public/:coletaId', async (req, res) => {
     
     if (error) {
       console.error('❌ Erro ao buscar coleta:', error);
-      return res.status(404).json({ error: 'Coleta não encontrada' });
+      return res.status(404).json({ success: false, error: 'Coleta não encontrada', details: error.message });
     }
     
     if (!coleta) {
-      return res.status(404).json({ error: 'Coleta não encontrada' });
+      return res.status(404).json({ success: false, error: 'Coleta não encontrada' });
     }
     
     // Buscar dados do motorista se houver motorista_id
     let motorista = null;
     if (coleta.motorista_id) {
-      const { data: motoristaData, error: motoristaError } = await supabase
-        .from('motoristas')
-        .select('id, nome, cnh')
-        .eq('id', coleta.motorista_id)
-        .single();
-      
-      if (!motoristaError && motoristaData) {
-        motorista = motoristaData;
+      try {
+        const { data: motoristaData, error: motoristaError } = await supabaseAdmin
+          .from('motoristas')
+          .select('id, nome, cnh')
+          .eq('id', coleta.motorista_id)
+          .single();
+        
+        if (!motoristaError && motoristaData) {
+          motorista = motoristaData;
+        } else if (motoristaError) {
+          console.warn('⚠️ Erro ao buscar motorista:', motoristaError.message);
+        }
+      } catch (motoristaErr) {
+        console.warn('⚠️ Erro ao buscar motorista:', motoristaErr.message);
       }
     }
     
+    console.log('✅ Dados da coleta pública retornados:', {
+      coleta_id: coleta.id,
+      motorista_id: coleta.motorista_id,
+      tem_motorista: !!motorista
+    });
+
     res.json({
       success: true,
       coleta: coleta,
@@ -5026,7 +5043,7 @@ app.get('/api/coletas/public/:coletaId', async (req, res) => {
     });
   } catch (error) {
     console.error('❌ Erro ao buscar coleta pública:', error);
-    res.status(500).json({ error: 'Erro ao buscar dados da coleta' });
+    res.status(500).json({ success: false, error: 'Erro ao buscar dados da coleta', details: error.message });
   }
 });
 
@@ -5071,20 +5088,71 @@ app.get('/api/rastreamento/verificar-termo', async (req, res) => {
 // Aceitar termo de rastreamento
 app.post('/api/rastreamento/aceitar-termo', express.json(), async (req, res) => {
   try {
-    const { user, motorista, error } = await requireMotoristaAuth(req);
-    if (error) {
-      return res.status(error.status || 401).json({ success: false, error: error.message });
-    }
+    console.log('📥 Requisição para aceitar termo:', {
+      coletaId: req.body.coletaId,
+      termoVersao: req.body.termoVersao,
+      hasUserAgent: !!req.body.userAgent
+    });
 
-    const { coletaId, termoVersao, ipAddress, userAgent } = req.body;
+    const { coletaId, termoVersao, userAgent } = req.body;
 
     if (!coletaId || !termoVersao) {
+      console.warn('⚠️ Dados incompletos na requisição');
       return res.status(400).json({ success: false, error: 'Dados incompletos.' });
     }
 
-    if (!motorista) {
-      return res.status(409).json({ success: false, error: 'Complete seu cadastro primeiro.' });
+    // Buscar a coleta para obter o motorista_id
+    console.log('🔍 Buscando coleta:', coletaId);
+    const { data: coleta, error: coletaError } = await supabaseAdmin
+      .from('coletas')
+      .select('id, motorista_id')
+      .eq('id', coletaId)
+      .single();
+
+    if (coletaError || !coleta) {
+      console.error('❌ Erro ao buscar coleta:', coletaError);
+      return res.status(404).json({ success: false, error: 'Coleta não encontrada.' });
     }
+
+    if (!coleta.motorista_id) {
+      console.warn('⚠️ Coleta sem motorista vinculado');
+      return res.status(400).json({ success: false, error: 'Esta coleta não possui motorista vinculado.' });
+    }
+
+    console.log('✅ Coleta encontrada, motorista_id:', coleta.motorista_id);
+
+    // Tentar autenticação (opcional - se o motorista estiver logado, usar dados da sessão)
+    let motorista = null;
+    const authResult = await requireMotoristaAuth(req);
+    if (!authResult.error && authResult.motorista) {
+      // Verificar se o motorista autenticado é o mesmo da coleta
+      if (authResult.motorista.id === coleta.motorista_id) {
+        motorista = authResult.motorista;
+      }
+    }
+
+    // Se não autenticou ou não é o motorista correto, buscar pelo motorista_id da coleta
+    if (!motorista) {
+      console.log('🔍 Buscando motorista pelo ID da coleta:', coleta.motorista_id);
+      const { data: motoristaData, error: motoristaError } = await supabaseAdmin
+        .from('motoristas')
+        .select('id, nome, telefone1, telefone2, status')
+        .eq('id', coleta.motorista_id)
+        .single();
+
+      if (motoristaError || !motoristaData) {
+        console.error('❌ Erro ao buscar motorista:', motoristaError);
+        return res.status(404).json({ success: false, error: 'Motorista não encontrado para esta coleta.' });
+      }
+
+      motorista = motoristaData;
+      console.log('✅ Motorista encontrado:', motorista.id, motorista.nome);
+    } else {
+      console.log('✅ Motorista autenticado:', motorista.id, motorista.nome);
+    }
+
+    // Obter IP do servidor (mais confiável que do cliente)
+    const ipAddress = req.ip || req.headers['x-forwarded-for'] || req.connection.remoteAddress || 'desconhecido';
 
     // Verificar apenas se o cadastro está completo (dados básicos)
     // Não verificar mais o status "ativo" - a análise final será feita na etapa GR
@@ -5100,10 +5168,22 @@ app.post('/api/rastreamento/aceitar-termo', express.json(), async (req, res) => 
       .single();
 
     if (termoExistente) {
-      return res.json({ success: true, message: 'Termo já aceito anteriormente.' });
+      // Se o termo já foi aceito, retornar sucesso mas não gerar novo token
+      console.log('ℹ️ Termo já aceito anteriormente para esta coleta');
+      return res.status(200).json({ 
+        success: true, 
+        message: 'Termo já aceito anteriormente.',
+        termoJaAceito: true
+      });
     }
 
     // Inserir novo termo
+    console.log('📝 Inserindo novo termo:', {
+      motorista_id: motorista.id,
+      coleta_id: coletaId,
+      termo_versao: termoVersao
+    });
+
     const { data: novoTermo, error: insertError } = await supabaseAdmin
       .from('rastreamento_termos')
       .insert({
@@ -5118,9 +5198,26 @@ app.post('/api/rastreamento/aceitar-termo', express.json(), async (req, res) => 
       .single();
 
     if (insertError) {
-      console.error('Erro ao inserir termo:', insertError);
-      return res.status(500).json({ success: false, error: 'Não foi possível registrar o aceite do termo.' });
+      console.error('❌ Erro ao inserir termo:', insertError);
+      
+      // Se for erro de constraint única (termo já existe), tratar como sucesso
+      if (insertError.code === '23505' || insertError.message?.includes('duplicate') || insertError.message?.includes('unique')) {
+        console.log('ℹ️ Termo já existe (constraint única), tratando como sucesso');
+        return res.status(200).json({ 
+          success: true, 
+          message: 'Termo já aceito anteriormente.',
+          termoJaAceito: true
+        });
+      }
+      
+      return res.status(500).json({ 
+        success: false, 
+        error: 'Não foi possível registrar o aceite do termo.',
+        details: insertError.message
+      });
     }
+
+    console.log('✅ Termo inserido com sucesso:', novoTermo?.id);
 
     // Registrar evento no histórico
     await supabaseAdmin.from('rastreamento_historico').insert({
@@ -11309,16 +11406,63 @@ app.post('/webhook/send-supabase', (req, res, next) => {
       });
     }
 
+    // Validar número antes de formatar
+    if (!number || typeof number !== 'string') {
+      cleanupFile();
+      return res.status(400).json({
+        success: false,
+        error: 'Número de telefone inválido ou não fornecido'
+      });
+    }
+
     const formattedNumber = formatNumberForEvolution(number);
     console.log('🔢 Número formatado:', formattedNumber);
+
+    // Validar formato do número após formatação
+    if (!formattedNumber || !formattedNumber.includes('@c.us')) {
+      cleanupFile();
+      return res.status(400).json({
+        success: false,
+        error: 'Erro ao formatar número de telefone. Verifique se o número está correto.'
+      });
+    }
 
     const evolutionUrl = userCreds.api_url;
     const simulateTypingRaw = (req.body?.simulateTyping || req.body?.simulate_typing || '').toString().toLowerCase();
     const simulateTypingEnabled = ['1', 'true', 'on', 'yes'].includes(simulateTypingRaw);
 
+    // Validar URL da Evolution
+    if (!evolutionUrl || !userCreds.instance_name) {
+      cleanupFile();
+      return res.status(500).json({
+        success: false,
+        error: 'Configuração da Evolution API incompleta',
+        details: 'URL ou nome da instância não configurados'
+      });
+    }
+
     if (!mediaData) {
       const textUrl = `${evolutionUrl}/message/sendText/${userCreds.instance_name}`;
       console.log('🌐 URL da requisição:', textUrl);
+      
+      // Validar mensagem
+      if (!message || typeof message !== 'string' || message.trim().length === 0) {
+        cleanupFile();
+        return res.status(400).json({
+          success: false,
+          error: 'Mensagem não pode estar vazia'
+        });
+      }
+      
+      // Limitar tamanho da mensagem (WhatsApp tem limite de 4096 caracteres)
+      if (message.length > 4096) {
+        cleanupFile();
+        return res.status(400).json({
+          success: false,
+          error: 'Mensagem muito longa',
+          details: `A mensagem deve ter no máximo 4096 caracteres. Tamanho atual: ${message.length}`
+        });
+      }
 
       await simulateTypingAction({
         enabled: simulateTypingEnabled,
@@ -11345,7 +11489,18 @@ app.post('/webhook/send-supabase', (req, res, next) => {
       console.log('📡 Status da Evolution:', response.status);
 
       if (response.ok) {
-        const result = await response.json();
+        let result;
+        try {
+          const responseText = await response.text();
+          if (responseText) {
+            result = JSON.parse(responseText);
+          } else {
+            result = { success: true };
+          }
+        } catch (parseError) {
+          console.warn('⚠️ Erro ao fazer parse da resposta da Evolution:', parseError);
+          result = { success: true, message: 'Mensagem enviada (resposta não parseável)' };
+        }
         console.log('✅ Mensagem enviada com sucesso:', result);
         const cooldownInfo = registerUserSend(userIdentity);
         cleanupFile();
@@ -11380,8 +11535,24 @@ app.post('/webhook/send-supabase', (req, res, next) => {
         return;
       }
 
-      const errorText = await response.text();
-      console.log('❌ Erro da Evolution (texto):', errorText.substring(0, 500)); // Limitar log a 500 caracteres
+      let errorText = '';
+      let errorJson = null;
+      
+      try {
+        errorText = await response.text();
+        console.log('❌ Erro da Evolution (texto):', errorText.substring(0, 500)); // Limitar log a 500 caracteres
+        
+        // Tentar fazer parse do erro como JSON
+        try {
+          errorJson = JSON.parse(errorText);
+          console.log('❌ Erro da Evolution (JSON):', errorJson);
+        } catch (parseErr) {
+          // Não é JSON, continuar com texto
+        }
+      } catch (textError) {
+        console.error('❌ Erro ao ler resposta da Evolution:', textError);
+        errorText = 'Erro ao processar resposta da Evolution API';
+      }
       
       // Identificar tipo de erro
       let tipoErro = 'desconhecido';
@@ -11391,9 +11562,29 @@ app.post('/webhook/send-supabase', (req, res, next) => {
         console.error('❌ Erro ao identificar tipo de erro:', identifyErr.message);
       }
       
-      // Extrair mensagem de erro mais amigável se for HTML do ngrok
+      // Extrair mensagem de erro mais amigável
       let errorMessage = `❌ Erro ${response.status} do Evolution`;
       let errorDetails = errorText;
+      
+      // Se o erro for JSON, tentar extrair mensagem mais específica
+      if (errorJson) {
+        if (errorJson.error) {
+          errorMessage = errorJson.error;
+        }
+        if (errorJson.message) {
+          errorDetails = errorJson.message;
+        } else if (errorJson.response?.message) {
+          errorDetails = errorJson.response.message;
+        } else if (errorJson.response?.error) {
+          errorDetails = errorJson.response.error;
+        }
+        
+        // Verificar se há erro específico sobre instância não conectada
+        if (errorDetails && (errorDetails.includes('instance') || errorDetails.includes('not connected') || errorDetails.includes('not found') || errorDetails.includes('undefined'))) {
+          errorMessage = '❌ Instância do Evolution API não está conectada ou configurada incorretamente';
+          errorDetails = 'A instância do WhatsApp não está conectada ou há um problema na configuração. Verifique se o QR Code foi escaneado e se a instância está ativa nas configurações.';
+        }
+      }
       
       if (errorText.includes('ngrok') || errorText.includes('ERR_NGROK')) {
         errorMessage = '❌ Servidor Evolution API offline (ngrok desconectado)';

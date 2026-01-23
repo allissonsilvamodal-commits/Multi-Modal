@@ -13650,20 +13650,29 @@
                 // Já tem DDD, usar como está
             } else if (telefoneMotorista.length === 8 || telefoneMotorista.length === 9) {
                 // Não tem DDD, adicionar DDD padrão (pode ser ajustado)
-                telefoneMotorista = '81' + telefoneMotorista; // DDD padrão 81 (Pernambuco)
+                telefoneMotorista = '55' + telefoneMotorista; // Adicionar código do país + DDD padrão
+            } else if (telefoneMotorista.length < 8) {
+                showNotification('⚠️ Número de telefone inválido. Deve ter pelo menos 8 dígitos.', 'warning');
+                return;
+            }
+            
+            // Validar formato final do telefone (deve ter pelo menos 10 dígitos com DDD)
+            if (telefoneMotorista.length < 10) {
+                showNotification('⚠️ Número de telefone inválido. Verifique o formato.', 'warning');
+                return;
             }
 
             // Gerar link único para o motorista aceitar o termo e iniciar rastreamento
             const baseUrl = window.location.origin;
             const linkRastreamento = `${baseUrl}/termo-rastreamento.html?coleta=${coletaId}`;
             
-            // Mensagem para o WhatsApp
-            const mensagem = `Olá! Você foi designado para a coleta #${coleta.numero_coleta || coletaId}.\n\n` +
+            // Mensagem para o WhatsApp (limitada a 4096 caracteres)
+            const mensagem = `Olá ${motorista.nome || 'motorista'}! Você foi designado para a coleta #${coleta.numero_coleta || coletaId}.\n\n` +
                            `Cliente: ${coleta.cliente || 'N/A'}\n` +
                            `Origem: ${coleta.origem || 'N/A'}\n` +
                            `Destino: ${coleta.destino || 'N/A'}\n\n` +
-                           `Para iniciar o rastreamento, clique no link abaixo:\n${linkRastreamento}\n\n` +
-                           `Ao clicar no link, você será redirecionado para a página de rastreamento onde poderá iniciar o monitoramento da sua localização.`;
+                           `Para aceitar o termo de rastreamento e iniciar o monitoramento, clique no link abaixo:\n${linkRastreamento}\n\n` +
+                           `Ao clicar no link, você será redirecionado para a página de aceite do termo. Após aceitar, o rastreamento será ativado automaticamente.`;
 
             // Obter userId do usuário logado
             let userId = null;
