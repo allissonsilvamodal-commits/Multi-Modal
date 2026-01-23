@@ -364,6 +364,20 @@
                     Recusar
                 </button>
             </div>
+
+            <!-- Status do Rastreamento (aparece após aceitar o termo) -->
+            <div id="statusRastreamentoContainer" style="display: none; margin-top: 2rem; padding: 1.5rem; background: #f0fdf4; border-radius: 12px; border-left: 4px solid #10b981;">
+                <h3 style="color: #065f46; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+                    <i class="fas fa-map-marker-alt"></i>
+                    Status do Rastreamento
+                </h3>
+                <div id="statusRastreamentoTexto" style="color: #047857; margin-bottom: 0.5rem;">
+                    <i class="fas fa-spinner fa-spin"></i> Iniciando rastreamento GPS...
+                </div>
+                <div id="statusRastreamentoDetalhes" style="color: #6b7280; font-size: 0.9rem; margin-top: 0.5rem;">
+                    Aguardando primeira localização...
+                </div>
+            </div>
         </div>
     </div>
 
@@ -372,6 +386,10 @@
         let coletaId = null;
         let coletaData = null;
         let motoristaData = null;
+        let rastreamentoAtivo = false;
+        let watchId = null;
+        let intervaloRastreamento = null;
+        let contadorPosicoesEnviadas = 0;
 
         // Inicializar Supabase
         async function inicializarSupabase() {
@@ -428,7 +446,12 @@
                         preencherInformacoes();
                         
                         // Tentar verificar se termo já foi aceito (opcional, não bloqueia)
-                        verificarTermoAceito().catch(err => {
+                        verificarTermoAceito().then(termoJaAceito => {
+                            if (termoJaAceito) {
+                                // Se termo já aceito, iniciar rastreamento automaticamente
+                                console.log('✅ Termo já aceito, iniciando rastreamento automaticamente');
+                            }
+                        }).catch(err => {
                             console.warn('Não foi possível verificar termo:', err);
                         });
                         return;
@@ -532,11 +555,22 @@
                 if (response.ok) {
                     const result = await response.json();
                     if (result.termoAceito) {
-                        // Termo já aceito, redirecionar para portal do motorista para iniciar rastreamento
-                        mostrarSucesso('Termo já aceito anteriormente. Redirecionando...');
-                        setTimeout(() => {
-                            window.location.href = `portal-motorista.html?coleta=${coletaId}&iniciarRastreamento=true`;
-                        }, 2000);
+                        // Termo já aceito, iniciar rastreamento diretamente
+                        const tokenExistente = localStorage.getItem(`rastreamento_token_${coletaId}`);
+                        mostrarSucesso('✅ Termo já aceito anteriormente. Monitoramento reiniciado.');
+                        
+                        // Ocultar botões e mostrar status
+                        document.getElementById('btnAceitar').style.display = 'none';
+                        const btnRecusar = document.querySelector('.btn-secondary');
+                        if (btnRecusar) btnRecusar.style.display = 'none';
+                        document.getElementById('aceitarTermo').disabled = true;
+                        
+                        // Mostrar seção de status do rastreamento
+                        const statusContainer = document.getElementById('statusRastreamentoContainer');
+                        if (statusContainer) statusContainer.style.display = 'block';
+                        
+                        // Iniciar rastreamento GPS diretamente
+                        iniciarRastreamentoGPS(coletaId, tokenExistente);
                         return true;
                     }
                 }
@@ -648,27 +682,62 @@
                 console.log('📦 Dados da resposta:', result);
 
                 if (response.ok && result.success) {
-                    mostrarSucesso('Termo aceito com sucesso! Iniciando rastreamento...');
+                    console.log('✅ Termo aceito com sucesso! Iniciando rastreamento...');
                     
                     // Armazenar token de rastreamento se fornecido
                     if (result.tokenRastreamento) {
                         localStorage.setItem(`rastreamento_token_${coletaId}`, result.tokenRastreamento);
-                        console.log('✅ Token de rastreamento armazenado');
+                        console.log('✅ Token de rastreamento armazenado:', result.tokenRastreamento.substring(0, 20) + '...');
+                    } else {
+                        console.warn('⚠️ Token de rastreamento não recebido na resposta');
                     }
                     
-                    // Redirecionar para portal do motorista onde o rastreamento será iniciado automaticamente
-                    setTimeout(() => {
-                        window.location.href = `portal-motorista.html?coleta=${coletaId}&iniciarRastreamento=true`;
-                    }, 1500);
+                    // Mostrar mensagem de sucesso e iniciar rastreamento diretamente
+                    mostrarSucesso('✅ Termo aceito com sucesso! Monitoramento iniciado.');
+                    
+                    // Ocultar botões e mostrar status do rastreamento
+                    document.getElementById('btnAceitar').style.display = 'none';
+                    const btnRecusar = document.querySelector('.btn-secondary');
+                    if (btnRecusar) btnRecusar.style.display = 'none';
+                    document.getElementById('aceitarTermo').disabled = true;
+                    
+                    // Mostrar seção de status do rastreamento
+                    const statusContainer = document.getElementById('statusRastreamentoContainer');
+                    if (statusContainer) {
+                        statusContainer.style.display = 'block';
+                    }
+                    
+                    // Iniciar rastreamento GPS IMEDIATAMENTE - SEM DELAY
+                    console.log('🚀 Chamando iniciarRastreamentoGPS agora...');
+                    iniciarRastreamentoGPS(coletaId, result.tokenRastreamento);
+                    console.log('✅ iniciarRastreamentoGPS chamado');
                 } else if (response.status === 409) {
                     // Tratar 409 especificamente - pode ser termo já aceito
                     console.log('⚠️ Status 409 recebido, verificando se termo já foi aceito');
                     if (result.message && (result.message.includes('já aceito') || result.message.includes('já foi aceito'))) {
-                        mostrarSucesso('Termo já foi aceito anteriormente. Redirecionando...');
-                        setTimeout(() => {
-                            window.location.href = `portal-motorista.html?coleta=${coletaId}&iniciarRastreamento=true`;
-                        }, 1500);
-                        return;
+                        // Verificar se há token de rastreamento
+                        const tokenExistente = localStorage.getItem(`rastreamento_token_${coletaId}`);
+                        if (tokenExistente) {
+                            mostrarSucesso('✅ Termo já aceito. Monitoramento reiniciado.');
+                            
+                            // Ocultar botões e mostrar status
+                            document.getElementById('btnAceitar').style.display = 'none';
+                            document.querySelector('.btn-secondary').style.display = 'none';
+                            document.getElementById('aceitarTermo').disabled = true;
+                            
+                            // Mostrar seção de status do rastreamento
+                            const statusContainer = document.getElementById('statusRastreamentoContainer');
+                            statusContainer.style.display = 'block';
+                            
+                            // Iniciar rastreamento GPS diretamente
+                            iniciarRastreamentoGPS(coletaId, tokenExistente);
+                            return;
+                        } else {
+                            // Se não há token, tentar obter um novo
+                            mostrarSucesso('Termo já aceito. Iniciando monitoramento...');
+                            iniciarRastreamentoGPS(coletaId, null);
+                            return;
+                        }
                     } else {
                         // Outro tipo de conflito
                         throw new Error(result.error || 'Conflito ao aceitar termo. Tente novamente.');
@@ -684,11 +753,21 @@
                     } else if (response.status === 409) {
                         // 409 pode ser termo já aceito ou outro conflito
                         if (result.message && result.message.includes('já aceito')) {
-                            // Se o termo já foi aceito, redirecionar mesmo assim
-                            mostrarSucesso('Termo já foi aceito anteriormente. Redirecionando...');
-                            setTimeout(() => {
-                                window.location.href = `portal-motorista.html?coleta=${coletaId}&iniciarRastreamento=true`;
-                            }, 1500);
+                            // Se o termo já foi aceito, iniciar rastreamento diretamente
+                            const tokenExistente = localStorage.getItem(`rastreamento_token_${coletaId}`);
+                            mostrarSucesso('✅ Termo já aceito. Monitoramento reiniciado.');
+                            
+                            // Ocultar botões e mostrar status
+                            document.getElementById('btnAceitar').style.display = 'none';
+                            document.querySelector('.btn-secondary').style.display = 'none';
+                            document.getElementById('aceitarTermo').disabled = true;
+                            
+                            // Mostrar seção de status do rastreamento
+                            const statusContainer = document.getElementById('statusRastreamentoContainer');
+                            statusContainer.style.display = 'block';
+                            
+                            // Iniciar rastreamento GPS diretamente
+                            iniciarRastreamentoGPS(coletaId, tokenExistente);
                             return;
                         } else {
                             errorMessage = result.error || 'Não foi possível aceitar o termo. Verifique se você é o motorista designado para esta coleta.';
@@ -714,6 +793,286 @@
             }
         }
 
+        // Função para iniciar rastreamento GPS diretamente na página do termo
+        function iniciarRastreamentoGPS(coletaId, tokenRastreamento) {
+            console.log('🚀 iniciarRastreamentoGPS chamado:', { coletaId, temToken: !!tokenRastreamento });
+            
+            if (!coletaId) {
+                console.error('❌ ColetaId não fornecido para iniciar rastreamento');
+                atualizarStatusRastreamento('❌ Erro: ID da coleta não encontrado.', 'error');
+                return;
+            }
+
+            // Obter token se não foi fornecido
+            if (!tokenRastreamento) {
+                tokenRastreamento = localStorage.getItem(`rastreamento_token_${coletaId}`);
+                console.log('🔑 Token obtido do localStorage:', tokenRastreamento ? 'SIM' : 'NÃO');
+            }
+
+            if (!tokenRastreamento) {
+                console.error('❌ Token de rastreamento não disponível');
+                atualizarStatusRastreamento('⚠️ Token de rastreamento não encontrado. Aguardando...', 'warning');
+                // Tentar novamente após 2 segundos
+                setTimeout(() => {
+                    const tokenNovo = localStorage.getItem(`rastreamento_token_${coletaId}`);
+                    if (tokenNovo) {
+                        console.log('✅ Token encontrado, reiniciando rastreamento...');
+                        iniciarRastreamentoGPS(coletaId, tokenNovo);
+                    } else {
+                        atualizarStatusRastreamento('❌ Erro: Token de rastreamento não disponível. Recarregue a página.', 'error');
+                    }
+                }, 2000);
+                return;
+            }
+
+            console.log('✅ Iniciando rastreamento GPS para coleta:', coletaId);
+            rastreamentoAtivo = true;
+
+            // Atualizar status
+            atualizarStatusRastreamento('📍 Rastreamento GPS ativo! Aguardando primeira localização...', 'info');
+
+            // Verificar se geolocalização está disponível
+            if (!navigator.geolocation) {
+                atualizarStatusRastreamento('❌ Seu navegador não suporta geolocalização.', 'error');
+                mostrarErro('Seu navegador não suporta geolocalização.');
+                return;
+            }
+
+            // Verificar permissão de geolocalização
+            navigator.permissions?.query({ name: 'geolocation' }).then(permissionStatus => {
+                if (permissionStatus.state === 'denied') {
+                    atualizarStatusRastreamento('❌ Permissão de localização negada. Por favor, permita o acesso à localização nas configurações do navegador.', 'error');
+                    mostrarErro('Permissão de localização negada. Por favor, permita o acesso à localização nas configurações do navegador.');
+                    return;
+                }
+            }).catch(() => {
+                // Permissions API não disponível, continuar
+            });
+
+            const options = {
+                enableHighAccuracy: true,
+                timeout: 60000,
+                maximumAge: 120000
+            };
+
+            // Capturar posição inicial IMEDIATAMENTE
+            console.log('📍 Solicitando posição inicial...');
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    console.log('✅ Posição inicial obtida:', {
+                        lat: position.coords.latitude,
+                        lng: position.coords.longitude,
+                        accuracy: position.coords.accuracy
+                    });
+                    atualizarStatusRastreamento('📍 Primeira localização obtida! Enviando...', 'info');
+                    enviarPosicaoGPS(position, coletaId, tokenRastreamento);
+                },
+                (error) => {
+                    console.error('❌ Erro ao obter posição inicial:', error);
+                    let mensagemErro = 'Erro ao obter localização.';
+                    if (error.code === error.PERMISSION_DENIED) {
+                        mensagemErro = 'Permissão de localização negada. Por favor, permita o acesso à localização nas configurações do navegador.';
+                        atualizarStatusRastreamento('❌ Permissão de localização negada.', 'error');
+                    } else if (error.code === error.POSITION_UNAVAILABLE) {
+                        mensagemErro = 'Localização não disponível. Verifique se o GPS está ativo.';
+                        atualizarStatusRastreamento('⚠️ Localização não disponível. Verifique o GPS.', 'warning');
+                    } else if (error.code === error.TIMEOUT) {
+                        mensagemErro = 'Tempo esgotado ao obter localização. Tentando novamente...';
+                        atualizarStatusRastreamento('⏳ Aguardando localização...', 'info');
+                        // Tentar novamente após 5 segundos
+                        setTimeout(() => {
+                            if (rastreamentoAtivo) {
+                                navigator.geolocation.getCurrentPosition(
+                                    (pos) => enviarPosicaoGPS(pos, coletaId, tokenRastreamento),
+                                    (err) => console.error('❌ Erro na segunda tentativa:', err),
+                                    options
+                                );
+                            }
+                        }, 5000);
+                    }
+                    mostrarErro(mensagemErro);
+                },
+                options
+            );
+
+            // Iniciar watchPosition para monitoramento contínuo
+            watchId = navigator.geolocation.watchPosition(
+                (position) => {
+                    console.log('📍 Nova posição detectada:', {
+                        lat: position.coords.latitude,
+                        lng: position.coords.longitude
+                    });
+                    enviarPosicaoGPS(position, coletaId, tokenRastreamento);
+                },
+                (error) => {
+                    console.warn('⚠️ Erro no watchPosition:', error);
+                    if (error.code === error.PERMISSION_DENIED) {
+                        atualizarStatusRastreamento('❌ Permissão de localização negada.', 'error');
+                        rastreamentoAtivo = false;
+                    }
+                },
+                options
+            );
+
+            // Enviar posição periodicamente (a cada 2 minutos para garantir envio frequente)
+            const INTERVALO_ENVIO_MS = 2 * 60 * 1000; // 2 minutos
+            
+            // Enviar primeira posição após 10 segundos (para garantir que a inicial já foi enviada)
+            setTimeout(() => {
+                if (rastreamentoAtivo) {
+                    console.log('📍 Enviando primeira posição periódica...');
+                    navigator.geolocation.getCurrentPosition(
+                        (position) => {
+                            console.log('✅ Primeira posição periódica obtida');
+                            enviarPosicaoGPS(position, coletaId, tokenRastreamento);
+                        },
+                        (error) => {
+                            console.warn('⚠️ Erro ao obter primeira posição periódica:', error);
+                        },
+                        options
+                    );
+                }
+            }, 10000);
+
+            // Configurar envio periódico
+            console.log('⏰ Configurando envio periódico a cada', INTERVALO_ENVIO_MS / 1000, 'segundos');
+            intervaloRastreamento = setInterval(() => {
+                if (!rastreamentoAtivo) {
+                    console.log('⏹️ Rastreamento desativado, parando intervalo');
+                    clearInterval(intervaloRastreamento);
+                    intervaloRastreamento = null;
+                    return;
+                }
+
+                console.log('📍 Solicitando posição periódica...');
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        console.log('✅ Posição periódica obtida, enviando...');
+                        enviarPosicaoGPS(position, coletaId, tokenRastreamento);
+                    },
+                    (error) => {
+                        console.warn('⚠️ Erro ao obter posição periódica:', error);
+                    },
+                    {
+                        ...options,
+                        timeout: 30000,
+                        maximumAge: 300000
+                    }
+                );
+            }, INTERVALO_ENVIO_MS);
+
+            atualizarStatusRastreamento('✅ Rastreamento GPS ativo! Sua localização será enviada a cada 2 minutos.', 'success');
+            console.log('✅ Rastreamento GPS configurado e ativo!');
+        }
+
+        // Função para enviar posição GPS
+        async function enviarPosicaoGPS(position, coletaId, tokenRastreamento) {
+            console.log('📤 enviarPosicaoGPS chamado');
+            
+            if (!position || !position.coords) {
+                console.error('❌ Posição inválida');
+                return;
+            }
+
+            // Obter token se não foi fornecido
+            if (!tokenRastreamento) {
+                tokenRastreamento = localStorage.getItem(`rastreamento_token_${coletaId}`);
+                console.log('🔑 Token obtido do localStorage:', tokenRastreamento ? 'SIM' : 'NÃO');
+            }
+
+            if (!tokenRastreamento) {
+                console.error('❌ Token de rastreamento não disponível');
+                atualizarStatusRastreamento('⚠️ Token de rastreamento não encontrado. Verifique se o termo foi aceito corretamente.', 'warning');
+                return;
+            }
+
+            const { latitude, longitude, accuracy } = position.coords;
+
+            // Validar coordenadas
+            if (isNaN(latitude) || isNaN(longitude) || latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) {
+                console.error('❌ Coordenadas inválidas:', { latitude, longitude });
+                return;
+            }
+
+            const dadosPosicao = {
+                coletaId: coletaId,
+                latitude: parseFloat(latitude.toFixed(6)),
+                longitude: parseFloat(longitude.toFixed(6)),
+                precisao: accuracy ? parseFloat(accuracy.toFixed(2)) : null,
+                velocidade: position.coords.speed ? parseFloat((position.coords.speed * 3.6).toFixed(2)) : null,
+                direcao: position.coords.heading ? parseFloat(position.coords.heading.toFixed(2)) : null
+            };
+
+            console.log('📤 Enviando posição para servidor:', {
+                coletaId: coletaId,
+                latitude: dadosPosicao.latitude,
+                longitude: dadosPosicao.longitude
+            });
+
+            try {
+                const response = await fetch('/api/rastreamento/enviar-posicao', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${tokenRastreamento}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(dadosPosicao)
+                });
+
+                console.log('📡 Resposta do servidor:', response.status, response.statusText);
+
+                if (response.ok) {
+                    const result = await response.json();
+                    contadorPosicoesEnviadas++;
+                    
+                    const agora = new Date();
+                    atualizarStatusRastreamento(
+                        `✅ Localização enviada com sucesso! (${contadorPosicoesEnviadas} envio(s))`,
+                        'success',
+                        `Última atualização: ${agora.toLocaleTimeString('pt-BR')} - Lat: ${latitude.toFixed(6)}, Lng: ${longitude.toFixed(6)}`
+                    );
+                    
+                    console.log('✅ Posição GPS enviada com sucesso:', {
+                        coletaId: coletaId,
+                        posicaoId: result.posicao?.id,
+                        totalEnviadas: contadorPosicoesEnviadas
+                    });
+                } else {
+                    const errorData = await response.json().catch(() => ({ error: 'Erro desconhecido' }));
+                    console.error('❌ Erro ao enviar posição:', response.status, errorData);
+                    
+                    if (response.status === 401 || response.status === 403) {
+                        atualizarStatusRastreamento('⚠️ Erro de autenticação. Verifique se o termo foi aceito corretamente.', 'warning');
+                    } else {
+                        atualizarStatusRastreamento('⚠️ Erro ao enviar localização. Tentando novamente...', 'warning');
+                    }
+                }
+            } catch (error) {
+                console.error('❌ Erro ao enviar posição GPS:', error);
+                atualizarStatusRastreamento('⚠️ Erro de conexão. Verifique sua internet.', 'warning');
+            }
+        }
+
+        // Função para atualizar status do rastreamento na UI
+        function atualizarStatusRastreamento(mensagem, tipo = 'info', detalhes = null) {
+            const statusTexto = document.getElementById('statusRastreamentoTexto');
+            const statusDetalhes = document.getElementById('statusRastreamentoDetalhes');
+            
+            if (statusTexto) {
+                let icon = '📍';
+                if (tipo === 'success') icon = '✅';
+                else if (tipo === 'error') icon = '❌';
+                else if (tipo === 'warning') icon = '⚠️';
+                
+                statusTexto.innerHTML = `${icon} ${mensagem}`;
+                statusTexto.style.color = tipo === 'success' ? '#065f46' : tipo === 'error' ? '#991b1b' : tipo === 'warning' ? '#92400e' : '#047857';
+            }
+            
+            if (statusDetalhes && detalhes) {
+                statusDetalhes.textContent = detalhes;
+            }
+        }
+
         // Mostrar erro
         function mostrarErro(mensagem) {
             const errorDiv = document.getElementById('errorMessage');
@@ -730,6 +1089,51 @@
             successDiv.textContent = mensagem;
             successDiv.style.display = 'block';
         }
+
+        // Interceptar e bloquear qualquer tentativa de redirecionamento para portal-motorista
+        (function() {
+            const originalPushState = history.pushState;
+            const originalReplaceState = history.replaceState;
+            
+            history.pushState = function() {
+                const url = arguments[2];
+                if (url && typeof url === 'string' && url.includes('portal-motorista')) {
+                    console.warn('⚠️ Tentativa de redirecionamento para portal-motorista bloqueada via pushState');
+                    return;
+                }
+                return originalPushState.apply(history, arguments);
+            };
+            
+            history.replaceState = function() {
+                const url = arguments[2];
+                if (url && typeof url === 'string' && url.includes('portal-motorista')) {
+                    console.warn('⚠️ Tentativa de redirecionamento para portal-motorista bloqueada via replaceState');
+                    return;
+                }
+                return originalReplaceState.apply(history, arguments);
+            };
+            
+            // Interceptar window.location.href
+            let locationDescriptor = Object.getOwnPropertyDescriptor(window, 'location');
+            if (!locationDescriptor) {
+                locationDescriptor = Object.getOwnPropertyDescriptor(Object.getPrototypeOf(window), 'location');
+            }
+            
+            if (locationDescriptor && locationDescriptor.set) {
+                const originalSetter = locationDescriptor.set;
+                Object.defineProperty(window, 'location', {
+                    set: function(value) {
+                        if (typeof value === 'string' && value.includes('portal-motorista')) {
+                            console.warn('⚠️ Tentativa de redirecionamento para portal-motorista bloqueada. Permanecemos na página do termo.');
+                            console.trace('Stack trace do redirecionamento bloqueado:');
+                            return; // Bloquear redirecionamento
+                        }
+                        return originalSetter.call(window, value);
+                    },
+                    get: locationDescriptor.get
+                });
+            }
+        })();
 
         // Inicializar
         (async function() {
