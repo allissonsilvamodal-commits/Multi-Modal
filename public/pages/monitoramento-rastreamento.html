@@ -1493,6 +1493,38 @@
             }
         }
         
+        // ✅ NOVO: Verificar se há parâmetro de coleta na URL e selecionar automaticamente
+        function verificarParametroColetaNaURL() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const coletaIdParam = urlParams.get('coleta');
+            
+            if (coletaIdParam) {
+                console.log('📋 Coleta detectada na URL:', coletaIdParam);
+                // Aguardar carregar coletas e então selecionar
+                const intervalo = setInterval(() => {
+                    if (coletasDisponiveis && coletasDisponiveis.length > 0) {
+                        clearInterval(intervalo);
+                        const coletaEncontrada = coletasDisponiveis.find(c => c.id === coletaIdParam);
+                        if (coletaEncontrada) {
+                            // Selecionar a coleta automaticamente
+                            selectedColetas = [coletaIdParam];
+                            renderizarListaColetas();
+                            // Iniciar monitoramento automaticamente
+                            if (selectedColetas.length > 0) {
+                                iniciarMonitoramento();
+                            }
+                            mostrarNotificacao(`✅ Coleta #${coletaEncontrada.numero_coleta || coletaIdParam} selecionada automaticamente.`, 'success');
+                        } else {
+                            mostrarNotificacao('⚠️ Coleta não encontrada na lista de coletas disponíveis.', 'warning');
+                        }
+                    }
+                }, 500);
+                
+                // Timeout de segurança
+                setTimeout(() => clearInterval(intervalo), 10000);
+            }
+        }
+
         // Tentar inicializar imediatamente
         inicializarSupabase().then(success => {
             if (!success) {
@@ -1602,6 +1634,9 @@
                 });
                 const errorMessage = error.message || 'Erro ao carregar coletas. Tente novamente.';
                 mostrarNotificacao(errorMessage, 'error');
+            } finally {
+                // ✅ NOVO: Verificar parâmetro de coleta na URL após carregar coletas
+                verificarParametroColetaNaURL();
             }
         }
 

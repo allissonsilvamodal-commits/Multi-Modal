@@ -5008,12 +5008,22 @@
         // ========== GERENCIAMENTO DE ETIQUETAS ==========
         async function carregarEtiquetas() {
             try {
-                const { data, error } = await window.supabase
-                    .from('etiquetas_coletas')
-                    .select('*')
-                    .order('nome', { ascending: true });
-
-                if (error) throw error;
+                const authHeaders = await getAuthHeaders();
+                const response = await fetch('/api/admin/etiquetas', {
+                    headers: authHeaders,
+                    credentials: 'include'
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`Erro ${response.status}: ${response.statusText}`);
+                }
+                
+                const result = await response.json();
+                if (!result.success) {
+                    throw new Error(result.error || 'Erro ao carregar etiquetas');
+                }
+                
+                const data = result.etiquetas || [];
 
                 const container = document.getElementById('containerEtiquetas');
                 if (!container) return;
@@ -5158,19 +5168,29 @@
                 // Normalizar cor para maiúsculas
                 cor = cor.toUpperCase();
 
-                const { data, error } = await window.supabase
-                    .from('etiquetas_coletas')
-                    .insert([{
+                const authHeaders = await getAuthHeaders();
+                const response = await fetch('/api/admin/etiquetas', {
+                    method: 'POST',
+                    headers: authHeaders,
+                    credentials: 'include',
+                    body: JSON.stringify({
                         nome: nome,
                         cor: cor,
-                        descricao: descricao || null,
-                        ativo: true,
-                        criado_por: currentUser.id
-                    }])
-                    .select()
-                    .single();
+                        descricao: descricao || null
+                    })
+                });
 
-                if (error) throw error;
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(errorData.error || `Erro ${response.status}: ${response.statusText}`);
+                }
+
+                const result = await response.json();
+                if (!result.success) {
+                    throw new Error(result.error || 'Erro ao salvar etiqueta');
+                }
+
+                const data = result.etiqueta;
 
                 mostrarSucesso('Etiqueta criada com sucesso!');
                 
@@ -5207,12 +5227,22 @@
             if (!confirm(`Deseja realmente excluir a etiqueta "${nome}"?`)) return;
 
             try {
-                const { error } = await window.supabase
-                    .from('etiquetas_coletas')
-                    .delete()
-                    .eq('id', id);
+                const authHeaders = await getAuthHeaders();
+                const response = await fetch(`/api/admin/etiquetas/${id}`, {
+                    method: 'DELETE',
+                    headers: authHeaders,
+                    credentials: 'include'
+                });
 
-                if (error) throw error;
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(errorData.error || `Erro ${response.status}: ${response.statusText}`);
+                }
+
+                const result = await response.json();
+                if (!result.success) {
+                    throw new Error(result.error || 'Erro ao excluir etiqueta');
+                }
 
                 mostrarSucesso('Etiqueta excluída com sucesso!');
                 await carregarEtiquetas();

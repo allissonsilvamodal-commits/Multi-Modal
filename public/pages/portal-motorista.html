@@ -3642,6 +3642,9 @@
         setTimeout(() => {
           logger.log('🔍 Executando verificação de rastreamento...');
           verificarEIniciarRastreamentoAutomatico();
+          
+          // ✅ NOVO: Verificar se há coleta na URL para iniciar rastreamento
+          verificarColetaNaURL();
         }, 1000);
       } catch (error) {
         logger.error('❌ Erro ao carregar viagens:', error);
@@ -4953,6 +4956,51 @@
     }
     
     // Registrar event listeners do modal de permissão
+    // ✅ NOVO: Verificar parâmetro de coleta na URL e iniciar rastreamento automaticamente
+    function verificarColetaNaURL() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const coletaIdParam = urlParams.get('coleta');
+      const iniciarRastreamentoParam = urlParams.get('iniciarRastreamento');
+      
+      if (coletaIdParam && iniciarRastreamentoParam === 'true') {
+        logger.log('🔍 Coleta detectada na URL com flag de iniciar rastreamento:', coletaIdParam);
+        
+        // Aguardar carregar viagens e então assumir a coleta e iniciar rastreamento
+        const intervalo = setInterval(() => {
+          if (state.viagens && state.viagens.length > 0) {
+            clearInterval(intervalo);
+            
+            // Verificar se a coleta está na lista de viagens
+            const coletaEncontrada = state.viagens.find(v => v.id === coletaIdParam);
+            
+            if (coletaEncontrada) {
+              logger.log('✅ Coleta encontrada nas viagens. Assumindo e iniciando rastreamento...', coletaEncontrada);
+              
+              // Assumir a coleta (isso também iniciará o rastreamento automaticamente)
+              executarAssumirColeta(coletaIdParam).then(() => {
+                logger.log('✅ Coleta assumida e rastreamento iniciado automaticamente');
+                showToast('✅ Coleta assumida! Rastreamento GPS iniciado automaticamente.', 'success');
+              }).catch(error => {
+                logger.error('❌ Erro ao assumir coleta:', error);
+                showToast('Erro ao assumir coleta. Tente novamente.', 'error');
+              });
+            } else {
+              logger.warn('⚠️ Coleta não encontrada nas viagens disponíveis');
+              showToast('⚠️ Coleta não encontrada nas suas viagens disponíveis.', 'warning');
+            }
+          } else if (state.viagens && state.viagens.length === 0) {
+            // Se não há viagens, pode ser que a coleta ainda não esteja disponível
+            clearInterval(intervalo);
+            logger.warn('⚠️ Nenhuma viagem disponível. A coleta pode não estar atribuída ainda.');
+            showToast('⚠️ Nenhuma viagem disponível no momento.', 'warning');
+          }
+        }, 1000);
+        
+        // Timeout de segurança
+        setTimeout(() => clearInterval(intervalo), 15000);
+      }
+    }
+
     document.addEventListener('DOMContentLoaded', () => {
       const btnFechar = safeGetElementById('btnFecharPermissaoLocalizacao');
       const btnCancelar = safeGetElementById('btnCancelarPermissao');

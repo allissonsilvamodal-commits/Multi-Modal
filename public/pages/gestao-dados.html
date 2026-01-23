@@ -201,21 +201,26 @@
     /* Tabela */
     .table-modern {
       width: 100%;
-      border-collapse: separate;
+      border-collapse: collapse;
       border-spacing: 0;
+      table-layout: auto;
     }
     
     .table-modern thead {
       background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
       color: white;
+      position: sticky;
+      top: 0;
+      z-index: 10;
     }
     
     .table-modern thead th {
-      padding: 0.6rem 0.75rem;
+      padding: 0.75rem 0.5rem;
       font-weight: 600;
       text-align: left;
       border: none;
-      font-size: 0.8rem;
+      font-size: 0.85rem;
+      white-space: nowrap;
     }
     
     .table-modern tbody tr {
@@ -227,21 +232,115 @@
       background: #f9fafb;
     }
     
+    .table-modern tbody tr:nth-child(even) {
+      background: #fafbfc;
+    }
+    
+    .table-modern tbody tr:nth-child(even):hover {
+      background: #f1f3f5;
+    }
+    
     .table-modern tbody td {
-      padding: 0.6rem 0.75rem;
-      vertical-align: middle;
-      font-size: 0.8rem;
+      padding: 0.75rem 0.5rem;
+      vertical-align: top;
+      font-size: 0.85rem;
       word-wrap: break-word;
       overflow-wrap: break-word;
       white-space: normal;
-      overflow: visible;
+      border-bottom: 1px solid #e5e7eb;
+      text-align: left;
     }
     
-    /* Célula com badge de tipo de erro (4ª coluna) */
+    /* Coluna 1 - Data */
+    .table-modern thead th:nth-child(1),
+    .table-modern tbody td:nth-child(1) {
+      white-space: nowrap;
+      min-width: 100px;
+    }
+    
+    /* Coluna 2 - OC */
+    .table-modern thead th:nth-child(2),
+    .table-modern tbody td:nth-child(2) {
+      min-width: 120px;
+    }
+    
+    /* Coluna 3 - Operação */
+    .table-modern thead th:nth-child(3),
+    .table-modern tbody td:nth-child(3) {
+      min-width: 120px;
+    }
+    
+    /* Coluna 4 - Tipo de Erro */
+    .table-modern thead th:nth-child(4),
     .table-modern tbody td:nth-child(4) {
+      min-width: 150px;
+    }
+    
+    /* Coluna 5 - Sistema (centralizado) */
+    .table-modern thead th:nth-child(5),
+    .table-modern tbody td:nth-child(5) {
+      text-align: center;
+      min-width: 80px;
+    }
+    
+    /* Coluna 6 - Motivo da Devolução */
+    .table-modern thead th:nth-child(6),
+    .table-modern tbody td:nth-child(6) {
+      word-break: break-word;
       min-width: 200px;
-      max-width: 350px;
-      overflow: visible;
+      max-width: 400px;
+    }
+    
+    /* Coluna 7 - Hora Envio (centralizado) */
+    .table-modern thead th:nth-child(7),
+    .table-modern tbody td:nth-child(7) {
+      text-align: center;
+      white-space: nowrap;
+      min-width: 90px;
+    }
+    
+    /* Coluna 8 - Hora Retorno (centralizado) */
+    .table-modern thead th:nth-child(8),
+    .table-modern tbody td:nth-child(8) {
+      text-align: center;
+      white-space: nowrap;
+      min-width: 90px;
+    }
+    
+    /* Coluna 9 - Responsável */
+    .table-modern thead th:nth-child(9),
+    .table-modern tbody td:nth-child(9) {
+      min-width: 130px;
+    }
+    
+    /* Coluna 10 - Evidência (centralizado) */
+    .table-modern thead th:nth-child(10),
+    .table-modern tbody td:nth-child(10) {
+      text-align: center;
+      min-width: 100px;
+    }
+    
+    /* Coluna 11 - Criado por */
+    .table-modern thead th:nth-child(11),
+    .table-modern tbody td:nth-child(11) {
+      word-break: break-word;
+      min-width: 150px;
+      max-width: 200px;
+    }
+    
+    /* Coluna 12 - Editado por */
+    .table-modern thead th:nth-child(12),
+    .table-modern tbody td:nth-child(12) {
+      word-break: break-word;
+      min-width: 150px;
+      max-width: 200px;
+    }
+    
+    /* Coluna 13 - Ações (centralizado) */
+    .table-modern thead th:nth-child(13),
+    .table-modern tbody td:nth-child(13) {
+      text-align: center;
+      min-width: 100px;
     }
     
     /* Filtros */
@@ -550,15 +649,15 @@
         <div class="row g-3 align-items-end">
           <div class="col-md-2">
             <label class="form-label-modern">Filtrar por Data</label>
-            <input type="date" id="filtroData" class="form-control form-control-modern">
+            <input type="date" id="filtroData" class="form-control form-control-modern" onchange="aplicarFiltros()">
           </div>
           <div class="col-md-2">
             <label class="form-label-modern">Filtrar por OC</label>
-            <input type="text" id="filtroOC" class="form-control form-control-modern" placeholder="Digite a OC...">
+            <input type="text" id="filtroOC" class="form-control form-control-modern" placeholder="Digite a OC..." oninput="aplicarFiltrosDebounced()">
           </div>
           <div class="col-md-3">
             <label class="form-label-modern">Filtrar por Tipo de Erro</label>
-            <select id="filtroTipoErro" class="form-select form-select-modern">
+            <select id="filtroTipoErro" class="form-select form-select-modern" onchange="aplicarFiltros()">
               <option value="">Todos</option>
               <option value="Erro de Tabela">Erro de Tabela</option>
               <option value="Informações Incompletas ou Incorretas">Informações Incompletas ou Incorretas</option>
@@ -575,7 +674,7 @@
           </div>
           <div class="col-md-3">
             <label class="form-label-modern">Filtrar por Operação/Filial</label>
-            <select id="filtroOperacao" class="form-select form-select-modern">
+            <select id="filtroOperacao" class="form-select form-select-modern" onchange="aplicarFiltros()">
               <option value="">Todas</option>
               <option value="Jaboatão">Jaboatão</option>
               <option value="Usinas">Usinas</option>
@@ -599,7 +698,7 @@
           </div>
           <div class="col-md-3">
             <label class="form-label-modern">Filtrar por Responsável</label>
-            <select id="filtroResponsavel" class="form-select form-select-modern">
+            <select id="filtroResponsavel" class="form-select form-select-modern" onchange="aplicarFiltros()">
               <option value="">Todos</option>
               <option value="Allisson silva">Allisson silva</option>
               <option value="Aline oliveira">Aline oliveira</option>
@@ -679,7 +778,7 @@
           </button>
         </div>
         <div class="card-body">
-          <div class="table-responsive">
+          <div class="table-responsive" style="max-height: 70vh; overflow-y: auto;">
             <table class="table-modern">
               <thead>
                 <tr>
@@ -700,7 +799,7 @@
               </thead>
               <tbody id="tabelaDados">
                 <tr>
-                  <td colspan="12" class="text-center py-4">
+                  <td colspan="13" class="text-center py-4">
                     <div class="spinner-border text-primary" role="status">
                       <span class="visually-hidden">Carregando...</span>
                     </div>
@@ -901,6 +1000,19 @@
     let currentUser = null;
     let dadosCarregados = [];
     let isAdmin = false;
+    
+    // ✅ OTIMIZAÇÃO: Cache de token de sessão para evitar múltiplas chamadas
+    let cachedSessionToken = null;
+    let cachedSessionExpiry = 0;
+    const TOKEN_CACHE_DURATION = 5 * 60 * 1000; // 5 minutos
+    
+    // ✅ OTIMIZAÇÃO: Variáveis de paginação
+    let paginaAtual = 1;
+    const itensPorPagina = 50;
+    let dadosFiltradosAtuais = [];
+    
+    // ✅ OTIMIZAÇÃO: Debounce para filtros
+    let debounceTimer = null;
 
     // ========== INICIALIZAÇÃO ==========
     document.addEventListener('DOMContentLoaded', async () => {
@@ -964,12 +1076,40 @@
         currentUser = session.user;
         document.getElementById('userName').textContent = currentUser.email || 'Usuário';
         
+        // ✅ OTIMIZAÇÃO: Cachear token de sessão
+        if (session.access_token) {
+          cachedSessionToken = session.access_token;
+          cachedSessionExpiry = Date.now() + TOKEN_CACHE_DURATION;
+        }
+        
         return true;
       } catch (error) {
         console.error('❌ Erro ao verificar autenticação:', error);
         window.location.href = 'login.html';
         return false;
       }
+    }
+    
+    // ✅ OTIMIZAÇÃO: Função para obter token com cache
+    async function obterToken() {
+      // Verificar se o token em cache ainda é válido
+      if (cachedSessionToken && Date.now() < cachedSessionExpiry) {
+        return cachedSessionToken;
+      }
+      
+      // Buscar novo token
+      try {
+        const { data: { session } } = await supabaseClient.auth.getSession();
+        if (session?.access_token) {
+          cachedSessionToken = session.access_token;
+          cachedSessionExpiry = Date.now() + TOKEN_CACHE_DURATION;
+          return cachedSessionToken;
+        }
+      } catch (error) {
+        console.warn('⚠️ Erro ao obter token:', error);
+      }
+      
+      return null;
     }
 
     // ========== VERIFICAR SE É ADMIN ==========
@@ -1101,6 +1241,13 @@
         try {
           mostrarLoading(true);
           
+          // ✅ OTIMIZAÇÃO: Usar token em cache
+          const token = await obterToken();
+          const headers = {};
+          if (token) {
+            headers['Authorization'] = `Bearer ${token}`;
+          }
+          
           // Upload de cada arquivo
           for (let i = 0; i < arquivosEvidencia.length; i++) {
             const arquivo = arquivosEvidencia[i];
@@ -1109,9 +1256,7 @@
             
             const uploadResponse = await fetch('/api/gestao-dados/upload-evidencia', {
               method: 'POST',
-              headers: {
-                'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session.access_token}`
-              },
+              headers,
               credentials: 'include',
               body: uploadFormData
             });
@@ -1176,12 +1321,18 @@
       mostrarLoading(true);
 
       try {
+        // ✅ OTIMIZAÇÃO: Usar token em cache
+        const token = await obterToken();
+        const headers = {
+          'Content-Type': 'application/json'
+        };
+        if (token) {
+          headers['Authorization'] = `Bearer ${token}`;
+        }
+        
         const response = await fetch('/api/gestao-dados', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session.access_token}`
-          },
+          headers,
           credentials: 'include',
           body: JSON.stringify(dados)
         });
@@ -1210,11 +1361,18 @@
       mostrarLoading(true);
 
       try {
+        // ✅ OTIMIZAÇÃO: Usar token em cache
+        const token = await obterToken();
+        const headers = {
+          'Content-Type': 'application/json'
+        };
+        if (token) {
+          headers['Authorization'] = `Bearer ${token}`;
+        }
+        
         const response = await fetch('/api/gestao-dados', {
           method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session.access_token}`
-          },
+          headers,
           credentials: 'include'
         });
 
@@ -1226,6 +1384,7 @@
 
         dadosCarregados = result.data || [];
         dadosFiltradosAtuais = [...dadosCarregados]; // Inicializar dados filtrados
+        paginaAtual = 1; // Resetar paginação
         preencherFiltroOperacao();
         preencherFiltroResponsavel();
         renderizarTabela(dadosCarregados);
@@ -1239,21 +1398,25 @@
       }
     }
 
-    // Preencher filtro de operação com valores únicos dos dados carregados
+    // ✅ OTIMIZAÇÃO: Preencher filtro de operação com valores únicos dos dados carregados
     function preencherFiltroOperacao() {
       const select = document.getElementById('filtroOperacao');
       if (!select) return;
       
-      // Obter valores únicos de operações dos dados carregados
-      const operacoesUnicas = [...new Set(dadosCarregados
-        .map(d => d.operacao)
-        .filter(o => o && o.trim())
-        .sort()
-      )];
+      // ✅ OTIMIZAÇÃO: Usar Set e Map para melhor performance
+      const operacoesSet = new Set();
+      dadosCarregados.forEach(d => {
+        if (d.operacao && d.operacao.trim()) {
+          operacoesSet.add(d.operacao.trim());
+        }
+      });
       
-      // Manter a opção "Todas" e adicionar as operações encontradas
+      const operacoesUnicas = Array.from(operacoesSet).sort();
+      
+      // ✅ OTIMIZAÇÃO: Usar DocumentFragment para inserção mais rápida
+      const fragment = document.createDocumentFragment();
       const opcaoTodas = select.querySelector('option[value=""]');
-      if (opcaoTodas) {
+      
         // Limpar opções existentes (exceto "Todas")
         Array.from(select.options).forEach(opt => {
           if (opt.value !== '') opt.remove();
@@ -1264,47 +1427,65 @@
           const option = document.createElement('option');
           option.value = operacao;
           option.textContent = operacao;
-          select.appendChild(option);
+        fragment.appendChild(option);
         });
-      }
+      
+      select.appendChild(fragment);
     }
     
-    // Preencher filtro de responsável com valores únicos dos dados carregados
+    // ✅ OTIMIZAÇÃO: Preencher filtro de responsável com valores únicos dos dados carregados
     function preencherFiltroResponsavel() {
       const select = document.getElementById('filtroResponsavel');
       if (!select) return;
       
-      // Obter valores únicos de responsáveis dos dados carregados
-      const responsaveisUnicos = [...new Set(dadosCarregados
-        .map(d => d.responsavel)
-        .filter(r => r && r.trim() && r !== 'Não informado')
-        .sort()
-      )];
+      // ✅ OTIMIZAÇÃO: Usar Set para melhor performance
+      const responsaveisSet = new Set();
+      dadosCarregados.forEach(d => {
+        if (d.responsavel && d.responsavel.trim() && d.responsavel !== 'Não informado') {
+          responsaveisSet.add(d.responsavel.trim());
+        }
+      });
       
-      // Manter a opção "Todos" e adicionar os responsáveis encontrados
-      const opcaoTodos = select.querySelector('option[value=""]');
-      select.innerHTML = '';
-      if (opcaoTodos) {
-        select.appendChild(opcaoTodos);
-      } else {
+      const responsaveisUnicos = Array.from(responsaveisSet).sort();
+      
+      // ✅ OTIMIZAÇÃO: Usar DocumentFragment para inserção mais rápida
+      const fragment = document.createDocumentFragment();
+      
+      // Adicionar opção "Todos"
         const optionTodos = document.createElement('option');
         optionTodos.value = '';
         optionTodos.textContent = 'Todos';
-        select.appendChild(optionTodos);
-      }
+      fragment.appendChild(optionTodos);
       
       // Adicionar responsáveis únicos encontrados nos dados
       responsaveisUnicos.forEach(responsavel => {
         const option = document.createElement('option');
         option.value = responsavel;
         option.textContent = responsavel;
-        select.appendChild(option);
+        fragment.appendChild(option);
       });
+      
+      select.innerHTML = '';
+      select.appendChild(fragment);
     }
 
+    // ✅ Função para escapar HTML (definida antes de renderizarTabela)
+    function escaparHTML(texto) {
+      if (texto === null || texto === undefined) return '';
+      const textoStr = String(texto);
+      return textoStr
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    // ✅ OTIMIZAÇÃO: Renderizar tabela com paginação
     function renderizarTabela(dados) {
       const tbody = document.getElementById('tabelaDados');
-      document.getElementById('totalRegistros').textContent = dados.length;
+      const totalRegistros = dados.length;
+      document.getElementById('totalRegistros').textContent = totalRegistros;
 
       if (dados.length === 0) {
         tbody.innerHTML = `
@@ -1315,10 +1496,23 @@
             </td>
           </tr>
         `;
+        // Limpar controles de paginação
+        const paginacaoContainer = document.getElementById('paginacaoContainer');
+        if (paginacaoContainer) paginacaoContainer.innerHTML = '';
         return;
       }
 
-      tbody.innerHTML = dados.map(dado => {
+      // ✅ OTIMIZAÇÃO: Paginação - calcular índices
+      const inicio = (paginaAtual - 1) * itensPorPagina;
+      const fim = inicio + itensPorPagina;
+      const dadosPagina = dados.slice(inicio, fim);
+      const totalPaginas = Math.ceil(dados.length / itensPorPagina);
+
+      // ✅ CORREÇÃO: Criar tabela temporária completa para renderização correta
+      const tempTable = document.createElement('table');
+      const tempTbody = document.createElement('tbody');
+      
+      dadosPagina.forEach(dado => {
         // Formatar informações de criação
         const criadoPor = dado.criado_por_nome || dado.usuario_nome || 'Não informado';
         const criadoEm = dado.criado_em ? formatarDataHora(dado.criado_em) : (dado.created_at ? formatarDataHora(dado.created_at) : '-');
@@ -1327,66 +1521,288 @@
         const editadoPor = dado.editado_por_nome || null;
         const editadoEm = dado.editado_em ? formatarDataHora(dado.editado_em) : null;
         
-        return `
-        <tr>
-          <td>${formatarData(dado.data)}</td>
-          <td><strong>${dado.oc}</strong></td>
-          <td>${dado.operacao}</td>
-          <td><span class="badge-modern bg-warning text-dark">${dado.tipo_erro}</span></td>
-          <td><span class="badge-modern ${dado.sistema === 'B2' ? 'bg-info' : 'bg-primary'}">${dado.sistema || '-'}</span></td>
-          <td>${dado.motivo_devolucao}</td>
-          <td>${dado.hora_envio}</td>
-          <td>${dado.hora_retorno}</td>
-          <td>${dado.responsavel}</td>
-          <td>
-            ${dado.evidencia_url && dado.evidencia_url.length > 0 ? `
-              <div class="d-flex flex-wrap gap-1">
-                ${Array.isArray(dado.evidencia_url) 
-                  ? dado.evidencia_url.map((url, idx) => `
-                    <a href="${url}" target="_blank" class="btn btn-sm btn-info" title="Ver evidência ${idx + 1}">
-                      <i class="fas fa-eye"></i> ${idx + 1}
-                    </a>
-                  `).join('')
-                  : `<a href="${dado.evidencia_url}" target="_blank" class="btn btn-sm btn-info" title="Ver evidência">
-                      <i class="fas fa-eye"></i> Ver
-                    </a>`
-                }
-              </div>
-            ` : '<span class="text-muted">-</span>'}
-          </td>
-          <td>
-            <small class="d-block text-muted">
-              <i class="fas fa-user-plus text-success"></i> ${criadoPor}
-            </small>
-            <small class="text-muted">
-              <i class="fas fa-clock"></i> ${criadoEm}
-            </small>
-          </td>
-          <td>
-            ${editadoPor ? `
-              <small class="d-block text-muted">
-                <i class="fas fa-user-edit text-primary"></i> ${editadoPor}
-              </small>
-              <small class="text-muted">
-                <i class="fas fa-clock"></i> ${editadoEm}
-              </small>
-            ` : '<span class="text-muted"><i class="fas fa-minus"></i> Nunca editado</span>'}
-          </td>
-          <td>
-            <button class="btn btn-sm btn-primary me-1" onclick="editarRegistro('${dado.id}')" title="Editar">
-              <i class="fas fa-edit"></i>
-            </button>
-            <button class="btn btn-sm btn-danger" onclick="excluirRegistro('${dado.id}')" title="Excluir">
-              <i class="fas fa-trash"></i>
-            </button>
-          </td>
-        </tr>
+        // Criar linha
+        const tr = document.createElement('tr');
+        
+        // Coluna 1 - Data
+        const td1 = document.createElement('td');
+        td1.style.whiteSpace = 'nowrap';
+        td1.textContent = formatarData(dado.data);
+        tr.appendChild(td1);
+        
+        // Coluna 2 - OC
+        const td2 = document.createElement('td');
+        const strongOC = document.createElement('strong');
+        strongOC.textContent = dado.oc || '';
+        td2.appendChild(strongOC);
+        tr.appendChild(td2);
+        
+        // Coluna 3 - Operação
+        const td3 = document.createElement('td');
+        td3.textContent = dado.operacao || '';
+        tr.appendChild(td3);
+        
+        // Coluna 4 - Tipo de Erro
+        const td4 = document.createElement('td');
+        const badgeErro = document.createElement('span');
+        badgeErro.className = 'badge-modern bg-warning text-dark';
+        badgeErro.textContent = dado.tipo_erro || '';
+        td4.appendChild(badgeErro);
+        tr.appendChild(td4);
+        
+        // Coluna 5 - Sistema
+        const td5 = document.createElement('td');
+        const badgeSistema = document.createElement('span');
+        badgeSistema.className = `badge-modern ${dado.sistema === 'B2' ? 'bg-info' : 'bg-primary'}`;
+        badgeSistema.textContent = dado.sistema || '-';
+        td5.appendChild(badgeSistema);
+        tr.appendChild(td5);
+        
+        // Coluna 6 - Motivo da Devolução
+        const td6 = document.createElement('td');
+        td6.textContent = dado.motivo_devolucao || '';
+        tr.appendChild(td6);
+        
+        // Coluna 7 - Hora Envio
+        const td7 = document.createElement('td');
+        td7.style.whiteSpace = 'nowrap';
+        td7.textContent = dado.hora_envio || '-';
+        tr.appendChild(td7);
+        
+        // Coluna 8 - Hora Retorno
+        const td8 = document.createElement('td');
+        td8.style.whiteSpace = 'nowrap';
+        td8.textContent = dado.hora_retorno || '-';
+        tr.appendChild(td8);
+        
+        // Coluna 9 - Responsável
+        const td9 = document.createElement('td');
+        td9.textContent = dado.responsavel || '';
+        tr.appendChild(td9);
+        
+        // Coluna 10 - Evidência
+        const td10 = document.createElement('td');
+        if (dado.evidencia_url && dado.evidencia_url.length > 0) {
+          const divEvidencia = document.createElement('div');
+          divEvidencia.className = 'd-flex flex-wrap gap-1 justify-content-center';
+          if (Array.isArray(dado.evidencia_url)) {
+            dado.evidencia_url.forEach((url, idx) => {
+              const link = document.createElement('a');
+              link.href = url;
+              link.target = '_blank';
+              link.className = 'btn btn-sm btn-info';
+              link.title = `Ver evidência ${idx + 1}`;
+              link.style.minWidth = '40px';
+              const icon = document.createElement('i');
+              icon.className = 'fas fa-eye';
+              link.appendChild(icon);
+              link.appendChild(document.createTextNode(` ${idx + 1}`));
+              divEvidencia.appendChild(link);
+            });
+          } else {
+            const link = document.createElement('a');
+            link.href = dado.evidencia_url;
+            link.target = '_blank';
+            link.className = 'btn btn-sm btn-info';
+            link.title = 'Ver evidência';
+            const icon = document.createElement('i');
+            icon.className = 'fas fa-eye';
+            link.appendChild(icon);
+            link.appendChild(document.createTextNode(' Ver'));
+            divEvidencia.appendChild(link);
+          }
+          td10.appendChild(divEvidencia);
+        } else {
+          const span = document.createElement('span');
+          span.className = 'text-muted';
+          span.textContent = '-';
+          td10.appendChild(span);
+        }
+        tr.appendChild(td10);
+        
+        // Coluna 11 - Criado por
+        const td11 = document.createElement('td');
+        const divCriado = document.createElement('div');
+        divCriado.style.lineHeight = '1.4';
+        const small1 = document.createElement('small');
+        small1.className = 'd-block text-muted mb-1';
+        const iconUser = document.createElement('i');
+        iconUser.className = 'fas fa-user-plus text-success';
+        small1.appendChild(iconUser);
+        small1.appendChild(document.createTextNode(` ${criadoPor}`));
+        divCriado.appendChild(small1);
+        const small2 = document.createElement('small');
+        small2.className = 'text-muted';
+        small2.style.fontSize = '0.75rem';
+        const iconClock1 = document.createElement('i');
+        iconClock1.className = 'fas fa-clock';
+        small2.appendChild(iconClock1);
+        small2.appendChild(document.createTextNode(` ${criadoEm}`));
+        divCriado.appendChild(small2);
+        td11.appendChild(divCriado);
+        tr.appendChild(td11);
+        
+        // Coluna 12 - Editado por
+        const td12 = document.createElement('td');
+        if (editadoPor) {
+          const divEditado = document.createElement('div');
+          divEditado.style.lineHeight = '1.4';
+          const small3 = document.createElement('small');
+          small3.className = 'd-block text-muted mb-1';
+          const iconUserEdit = document.createElement('i');
+          iconUserEdit.className = 'fas fa-user-edit text-primary';
+          small3.appendChild(iconUserEdit);
+          small3.appendChild(document.createTextNode(` ${editadoPor}`));
+          divEditado.appendChild(small3);
+          const small4 = document.createElement('small');
+          small4.className = 'text-muted';
+          small4.style.fontSize = '0.75rem';
+          const iconClock2 = document.createElement('i');
+          iconClock2.className = 'fas fa-clock';
+          small4.appendChild(iconClock2);
+          small4.appendChild(document.createTextNode(` ${editadoEm}`));
+          divEditado.appendChild(small4);
+          td12.appendChild(divEditado);
+        } else {
+          const span = document.createElement('span');
+          span.className = 'text-muted';
+          span.style.fontSize = '0.75rem';
+          const iconMinus = document.createElement('i');
+          iconMinus.className = 'fas fa-minus';
+          span.appendChild(iconMinus);
+          span.appendChild(document.createTextNode(' Nunca editado'));
+          td12.appendChild(span);
+        }
+        tr.appendChild(td12);
+        
+        // Coluna 13 - Ações
+        const td13 = document.createElement('td');
+        const divAcoes = document.createElement('div');
+        divAcoes.className = 'd-flex gap-1 justify-content-center';
+        const btnEdit = document.createElement('button');
+        btnEdit.className = 'btn btn-sm btn-primary';
+        btnEdit.onclick = () => editarRegistro(dado.id);
+        btnEdit.title = 'Editar';
+        btnEdit.style.minWidth = '35px';
+        const iconEdit = document.createElement('i');
+        iconEdit.className = 'fas fa-edit';
+        btnEdit.appendChild(iconEdit);
+        divAcoes.appendChild(btnEdit);
+        const btnDelete = document.createElement('button');
+        btnDelete.className = 'btn btn-sm btn-danger';
+        btnDelete.onclick = () => excluirRegistro(dado.id);
+        btnDelete.title = 'Excluir';
+        btnDelete.style.minWidth = '35px';
+        const iconDelete = document.createElement('i');
+        iconDelete.className = 'fas fa-trash';
+        btnDelete.appendChild(iconDelete);
+        divAcoes.appendChild(btnDelete);
+        td13.appendChild(divAcoes);
+        tr.appendChild(td13);
+        
+        tempTbody.appendChild(tr);
+      });
+      
+      tempTable.appendChild(tempTbody);
+      
+      // ✅ OTIMIZAÇÃO: Usar innerHTML uma vez ao invés de múltiplas operações
+      tbody.innerHTML = tempTbody.innerHTML;
+      
+      // ✅ OTIMIZAÇÃO: Renderizar controles de paginação
+      renderizarPaginacao(totalPaginas, totalRegistros);
+    }
+    
+    // ✅ OTIMIZAÇÃO: Função para renderizar controles de paginação
+    function renderizarPaginacao(totalPaginas, totalRegistros) {
+      let container = document.getElementById('paginacaoContainer');
+      if (!container) {
+        // Criar container se não existir
+        container = document.createElement('div');
+        container.id = 'paginacaoContainer';
+        container.className = 'd-flex justify-content-between align-items-center mt-3 p-3 bg-light rounded';
+        const tabelaCard = document.querySelector('.modern-card .card-body');
+        if (tabelaCard) {
+          tabelaCard.appendChild(container);
+        }
+      }
+      
+      if (totalPaginas <= 1) {
+        container.innerHTML = `<small class="text-muted">Mostrando ${totalRegistros} registro(s)</small>`;
+        return;
+      }
+      
+      const inicio = (paginaAtual - 1) * itensPorPagina + 1;
+      const fim = Math.min(paginaAtual * itensPorPagina, totalRegistros);
+      
+      container.innerHTML = `
+        <div>
+          <small class="text-muted">
+            Mostrando ${inicio} a ${fim} de ${totalRegistros} registro(s)
+          </small>
+        </div>
+        <nav>
+          <ul class="pagination pagination-sm mb-0">
+            <li class="page-item ${paginaAtual === 1 ? 'disabled' : ''}">
+              <a class="page-link" href="#" onclick="event.preventDefault(); mudarPagina(${paginaAtual - 1}); return false;">
+                <i class="fas fa-chevron-left"></i>
+              </a>
+            </li>
+            ${Array.from({ length: Math.min(totalPaginas, 5) }, (_, i) => {
+              let paginaNum;
+              if (totalPaginas <= 5) {
+                paginaNum = i + 1;
+              } else if (paginaAtual <= 3) {
+                paginaNum = i + 1;
+              } else if (paginaAtual >= totalPaginas - 2) {
+                paginaNum = totalPaginas - 4 + i;
+              } else {
+                paginaNum = paginaAtual - 2 + i;
+              }
+              return `
+                <li class="page-item ${paginaNum === paginaAtual ? 'active' : ''}">
+                  <a class="page-link" href="#" onclick="event.preventDefault(); mudarPagina(${paginaNum}); return false;">
+                    ${paginaNum}
+                  </a>
+                </li>
+              `;
+            }).join('')}
+            <li class="page-item ${paginaAtual === totalPaginas ? 'disabled' : ''}">
+              <a class="page-link" href="#" onclick="event.preventDefault(); mudarPagina(${paginaAtual + 1}); return false;">
+                <i class="fas fa-chevron-right"></i>
+              </a>
+            </li>
+          </ul>
+        </nav>
       `;
-      }).join('');
+    }
+    
+    // ✅ OTIMIZAÇÃO: Função para mudar página
+    function mudarPagina(novaPagina) {
+      const totalPaginas = Math.ceil(dadosFiltradosAtuais.length / itensPorPagina);
+      if (novaPagina < 1 || novaPagina > totalPaginas) return;
+      
+      paginaAtual = novaPagina;
+      renderizarTabela(dadosFiltradosAtuais);
+      
+      // Scroll suave para o topo da tabela
+      const tabela = document.getElementById('tabelaDados');
+      if (tabela) {
+        tabela.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
     }
 
     // ========== FILTROS ==========
-    let dadosFiltradosAtuais = []; // Variável global para armazenar dados filtrados atuais
+    // ✅ OTIMIZAÇÃO: Função de debounce para evitar renderizações excessivas
+    function debounce(func, wait) {
+      return function executedFunction(...args) {
+        const later = () => {
+          clearTimeout(debounceTimer);
+          func(...args);
+        };
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(later, wait);
+      };
+    }
 
     function aplicarFiltros() {
       const filtroData = document.getElementById('filtroData').value;
@@ -1395,34 +1811,33 @@
       const filtroOperacao = document.getElementById('filtroOperacao').value;
       const filtroResponsavel = document.getElementById('filtroResponsavel').value;
 
-      let dadosFiltrados = [...dadosCarregados];
-
-      if (filtroData) {
-        dadosFiltrados = dadosFiltrados.filter(d => d.data === filtroData);
-      }
-
-      if (filtroOC) {
-        dadosFiltrados = dadosFiltrados.filter(d => d.oc.toLowerCase().includes(filtroOC));
-      }
-
-      if (filtroTipoErro) {
-        dadosFiltrados = dadosFiltrados.filter(d => d.tipo_erro === filtroTipoErro);
-      }
-
-      if (filtroOperacao) {
-        dadosFiltrados = dadosFiltrados.filter(d => d.operacao === filtroOperacao);
-      }
-
-      if (filtroResponsavel) {
-        dadosFiltrados = dadosFiltrados.filter(d => d.responsavel === filtroResponsavel);
-      }
+      // ✅ OTIMIZAÇÃO: Aplicar todos os filtros de uma vez ao invés de múltiplos filter()
+      let dadosFiltrados = dadosCarregados.filter(d => {
+        if (filtroData && d.data !== filtroData) return false;
+        if (filtroOC && !d.oc.toLowerCase().includes(filtroOC)) return false;
+        if (filtroTipoErro && d.tipo_erro !== filtroTipoErro) return false;
+        if (filtroOperacao && d.operacao !== filtroOperacao) return false;
+        if (filtroResponsavel && d.responsavel !== filtroResponsavel) return false;
+        return true;
+      });
 
       dadosFiltradosAtuais = dadosFiltrados; // Armazenar dados filtrados
+      paginaAtual = 1; // Resetar para primeira página ao filtrar
       renderizarTabela(dadosFiltrados);
     }
+    
+    // ✅ OTIMIZAÇÃO: Versão com debounce para inputs de texto
+    const aplicarFiltrosDebounced = debounce(aplicarFiltros, 300);
 
     // ========== EXPORTAÇÃO EXCEL ==========
     function exportarParaExcel() {
+      // ✅ OTIMIZAÇÃO: Usar requestAnimationFrame para não travar a UI durante exportação
+      requestAnimationFrame(() => {
+        exportarParaExcelInterno();
+      });
+    }
+    
+    function exportarParaExcelInterno() {
       // Usar dados filtrados se existirem, senão usar todos os dados carregados
       const dadosParaExportar = dadosFiltradosAtuais.length > 0 ? dadosFiltradosAtuais : dadosCarregados;
       
@@ -1549,17 +1964,6 @@
       mostrarAlerta(`✅ Arquivo Excel exportado com sucesso!\n\nTotal de registros: ${dadosParaExportar.length}`, 'success');
     }
 
-    function escaparHTML(texto) {
-      if (texto === null || texto === undefined) return '';
-      const textoStr = String(texto);
-      return textoStr
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#39;');
-    }
-
     // ========== EDITAR ==========
     let evidenciasExistentes = []; // Array para armazenar evidências existentes
     let evidenciasParaRemover = []; // Array para armazenar URLs das evidências a remover
@@ -1665,6 +2069,13 @@
         try {
           mostrarLoading(true);
           
+          // ✅ OTIMIZAÇÃO: Usar token em cache
+          const token = await obterToken();
+          const headers = {};
+          if (token) {
+            headers['Authorization'] = `Bearer ${token}`;
+          }
+          
           // Upload de cada arquivo novo
           for (let i = 0; i < arquivosNovos.length; i++) {
             const arquivo = arquivosNovos[i];
@@ -1673,9 +2084,7 @@
             
             const uploadResponse = await fetch('/api/gestao-dados/upload-evidencia', {
               method: 'POST',
-              headers: {
-                'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session.access_token}`
-              },
+              headers,
               credentials: 'include',
               body: uploadFormData
             });
@@ -1748,23 +2157,18 @@
       mostrarLoading(true);
 
       try {
-        // Obter token de forma segura
-        let authHeader = {};
-        try {
-          const session = await supabase.auth.getSession();
-          if (session?.data?.session?.access_token) {
-            authHeader['Authorization'] = `Bearer ${session.data.session.access_token}`;
-          }
-        } catch (authError) {
-          console.warn('⚠️ Não foi possível obter token, usando autenticação via cookie:', authError);
+        // ✅ OTIMIZAÇÃO: Usar token em cache
+        const token = await obterToken();
+        const headers = {
+          'Content-Type': 'application/json'
+        };
+        if (token) {
+          headers['Authorization'] = `Bearer ${token}`;
         }
 
         const response = await fetch(`/api/gestao-dados/${id}`, {
           method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            ...authHeader
-          },
+          headers,
           credentials: 'include',
           body: JSON.stringify(dados)
         });
@@ -1816,11 +2220,16 @@
       mostrarLoading(true);
 
       try {
+        // ✅ OTIMIZAÇÃO: Usar token em cache
+        const token = await obterToken();
+        const headers = {};
+        if (token) {
+          headers['Authorization'] = `Bearer ${token}`;
+        }
+        
         const response = await fetch(`/api/gestao-dados/${id}`, {
           method: 'DELETE',
-          headers: {
-            'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session.access_token}`
-          },
+          headers,
           credentials: 'include'
         });
 
@@ -1911,11 +2320,16 @@
       mostrarLoading(true);
 
       try {
+        // ✅ OTIMIZAÇÃO: Usar token em cache
+        const token = await obterToken();
+        const headers = {};
+        if (token) {
+          headers['Authorization'] = `Bearer ${token}`;
+        }
+        
         const response = await fetch('/api/gestao-dados/excluir-todos', {
           method: 'DELETE',
-          headers: {
-            'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session.access_token}`
-          },
+          headers,
           credentials: 'include'
         });
 
@@ -1975,12 +2389,11 @@
         const formData = new FormData();
         formData.append('csv', arquivoCSVSelecionado);
 
-        const { data: { session } } = await supabaseClient.auth.getSession();
-        const authToken = session?.access_token;
-
+        // ✅ OTIMIZAÇÃO: Usar token em cache
+        const token = await obterToken();
         const headers = {};
-        if (authToken) {
-          headers['Authorization'] = `Bearer ${authToken}`;
+        if (token) {
+          headers['Authorization'] = `Bearer ${token}`;
         }
 
         const response = await fetch('/api/gestao-dados/importar-csv', {
@@ -2073,6 +2486,20 @@
       link.click();
       document.body.removeChild(link);
     }
+    
+    // ✅ OTIMIZAÇÃO: Expor funções globalmente
+    window.aplicarFiltros = aplicarFiltros;
+    window.aplicarFiltrosDebounced = aplicarFiltrosDebounced;
+    window.exportarParaExcel = exportarParaExcel;
+    window.editarRegistro = editarRegistro;
+    window.excluirRegistro = excluirRegistro;
+    window.removerEvidenciaPreview = removerEvidenciaPreview;
+    window.removerEvidencias = removerEvidencias;
+    window.removerEvidenciaExistente = removerEvidenciaExistente;
+    window.excluirTodosRegistros = excluirTodosRegistros;
+    window.processarCSV = processarCSV;
+    window.importarCSV = importarCSV;
+    window.mudarPagina = mudarPagina;
   </script>
 </body>
 </html>

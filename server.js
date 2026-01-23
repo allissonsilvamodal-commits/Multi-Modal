@@ -4983,6 +4983,53 @@ async function validarTokenRastreamento(token) {
 }
 
 // Verificar se termo de rastreamento foi aceito
+// Rota pública para buscar dados básicos da coleta (para termo de rastreamento)
+app.get('/api/coletas/public/:coletaId', async (req, res) => {
+  try {
+    const { coletaId } = req.params;
+    
+    console.log('🔍 Buscando dados públicos da coleta:', coletaId);
+    
+    const { data: coleta, error } = await supabase
+      .from('coletas')
+      .select('id, numero_coleta, cliente, origem, destino, motorista_id, motorista_nome')
+      .eq('id', coletaId)
+      .single();
+    
+    if (error) {
+      console.error('❌ Erro ao buscar coleta:', error);
+      return res.status(404).json({ error: 'Coleta não encontrada' });
+    }
+    
+    if (!coleta) {
+      return res.status(404).json({ error: 'Coleta não encontrada' });
+    }
+    
+    // Buscar dados do motorista se houver motorista_id
+    let motorista = null;
+    if (coleta.motorista_id) {
+      const { data: motoristaData, error: motoristaError } = await supabase
+        .from('motoristas')
+        .select('id, nome, cnh')
+        .eq('id', coleta.motorista_id)
+        .single();
+      
+      if (!motoristaError && motoristaData) {
+        motorista = motoristaData;
+      }
+    }
+    
+    res.json({
+      success: true,
+      coleta: coleta,
+      motorista: motorista
+    });
+  } catch (error) {
+    console.error('❌ Erro ao buscar coleta pública:', error);
+    res.status(500).json({ error: 'Erro ao buscar dados da coleta' });
+  }
+});
+
 app.get('/api/rastreamento/verificar-termo', async (req, res) => {
   try {
     const { user, motorista, error } = await requireMotoristaAuth(req);
@@ -7119,6 +7166,90 @@ app.delete('/api/admin/automatizacoes/:id', requireAuth, async (req, res) => {
   } catch (error) {
     console.error('❌ Erro ao deletar automação:', error);
     res.status(500).json({ success: false, error: 'Erro ao deletar automação' });
+  }
+});
+
+// ========== ENDPOINTS PARA GERENCIAR ETIQUETAS DE COLETAS ==========
+// GET - Listar etiquetas
+app.get('/api/admin/etiquetas', requireAuth, async (req, res) => {
+  try {
+    const { data, error } = await supabaseAdmin
+      .from('etiquetas_coletas')
+      .select('*')
+      .order('nome', { ascending: true });
+    
+    if (error) throw error;
+    
+    res.json({ success: true, etiquetas: data || [] });
+  } catch (error) {
+    console.error('❌ Erro ao listar etiquetas:', error);
+    res.status(500).json({ success: false, error: 'Erro ao listar etiquetas' });
+  }
+});
+
+// POST - Criar etiqueta
+app.post('/api/admin/etiquetas', requireAuth, async (req, res) => {
+  try {
+    const { user, error: authError } = await getUserFromRequest(req);
+    if (authError || !user) {
+      return res.status(401).json({ success: false, error: 'Não autenticado' });
+    }
+
+    const { nome, cor, descricao } = req.body;
+    
+    if (!nome || !cor) {
+      return res.status(400).json({ success: false, error: 'Nome e cor são obrigatórios' });
+    }
+
+    // Validar formato da cor hexadecimal
+    if (!cor.match(/^#[0-9A-Fa-f]{6}$/i)) {
+      return res.status(400).json({ success: false, error: 'Cor inválida. Use o formato hexadecimal (ex: #667eea)' });
+    }
+
+    const novaEtiqueta = {
+      nome: nome.trim(),
+      cor: cor.toUpperCase(),
+      descricao: descricao?.trim() || null,
+      ativo: true,
+      criado_por: user.id
+    };
+
+    const { data, error } = await supabaseAdmin
+      .from('etiquetas_coletas')
+      .insert([novaEtiqueta])
+      .select()
+      .single();
+    
+    if (error) {
+      if (error.code === '23505' || error.message?.includes('unique') || error.message?.includes('duplicate')) {
+        return res.status(400).json({ success: false, error: 'Já existe uma etiqueta com este nome. Escolha outro nome.' });
+      }
+      throw error;
+    }
+    
+    res.json({ success: true, etiqueta: data });
+  } catch (error) {
+    console.error('❌ Erro ao criar etiqueta:', error);
+    res.status(500).json({ success: false, error: 'Erro ao criar etiqueta', details: error.message });
+  }
+});
+
+// DELETE - Deletar etiqueta
+app.delete('/api/admin/etiquetas/:id', requireAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const { error } = await supabaseAdmin
+      .from('etiquetas_coletas')
+      .delete()
+      .eq('id', id);
+    
+    if (error) throw error;
+    
+    res.json({ success: true, message: 'Etiqueta excluída com sucesso' });
+  } catch (error) {
+    console.error('❌ Erro ao deletar etiqueta:', error);
+    res.status(500).json({ success: false, error: 'Erro ao deletar etiqueta' });
   }
 });
 
@@ -9670,6 +9801,21 @@ app.get('/historico_coletas.html', requireAuth, (req, res) => {
   res.setHeader('Pragma', 'no-cache');
   res.setHeader('Expires', '0');
   res.sendFile(path.join(__dirname, 'public/pages/historico_coletas.html'));
+});
+
+// Rota pública para termo de rastreamento (não requer autenticação)
+app.get('/termo-rastreamento.html', (req, res) => {
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate, max-age=0');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  res.sendFile(path.join(__dirname, 'public/pages/termo-rastreamento.html'));
+});
+
+app.get('/pages/termo-rastreamento.html', (req, res) => {
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate, max-age=0');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  res.sendFile(path.join(__dirname, 'public/pages/termo-rastreamento.html'));
 });
 
 app.get('/monitoramento-rastreamento.html', requireAuth, (req, res) => {

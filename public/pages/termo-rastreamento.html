@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Termo de Rastreamento - Sistema Multimodal</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+        }
+
+        .container {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 800px;
+            width: 100%;
+            padding: 2.5rem;
+            animation: slideUp 0.5s ease-out;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 2rem;
+            padding-bottom: 1.5rem;
+            border-bottom: 2px solid #e5e7eb;
+        }
+
+        .header h1 {
+            color: #1f2937;
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .header .icon {
+            font-size: 3rem;
+            color: #667eea;
+            margin-bottom: 1rem;
+        }
+
+        .coleta-info {
+            background: #f9fafb;
+            padding: 1.5rem;
+            border-radius: 12px;
+            margin-bottom: 2rem;
+            border-left: 4px solid #667eea;
+        }
+
+        .coleta-info h3 {
+            color: #1f2937;
+            margin-bottom: 1rem;
+            font-size: 1.25rem;
+        }
+
+        .coleta-info p {
+            color: #6b7280;
+            margin: 0.5rem 0;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .coleta-info i {
+            color: #667eea;
+            width: 20px;
+        }
+
+        .termo-content {
+            background: #f9fafb;
+            padding: 2rem;
+            border-radius: 12px;
+            margin-bottom: 2rem;
+            max-height: 400px;
+            overflow-y: auto;
+            border: 1px solid #e5e7eb;
+        }
+
+        .termo-content h2 {
+            color: #1f2937;
+            font-size: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .termo-content p {
+            color: #4b5563;
+            line-height: 1.8;
+            margin-bottom: 1rem;
+        }
+
+        .termo-content ul {
+            margin-left: 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .termo-content li {
+            color: #4b5563;
+            line-height: 1.8;
+            margin-bottom: 0.5rem;
+        }
+
+        .checkbox-container {
+            display: flex;
+            align-items: flex-start;
+            gap: 1rem;
+            padding: 1.5rem;
+            background: #fef3c7;
+            border-radius: 12px;
+            margin-bottom: 2rem;
+            border: 2px solid #fbbf24;
+        }
+
+        .checkbox-container input[type="checkbox"] {
+            width: 24px;
+            height: 24px;
+            margin-top: 2px;
+            cursor: pointer;
+            accent-color: #667eea;
+        }
+
+        .checkbox-container label {
+            color: #78350f;
+            font-weight: 600;
+            cursor: pointer;
+            flex: 1;
+            line-height: 1.6;
+        }
+
+        .buttons {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+        }
+
+        .btn {
+            padding: 1rem 2rem;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-secondary {
+            background: #e5e7eb;
+            color: #4b5563;
+        }
+
+        .btn-secondary:hover {
+            background: #d1d5db;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 2rem;
+        }
+
+        .loading i {
+            font-size: 3rem;
+            color: #667eea;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .error {
+            background: #fee2e2;
+            color: #991b1b;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            border-left: 4px solid #dc2626;
+        }
+
+        .success {
+            background: #d1fae5;
+            color: #065f46;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            border-left: 4px solid #10b981;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 1.5rem;
+            }
+
+            .header h1 {
+                font-size: 1.5rem;
+            }
+
+            .buttons {
+                flex-direction: column;
+            }
+
+            .btn {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div id="loadingState" class="loading">
+            <i class="fas fa-spinner"></i>
+            <p style="margin-top: 1rem; color: #6b7280;">Carregando informações...</p>
+        </div>
+
+        <div id="mainContent" style="display: none;">
+            <div class="header">
+                <div class="icon">
+                    <i class="fas fa-shield-alt"></i>
+                </div>
+                <h1>Termo de Rastreamento</h1>
+                <p style="color: #6b7280;">Termo Profissional de Monitoramento e Rastreamento</p>
+            </div>
+
+            <div id="coletaInfo" class="coleta-info" style="display: none;">
+                <h3><i class="fas fa-truck"></i> Informações da Coleta</h3>
+                <p id="coletaNumero"></p>
+                <p id="coletaCliente"></p>
+                <p id="coletaRota"></p>
+            </div>
+
+            <div id="errorMessage" class="error" style="display: none;"></div>
+            <div id="successMessage" class="success" style="display: none;"></div>
+
+            <div class="termo-content">
+                <h2>Termo de Consentimento para Rastreamento GPS</h2>
+                
+                <p><strong>Data:</strong> <span id="termoData"></span></p>
+                
+                <p>
+                    Eu, <strong id="motoristaNome">[Nome do Motorista]</strong>, portador da CNH 
+                    <strong id="motoristaCNH">[Número da CNH]</strong>, declaro estar ciente e 
+                    de acordo com os termos e condições abaixo estabelecidos:
+                </p>
+
+                <h3 style="margin-top: 1.5rem; margin-bottom: 1rem; color: #1f2937;">1. Objetivo do Rastreamento</h3>
+                <p>
+                    O rastreamento GPS tem como objetivo garantir a segurança da carga, otimizar 
+                    a logística de entrega, monitorar o trajeto em tempo real e fornecer 
+                    informações precisas sobre a localização do veículo durante a execução do 
+                    serviço de transporte.
+                </p>
+
+                <h3 style="margin-top: 1.5rem; margin-bottom: 1rem; color: #1f2937;">2. Dados Coletados</h3>
+                <p>Durante o rastreamento, serão coletados os seguintes dados:</p>
+                <ul>
+                    <li>Localização geográfica em tempo real (coordenadas GPS)</li>
+                    <li>Velocidade do veículo</li>
+                    <li>Horários de partida e chegada</li>
+                    <li>Trajeto percorrido</li>
+                    <li>Paradas realizadas durante o trajeto</li>
+                </ul>
+
+                <h3 style="margin-top: 1.5rem; margin-bottom: 1rem; color: #1f2937;">3. Finalidade do Uso</h3>
+                <p>
+                    Os dados coletados serão utilizados exclusivamente para:
+                </p>
+                <ul>
+                    <li>Monitoramento da segurança da carga</li>
+                    <li>Otimização de rotas e prazos de entrega</li>
+                    <li>Comunicação com o cliente sobre o status da entrega</li>
+                    <li>Análise de desempenho operacional</li>
+                    <li>Cumprimento de obrigações contratuais</li>
+                </ul>
+
+                <h3 style="margin-top: 1.5rem; margin-bottom: 1rem; color: #1f2937;">4. Confidencialidade</h3>
+                <p>
+                    A empresa compromete-se a manter a confidencialidade dos dados coletados, 
+                    utilizando-os apenas para as finalidades descritas neste termo, em 
+                    conformidade com a Lei Geral de Proteção de Dados (LGPD).
+                </p>
+
+                <h3 style="margin-top: 1.5rem; margin-bottom: 1rem; color: #1f2937;">5. Período de Vigência</h3>
+                <p>
+                    O rastreamento será ativado durante toda a execução do serviço de transporte 
+                    da coleta designada, sendo desativado automaticamente após a conclusão da 
+                    entrega e confirmação do recebimento.
+                </p>
+
+                <h3 style="margin-top: 1.5rem; margin-bottom: 1rem; color: #1f2937;">6. Direitos do Motorista</h3>
+                <p>
+                    O motorista tem direito a:
+                </p>
+                <ul>
+                    <li>Ser informado sobre o rastreamento antes do início do serviço</li>
+                    <li>Solicitar informações sobre os dados coletados</li>
+                    <li>Ter acesso aos dados de rastreamento relacionados à sua viagem</li>
+                </ul>
+
+                <h3 style="margin-top: 1.5rem; margin-bottom: 1rem; color: #1f2937;">7. Aceitação</h3>
+                <p>
+                    Ao aceitar este termo, declaro que li, compreendi e concordo com todas as 
+                    condições estabelecidas acima, autorizando o rastreamento GPS durante a 
+                    execução do serviço de transporte.
+                </p>
+            </div>
+
+            <div class="checkbox-container">
+                <input type="checkbox" id="aceitarTermo" required>
+                <label for="aceitarTermo">
+                    Li e compreendi todos os termos acima. Concordo e autorizo o rastreamento 
+                    GPS durante a execução deste serviço de transporte.
+                </label>
+            </div>
+
+            <div class="buttons">
+                <button class="btn btn-primary" id="btnAceitar" onclick="aceitarTermo()" disabled>
+                    <i class="fas fa-check-circle"></i>
+                    Aceitar e Iniciar Rastreamento
+                </button>
+                <button class="btn btn-secondary" onclick="recusarTermo()">
+                    <i class="fas fa-times"></i>
+                    Recusar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let supabaseClient = null;
+        let coletaId = null;
+        let coletaData = null;
+        let motoristaData = null;
+
+        // Inicializar Supabase
+        async function inicializarSupabase() {
+            try {
+                const response = await fetch('/api/supabase-config');
+                if (!response.ok) throw new Error('Erro ao buscar configurações');
+                
+                const config = await response.json();
+                supabaseClient = window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey);
+                return true;
+            } catch (error) {
+                console.error('Erro ao inicializar Supabase:', error);
+                return false;
+            }
+        }
+
+        // Obter parâmetros da URL
+        function obterParametrosURL() {
+            const urlParams = new URLSearchParams(window.location.search);
+            coletaId = urlParams.get('coleta');
+            return coletaId;
+        }
+
+        // Carregar dados da coleta
+        async function carregarDadosColeta() {
+            if (!coletaId) {
+                mostrarErro('ID da coleta não fornecido na URL.');
+                document.getElementById('loadingState').style.display = 'none';
+                document.getElementById('mainContent').style.display = 'block';
+                return;
+            }
+
+            try {
+                // Tentar buscar via API pública primeiro
+                const apiResponse = await fetch(`/api/coletas/public/${coletaId}`, {
+                    credentials: 'include'
+                });
+                
+                if (apiResponse.ok) {
+                    const apiData = await apiResponse.json();
+                    if (apiData.success) {
+                        coletaData = apiData.coleta;
+                        motoristaData = apiData.motorista;
+                        preencherInformacoes();
+                        
+                        // Tentar verificar se termo já foi aceito (opcional, não bloqueia)
+                        verificarTermoAceito().catch(err => {
+                            console.warn('Não foi possível verificar termo:', err);
+                        });
+                        return;
+                    }
+                }
+                
+                // Se API falhar, tentar Supabase diretamente
+                if (supabaseClient) {
+                    const { data, error } = await supabaseClient
+                        .from('coletas')
+                        .select('id, numero_coleta, cliente, origem, destino, motorista_id, motorista_nome')
+                        .eq('id', coletaId)
+                        .single();
+
+                    if (!error && data) {
+                        coletaData = data;
+                        
+                        // Tentar buscar motorista se houver motorista_id
+                        if (data.motorista_id) {
+                            try {
+                                const { data: motorista, error: motoristaError } = await supabaseClient
+                                    .from('motoristas')
+                                    .select('id, nome, cnh')
+                                    .eq('id', data.motorista_id)
+                                    .single();
+                                
+                                if (!motoristaError && motorista) {
+                                    motoristaData = motorista;
+                                }
+                            } catch (motoristaErr) {
+                                console.warn('Não foi possível buscar motorista:', motoristaErr);
+                            }
+                        }
+                        
+                        preencherInformacoes();
+                        return;
+                    }
+                }
+                
+                // Se tudo falhar, mostrar conteúdo mesmo sem dados completos
+                console.warn('Não foi possível carregar dados completos da coleta, mas continuando...');
+                coletaData = { id: coletaId, numero_coleta: coletaId };
+                preencherInformacoes();
+                
+            } catch (error) {
+                console.error('Erro ao carregar coleta:', error);
+                // Mesmo com erro, mostrar a página para o usuário poder aceitar o termo
+                coletaData = { id: coletaId, numero_coleta: coletaId };
+                preencherInformacoes();
+                mostrarErro('Alguns dados não puderam ser carregados, mas você pode continuar.');
+            }
+        }
+
+        // Verificar se termo já foi aceito
+        async function verificarTermoAceito() {
+            if (!motoristaData || !coletaId) return false;
+
+            try {
+                // Tentar obter token de autenticação do motorista
+                let authToken = null;
+                try {
+                    if (supabaseClient) {
+                        const { data: { session } } = await supabaseClient.auth.getSession();
+                        if (session?.access_token) {
+                            authToken = session.access_token;
+                        }
+                    }
+                } catch (authError) {
+                    console.warn('Não foi possível obter token de autenticação:', authError);
+                }
+
+                const headers = {
+                    'Content-Type': 'application/json'
+                };
+                if (authToken) {
+                    headers['Authorization'] = `Bearer ${authToken}`;
+                }
+
+                const response = await fetch(`/api/rastreamento/verificar-termo?coletaId=${coletaId}`, {
+                    method: 'GET',
+                    credentials: 'include',
+                    headers: headers
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    if (result.termoAceito) {
+                        // Termo já aceito, redirecionar para portal do motorista para iniciar rastreamento
+                        mostrarSucesso('Termo já aceito anteriormente. Redirecionando...');
+                        setTimeout(() => {
+                            window.location.href = `portal-motorista.html?coleta=${coletaId}&iniciarRastreamento=true`;
+                        }, 2000);
+                        return true;
+                    }
+                }
+            } catch (error) {
+                console.warn('Erro ao verificar termo:', error);
+            }
+            return false;
+        }
+
+        // Preencher informações na página
+        function preencherInformacoes() {
+            try {
+                if (coletaData) {
+                    document.getElementById('coletaNumero').innerHTML = 
+                        `<i class="fas fa-hashtag"></i> <strong>Coleta:</strong> #${coletaData.numero_coleta || coletaData.id || 'N/A'}`;
+                    document.getElementById('coletaCliente').innerHTML = 
+                        `<i class="fas fa-building"></i> <strong>Cliente:</strong> ${coletaData.cliente || 'N/A'}`;
+                    document.getElementById('coletaRota').innerHTML = 
+                        `<i class="fas fa-route"></i> <strong>Rota:</strong> ${coletaData.origem || 'N/A'} → ${coletaData.destino || 'N/A'}`;
+                    document.getElementById('coletaInfo').style.display = 'block';
+                } else {
+                    document.getElementById('coletaInfo').style.display = 'none';
+                }
+
+                if (motoristaData) {
+                    document.getElementById('motoristaNome').textContent = motoristaData.nome || '[Nome não informado]';
+                    document.getElementById('motoristaCNH').textContent = motoristaData.cnh || '[CNH não informada]';
+                } else if (coletaData && coletaData.motorista_nome) {
+                    // Usar motorista_nome da coleta se disponível
+                    document.getElementById('motoristaNome').textContent = coletaData.motorista_nome;
+                    document.getElementById('motoristaCNH').textContent = '[CNH não informada]';
+                } else {
+                    document.getElementById('motoristaNome').textContent = '[Nome não informado]';
+                    document.getElementById('motoristaCNH').textContent = '[CNH não informada]';
+                }
+
+                const dataAtual = new Date().toLocaleDateString('pt-BR');
+                document.getElementById('termoData').textContent = dataAtual;
+
+                // Mostrar conteúdo principal
+                document.getElementById('loadingState').style.display = 'none';
+                document.getElementById('mainContent').style.display = 'block';
+            } catch (error) {
+                console.error('Erro ao preencher informações:', error);
+                // Mesmo com erro, mostrar a página
+                document.getElementById('loadingState').style.display = 'none';
+                document.getElementById('mainContent').style.display = 'block';
+            }
+        }
+
+        // Habilitar/desabilitar botão de aceitar
+        document.getElementById('aceitarTermo').addEventListener('change', function() {
+            document.getElementById('btnAceitar').disabled = !this.checked;
+        });
+
+        // Aceitar termo
+        async function aceitarTermo() {
+            if (!document.getElementById('aceitarTermo').checked) {
+                mostrarErro('Você precisa aceitar o termo para continuar.');
+                return;
+            }
+
+            if (!coletaId) {
+                mostrarErro('ID da coleta não encontrado.');
+                return;
+            }
+
+            const btnAceitar = document.getElementById('btnAceitar');
+            btnAceitar.disabled = true;
+            btnAceitar.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processando...';
+
+            try {
+                // Obter IP e User Agent
+                const ipResponse = await fetch('https://api.ipify.org?format=json').catch(() => ({ json: () => ({ ip: 'desconhecido' }) }));
+                const ipData = await ipResponse.json();
+                const ipAddress = ipData.ip || 'desconhecido';
+
+                // Tentar obter token de autenticação
+                let authToken = null;
+                try {
+                    if (supabaseClient) {
+                        const { data: { session } } = await supabaseClient.auth.getSession();
+                        if (session?.access_token) {
+                            authToken = session.access_token;
+                        }
+                    }
+                } catch (authError) {
+                    console.warn('Não foi possível obter token de autenticação:', authError);
+                }
+
+                const headers = {
+                    'Content-Type': 'application/json'
+                };
+                if (authToken) {
+                    headers['Authorization'] = `Bearer ${authToken}`;
+                }
+
+                // Enviar aceite do termo
+                const response = await fetch('/api/rastreamento/aceitar-termo', {
+                    method: 'POST',
+                    headers: headers,
+                    credentials: 'include',
+                    body: JSON.stringify({
+                        coletaId: coletaId,
+                        termoVersao: '1.0',
+                        ipAddress: ipAddress,
+                        userAgent: navigator.userAgent
+                    })
+                });
+
+                const result = await response.json();
+
+                if (response.ok && result.success) {
+                    mostrarSucesso('Termo aceito com sucesso! Iniciando rastreamento...');
+                    
+                    // Armazenar token de rastreamento se fornecido
+                    if (result.tokenRastreamento) {
+                        localStorage.setItem(`rastreamento_token_${coletaId}`, result.tokenRastreamento);
+                        console.log('✅ Token de rastreamento armazenado');
+                    }
+                    
+                    // Redirecionar para portal do motorista onde o rastreamento será iniciado automaticamente
+                    setTimeout(() => {
+                        window.location.href = `portal-motorista.html?coleta=${coletaId}&iniciarRastreamento=true`;
+                    }, 1500);
+                } else {
+                    // Se erro 401, pode ser que precise autenticar
+                    if (response.status === 401) {
+                        mostrarErro('Você precisa estar autenticado como motorista para aceitar o termo. Por favor, faça login no portal do motorista primeiro.');
+                    } else {
+                        throw new Error(result.error || 'Erro ao aceitar termo');
+                    }
+                }
+            } catch (error) {
+                console.error('Erro ao aceitar termo:', error);
+                if (error.message.includes('autenticado') || error.message.includes('login')) {
+                    mostrarErro('Você precisa estar autenticado como motorista para aceitar o termo. Por favor, faça login no portal do motorista primeiro.');
+                } else {
+                    mostrarErro('Erro ao processar aceite do termo: ' + (error.message || 'Tente novamente.'));
+                }
+                btnAceitar.disabled = false;
+                btnAceitar.innerHTML = '<i class="fas fa-check-circle"></i> Aceitar e Iniciar Rastreamento';
+            }
+        }
+
+        // Recusar termo
+        function recusarTermo() {
+            if (confirm('Tem certeza que deseja recusar o termo? Você não poderá iniciar o rastreamento sem aceitar.')) {
+                mostrarErro('Você precisa aceitar o termo para iniciar o rastreamento.');
+            }
+        }
+
+        // Mostrar erro
+        function mostrarErro(mensagem) {
+            const errorDiv = document.getElementById('errorMessage');
+            errorDiv.textContent = mensagem;
+            errorDiv.style.display = 'block';
+            setTimeout(() => {
+                errorDiv.style.display = 'none';
+            }, 5000);
+        }
+
+        // Mostrar sucesso
+        function mostrarSucesso(mensagem) {
+            const successDiv = document.getElementById('successMessage');
+            successDiv.textContent = mensagem;
+            successDiv.style.display = 'block';
+        }
+
+        // Inicializar
+        (async function() {
+            try {
+                // Tentar inicializar Supabase, mas não bloquear se falhar
+                await inicializarSupabase();
+                
+                const coletaIdParam = obterParametrosURL();
+                if (!coletaIdParam) {
+                    mostrarErro('Link inválido. ID da coleta não fornecido.');
+                    document.getElementById('loadingState').style.display = 'none';
+                    document.getElementById('mainContent').style.display = 'block';
+                    return;
+                }
+
+                await carregarDadosColeta();
+            } catch (error) {
+                console.error('Erro na inicialização:', error);
+                // Mesmo com erro, mostrar a página
+                document.getElementById('loadingState').style.display = 'none';
+                document.getElementById('mainContent').style.display = 'block';
+                mostrarErro('Erro ao inicializar. Você ainda pode tentar aceitar o termo.');
+            }
+        })();
+    </script>
+</body>
+</html>
+

@@ -3786,8 +3786,8 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-top: 0.5rem;
-            padding-top: 0.5rem;
+            margin-top: 0.25rem;
+            padding-top: 0.25rem;
             border-top: 1px solid rgba(0, 0, 0, 0.1);
         }
         
@@ -3800,7 +3800,7 @@
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
             border: none;
-            padding: 0.4rem 0.8rem;
+            padding: 0.45rem 0.9rem;
             border-radius: 6px;
             cursor: pointer;
             font-size: 0.75rem;
@@ -3813,6 +3813,11 @@
         .kanban-card-btn:hover {
             transform: translateY(-2px);
             box-shadow: 0 4px 8px rgba(102, 126, 234, 0.3);
+            opacity: 0.9;
+        }
+        
+        .kanban-card-btn:active {
+            transform: translateY(0);
         }
 
 
@@ -7113,6 +7118,105 @@
         </div>
     </div>
 
+    <!-- Modal de Confirmar Pagamento -->
+    <div class="modal-overlay" id="modalConfirmarPagamento" style="display: none;">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header">
+                <h2 class="modal-title">
+                    <i class="fas fa-money-check-alt"></i>
+                    Confirmar Pagamento
+                </h2>
+                <button class="close-modal" onclick="fecharModalConfirmarPagamento()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body" style="padding: 1.5rem;">
+                <div id="confirmarPagamentoPreview" style="background: #f8f9fa; padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem;">
+                    <p style="margin: 0; font-weight: 600;">Carregando informações da coleta...</p>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">
+                        <i class="fas fa-list"></i> Tipo de Pagamento <span class="required-asterisk">*</span>
+                    </label>
+                    <select id="tipoPagamentoConfirmar" class="form-control" required>
+                        <option value="">Selecione o tipo de pagamento</option>
+                        <option value="Adiantamento">Adiantamento</option>
+                        <option value="Saldo">Saldo</option>
+                        <option value="Pagamento de frete total">Pagamento de frete total</option>
+                        <option value="Pagamento de ajudante">Pagamento de ajudante</option>
+                        <option value="Diária">Diária</option>
+                        <option value="Descarga">Descarga</option>
+                        <option value="Amarração">Amarração</option>
+                        <option value="Pedágio">Pedágio</option>
+                        <option value="GNRE">GNRE</option>
+                        <option value="Pedágio + GNRE">Pedágio + GNRE</option>
+                        <option value="Reembolso">Reembolso</option>
+                        <option value="Reembolso SEST/SENAT">Reembolso SEST/SENAT</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">
+                        <i class="fas fa-comment"></i> Observações (opcional)
+                    </label>
+                    <textarea id="observacoesPagamento" class="form-control" rows="3" placeholder="Adicione observações sobre o pagamento..."></textarea>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="action-btn warning" onclick="fecharModalConfirmarPagamento()">
+                    <i class="fas fa-times"></i> Cancelar
+                </button>
+                <button type="button" class="action-btn secondary" onclick="confirmarPagamento()">
+                    <i class="fas fa-check"></i> Confirmar Pagamento
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Lançar Pendência -->
+    <div class="modal-overlay" id="modalLancarPendencia" style="display: none;">
+        <div class="modal-content" style="max-width: 700px;">
+            <div class="modal-header">
+                <h2 class="modal-title">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    Lançar Pendência
+                </h2>
+                <button class="close-modal" onclick="fecharModalLancarPendencia()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body" style="padding: 1.5rem;">
+                <div id="lancarPendenciaPreview" style="background: #f8f9fa; padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem;">
+                    <p style="margin: 0; font-weight: 600;">Carregando informações da coleta...</p>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">
+                        <i class="fas fa-comment-alt"></i> Motivo da Pendência <span class="required-asterisk">*</span>
+                    </label>
+                    <textarea id="motivoPendencia" class="form-control" rows="4" required placeholder="Descreva o motivo da pendência..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">
+                        <i class="fas fa-paperclip"></i> Evidência (opcional)
+                    </label>
+                    <input type="file" id="evidenciaPendencia" class="form-control" accept="image/*,.pdf,.doc,.docx" multiple>
+                    <small class="form-text text-muted">Você pode anexar imagens, PDFs ou documentos</small>
+                    <div id="evidenciaPreview" style="margin-top: 1rem; display: none;">
+                        <p style="font-weight: 600; margin-bottom: 0.5rem;">Arquivos selecionados:</p>
+                        <div id="evidenciaList" style="display: flex; flex-wrap: wrap; gap: 0.5rem;"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="action-btn warning" onclick="fecharModalLancarPendencia()">
+                    <i class="fas fa-times"></i> Cancelar
+                </button>
+                <button type="button" class="action-btn secondary" onclick="confirmarLancarPendencia()">
+                    <i class="fas fa-check"></i> Confirmar e Mover para Pendências
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- Botões Flutuantes -->
     <div class="floating-action-buttons">
         <button class="fab-secondary" onclick="window.location.href='relatorios.html'" title="Relatórios">
@@ -8402,10 +8506,21 @@
             fecharModalHelper(modalId);
         }
 
-        // Etapas do processo
-        // ETAPAS agora será populado apenas com etapas dinâmicas do banco de dados
-        // Inicializado vazio e preenchido ao carregar funis dinâmicos
-        let ETAPAS = [];
+        // Etapas do processo - MODELO ÚNICO KANBAN (FIXO)
+        // Etapas fixas do kanban único conforme solicitado
+        const ETAPAS = [
+            { id: 'pendencias', nome: 'Pendências', ordem: 1 },
+            { id: 'contratacao', nome: 'Contratação', ordem: 2 },
+            { id: 'gr', nome: 'GR', ordem: 3 },
+            { id: 'documentacao', nome: 'Documentação', ordem: 4 },
+            { id: 'inicio_monitoramento', nome: 'Inicio de monitoramento', ordem: 5 },
+            { id: 'pagamento', nome: 'Pagamento', ordem: 6 },
+            { id: 'em_viagem', nome: 'Em viagem', ordem: 7 },
+            { id: 'price', nome: 'Price', ordem: 8 },
+            { id: 'controladoria', nome: 'Controladoria', ordem: 9 },
+            { id: 'ti', nome: 'TI', ordem: 10 },
+            { id: 'finalizar_operacao', nome: 'Finalizar operação', ordem: 11 }
+        ];
 
         // ========== FUNIL GERAL - Apenas para usuários com permissão de settings ==========
         /**
@@ -8584,7 +8699,7 @@
                 permissaoMenu: 'cadastro' // Permissão do MENU Administrativo/Gestão (RBAC)
             },
             financeiro: {
-                nome: 'Financeiro',
+                nome: 'Pagamento',
                 etapas: [], // Será preenchido com funis dinâmicos do banco
                 icone: 'fa-dollar-sign',
                 permissaoMenu: 'contas-pagar' // Permissão do MENU Financeiro (RBAC)
@@ -8679,10 +8794,21 @@
         /**
          * Obtém todas as páginas do kanban que o usuário tem permissão para visualizar
          * Baseado em permissões de MENU (RBAC)
+         * ✅ MODELO ÚNICO: Simplificado - apenas verifica permissão 'coletas'
          * @returns {Promise<Array>} - Array com IDs das páginas permitidas
          */
         async function obterPaginasPermitidas() {
             try {
+                // ✅ MODELO ÚNICO: Se o usuário tem permissão 'coletas', permitir acesso
+                if (typeof verificarPermissaoPagina === 'function') {
+                    const temPermissaoColetas = await verificarPermissaoPagina('coletas');
+                    if (temPermissaoColetas) {
+                        console.log('✅ Usuário tem permissão coletas - retornando acesso ao kanban único');
+                        // Retornar array com um item fictício para indicar que tem acesso
+                        return ['operacao']; // Retorna 'operacao' como página permitida (mesmo que não use mais)
+                    }
+                }
+
                 const loggedInUserData = localStorage.getItem('loggedInUser');
                 if (!loggedInUserData) {
                     return [];
@@ -8690,42 +8816,11 @@
 
                 const userData = JSON.parse(loggedInUserData);
                 
-                // Se for ADMIN, permite acesso a tudo
+                // Se for ADMIN, permite acesso
                 const isAdmin = (userData.isAdmin === true) || (userData.role === 'admin');
                 if (isAdmin) {
-                    console.log('✅ ADMIN: Acesso total a todas as áreas do kanban');
-                    return Object.keys(PAGINAS_KANBAN);
-                }
-
-                // ✅ RBAC: Verificar permissões de MENU E ÁREA para cada área
-                if (typeof verificarPermissaoPagina === 'function') {
-                    const paginasPermitidas = [];
-                    for (const [paginaId, pagina] of Object.entries(PAGINAS_KANBAN)) {
-                        // Verificar se o usuário tem permissão para o MENU correspondente
-                        const temPermissaoMenu = await verificarPermissaoPagina(pagina.permissaoMenu);
-                        if (!temPermissaoMenu) {
-                            console.log(`❌ Permissão de menu '${pagina.permissaoMenu}' NEGADA para área '${paginaId}'`);
-                            continue;
-                        }
-                        
-                        // Para o Funil Geral, apenas verificar a permissão de configuracoes (não precisa de permissão de área)
-                        if (pagina.isFunilGeral) {
-                            console.log(`✅ Funil Geral: permissão '${pagina.permissaoMenu}' concedida`);
-                            paginasPermitidas.push(paginaId);
-                            continue;
-                        }
-                        
-                        // Verificar se o usuário tem permissão específica da ÁREA do kanban (apenas para páginas normais)
-                        const permissaoArea = `kanban_${paginaId}`;
-                        const temPermissaoArea = await verificarPermissaoPagina(permissaoArea);
-                        if (temPermissaoArea) {
-                            console.log(`✅ Permissão de menu '${pagina.permissaoMenu}' + área '${permissaoArea}' concedida para '${paginaId}'`);
-                            paginasPermitidas.push(paginaId);
-                        } else {
-                            console.log(`❌ Permissão de área '${permissaoArea}' NEGADA para '${paginaId}' (mesmo com menu permitido)`);
-                        }
-                    }
-                    return paginasPermitidas;
+                    console.log('✅ ADMIN: Acesso total ao kanban');
+                    return ['operacao'];
                 }
 
                 // Fallback: se a função não estiver disponível, retornar array vazio
@@ -8744,7 +8839,23 @@
          */
         async function validarAcessoColetas() {
             try {
-                // Verificar se o usuário tem acesso a pelo menos uma página do kanban
+                // ✅ MODELO ÚNICO: Verificar apenas se o usuário tem permissão 'coletas'
+                // Não precisa verificar áreas específicas do kanban
+                if (typeof verificarPermissaoPagina === 'function') {
+                    const temPermissaoColetas = await verificarPermissaoPagina('coletas');
+                    if (temPermissaoColetas) {
+                        console.log('✅ Usuário tem permissão coletas - acesso concedido ao kanban único');
+                        return true;
+                    } else {
+                        console.log('❌ Usuário não tem permissão coletas');
+                    }
+                } else {
+                    // Se a função não estiver disponível, permitir acesso (fallback)
+                    console.warn('⚠️ Função verificarPermissaoPagina não disponível - permitindo acesso');
+                    return true;
+                }
+                
+                // Verificar se o usuário tem acesso a pelo menos uma página do kanban (código antigo - mantido para compatibilidade)
                 const paginasPermitidas = await obterPaginasPermitidas();
                 
                 if (paginasPermitidas.length === 0) {
@@ -8865,34 +8976,48 @@
          */
         async function carregarModulosNoSidebar() {
             const sidebarContent = document.getElementById('modulesSidebarContent');
-            if (!sidebarContent) return;
+            if (!sidebarContent) {
+                console.warn('⚠️ Elemento modulesSidebarContent não encontrado');
+                return;
+            }
 
             try {
-                sidebarContent.innerHTML = `
-                    <div style="padding: 2rem; text-align: center; color: rgba(255,255,255,0.5);">
-                        <i class="fas fa-spinner fa-spin" style="font-size: 2rem; margin-bottom: 1rem;"></i>
-                        <p>Carregando módulos...</p>
-                    </div>
-                `;
-
+                console.log('🔄 Carregando módulos no sidebar...');
+                
                 let html = '';
                 const modulosDisponiveis = [];
 
-                // Verificar permissões e carregar módulos disponíveis
-                for (const [moduloId, modulo] of Object.entries(PAGINAS_KANBAN)) {
-                    // Verificar permissão para o módulo
-                    const temPermissao = await verificarPermissaoPaginaKanban(moduloId);
-                    
-                    if (temPermissao) {
-                        modulosDisponiveis.push({ id: moduloId, ...modulo });
-                    }
+                // ✅ FERRAMENTAS FIXAS DO MENU LATERAL
+                const ferramentasFixas = [
+                    { id: 'chat_interno', nome: 'Chat Interno', icone: 'comments', url: 'chat-interno.html' },
+                    { id: 'chamados', nome: 'Chamados', icone: 'ticket-alt', url: 'chamados.html' },
+                    { id: 'relatorios_coletas', nome: 'Relatórios de Coletas', icone: 'chart-bar', url: 'relatorios.html' },
+                    { id: 'treinamentos', nome: 'Treinamentos', icone: 'graduation-cap', url: 'treinamentos.html' },
+                    { id: 'rastreamento', nome: 'Rastreamento', icone: 'map-marked-alt', url: 'monitoramento-rastreamento.html' }
+                ];
+
+                // Adicionar ferramentas fixas diretamente
+                for (const ferramenta of ferramentasFixas) {
+                    modulosDisponiveis.push({
+                        id: ferramenta.id,
+                        nome: ferramenta.nome,
+                        icone: ferramenta.icone,
+                        url: ferramenta.url,
+                        isFerramenta: true
+                    });
                 }
 
-                // Renderizar cada módulo
+                console.log('✅ Ferramentas fixas adicionadas:', modulosDisponiveis.length);
+
+                // ✅ MODELO ÚNICO: Não carregar módulos de PAGINAS_KANBAN para evitar travamentos
+                // As ferramentas fixas são suficientes
+
+                // Renderizar cada módulo/ferramenta
                 for (const modulo of modulosDisponiveis) {
                     const isActive = paginaAtivaKanban === modulo.id;
                     const hasSubPages = modulo.temSubPaginas && modulo.subPaginas;
                     const isExpanded = isActive && hasSubPages;
+                    const isFerramenta = modulo.isFerramenta || false;
 
                     // Contar sub-páginas
                     let subPagesCount = 0;
@@ -8900,11 +9025,16 @@
                         subPagesCount = Object.keys(modulo.subPaginas).length;
                     }
 
+                    // Se for ferramenta, usar link direto
+                    const onClickAction = isFerramenta 
+                        ? `window.location.href='${modulo.url}'`
+                        : (hasSubPages ? `toggleModuleSubpages('${modulo.id}')` : `selecionarModulo('${modulo.id}')`);
+
                     html += `
                         <div class="module-item ${isActive ? 'active' : ''} ${isExpanded ? 'expanded' : ''}" 
                              data-module-id="${modulo.id}">
                             <div class="module-item-header" 
-                                 onclick="${hasSubPages ? `toggleModuleSubpages('${modulo.id}')` : `selecionarModulo('${modulo.id}')`}">
+                                 onclick="${onClickAction}">
                                 <div class="module-icon">
                                     <i class="fas fa-${modulo.icone || 'cog'}"></i>
                                 </div>
@@ -8919,6 +9049,8 @@
                                 </div>
                                 ${hasSubPages ? `
                                     <i class="fas fa-chevron-right module-expand-icon"></i>
+                                ` : isFerramenta ? `
+                                    <i class="fas fa-external-link-alt" style="font-size: 0.75rem; opacity: 0.6;"></i>
                                 ` : ''}
                             </div>
                             ${hasSubPages ? `
@@ -8950,6 +9082,7 @@
                 }
 
                 sidebarContent.innerHTML = html;
+                console.log('✅ Sidebar atualizado com', modulosDisponiveis.length, 'itens');
 
                 // Restaurar estado colapsado do sidebar (desktop)
                 const isCollapsed = localStorage.getItem('modulesSidebarCollapsed') === 'true';
@@ -9179,112 +9312,33 @@
         
         /**
          * Carrega funis e etapas dinamicamente do banco de dados
+         * NOTA: Desabilitado - usando etapas fixas do kanban único
          */
         async function carregarFunisDinamicos() {
-            try {
-                // Carregar funis de TODAS as páginas (sem filtro de pagina_id)
-                const response = await fetch('/api/coletas/funis-kanban');
-                const data = await response.json();
-                
-                if (data.success && data.funis && data.funis.length > 0) {
-                    funisDinamicos = {};
-                    etapasDinamicas = data.etapas || [];
-                    
-                    // ✅ LIMPAR e popular ETAPAS apenas com etapas dinâmicas do banco
-                    ETAPAS = [];
-                    etapasDinamicas.forEach(etapa => {
-                            ETAPAS.push({
-                                id: etapa.id,
-                                nome: etapa.nome,
-                                ordem: etapa.ordem || (ETAPAS.length + 1)
-                            });
-                    });
-                    
-                    // Ordenar ETAPAS por ordem
-                    ETAPAS.sort((a, b) => (a.ordem || 0) - (b.ordem || 0));
-                    
-                    console.log('✅ ETAPAS carregadas do banco:', ETAPAS.length, 'etapas');
-                    
-                    // Organizar funis por página
-                    data.funis.forEach(funil => {
-                        if (!funisDinamicos[funil.pagina_id]) {
-                            funisDinamicos[funil.pagina_id] = [];
-                        }
-                        funisDinamicos[funil.pagina_id].push(funil);
-                    });
-                    
-                    // ✅ Atualizar PAGINAS_KANBAN com funis dinâmicos de TODAS as páginas
-                    for (const [paginaId, funis] of Object.entries(funisDinamicos)) {
-                        if (PAGINAS_KANBAN[paginaId]) {
-                            // Se a página tem múltiplos funis, criar sub-páginas
-                            if (funis.length > 1) {
-                        const subPaginas = {};
-                                
-                                funis.forEach(funil => {
-                            // Criar ID da sub-página baseado no nome (lowercase, sem acentos)
-                            const subPaginaId = funil.nome.toLowerCase()
-                                .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-                                .replace(/\s+/g, '_')
-                                .replace(/[^a-z0-9_]/g, '');
-                            
-                            subPaginas[subPaginaId] = {
-                                nome: funil.nome,
-                                etapas: funil.etapas.map(e => e.id),
-                                icone: funil.icone || 'fa-cogs'
-                            };
-                        });
-                        
-                                PAGINAS_KANBAN[paginaId].subPaginas = subPaginas;
-                                PAGINAS_KANBAN[paginaId].temSubPaginas = true;
-                                PAGINAS_KANBAN[paginaId].etapas = []; // Limpar etapas estáticas
-                                
-                                console.log(`✅ PAGINAS_KANBAN.${paginaId} atualizado com ${funis.length} funis dinâmicos`);
-                            } else if (funis.length === 1) {
-                                // Se há apenas um funil, usar suas etapas diretamente
-                                const funil = funis[0];
-                                PAGINAS_KANBAN[paginaId].etapas = funil.etapas.map(e => e.id);
-                                PAGINAS_KANBAN[paginaId].temSubPaginas = false;
-                                PAGINAS_KANBAN[paginaId].subPaginas = undefined;
-                                
-                                console.log(`✅ PAGINAS_KANBAN.${paginaId} atualizado com etapas do funil: ${funil.nome}`);
-                            }
-                        }
-                    }
-                    
-                    // Atualizar Funil Geral com todas as etapas
-                    if (PAGINAS_KANBAN.funil_geral) {
-                        PAGINAS_KANBAN.funil_geral.etapas = ETAPAS.map(e => e.id);
-                    }
-                    
-                    // Se a página ativa já está carregada, recarregar o kanban
-                    if (paginaAtivaKanban) {
-                        console.log('🔄 Recarregando kanban após atualizar funis dinâmicos...');
-                                setTimeout(() => {
-                            renderColetasKanban();
-                                }, 100);
-                        }
-                    } else {
-                    console.warn('⚠️ Nenhum funil encontrado no banco de dados');
-                    // Se não há funis, ETAPAS permanece vazio
-                }
-            } catch (error) {
-                console.error('❌ Erro ao carregar funis dinâmicos:', error);
-                // Se houver erro, ETAPAS permanece vazio
-                ETAPAS = [];
-            }
+            // ✅ MODELO ÚNICO KANBAN: ETAPAS são fixas, não carregamos do banco
+            console.log('✅ Usando etapas fixas do kanban único:', ETAPAS.length, 'etapas');
         }
 
         /**
          * Carrega e renderiza as abas do kanban baseado nas permissões do usuário
          */
         async function carregarAbasKanban() {
-            // Carregar funis dinâmicos primeiro (se ainda não foram carregados)
-            if (Object.keys(funisDinamicos).length === 0) {
-                await carregarFunisDinamicos();
+            // ✅ Carregar menu lateral de módulos PRIMEIRO (independente de outras funções)
+            // Isso garante que as ferramentas apareçam mesmo se outras funções travarem
+            try {
+                await carregarModulosNoSidebar();
+            } catch (error) {
+                console.error('❌ Erro ao carregar módulos no sidebar (continuando mesmo assim):', error);
             }
             
-            // Carregar menu lateral de módulos
-            await carregarModulosNoSidebar();
+            // Carregar funis dinâmicos primeiro (se ainda não foram carregados)
+            try {
+            if (Object.keys(funisDinamicos).length === 0) {
+                await carregarFunisDinamicos();
+                }
+            } catch (error) {
+                console.error('❌ Erro ao carregar funis dinâmicos (continuando mesmo assim):', error);
+            }
 
             // Obter páginas permitidas
             const paginasPermitidas = await obterPaginasPermitidas();
@@ -10332,40 +10386,13 @@
             const kanbanBoard = document.getElementById('kanbanBoard');
             if (!kanbanBoard) return;
 
-            // Verificar se a página ativa é o Funil Geral
-            let paginaAtual = PAGINAS_KANBAN[paginaAtivaKanban];
-            if (paginaAtual && paginaAtual.isFunilGeral) {
-                // Mostrar o funil geral e ocultar apenas o conteúdo do kanban (não as abas)
+            // ✅ MODELO ÚNICO KANBAN: Sempre mostrar o kanban, sem lógica de páginas/funis
                 const funilContainer = document.getElementById('funilGeralContainer');
                 const kanbanContainer = document.getElementById('kanbanContainer');
-                const kanbanBoard = document.getElementById('kanbanBoard');
                 const kanbanNavigation = document.getElementById('kanbanNavigation');
                 const prioridadeFarol = document.getElementById('prioridadeFarol');
                 
-                if (funilContainer) {
-                    funilContainer.style.display = 'block';
-                    funilContainer.classList.add('visible');
-                }
-                
-                // Ocultar apenas o conteúdo do kanban, mas manter as abas visíveis
-                if (kanbanContainer) {
-                    // Ocultar apenas o board e controles, não o container inteiro
-                    if (kanbanBoard) kanbanBoard.style.display = 'none';
-                    if (kanbanNavigation) kanbanNavigation.style.display = 'none';
-                    if (prioridadeFarol) prioridadeFarol.style.display = 'none';
-                }
-                
-                // Renderizar o funil geral
-                await renderizarFunilGeral();
-                return;
-            } else {
-                // Mostrar o kanban e ocultar o funil geral
-                const funilContainer = document.getElementById('funilGeralContainer');
-                const kanbanContainer = document.getElementById('kanbanContainer');
-                const kanbanBoard = document.getElementById('kanbanBoard');
-                const kanbanNavigation = document.getElementById('kanbanNavigation');
-                const prioridadeFarol = document.getElementById('prioridadeFarol');
-                
+            // Ocultar funil geral se existir
                 if (funilContainer) {
                     funilContainer.style.display = 'none';
                     funilContainer.classList.remove('visible');
@@ -10375,22 +10402,6 @@
                 if (kanbanBoard) kanbanBoard.style.display = 'flex';
                 if (kanbanNavigation) kanbanNavigation.style.display = 'flex';
                 if (prioridadeFarol) prioridadeFarol.style.display = 'block';
-            }
-
-            // Se não há página ativa definida, carregar abas primeiro
-            if (!paginaAtivaKanban) {
-                await carregarAbasKanban();
-                return; // carregarAbasKanban já chama renderColetasKanban novamente
-            }
-
-            // Garantir que se a página ativa tem sub-páginas, uma sub-página esteja selecionada
-            const paginaAtualCheck = PAGINAS_KANBAN[paginaAtivaKanban];
-            if (paginaAtualCheck && paginaAtualCheck.temSubPaginas && paginaAtualCheck.subPaginas) {
-                if (!subPaginaAtivaKanban || !paginaAtualCheck.subPaginas[subPaginaAtivaKanban]) {
-                    const primeiraSubPagina = Object.keys(paginaAtualCheck.subPaginas)[0];
-                    subPaginaAtivaKanban = primeiraSubPagina;
-                }
-            }
 
             let dataToRender = filteredData || window.coletasAtivas || coletasData.filter(c => !c.arquivado);
 
@@ -10456,53 +10467,11 @@
                 }).format(valor);
             };
 
-            // Filtrar etapas da página ativa (paginaAtual já foi declarada acima)
-            if (!paginaAtual) {
-                paginaAtual = PAGINAS_KANBAN[paginaAtivaKanban];
-            }
-            
-            // Se a página tem sub-páginas, usar as etapas da sub-página ativa
-            let etapasParaFiltrar = [];
-            if (paginaAtual && paginaAtual.temSubPaginas && paginaAtual.subPaginas) {
-                // Se não há sub-página ativa, selecionar a primeira automaticamente
-                if (!subPaginaAtivaKanban || !paginaAtual.subPaginas[subPaginaAtivaKanban]) {
-                    const primeiraSubPagina = Object.keys(paginaAtual.subPaginas)[0];
-                    if (primeiraSubPagina) {
-                    subPaginaAtivaKanban = primeiraSubPagina;
-                        console.log('🔄 [DEBUG renderColetasKanban] Sub-página inicializada automaticamente:', subPaginaAtivaKanban);
-                        // Atualizar menu lateral
-                        atualizarMenuLateralAtivo();
-                    } else {
-                        console.warn('⚠️ [DEBUG renderColetasKanban] Nenhuma sub-página disponível para:', paginaAtivaKanban);
-                    }
-                }
-                // Usar as etapas da sub-página ativa
-                if (subPaginaAtivaKanban && paginaAtual.subPaginas[subPaginaAtivaKanban]) {
-                    etapasParaFiltrar = paginaAtual.subPaginas[subPaginaAtivaKanban].etapas || [];
-                    console.log('📋 [DEBUG renderColetasKanban] Página:', paginaAtivaKanban, 'Sub-página:', subPaginaAtivaKanban, 'Etapas:', etapasParaFiltrar);
-                } else {
-                    console.warn('⚠️ [DEBUG renderColetasKanban] Sub-página não encontrada:', subPaginaAtivaKanban, 'Disponíveis:', Object.keys(paginaAtual.subPaginas || {}));
-                    etapasParaFiltrar = [];
-                }
-            } else {
-                // Página sem sub-páginas, usar etapas normais
-                etapasParaFiltrar = (paginaAtual && paginaAtual.etapas) ? paginaAtual.etapas : [];
-                console.log('📋 [DEBUG renderColetasKanban] Página sem sub-páginas:', paginaAtivaKanban, 'Etapas:', etapasParaFiltrar);
-            }
-            
-            console.log('🎯 [DEBUG renderColetasKanban] Etapas para filtrar:', etapasParaFiltrar);
-            const etapasDaPagina = ETAPAS.filter(etapa => 
-                etapasParaFiltrar.includes(etapa.id)
-            );
-            console.log('✅ [DEBUG renderColetasKanban] Etapas filtradas:', etapasDaPagina.map(e => `${e.id} (${e.nome})`));
-            
-            // Se não há etapas filtradas, mostrar aviso
-            if (etapasDaPagina.length === 0 && etapasParaFiltrar.length > 0) {
-                console.warn('⚠️ [DEBUG renderColetasKanban] Nenhuma etapa encontrada no ETAPAS para os IDs:', etapasParaFiltrar);
-                console.warn('⚠️ [DEBUG renderColetasKanban] IDs disponíveis em ETAPAS:', ETAPAS.map(e => e.id));
-            }
+            // ✅ MODELO ÚNICO KANBAN: Usar todas as etapas fixas, sem filtrar por página
+            const etapasDaPagina = ETAPAS;
+            console.log('✅ [MODELO ÚNICO] Renderizando kanban com todas as etapas fixas:', etapasDaPagina.length, 'etapas');
 
-            // Renderizar colunas apenas das etapas da página ativa
+            // Renderizar colunas de todas as etapas fixas
             kanbanBoard.innerHTML = etapasDaPagina.map(etapa => {
                 let coletas = coletasPorEtapa[etapa.id] || [];
                 
@@ -11533,7 +11502,7 @@
                     color: ${cor};
                     font-size: 0.75rem;
                     font-weight: 600;
-                    margin-top: 0.4rem;
+                    margin: 0;
                 ">
                     <i class="fas fa-clock" style="font-size: 0.7rem;"></i>
                     <span>${valor} ${unidade}${plural}</span>
@@ -11667,16 +11636,29 @@
                                 <span style="color: ${prioridadeAuto.nivel === 'baixa' || prioridadeAuto.nivel === 'normal' ? '#fd7e14;' : 'white;'}; font-weight: 600; font-size: 0.85rem; word-break: break-word;">${escapeHtml(coleta.titulo_contrato)}</span>
                             </div>
                         ` : ''}
-                        ${tempoParadoHTML ? `
-                            <div style="margin-top: 0.5rem; display: flex; align-items: center;">
-                                ${tempoParadoHTML}
+                        ${tempoParadoHTML || coleta.etapa_atual === 'pagamento' || coleta.etapa_atual === 'inicio_monitoramento' ? `
+                            <div style="margin-top: 0.5rem; display: flex; align-items: center; gap: 0.5rem; flex-wrap: nowrap;">
+                                ${tempoParadoHTML || ''}
+                                ${coleta.etapa_atual === 'pagamento' ? `
+                                    <button class="kanban-card-btn" onclick="event.stopPropagation(); abrirModalConfirmarPagamento('${coleta.id}')" title="Confirmar Pagamento" style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%); color: white; border: none; font-weight: 600; padding: 0.45rem 0.9rem; font-size: 0.75rem; box-shadow: 0 2px 4px rgba(40, 167, 69, 0.2); border-radius: 6px; margin: 0; white-space: nowrap; display: inline-flex; align-items: center; gap: 0.3rem;">
+                                        <i class="fas fa-check-circle"></i> Pagamento
+                                    </button>
+                                    <button class="kanban-card-btn" onclick="event.stopPropagation(); abrirModalLancarPendencia('${coleta.id}')" title="Lançar Pendência" style="background: linear-gradient(135deg, #dc3545 0%, #fd7e14 100%); color: white; border: none; font-weight: 600; padding: 0.45rem 0.9rem; font-size: 0.75rem; box-shadow: 0 2px 4px rgba(220, 53, 69, 0.2); border-radius: 6px; margin: 0; white-space: nowrap; display: inline-flex; align-items: center; gap: 0.3rem;">
+                                        <i class="fas fa-exclamation-triangle"></i> Pendência
+                                    </button>
+                                ` : ''}
+                                ${coleta.etapa_atual === 'inicio_monitoramento' ? `
+                                    <button class="kanban-card-btn" onclick="event.stopPropagation(); enviarLinkRastreamento('${coleta.id}')" title="Enviar Link de Rastreamento via WhatsApp" style="background: linear-gradient(135deg, #25D366 0%, #128C7E 100%); color: white; border: none; font-weight: 600; padding: 0.45rem 0.9rem; font-size: 0.75rem; box-shadow: 0 2px 4px rgba(37, 211, 102, 0.2); border-radius: 6px; margin: 0; white-space: nowrap; display: inline-flex; align-items: center; gap: 0.3rem;">
+                                        <i class="fab fa-whatsapp"></i> Enviar Link
+                                    </button>
+                                ` : ''}
                             </div>
                         ` : ''}
                     </div>
                     
                     <div class="kanban-card-footer" style="${prioridadeAuto.nivel === 'baixa' || prioridadeAuto.nivel === 'normal' ? '' : 'border-top: 1px solid rgba(255, 255, 255, 0.2);'}">
                         <span class="kanban-card-status ${statusClass}" style="${prioridadeAuto.nivel === 'baixa' || prioridadeAuto.nivel === 'normal' ? '' : 'background: rgba(255, 255, 255, 0.2) !important; color: white !important;'}">${getStatusText(coleta.status)}</span>
-                        <div style="display: flex; gap: 0.5rem;">
+                        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
                             ${podeMover ? `
                                 <button class="kanban-card-btn" onclick="event.stopPropagation(); abrirModalMoverColeta('${coleta.id}')" title="Mover coleta" style="${prioridadeAuto.nivel === 'baixa' || prioridadeAuto.nivel === 'normal' ? 'background: rgba(102, 126, 234, 0.1); color: #667eea;' : 'background: rgba(255, 255, 255, 0.3) !important;'}">
                                     <i class="fas fa-exchange-alt"></i>
@@ -13572,6 +13554,436 @@
             coletaMovendoId = null;
         }
 
+        // ========== FUNÇÕES PARA MODAL DE CONFIRMAR PAGAMENTO ==========
+        let coletaPagamentoId = null;
+
+        async function abrirModalConfirmarPagamento(coletaId) {
+            coletaPagamentoId = coletaId;
+            const coleta = coletasData.find(c => c.id === coletaId);
+            
+            if (!coleta) {
+                alert('Coleta não encontrada.');
+                return;
+            }
+
+            // Atualizar preview
+            const preview = document.getElementById('confirmarPagamentoPreview');
+            if (preview) {
+                preview.innerHTML = `
+                    <p style="margin: 0; font-weight: 600; margin-bottom: 0.5rem;">${escapeHtml(coleta.cliente || 'Sem cliente')}</p>
+                    <p style="margin: 0; font-size: 0.9rem; color: #666;">
+                        ${coleta.filial ? `<strong>Filial:</strong> ${coleta.filial}` : ''}
+                        ${coleta.numero_coleta ? ` | <strong>Coleta #${coleta.numero_coleta}</strong>` : ''}
+                        ${coleta.valor ? ` | <strong>Valor:</strong> R$ ${(coleta.valor || 0).toFixed(2)}` : ''}
+                    </p>
+                `;
+            }
+
+            // Limpar campos
+            const tipoPagamento = document.getElementById('tipoPagamentoConfirmar');
+            const observacoes = document.getElementById('observacoesPagamento');
+            if (tipoPagamento) tipoPagamento.value = '';
+            if (observacoes) observacoes.value = '';
+
+            // Mostrar modal
+            const modal = document.getElementById('modalConfirmarPagamento');
+            if (modal) {
+                modal.style.display = 'flex';
+            }
+        }
+
+        function fecharModalConfirmarPagamento() {
+            const modal = document.getElementById('modalConfirmarPagamento');
+            if (modal) {
+                modal.style.display = 'none';
+            }
+            coletaPagamentoId = null;
+        }
+
+        // ========== FUNÇÃO PARA ENVIAR LINK DE RASTREAMENTO VIA WHATSAPP ==========
+        async function enviarLinkRastreamento(coletaId) {
+            const coleta = coletasData.find(c => c.id === coletaId);
+            
+            if (!coleta) {
+                showNotification('Coleta não encontrada.', 'error');
+                return;
+            }
+
+            // Verificar se há motorista vinculado
+            if (!coleta.motorista_id) {
+                showNotification('⚠️ Esta coleta não possui motorista vinculado. É necessário vincular um motorista antes de enviar o link de rastreamento.', 'warning');
+                return;
+            }
+
+            // Buscar dados completos do motorista para obter o telefone
+            showNotification('🔍 Buscando dados do motorista...', 'info');
+            let motorista = null;
+            let telefoneMotorista = null;
+
+            try {
+                // Buscar motorista completo
+                motorista = await buscarMotoristaPorId(coleta.motorista_id);
+                
+                if (!motorista) {
+                    showNotification('⚠️ Não foi possível carregar os dados do motorista. Tente novamente.', 'warning');
+                    return;
+                }
+
+                // Tentar obter telefone do motorista (telefone1 tem prioridade, depois telefone2)
+                telefoneMotorista = motorista.telefone1 || motorista.telefone2 || null;
+
+                if (!telefoneMotorista) {
+                    showNotification('⚠️ Este motorista não possui telefone cadastrado. É necessário cadastrar um telefone antes de enviar o link.', 'warning');
+                    return;
+                }
+            } catch (error) {
+                console.error('❌ Erro ao buscar motorista:', error);
+                showNotification('⚠️ Erro ao buscar dados do motorista. Tente novamente.', 'error');
+                return;
+            }
+
+            // Formatar telefone (remover caracteres não numéricos)
+            telefoneMotorista = telefoneMotorista.replace(/\D/g, '');
+            
+            // Garantir que o telefone tenha DDD (adicionar se não tiver)
+            if (telefoneMotorista.length === 10 || telefoneMotorista.length === 11) {
+                // Já tem DDD, usar como está
+            } else if (telefoneMotorista.length === 8 || telefoneMotorista.length === 9) {
+                // Não tem DDD, adicionar DDD padrão (pode ser ajustado)
+                telefoneMotorista = '81' + telefoneMotorista; // DDD padrão 81 (Pernambuco)
+            }
+
+            // Gerar link único para o motorista aceitar o termo e iniciar rastreamento
+            const baseUrl = window.location.origin;
+            const linkRastreamento = `${baseUrl}/termo-rastreamento.html?coleta=${coletaId}`;
+            
+            // Mensagem para o WhatsApp
+            const mensagem = `Olá! Você foi designado para a coleta #${coleta.numero_coleta || coletaId}.\n\n` +
+                           `Cliente: ${coleta.cliente || 'N/A'}\n` +
+                           `Origem: ${coleta.origem || 'N/A'}\n` +
+                           `Destino: ${coleta.destino || 'N/A'}\n\n` +
+                           `Para iniciar o rastreamento, clique no link abaixo:\n${linkRastreamento}\n\n` +
+                           `Ao clicar no link, você será redirecionado para a página de rastreamento onde poderá iniciar o monitoramento da sua localização.`;
+
+            // Obter userId do usuário logado
+            let userId = null;
+            let usuarioEmail = null;
+            
+            try {
+                // Tentar obter do localStorage
+                const loggedInUserData = localStorage.getItem('loggedInUser');
+                if (loggedInUserData) {
+                    const userData = JSON.parse(loggedInUserData);
+                    userId = userData.id || userData.userId;
+                    usuarioEmail = userData.email || userData.username;
+                }
+                
+                // Se não encontrou, tentar obter da sessão do Supabase
+                if (!userId && window.supabase) {
+                    try {
+                        const { data: { session } } = await window.supabase.auth.getSession();
+                        if (session?.user) {
+                            userId = session.user.id;
+                            usuarioEmail = session.user.email;
+                        }
+                    } catch (supabaseError) {
+                        console.warn('⚠️ Erro ao obter sessão do Supabase:', supabaseError);
+                    }
+                }
+            } catch (error) {
+                console.warn('⚠️ Erro ao obter dados do usuário:', error);
+            }
+
+            if (!userId && !usuarioEmail) {
+                showNotification('⚠️ Não foi possível identificar o usuário logado. Faça login novamente.', 'warning');
+                return;
+            }
+
+            // Mostrar loading
+            showNotification('📤 Enviando mensagem via WhatsApp...', 'info');
+
+            try {
+                // Preparar FormData para enviar via Evolution API
+                const formData = new FormData();
+                formData.append('number', telefoneMotorista);
+                formData.append('message', mensagem);
+                if (userId) {
+                    formData.append('userId', userId);
+                }
+                if (usuarioEmail) {
+                    formData.append('usuario', usuarioEmail);
+                }
+
+                // Enviar via Evolution API usando as credenciais do usuário
+                const response = await fetch('/webhook/send-supabase', {
+                    method: 'POST',
+                    credentials: 'include',
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                if (response.ok && result.success) {
+                    showNotification('✅ Mensagem enviada com sucesso via WhatsApp!', 'success');
+                    console.log('✅ Mensagem enviada:', {
+                        coletaId: coletaId,
+                        telefone: telefoneMotorista,
+                        motorista: coleta.motorista_nome || 'N/A',
+                        link: linkRastreamento
+                    });
+                } else {
+                    const errorMsg = result.error || 'Erro ao enviar mensagem';
+                    showNotification(`❌ Erro ao enviar: ${errorMsg}`, 'error');
+                    console.error('❌ Erro ao enviar mensagem:', result);
+                }
+            } catch (error) {
+                console.error('❌ Erro ao enviar mensagem:', error);
+                showNotification('❌ Erro ao enviar mensagem. Tente novamente.', 'error');
+            }
+        }
+
+        // Expor função globalmente
+        window.enviarLinkRastreamento = enviarLinkRastreamento;
+
+        async function confirmarPagamento() {
+            if (!coletaPagamentoId) {
+                alert('Erro: ID da coleta não encontrado.');
+                return;
+            }
+
+            const tipoPagamento = document.getElementById('tipoPagamentoConfirmar');
+            const observacoes = document.getElementById('observacoesPagamento');
+
+            if (!tipoPagamento || !tipoPagamento.value) {
+                alert('Por favor, selecione o tipo de pagamento.');
+                tipoPagamento?.focus();
+                return;
+            }
+
+            const coleta = coletasData.find(c => c.id === coletaPagamentoId);
+            if (!coleta) {
+                alert('Coleta não encontrada.');
+                return;
+            }
+
+            if (!confirm(`Confirmar pagamento do tipo "${tipoPagamento.value}" para a coleta de ${coleta.cliente || 'cliente desconhecido'}?`)) {
+                return;
+            }
+
+            try {
+                // Preparar dados para atualização
+                const dadosAtualizacao = {
+                    contas_pagar_tipo: tipoPagamento.value,
+                    contas_pagar_pago: true,
+                    etapa_atual: 'em_viagem' // Mover automaticamente para em_viagem
+                };
+
+                // Adicionar observações se houver
+                if (observacoes && observacoes.value.trim()) {
+                    const obsAtual = coleta.observacoes || '';
+                    dadosAtualizacao.observacoes = obsAtual 
+                        ? `${obsAtual}\n\n[Pagamento - ${new Date().toLocaleString('pt-BR')}] ${observacoes.value.trim()}`
+                        : `[Pagamento - ${new Date().toLocaleString('pt-BR')}] ${observacoes.value.trim()}`;
+                }
+
+                // Fazer requisição para mover etapa
+                const authHeaders = await getSupabaseAuthHeaders();
+                const response = await fetch(`/api/coletas/${coletaPagamentoId}/mover-etapa`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...authHeaders
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify({
+                        etapa_destino: 'em_viagem',
+                        ...dadosAtualizacao
+                    })
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(errorData.error || `Erro ${response.status}: ${response.statusText}`);
+                }
+
+                const result = await response.json();
+                
+                if (result.success !== false) {
+                    showNotification('✅ Pagamento confirmado e coleta movida para "Em viagem"!', 'success');
+                    
+                    // Fechar modal
+                    fecharModalConfirmarPagamento();
+                    
+                    // Recarregar coletas
+                    await carregarColetas();
+                } else {
+                    throw new Error(result.error || 'Erro ao confirmar pagamento');
+                }
+            } catch (error) {
+                console.error('❌ Erro ao confirmar pagamento:', error);
+                alert('Erro ao confirmar pagamento: ' + error.message);
+            }
+        }
+
+        // ========== FUNÇÕES PARA MODAL DE LANÇAR PENDÊNCIA ==========
+        let coletaPendenciaId = null;
+        let arquivosEvidencia = [];
+
+        async function abrirModalLancarPendencia(coletaId) {
+            coletaPendenciaId = coletaId;
+            const coleta = coletasData.find(c => c.id === coletaId);
+            
+            if (!coleta) {
+                alert('Coleta não encontrada.');
+                return;
+            }
+
+            // Atualizar preview
+            const preview = document.getElementById('lancarPendenciaPreview');
+            if (preview) {
+                preview.innerHTML = `
+                    <p style="margin: 0; font-weight: 600; margin-bottom: 0.5rem;">${escapeHtml(coleta.cliente || 'Sem cliente')}</p>
+                    <p style="margin: 0; font-size: 0.9rem; color: #666;">
+                        ${coleta.filial ? `<strong>Filial:</strong> ${coleta.filial}` : ''}
+                        ${coleta.numero_coleta ? ` | <strong>Coleta #${coleta.numero_coleta}</strong>` : ''}
+                    </p>
+                `;
+            }
+
+            // Limpar campos
+            const motivo = document.getElementById('motivoPendencia');
+            const evidencia = document.getElementById('evidenciaPendencia');
+            const previewEvidencia = document.getElementById('evidenciaPreview');
+            const listaEvidencia = document.getElementById('evidenciaList');
+            
+            if (motivo) motivo.value = '';
+            if (evidencia) evidencia.value = '';
+            if (previewEvidencia) previewEvidencia.style.display = 'none';
+            if (listaEvidencia) listaEvidencia.innerHTML = '';
+            arquivosEvidencia = [];
+
+            // Adicionar listener para preview de arquivos
+            if (evidencia) {
+                evidencia.onchange = function(e) {
+                    const files = Array.from(e.target.files);
+                    arquivosEvidencia = files;
+                    
+                    if (files.length > 0 && previewEvidencia && listaEvidencia) {
+                        previewEvidencia.style.display = 'block';
+                        listaEvidencia.innerHTML = files.map((file, index) => `
+                            <div style="background: #f8f9fa; padding: 0.5rem; border-radius: 6px; display: flex; align-items: center; gap: 0.5rem;">
+                                <i class="fas fa-file" style="color: #667eea;"></i>
+                                <span style="font-size: 0.85rem;">${escapeHtml(file.name)}</span>
+                                <span style="font-size: 0.75rem; color: #666;">(${(file.size / 1024).toFixed(2)} KB)</span>
+                            </div>
+                        `).join('');
+                    } else {
+                        previewEvidencia.style.display = 'none';
+                    }
+                };
+            }
+
+            // Mostrar modal
+            const modal = document.getElementById('modalLancarPendencia');
+            if (modal) {
+                modal.style.display = 'flex';
+            }
+        }
+
+        function fecharModalLancarPendencia() {
+            const modal = document.getElementById('modalLancarPendencia');
+            if (modal) {
+                modal.style.display = 'none';
+            }
+            coletaPendenciaId = null;
+            arquivosEvidencia = [];
+        }
+
+        async function confirmarLancarPendencia() {
+            if (!coletaPendenciaId) {
+                alert('Erro: ID da coleta não encontrado.');
+                return;
+            }
+
+            const motivo = document.getElementById('motivoPendencia');
+            const evidencia = document.getElementById('evidenciaPendencia');
+
+            if (!motivo || !motivo.value.trim()) {
+                alert('Por favor, informe o motivo da pendência.');
+                motivo?.focus();
+                return;
+            }
+
+            const coleta = coletasData.find(c => c.id === coletaPendenciaId);
+            if (!coleta) {
+                alert('Coleta não encontrada.');
+                return;
+            }
+
+            if (!confirm(`Confirmar lançamento de pendência e mover a coleta para "Pendências"?`)) {
+                return;
+            }
+
+            try {
+                // Preparar dados para atualização
+                const dadosAtualizacao = {
+                    etapa_atual: 'pendencias'
+                };
+
+                // Adicionar motivo e evidências nas observações
+                let observacoesTexto = `[Pendência - ${new Date().toLocaleString('pt-BR')}]\nMotivo: ${motivo.value.trim()}`;
+                
+                if (arquivosEvidencia.length > 0) {
+                    observacoesTexto += `\nEvidências anexadas: ${arquivosEvidencia.map(f => f.name).join(', ')}`;
+                }
+
+                const obsAtual = coleta.observacoes || '';
+                dadosAtualizacao.observacoes = obsAtual 
+                    ? `${obsAtual}\n\n${observacoesTexto}`
+                    : observacoesTexto;
+
+                // TODO: Fazer upload dos arquivos de evidência se necessário
+                // Por enquanto, apenas salvar os nomes dos arquivos nas observações
+
+                // Fazer requisição para mover etapa
+                const authHeaders = await getSupabaseAuthHeaders();
+                const response = await fetch(`/api/coletas/${coletaPendenciaId}/mover-etapa`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...authHeaders
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify({
+                        etapa_destino: 'pendencias',
+                        ...dadosAtualizacao
+                    })
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(errorData.error || `Erro ${response.status}: ${response.statusText}`);
+                }
+
+                const result = await response.json();
+                
+                if (result.success !== false) {
+                    showNotification('✅ Pendência lançada e coleta movida para "Pendências"!', 'success');
+                    
+                    // Fechar modal
+                    fecharModalLancarPendencia();
+                    
+                    // Recarregar coletas
+                    await carregarColetas();
+                } else {
+                    throw new Error(result.error || 'Erro ao lançar pendência');
+                }
+            } catch (error) {
+                console.error('❌ Erro ao lançar pendência:', error);
+                alert('Erro ao lançar pendência: ' + error.message);
+            }
+        }
+
         async function carregarFunisParaModal() {
             try {
                 const response = await fetch('/api/coletas/funis-kanban');
@@ -13936,6 +14348,14 @@
         window.fecharModalMoverColeta = fecharModalMoverColeta;
         window.atualizarEtapasDoFunil = atualizarEtapasDoFunil;
         window.confirmarMovimentacaoColeta = confirmarMovimentacaoColeta;
+        
+        // Funções de pagamento e pendência
+        window.abrirModalConfirmarPagamento = abrirModalConfirmarPagamento;
+        window.fecharModalConfirmarPagamento = fecharModalConfirmarPagamento;
+        window.confirmarPagamento = confirmarPagamento;
+        window.abrirModalLancarPendencia = abrirModalLancarPendencia;
+        window.fecharModalLancarPendencia = fecharModalLancarPendencia;
+        window.confirmarLancarPendencia = confirmarLancarPendencia;
         window.executarMigracaoConstraint = executarMigracaoConstraint;
 
         async function handleKanbanDrop(e, etapaDestino) {
@@ -14194,6 +14614,13 @@
                 // 🔐 Carregar permissões de etapas
                 permissoesEtapasColetas = await carregarPermissoesEtapasColetas();
                 console.log('✅ Permissões de etapas carregadas:', permissoesEtapasColetas);
+                
+                // ✅ Carregar menu lateral de módulos/ferramentas PRIMEIRO (independente)
+                try {
+                    await carregarModulosNoSidebar();
+                } catch (error) {
+                    console.error('❌ Erro ao carregar módulos no sidebar:', error);
+                }
                 
                 // 📋 Carregar funis dinâmicos do banco
                 await carregarFunisDinamicos();
@@ -16423,9 +16850,14 @@
                 return;
             }
             
+            try {
             // Remover listener anterior se existir
             if (coletasRealtimeChannel) {
+                    try {
                 supabaseClient.removeChannel(coletasRealtimeChannel);
+                    } catch (e) {
+                        // Ignorar erros ao remover canal
+                    }
             }
             
             // Configurar listener para mudanças na tabela coletas
@@ -16507,9 +16939,18 @@
                     if (status === 'SUBSCRIBED') {
                         console.log('✅ Listener de realtime configurado com sucesso');
                     } else if (status === 'CHANNEL_ERROR') {
-                        console.error('❌ Erro no canal de realtime');
+                        // ✅ Tornar erro silencioso - WebSocket pode falhar em alguns ambientes
+                        console.warn('⚠️ Erro no canal de realtime (funcionando em modo offline)');
+                    } else if (status === 'TIMED_OUT' || status === 'CLOSED') {
+                        // Conexão fechada ou timeout - não é crítico
+                        console.warn('⚠️ Conexão realtime fechada (funcionando em modo offline)');
                     }
                 });
+            } catch (error) {
+                // ✅ Capturar erros de conexão WebSocket e torná-los silenciosos
+                console.warn('⚠️ Não foi possível configurar realtime (funcionando em modo offline):', error.message);
+                coletasRealtimeChannel = null;
+            }
         }
         
         async function atualizarCardColeta(coletaId) {
@@ -17215,6 +17656,160 @@
                 
             } catch (error) {
                 console.error('❌ Erro ao marcar como pago:', error);
+                showNotification('Erro ao marcar como pago: ' + error.message, 'error');
+            }
+        }
+
+        // Função confirmarPagamento - alias para marcarComoPago
+        async function confirmarPagamento(coletaId, tipoPagamento) {
+            // Se não foi passado tipoPagamento, tentar inferir do tipo selecionado na coleta
+            if (!tipoPagamento) {
+                const coleta = coletasData.find(c => c.id === coletaId);
+                if (coleta && coleta.contas_pagar_tipo) {
+                    // Mapear tipos específicos para tipos genéricos
+                    const tipoMapeado = coleta.contas_pagar_tipo.toLowerCase();
+                    if (tipoMapeado.includes('adiantamento') && !tipoMapeado.includes('saldo')) {
+                        tipoPagamento = 'adiantamento';
+                    } else if (tipoMapeado.includes('saldo') && !tipoMapeado.includes('adiantamento')) {
+                        tipoPagamento = 'saldo';
+                    } else if (tipoMapeado.includes('total') || tipoMapeado.includes('pagamento total')) {
+                        tipoPagamento = 'pagamento_total';
+                    } else {
+                        // Se não conseguir mapear, usar o tipo da coleta diretamente
+                        tipoPagamento = coleta.contas_pagar_tipo;
+                    }
+                } else {
+                    showNotification('⚠️ Tipo de pagamento não especificado', 'warning');
+                    return;
+                }
+            }
+            
+            // Chamar marcarComoPago com o tipo de pagamento
+            await marcarComoPago(coletaId, tipoPagamento);
+        }
+
+        // Função para marcar tipo de pagamento específico (GNRE, PEDÁGIO, etc.)
+        async function marcarTipoPagamentoEspecifico(coletaId, tipoPagamentoEspecifico) {
+            try {
+                if (!supabaseClient) {
+                    console.error('❌ Supabase não inicializado');
+                    showNotification('Erro: Supabase não inicializado', 'error');
+                    return;
+                }
+
+                const coleta = coletasData.find(c => c.id === coletaId);
+                if (!coleta) {
+                    showNotification('Coleta não encontrada', 'error');
+                    return;
+                }
+
+                // 🔐 Verificar permissão para a etapa contas_pagar
+                if (!temPermissaoEtapa('contas_pagar')) {
+                    showNotification('⚠️ Você não tem permissão para marcar como pago nesta etapa', 'warning');
+                    return;
+                }
+
+                if (!coleta.motorista_id) {
+                    showNotification('⚠️ É necessário ter um motorista vinculado para marcar como pago', 'warning');
+                    return;
+                }
+
+                // Validar tipo de pagamento específico
+                const tiposValidos = ['GNRE', 'PEDÁGIO', 'GNRE + PEDÁGIO', 'ADIANTAMENTO', 'SALDO', 'PAGAMENTO DE FRETE TOTAL'];
+                if (!tipoPagamentoEspecifico || !tiposValidos.includes(tipoPagamentoEspecifico)) {
+                    showNotification('⚠️ Tipo de pagamento inválido', 'warning');
+                    return;
+                }
+
+                const usuarioNome = currentUser.nome || currentUser.username || currentUser.email;
+                const mensagemConfirmacao = `💰 Confirmar que o pagamento "${tipoPagamentoEspecifico}" foi realizado? O motorista e o criador da oportunidade serão notificados.`;
+                
+                const confirmacao = confirm(mensagemConfirmacao);
+                if (!confirmacao) return;
+
+                // Buscar informações do motorista
+                const motorista = await buscarMotoristaPorId(coleta.motorista_id);
+                if (!motorista) {
+                    showNotification('Erro ao buscar informações do motorista', 'error');
+                    return;
+                }
+
+                // Atualizar coleta como paga com o tipo específico
+                const { error: updateError } = await supabaseClient
+                    .from('coletas')
+                    .update({
+                        contas_pagar_pago: true,
+                        contas_pagar_data: new Date().toISOString(),
+                        contas_pagar_pago_por: usuarioNome,
+                        contas_pagar_tipo: tipoPagamentoEspecifico,
+                        updated_at: new Date().toISOString()
+                    })
+                    .eq('id', coletaId);
+
+                if (updateError) throw updateError;
+
+                // Salvar no histórico
+                await salvarNoHistorico(coletaId, 'contas_pagar_pago', 
+                    `${tipoPagamentoEspecifico} marcado como realizado por ${usuarioNome}`
+                );
+
+                // Enviar mensagem para o motorista
+                if (motorista.telefone1) {
+                    try {
+                        const mensagemMotorista = `💰 *${tipoPagamentoEspecifico} REALIZADO*\n\nOlá ${motorista.nome || 'Motorista'}!\n\nO pagamento "${tipoPagamentoEspecifico}" da coleta *${coleta.cliente}* (${coleta.origem} → ${coleta.destino}) foi marcado como realizado.\n\nValor: R$ ${(coleta.valor || 0).toFixed(2)}\n\nObrigado pelo seu trabalho! 🚚`;
+
+                        const userData = localStorage.getItem('loggedInUser');
+                        const user = userData ? JSON.parse(userData) : null;
+
+                        const response = await fetch('/webhook/send-supabase', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                number: motorista.telefone1,
+                                message: mensagemMotorista,
+                                usuario: user?.email || currentUser?.email || 'sistema',
+                                userId: user?.id || currentUser?.id || null
+                            })
+                        });
+
+                        if (response.ok) {
+                            console.log('✅ Mensagem enviada para o motorista');
+                        } else {
+                            console.warn('⚠️ Erro ao enviar mensagem para o motorista:', await response.text());
+                        }
+                    } catch (error) {
+                        console.error('❌ Erro ao enviar mensagem para o motorista:', error);
+                    }
+                }
+
+                // Criar notificação para o criador da coleta
+                if (coleta.created_by && coleta.created_by !== currentUser.id) {
+                    try {
+                        await supabaseClient
+                            .from('chat_mensagens')
+                            .insert({
+                                coleta_id: coletaId,
+                                usuario: 'Sistema',
+                                mensagem: `💰 ${tipoPagamentoEspecifico} marcado como realizado por ${usuarioNome}`,
+                                tipo: 'system',
+                                tipo_mensagem: 'sistema'
+                            });
+                        
+                        console.log('✅ Notificação criada para o criador da coleta');
+                    } catch (error) {
+                        console.warn('⚠️ Erro ao criar notificação para o criador:', error);
+                    }
+                }
+
+                showNotification(`✅ ${tipoPagamentoEspecifico} marcado como realizado! Motorista e criador da oportunidade foram notificados.`, 'success');
+
+                // Recarregar coletas para atualizar a interface
+                await carregarColetas();
+                
+            } catch (error) {
+                console.error('❌ Erro ao marcar tipo de pagamento específico:', error);
                 showNotification('Erro ao marcar como pago: ' + error.message, 'error');
             }
         }
@@ -21142,10 +21737,6 @@
 
         // FUNÇÃO SIMPLES - usa a API instead do Supabase direto
         async function avancarEtapa(coletaId) {
-            // Usar assistente inteligente ao invés de avanço direto
-            await abrirAssistenteMovimentacao(coletaId, 'avancar');
-            return;
-            
             console.log('🚀 avancarEtapa chamado para coleta:', coletaId);
             
             if (!coletaId) {
@@ -21377,11 +21968,6 @@
         console.log('✅ Função avancarEtapa definida globalmente:', typeof window.avancarEtapa);
 
         function openMoverEtapaModal(coletaId) {
-            // Usar assistente inteligente ao invés do modal antigo
-            abrirAssistenteMovimentacao(coletaId, 'mover');
-            return;
-            
-            // Código antigo mantido para fallback
             const coleta = coletasData.find(c => c.id === coletaId);
             if (!coleta) return;
 
@@ -23753,6 +24339,7 @@
         window.verDetalhesMotorista = verDetalhesMotorista;
         window.selecionarMotorista = selecionarMotorista;
         window.confirmarPagamento = confirmarPagamento;
+        window.marcarTipoPagamentoEspecifico = marcarTipoPagamentoEspecifico;
         window.alternarVisualizacao = alternarVisualizacao;
     </script>
 <!-- Chat IA -->
