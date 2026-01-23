@@ -4965,39 +4965,73 @@
       if (coletaIdParam && iniciarRastreamentoParam === 'true') {
         logger.log('🔍 Coleta detectada na URL com flag de iniciar rastreamento:', coletaIdParam);
         
-        // Aguardar carregar viagens e então assumir a coleta e iniciar rastreamento
-        const intervalo = setInterval(() => {
-          if (state.viagens && state.viagens.length > 0) {
-            clearInterval(intervalo);
-            
-            // Verificar se a coleta está na lista de viagens
-            const coletaEncontrada = state.viagens.find(v => v.id === coletaIdParam);
-            
-            if (coletaEncontrada) {
-              logger.log('✅ Coleta encontrada nas viagens. Assumindo e iniciando rastreamento...', coletaEncontrada);
-              
-              // Assumir a coleta (isso também iniciará o rastreamento automaticamente)
-              executarAssumirColeta(coletaIdParam).then(() => {
-                logger.log('✅ Coleta assumida e rastreamento iniciado automaticamente');
-                showToast('✅ Coleta assumida! Rastreamento GPS iniciado automaticamente.', 'success');
-              }).catch(error => {
-                logger.error('❌ Erro ao assumir coleta:', error);
-                showToast('Erro ao assumir coleta. Tente novamente.', 'error');
-              });
-            } else {
-              logger.warn('⚠️ Coleta não encontrada nas viagens disponíveis');
-              showToast('⚠️ Coleta não encontrada nas suas viagens disponíveis.', 'warning');
-            }
-          } else if (state.viagens && state.viagens.length === 0) {
-            // Se não há viagens, pode ser que a coleta ainda não esteja disponível
-            clearInterval(intervalo);
-            logger.warn('⚠️ Nenhuma viagem disponível. A coleta pode não estar atribuída ainda.');
-            showToast('⚠️ Nenhuma viagem disponível no momento.', 'warning');
-          }
-        }, 1000);
+        // Verificar se há token de rastreamento (termo já aceito)
+        const tokenRastreamento = obterTokenRastreamento(coletaIdParam);
+        const temSessao = !!state.session?.access_token;
         
-        // Timeout de segurança
-        setTimeout(() => clearInterval(intervalo), 15000);
+        logger.log('🔑 Verificando autenticação:', {
+          coletaId: coletaIdParam,
+          temTokenRastreamento: !!tokenRastreamento,
+          temSessao: temSessao
+        });
+        
+        // Se há token de rastreamento, iniciar rastreamento diretamente (não precisa assumir coleta)
+        if (tokenRastreamento) {
+          logger.log('✅ Token de rastreamento encontrado - iniciando rastreamento diretamente');
+          setTimeout(() => {
+            iniciarRastreamento(coletaIdParam);
+            showToast('✅ Rastreamento GPS iniciado automaticamente!', 'success');
+          }, 1000);
+          
+          // Limpar parâmetros da URL
+          urlParams.delete('coleta');
+          urlParams.delete('iniciarRastreamento');
+          const newUrl = `${window.location.pathname}${urlParams.toString() ? '?' + urlParams.toString() : ''}${window.location.hash}`;
+          window.history.replaceState({}, document.title, newUrl);
+          return;
+        }
+        
+        // Se não há token mas há sessão, tentar assumir a coleta normalmente
+        if (temSessao) {
+          logger.log('🔍 Tentando assumir coleta normalmente...');
+          // Aguardar carregar viagens e então assumir a coleta e iniciar rastreamento
+          const intervalo = setInterval(() => {
+            if (state.viagens && state.viagens.length > 0) {
+              clearInterval(intervalo);
+              
+              // Verificar se a coleta está na lista de viagens
+              const coletaEncontrada = state.viagens.find(v => v.id === coletaIdParam);
+              
+              if (coletaEncontrada) {
+                logger.log('✅ Coleta encontrada nas viagens. Assumindo e iniciando rastreamento...', coletaEncontrada);
+                
+                // Assumir a coleta (isso também iniciará o rastreamento automaticamente)
+                executarAssumirColeta(coletaIdParam).then(() => {
+                  logger.log('✅ Coleta assumida e rastreamento iniciado automaticamente');
+                  showToast('✅ Coleta assumida! Rastreamento GPS iniciado automaticamente.', 'success');
+                }).catch(error => {
+                  logger.error('❌ Erro ao assumir coleta:', error);
+                  showToast('Erro ao assumir coleta. Tente novamente.', 'error');
+                });
+              } else {
+                logger.warn('⚠️ Coleta não encontrada nas viagens disponíveis');
+                showToast('⚠️ Coleta não encontrada nas suas viagens disponíveis.', 'warning');
+              }
+            } else if (state.viagens && state.viagens.length === 0) {
+              // Se não há viagens, pode ser que a coleta ainda não esteja disponível
+              clearInterval(intervalo);
+              logger.warn('⚠️ Nenhuma viagem disponível. A coleta pode não estar atribuída ainda.');
+              showToast('⚠️ Nenhuma viagem disponível no momento.', 'warning');
+            }
+          }, 1000);
+          
+          // Timeout de segurança
+          setTimeout(() => clearInterval(intervalo), 15000);
+        } else {
+          // Sem token e sem sessão - mostrar mensagem
+          logger.warn('⚠️ Sem token de rastreamento e sem sessão - não é possível iniciar rastreamento');
+          showToast('⚠️ Faça login ou aceite o termo de rastreamento primeiro.', 'warning');
+        }
       }
     }
 

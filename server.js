@@ -62,6 +62,40 @@ const APP_BASE_URL = process.env.PUBLIC_BASE_URL || `http://localhost:${PORT}`;
 // Helmet para headers de segurança
 const isDevelopment = process.env.NODE_ENV !== 'production';
 
+// Extrair domínio do Supabase para CSP
+let supabaseDomain = null;
+if (process.env.SUPABASE_URL) {
+  try {
+    const supabaseUrl = new URL(process.env.SUPABASE_URL);
+    supabaseDomain = supabaseUrl.hostname; // Ex: sscipijonlducmcjgty.supabase.co
+  } catch (e) {
+    console.warn('⚠️ Não foi possível extrair domínio do Supabase da URL:', e.message);
+  }
+}
+
+// Construir lista de connectSrc com domínios do Supabase
+const connectSrcList = [
+  "'self'",
+  "https://*.supabase.co",
+  "wss://*.supabase.co",
+  "ws://*.supabase.co",
+  "https://cdn.jsdelivr.net",
+  "https://cdnjs.cloudflare.com",
+  "https://unpkg.com"
+];
+
+// Adicionar domínio específico do Supabase se disponível
+if (supabaseDomain) {
+  connectSrcList.push(`https://${supabaseDomain}`);
+  connectSrcList.push(`wss://${supabaseDomain}`);
+  connectSrcList.push(`ws://${supabaseDomain}`);
+}
+
+// Em desenvolvimento, adicionar permissões mais amplas
+if (isDevelopment) {
+  connectSrcList.push("https:", "ws:", "wss:");
+}
+
 if (isDevelopment) {
   // CSP mais permissivo para desenvolvimento
   app.use(helmet({
@@ -74,11 +108,11 @@ if (isDevelopment) {
         scriptSrcElem: ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net", "https://cdnjs.cloudflare.com", "https://unpkg.com", "https:"],
         scriptSrcAttr: ["'unsafe-inline'"],
         imgSrc: ["'self'", "data:", "https:", "blob:"],
-        connectSrc: ["'self'", "https://*.supabase.co", "https://cdn.jsdelivr.net", "https://cdnjs.cloudflare.com", "https://unpkg.com", "https:", "ws:", "wss:"],
+        connectSrc: connectSrcList,
         fontSrc: ["'self'", "https://cdnjs.cloudflare.com", "https://fonts.gstatic.com", "https://fonts.googleapis.com", "https:", "data:"],
         objectSrc: ["'none'"],
         mediaSrc: ["'self'", "blob:"],
-        frameSrc: ["'self'", "https://*.supabase.co", "https://docs.google.com", "https://view.officeapps.live.com"],
+        frameSrc: ["'self'", "https://*.supabase.co", supabaseDomain ? `https://${supabaseDomain}` : null, "https://docs.google.com", "https://view.officeapps.live.com"].filter(Boolean),
         workerSrc: ["'self'", "blob:"],
         manifestSrc: ["'self'"],
         formAction: ["'self'"],
@@ -101,11 +135,11 @@ if (isDevelopment) {
         scriptSrcElem: ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net", "https://cdnjs.cloudflare.com", "https://unpkg.com"],
         scriptSrcAttr: ["'unsafe-inline'"],
         imgSrc: ["'self'", "data:", "https:", "blob:"],
-        connectSrc: ["'self'", "https://*.supabase.co", "https://cdn.jsdelivr.net", "https://cdnjs.cloudflare.com", "https://unpkg.com"],
+        connectSrc: connectSrcList,
         fontSrc: ["'self'", "https://cdnjs.cloudflare.com", "https://fonts.gstatic.com", "https://fonts.googleapis.com"],
         objectSrc: ["'none'"],
         mediaSrc: ["'self'", "blob:"],
-        frameSrc: ["'self'", "https://*.supabase.co", "https://docs.google.com", "https://view.officeapps.live.com"],
+        frameSrc: ["'self'", "https://*.supabase.co", supabaseDomain ? `https://${supabaseDomain}` : null, "https://docs.google.com", "https://view.officeapps.live.com"].filter(Boolean),
         workerSrc: ["'self'", "blob:"],
         manifestSrc: ["'self'"],
         formAction: ["'self'"],
@@ -4984,11 +5018,19 @@ async function validarTokenRastreamento(token) {
 
 // Verificar se termo de rastreamento foi aceito
 // Rota pública para buscar dados básicos da coleta (para termo de rastreamento)
+// IMPORTANTE: Esta rota deve estar ANTES de rotas mais genéricas como /api/coletas
 app.get('/api/coletas/public/:coletaId', async (req, res) => {
   try {
     const { coletaId } = req.params;
     
+    console.log('📥 Requisição recebida para /api/coletas/public/:coletaId', {
+      coletaId: coletaId,
+      url: req.url,
+      method: req.method
+    });
+    
     if (!coletaId) {
+      console.warn('⚠️ ID da coleta não fornecido na requisição');
       return res.status(400).json({ success: false, error: 'ID da coleta não fornecido' });
     }
     
@@ -4997,7 +5039,7 @@ app.get('/api/coletas/public/:coletaId', async (req, res) => {
     // Usar supabaseAdmin para bypass de RLS (Row Level Security)
     const { data: coleta, error } = await supabaseAdmin
       .from('coletas')
-      .select('id, numero_coleta, cliente, origem, destino, motorista_id, motorista_nome')
+      .select('id, numero_coleta, cliente, origem, destino, motorista_id')
       .eq('id', coletaId)
       .single();
     
@@ -5168,12 +5210,49 @@ app.post('/api/rastreamento/aceitar-termo', express.json(), async (req, res) => 
       .single();
 
     if (termoExistente) {
-      // Se o termo já foi aceito, retornar sucesso mas não gerar novo token
+      // Se o termo já foi aceito, verificar se há token de rastreamento existente
       console.log('ℹ️ Termo já aceito anteriormente para esta coleta');
+      
+      // Tentar buscar token de rastreamento existente
+      let tokenRastreamento = null;
+      try {
+        const { data: tokenData } = await supabaseAdmin
+          .from('rastreamento_tokens')
+          .select('id, token_hash, expira_em')
+          .eq('motorista_id', motorista.id)
+          .eq('coleta_id', coletaId)
+          .eq('ativo', true)
+          .gt('expira_em', new Date().toISOString())
+          .order('criado_em', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        
+        // Se não há token válido, gerar um novo
+        if (!tokenData) {
+          console.log('🔑 Gerando novo token de rastreamento para termo já aceito');
+          tokenRastreamento = await gerarTokenRastreamento(motorista.id, coletaId);
+        } else {
+          // Se há token válido, não podemos retornar o token em texto claro (segurança)
+          // Mas podemos indicar que há token válido e o frontend pode usar o que já tem no localStorage
+          console.log('✅ Token de rastreamento válido já existe');
+          // Gerar novo token mesmo assim para garantir que o frontend tenha um válido
+          tokenRastreamento = await gerarTokenRastreamento(motorista.id, coletaId);
+        }
+      } catch (tokenError) {
+        console.warn('⚠️ Erro ao verificar/gerar token (não crítico):', tokenError.message || tokenError);
+        // Tentar gerar novo token mesmo assim
+        try {
+          tokenRastreamento = await gerarTokenRastreamento(motorista.id, coletaId);
+        } catch (genError) {
+          console.warn('⚠️ Não foi possível gerar token:', genError.message || genError);
+        }
+      }
+      
       return res.status(200).json({ 
         success: true, 
         message: 'Termo já aceito anteriormente.',
-        termoJaAceito: true
+        termoJaAceito: true,
+        tokenRastreamento: tokenRastreamento // Retornar token mesmo se termo já aceito
       });
     }
 
