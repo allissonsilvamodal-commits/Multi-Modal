@@ -5004,12 +5004,20 @@ async function validarTokenRastreamento(token) {
       };
     }
     
-    return {
+    const resultado = {
       valido: true,
       motoristaId: tokenData.motorista_id,
       coletaId: tokenData.coleta_id,
       coletaFinalizada: false
     };
+    
+    console.log('✅ Token validado com sucesso:', {
+      motoristaId: resultado.motoristaId,
+      coletaId: resultado.coletaId,
+      tokenId: tokenData.id
+    });
+    
+    return resultado;
   } catch (error) {
     console.error('❌ Erro ao validar token de rastreamento:', error);
     return { valido: false, error: 'Erro ao processar validação do token' };
@@ -5334,45 +5342,42 @@ app.post('/api/rastreamento/enviar-posicao', express.json(), async (req, res) =>
     let coletaIdFromToken = null;
     let usandoToken = false;
 
-    // Tentar autenticação via sessão primeiro
-    const { user, motorista: motoristaSessao, error: authError } = await requireMotoristaAuth(req);
-    
-    if (authError || !motoristaSessao) {
-      // Se não houver sessão, tentar autenticação via token de rastreamento
+    // PRIMEIRO: Tentar autenticação via token de rastreamento (se presente no header)
+    // Isso evita que requireMotoristaAuth tente validar o token como JWT do Supabase
       const authHeader = req.headers.authorization;
       if (authHeader && authHeader.startsWith('Bearer ')) {
         const token = authHeader.substring(7);
+      console.log('🔍 Tentando validar token de rastreamento...', { tokenLength: token.length, tokenPreview: token.substring(0, 20) + '...' });
+      
         const validacao = await validarTokenRastreamento(token);
         
         if (validacao.valido) {
           usandoToken = true;
           coletaIdFromToken = validacao.coletaId;
-          
-          // Buscar dados do motorista
-          const { data: motoristaData, error: motoristaError } = await supabaseAdmin
-            .from('motoristas')
-            .select('id, nome, telefone, estado, classe_veiculo, tipo_veiculo, tipo_carroceria, placa_cavalo, status')
-            .eq('id', validacao.motoristaId)
-            .single();
-          
-          if (motoristaError || !motoristaData) {
-            console.error('❌ Motorista não encontrado para token:', validacao.motoristaId);
-            return res.status(404).json({ success: false, error: 'Motorista não encontrado para este token.' });
-          }
-          
-          motorista = motoristaData;
-          console.log('✅ Autenticação via token de rastreamento:', { motoristaId: motorista.id, coletaId: coletaIdFromToken });
+        console.log('✅ Token de rastreamento válido:', { motoristaId: validacao.motoristaId, coletaId: validacao.coletaId });
+        
+        // Se o token é válido, não precisamos buscar o motorista completo
+        // Apenas criamos um objeto mínimo com o ID para salvar a posição
+        motorista = { id: validacao.motoristaId };
+        console.log('✅ Usando motoristaId do token (não precisa buscar motorista completo):', { motoristaId: motorista.id, coletaId: coletaIdFromToken });
         } else {
           console.warn('⚠️ Token de rastreamento inválido:', validacao.error);
-          return res.status(401).json({ success: false, error: validacao.error || 'Token de rastreamento inválido.' });
-        }
-      } else {
-        // Sem sessão e sem token
-        return res.status(401).json({ success: false, error: 'Autenticação necessária. Faça login ou use um token de rastreamento válido.' });
+        // Se o token de rastreamento falhar, tentar autenticação via sessão
       }
+    }
+
+    // SEGUNDO: Se não autenticou via token de rastreamento, tentar via sessão
+    if (!motorista) {
+      const { user, motorista: motoristaSessao, error: authError } = await requireMotoristaAuth(req);
+      
+      if (authError || !motoristaSessao) {
+        // Sem sessão e sem token válido
+        return res.status(401).json({ success: false, error: 'Autenticação necessária. Faça login ou use um token de rastreamento válido.' });
     } else {
       // Autenticação via sessão bem-sucedida
       motorista = motoristaSessao;
+        console.log('✅ Autenticação via sessão bem-sucedida:', { motoristaId: motorista.id });
+      }
     }
 
     const {
@@ -5473,7 +5478,7 @@ app.post('/api/rastreamento/enviar-posicao', express.json(), async (req, res) =>
 
     console.log('📍 Dados preparados para inserção:', {
       motorista_id: dadosInsercao.motorista_id,
-      motorista_nome: motorista.nome,
+      motorista_nome: motorista.nome || 'N/A (não buscado)',
       coleta_id: dadosInsercao.coleta_id,
       latitude: dadosInsercao.latitude,
       longitude: dadosInsercao.longitude,
@@ -5514,7 +5519,7 @@ app.post('/api/rastreamento/enviar-posicao', express.json(), async (req, res) =>
     console.log('✅ Posição GPS salva com sucesso:', {
       posicao_id: posicao.id,
       motorista_id: motorista.id,
-      motorista_nome: motorista.nome,
+      motorista_nome: motorista.nome || 'N/A (não buscado)',
       coleta_id: coletaId,
       latitude: posicao.latitude,
       longitude: posicao.longitude,
@@ -7968,7 +7973,7 @@ CREATE INDEX IF NOT EXISTS idx_clientes_operacao ON clientes(operacao) WHERE ope
       // Verificar se a coluna foi criada
       const { data: verificacao, error: verifError2 } = await supabaseAdmin
         .from('clientes')
-        .select('id, nome, filial, operacao')
+        .select('id, razao_social, filial, operacao')
         .limit(1);
 
       if (!verifError2 && verificacao && verificacao.length > 0 && 'operacao' in verificacao[0]) {
@@ -23010,7 +23015,7 @@ app.get('/api/clientes', requireAuth, async (req, res) => {
     // Construir query
     let query = supabaseAdmin
       .from('clientes')
-      .select('id, cnpj, nome, razao_social, cidade_origem, uf_origem, cidade_destino, uf_destino, tipo_produto, codigo_tabela, tipo_veiculo, filial, operacao, ativo, atualizado_por, ultima_atualizacao, created_at, updated_at', { count: 'exact' });
+      .select('id, cnpj, razao_social, cidade_origem, uf_origem, cidade_destino, uf_destino, tipo_produto, codigo_tabela, tipo_veiculo, filial, operacao, ativo, atualizado_por, ultima_atualizacao, created_at, updated_at', { count: 'exact' });
 
     // Aplicar filtros
     if (filial) {
@@ -23053,12 +23058,11 @@ app.get('/api/clientes', requireAuth, async (req, res) => {
 
     if (busca) {
       // Buscar por razao_social ou CNPJ
-      query = query.or(`razao_social.ilike.%${busca}%,nome.ilike.%${busca}%,cnpj.ilike.%${busca}%`);
+      query = query.or(`razao_social.ilike.%${busca}%,cnpj.ilike.%${busca}%`);
     }
 
     // Aplicar paginação
     query = query.order('razao_social', { ascending: true })
-                 .order('nome', { ascending: true })
                  .range(offset, offset + limit - 1);
 
     const { data: clientes, error, count } = await query;
@@ -23081,7 +23085,12 @@ app.get('/api/clientes', requireAuth, async (req, res) => {
     });
   } catch (error) {
     console.error('❌ Erro ao buscar clientes:', error);
-    res.status(500).json({ success: false, error: 'Erro ao buscar clientes' });
+    console.error('❌ Detalhes do erro:', error.message, error.details, error.hint);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Erro ao buscar clientes',
+      details: error.message || 'Erro desconhecido'
+    });
   }
 });
 
@@ -23096,11 +23105,10 @@ app.get('/api/clientes/exportar-excel', requireAuth, async (req, res) => {
     // Buscar todos os clientes ativos
     const { data: clientes, error } = await supabaseAdmin
       .from('clientes')
-      .select('id, cnpj, nome, razao_social, cidade_origem, uf_origem, cidade_destino, uf_destino, tipo_produto, codigo_tabela, tipo_veiculo, filial, operacao, ativo, atualizado_por, ultima_atualizacao, created_at')
+      .select('id, cnpj, razao_social, cidade_origem, uf_origem, cidade_destino, uf_destino, tipo_produto, codigo_tabela, tipo_veiculo, filial, operacao, ativo, atualizado_por, ultima_atualizacao, created_at')
       .eq('ativo', true)
       .order('filial', { ascending: true })
-      .order('razao_social', { ascending: true })
-      .order('nome', { ascending: true });
+      .order('razao_social', { ascending: true });
 
     if (error) throw error;
 
@@ -23274,54 +23282,51 @@ app.get('/api/clientes/modelo-csv', requireAuth, async (req, res) => {
       'PARATIBE': ['operacoes_paratibe', 'qualidade', 'price', 'comercial', 'rh', 'contas_pagar', 'contas_receber', 'ti', 'seguranca', 'manutencao', 'estoque', 'compras', 'cs', 'frota', 'documentacao', 'administrativo', 'outros']
     };
 
-    // Criar linhas do CSV com todos os campos (formato correto)
-    // Formato: CNPJ, Razão Social, Cidade de Origem, Cidade de Destino, Tipo de Produto, Atualizado por, Ultima Atualização, Código da Tabela, UF Cidade de Origem, UF Cidade de Destino, Tipo veículo, Filial, Operação
-    const linhas = ['CNPJ,Razão Social,Cidade de Origem,Cidade de Destino,Tipo de Produto,Atualizado por,Ultima Atualização,Código da Tabela,UF Cidade de Origem,UF Cidade de Destino,Tipo veículo,Filial,Operação'];
+    // Criar linhas do CSV com formato padrão
+    // Formato: CNPJ, Tipo de Produto, Cidade de Origem, Cidade de Destino, Atualizado por, Ultima Atualização, Código da Tabela, UF Cidade de Origem, UF Cidade de Destino, Valor Combinado, Filial, Operação
+    const linhas = ['CNPJ,Tipo de Produto,Cidade de Origem,Cidade de Destino,Atualizado por,Ultima Atualização,Código da Tabela,UF Cidade de Origem,UF Cidade de Destino,Valor Combinado,Filial,Operação'];
     
     // Exemplos de dados conforme formato fornecido pelo usuário
     const exemplos = [
       {
         cnpj: '21.877.243/0008-59',
-        razaoSocial: 'ARRUDA E MELO COMERCIO E DISTRIBUICAO DE ALIMENTOS',
+        tipoProduto: 'ARRUDA E MELO PE OUTBOUND',
         cidadeOrigem: 'JABOATAO DOS GUARARAPES-PE',
         cidadeDestino: 'SAO LUIS-MA',
-        tipoProduto: 'ARRUDA E MELO PE OUTBOUND',
         atualizadoPor: 'Tatiane',
         ultimaAtualizacao: '2024-01-10 17:49:15.0',
         codigoTabela: '3695',
         ufOrigem: 'PE',
         ufDestino: 'MA',
-        tipoVeiculo: '3/4',
+        valorCombinado: 'Tipo veículo : 3/4',
         filial: 'JBO',
         operacao: 'operacoes_jbo'
       },
       {
         cnpj: '07.526.557/0001-00',
-        razaoSocial: 'AMBEV S.A.',
+        tipoProduto: 'AMBEV PE OUTROS',
         cidadeOrigem: 'RECIFE-PE',
         cidadeDestino: 'SAO PAULO-SP',
-        tipoProduto: 'AMBEV PE OUTROS',
         atualizadoPor: 'Sistema',
         ultimaAtualizacao: '2024-01-15 10:30:00.0',
         codigoTabela: '2372',
         ufOrigem: 'PE',
         ufDestino: 'SP',
-        tipoVeiculo: 'Toco',
+        valorCombinado: 'Tipo veículo : Toco',
         filial: 'JBO',
         operacao: 'operacoes_jbo'
       },
       {
         cnpj: '12.345.678/0001-90',
-        razaoSocial: 'TRANSPORTADORA EXEMPLO LTDA',
+        tipoProduto: 'CISBRA TRANSFERENCIA',
         cidadeOrigem: 'MACEIO-AL',
         cidadeDestino: 'SALVADOR-BA',
-        tipoProduto: 'CISBRA TRANSFERENCIA',
         atualizadoPor: 'João Silva',
         ultimaAtualizacao: '2024-01-20 14:15:30.0',
         codigoTabela: '4484',
         ufOrigem: 'AL',
         ufDestino: 'BA',
-        tipoVeiculo: 'Carreta',
+        valorCombinado: 'Tipo veículo : Carreta',
         filial: 'AL',
         operacao: 'operacoes_al'
       }
@@ -23330,7 +23335,7 @@ app.get('/api/clientes/modelo-csv', requireAuth, async (req, res) => {
     // Adicionar exemplos ao CSV
     exemplos.forEach(exemplo => {
       linhas.push(
-        `${exemplo.cnpj},${exemplo.razaoSocial},${exemplo.cidadeOrigem},${exemplo.cidadeDestino},${exemplo.tipoProduto},${exemplo.atualizadoPor},${exemplo.ultimaAtualizacao},${exemplo.codigoTabela},${exemplo.ufOrigem},${exemplo.ufDestino},${exemplo.tipoVeiculo},${exemplo.filial},${exemplo.operacao}`
+        `${exemplo.cnpj},${exemplo.tipoProduto},${exemplo.cidadeOrigem},${exemplo.cidadeDestino || ''},${exemplo.atualizadoPor},${exemplo.ultimaAtualizacao},${exemplo.codigoTabela},${exemplo.ufOrigem},${exemplo.ufDestino},${exemplo.valorCombinado},${exemplo.filial},${exemplo.operacao}`
       );
     });
 
@@ -23345,6 +23350,112 @@ app.get('/api/clientes/modelo-csv', requireAuth, async (req, res) => {
   } catch (error) {
     console.error('❌ Erro ao gerar modelo CSV:', error);
     res.status(500).json({ success: false, error: 'Erro ao gerar modelo CSV' });
+  }
+});
+
+// Endpoint para analisar CSV antes de importar (debug)
+app.post('/api/clientes/analisar-csv', requireAuth, upload.single('csv'), async (req, res) => {
+  try {
+    const { user, error: authError } = await getUserFromRequest(req);
+    if (authError || !user) {
+      return res.status(401).json({ success: false, error: 'Não autenticado' });
+    }
+
+    // Verificar se é admin
+    const { data: userProfile } = await supabaseAdmin
+      .from('user_profiles')
+      .select('role')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    const isAdmin = userProfile?.role === 'admin' || user.isAdmin === true;
+    if (!isAdmin) {
+      return res.status(403).json({ success: false, error: 'Apenas administradores podem analisar CSV' });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({ success: false, error: 'Nenhum arquivo CSV enviado' });
+    }
+
+    // Ler CSV
+    const csvContent = req.file.buffer.toString('utf8').replace(/^\ufeff/, '');
+    const lines = csvContent.split('\n').filter(line => line.trim());
+    
+    if (lines.length === 0) {
+      return res.status(400).json({ success: false, error: 'Arquivo CSV vazio' });
+    }
+
+    // Detectar delimitador
+    const firstLine = lines[0];
+    const delimiter = firstLine.includes(';') ? ';' : ',';
+    
+    // Verificar se tem cabeçalho
+    const header = lines[0].toLowerCase();
+    const hasHeader = header.includes('cnpj') || header.includes('nome') || header.includes('razão social');
+    
+    // Parse da primeira linha de dados
+    const dataLine = hasHeader ? lines[1] : lines[0];
+    const columns = [];
+    let current = '';
+    let insideQuotes = false;
+    
+    for (let j = 0; j < dataLine.length; j++) {
+      const char = dataLine[j];
+      if (char === '"') {
+        insideQuotes = !insideQuotes;
+      } else if (char === delimiter && !insideQuotes) {
+        columns.push(current.trim().replace(/^"|"$/g, ''));
+        current = '';
+      } else {
+        current += char;
+      }
+    }
+    columns.push(current.trim().replace(/^"|"$/g, ''));
+
+    // Parse do cabeçalho se existir
+    const headerColumns = [];
+    if (hasHeader) {
+      current = '';
+      insideQuotes = false;
+      for (let j = 0; j < lines[0].length; j++) {
+        const char = lines[0][j];
+        if (char === '"') {
+          insideQuotes = !insideQuotes;
+        } else if (char === delimiter && !insideQuotes) {
+          headerColumns.push(current.trim().replace(/^"|"$/g, ''));
+          current = '';
+        } else {
+          current += char;
+        }
+      }
+      headerColumns.push(current.trim().replace(/^"|"$/g, ''));
+    }
+
+    return res.json({
+      success: true,
+      delimitador: delimiter,
+      temCabecalho: hasHeader,
+      totalColunas: columns.length,
+      colunasEsperadas: 10,
+      cabecalho: hasHeader ? headerColumns : null,
+      primeiraLinhaDados: columns,
+      mapeamento: columns.map((valor, idx) => ({
+        indice: idx,
+        valor: valor.substring(0, 50),
+        pareceCNPJ: /^\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}$/.test(valor) || /^\d{14}$/.test(valor),
+        pareceNome: valor.length > 0 && valor[0] === valor[0].toUpperCase() && valor.includes(' '),
+        pareceUF: /^[A-Z]{2}$/.test(valor),
+        pareceCidade: valor.length > 3 && !/^\d+$/.test(valor) && !valor.includes('@'),
+        pareceTipoProduto: valor.length > 2 && valor.length < 50 && !valor.includes('@') && !valor.includes(' - '),
+        pareceCodigoTabela: valor.length <= 10 && /^[A-Z0-9]+$/.test(valor),
+        pareceFilial: ['JBO', 'CABO', 'AL', 'SP', 'BA', 'CE', 'SE', 'PB', 'PE', 'AMBEV', 'US', 'PARATIBE'].includes(valor.toUpperCase()),
+        pareceOperacao: valor.toLowerCase().startsWith('operacoes_') || valor.toLowerCase().includes('operações')
+      }))
+    });
+
+  } catch (error) {
+    console.error('❌ Erro ao analisar CSV:', error);
+    res.status(500).json({ success: false, error: 'Erro ao analisar CSV: ' + error.message });
   }
 });
 
@@ -23380,6 +23491,10 @@ app.post('/api/clientes/importar-csv', requireAuth, upload.single('csv'), async 
       return res.status(400).json({ success: false, error: 'Arquivo CSV vazio' });
     }
 
+    // Detectar delimitador automaticamente (ponto e vírgula ou vírgula) - usar primeira linha
+    const firstLine = lines[0];
+    const delimiter = firstLine.includes(';') ? ';' : ',';
+    
     // Verificar se tem cabeçalho
     const header = lines[0].toLowerCase();
     const hasHeader = header.includes('cnpj') || header.includes('nome') || header.includes('razão social') || header.includes('razao social');
@@ -23398,7 +23513,7 @@ app.post('/api/clientes/importar-csv', requireAuth, upload.single('csv'), async 
       'compras', 'cs', 'frota', 'documentacao', 'administrativo', 'outros'
     ];
 
-    const filiaisValidas = ['JBO', 'CABO', 'AL', 'SP', 'BA', 'CE', 'SE', 'PB', 'PE', 'AMBEV', 'US', 'PARATIBE'];
+    const filiaisValidas = ['JBO', 'CABO', 'AL', 'SP', 'BA', 'CE', 'SE', 'PB', 'PE', 'AMBEV', 'US', 'PARATIBE', 'USINA'];
     const ufsValidas = ['AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO'];
 
     // ✅ Função para normalizar CNPJ (aceita com ou sem máscara) - definida uma vez para reutilização
@@ -23426,13 +23541,29 @@ app.post('/api/clientes/importar-csv', requireAuth, upload.single('csv'), async 
     const detalhesFalhas = [];
     const detalhesSucessos = [];
 
+    // Processar em lotes para evitar timeout e melhorar performance
+    const BATCH_SIZE = 50; // Processar 50 linhas por vez
+    const totalLinhas = lines.length - startLine;
+    console.log(`📊 Iniciando importação de ${totalLinhas} linhas em lotes de ${BATCH_SIZE}`);
+    console.log(`📋 Total de linhas no arquivo: ${lines.length}, Linhas de dados: ${totalLinhas}`);
+
     // Processar cada linha
     for (let i = startLine; i < lines.length; i++) {
+      // Log de progresso a cada lote
+      if ((i - startLine) % BATCH_SIZE === 0 || i === startLine) {
+        const progresso = Math.round(((i - startLine) / totalLinhas) * 100);
+        console.log(`📈 Progresso: ${i - startLine + 1}/${totalLinhas} linhas processadas (${progresso}%) - Sucessos: ${sucessos}, Falhas: ${falhas}`);
+      }
+      
+      // Verificar se chegou ao final
+      if (i === lines.length - 1) {
+        console.log(`✅ Última linha processada: ${i + 1}`);
+      }
       const line = lines[i].trim();
       if (!line) continue;
 
       try {
-        // Parse CSV melhorado - trata vírgulas dentro de aspas
+        // Parse CSV melhorado - trata delimitadores dentro de aspas
         const columns = [];
         let current = '';
         let insideQuotes = false;
@@ -23441,7 +23572,7 @@ app.post('/api/clientes/importar-csv', requireAuth, upload.single('csv'), async 
           const char = line[j];
           if (char === '"') {
             insideQuotes = !insideQuotes;
-          } else if (char === ',' && !insideQuotes) {
+          } else if (char === delimiter && !insideQuotes) {
             columns.push(current.trim().replace(/^"|"$/g, ''));
             current = '';
           } else {
@@ -23454,14 +23585,151 @@ app.post('/api/clientes/importar-csv', requireAuth, upload.single('csv'), async 
         // Formato esperado: CNPJ, Razão Social, Cidade de Origem, Cidade de Destino, Tipo de Produto, Atualizado por, Ultima Atualização, Código da Tabela, UF Cidade de Origem, UF Cidade de Destino, Tipo veículo, Filial, Operação
         // Formato antigo (compatibilidade): CNPJ, Nome, Cidade Origem, UF Origem, Cidade Destino, UF Destino, Tipo Produto, Código Tabela, Filial, Operação, Tipo Veículo
         
-        // Detectar formato pelo cabeçalho ou número de colunas
-        const headerLower = hasHeader ? lines[0].toLowerCase() : '';
-        const isFormatoNovo = headerLower.includes('razão social') || headerLower.includes('razao social') || 
-                              headerLower.includes('atualizado por') || headerLower.includes('ultima atualização');
+        // Detectar formato pelo número de colunas
+        // Formato padrão (12 colunas): CNPJ, Tipo de Produto, Cidade de Origem, Cidade de Destino, Atualizado por, Ultima Atualização, Código da Tabela, UF Cidade de Origem, UF Cidade de Destino, Valor Combinado, Filial, Operação
+        // Formato antigo (11 colunas - sem Cidade de Destino): CNPJ, Tipo de Produto, Cidade de Origem, Atualizado por, Ultima Atualização, Código da Tabela, UF Cidade de Origem, UF Cidade de Destino, Valor Combinado, Filial, Operação
+        // Formato completo (13 colunas): CNPJ, Razão Social, Cidade de Origem, Cidade de Destino, Tipo de Produto, Atualizado por, Ultima Atualização, Código da Tabela, UF Cidade de Origem, UF Cidade de Destino, Tipo veículo, Filial, Operação
+        // Formato antigo (10 colunas): CNPJ, Nome, Cidade Origem, UF Origem, Cidade Destino, UF Destino, Tipo Produto, Código Tabela, Filial, Operação
         
         let cnpj, razaoSocial, cidadeOrigem, ufOrigem, cidadeDestino, ufDestino, tipoProduto, codigoTabela, filial, operacao, tipoVeiculo, atualizadoPor, ultimaAtualizacao;
         
-        if (isFormatoNovo && columns.length >= 11) {
+        // Função auxiliar para detectar se um valor é uma operação
+        function isOperacao(valor) {
+          if (!valor) return false;
+          const val = valor.toLowerCase().trim();
+          return val.startsWith('operacoes_') || operacoesValidas.includes(val);
+        }
+        
+        // Função auxiliar para detectar se um valor é uma filial
+        function isFilial(valor) {
+          if (!valor) return false;
+          return filiaisValidas.includes(val.toUpperCase().trim());
+        }
+        
+        // Prioridade: Formato padrão (12 colunas com Cidade de Destino) é o formato principal
+        if (columns.length === 12) {
+          // Formato padrão: CNPJ, Tipo de Produto, Cidade de Origem, Cidade de Destino, Atualizado por, Ultima Atualização, Código da Tabela, UF Cidade de Origem, UF Cidade de Destino, Valor Combinado, Filial, Operação
+          cnpj = (columns[0] || '').trim();
+          tipoProduto = (columns[1] || '').trim();
+          cidadeOrigem = (columns[2] || '').trim();
+          cidadeDestino = (columns[3] || '').trim();
+          atualizadoPor = (columns[4] || '').trim();
+          const ultimaAtualizacaoRaw = (columns[5] || '').trim();
+          codigoTabela = (columns[6] || '').trim();
+          ufOrigem = (columns[7] || '').trim();
+          ufDestino = (columns[8] || '').trim();
+          const valorCombinado = (columns[9] || '').trim(); // Pode conter "Tipo veículo : 3/4"
+          filial = (columns[10] || '').trim() || null;
+          operacao = (columns[11] || '').trim() || null;
+          
+          // Extrair tipo de veículo do campo "Valor Combinado" se contiver "Tipo veículo"
+          if (valorCombinado && (valorCombinado.toLowerCase().includes('tipo veículo') || valorCombinado.toLowerCase().includes('tipo veiculo'))) {
+            const match = valorCombinado.match(/tipo\s+ve[íi]culo\s*:?\s*([^,]+)/i);
+            if (match && match[1]) {
+              tipoVeiculo = match[1].trim();
+            } else {
+              tipoVeiculo = null;
+            }
+          } else {
+            tipoVeiculo = null;
+          }
+          
+          // Extrair cidade e UF de origem se vier no formato "CIDADE-UF"
+          const cidadeOrigemMatch = cidadeOrigem.match(/^(.+?)-([A-Z]{2})$/);
+          if (cidadeOrigemMatch) {
+            cidadeOrigem = cidadeOrigemMatch[1].trim();
+            if (!ufOrigem || !ufsValidas.includes(ufOrigem)) {
+              ufOrigem = cidadeOrigemMatch[2].trim();
+            }
+          }
+          
+          // Extrair cidade e UF de destino se vier no formato "CIDADE-UF"
+          if (cidadeDestino) {
+            const cidadeDestinoMatch = cidadeDestino.match(/^(.+?)-([A-Z]{2})$/);
+            if (cidadeDestinoMatch) {
+              cidadeDestino = cidadeDestinoMatch[1].trim();
+              if (!ufDestino || !ufsValidas.includes(ufDestino)) {
+                ufDestino = cidadeDestinoMatch[2].trim();
+              }
+            }
+          }
+          
+          // Razão social não está no CSV, usar tipo_produto como nome
+          razaoSocial = tipoProduto || 'Cliente sem nome';
+          
+          // Validar data de atualização
+          if (ultimaAtualizacaoRaw) {
+            const dataTeste = new Date(ultimaAtualizacaoRaw);
+            if (!isNaN(dataTeste.getTime())) {
+              ultimaAtualizacao = dataTeste.toISOString();
+            } else {
+              ultimaAtualizacao = null;
+            }
+          } else {
+            ultimaAtualizacao = null;
+          }
+          
+        } else if (columns.length === 11) {
+          // Formato antigo (11 colunas - sem Cidade de Destino): CNPJ, Tipo de Produto, Cidade de Origem, Atualizado por, Ultima Atualização, Código da Tabela, UF Cidade de Origem, UF Cidade de Destino, Valor Combinado, Filial, Operação
+          cnpj = (columns[0] || '').trim();
+          tipoProduto = (columns[1] || '').trim();
+          cidadeOrigem = (columns[2] || '').trim();
+          cidadeDestino = null; // Não existe neste formato
+          atualizadoPor = (columns[3] || '').trim();
+          const ultimaAtualizacaoRaw = (columns[4] || '').trim();
+          codigoTabela = (columns[5] || '').trim();
+          ufOrigem = (columns[6] || '').trim();
+          ufDestino = (columns[7] || '').trim();
+          const valorCombinado = (columns[8] || '').trim(); // Pode conter "Tipo veículo : 3/4"
+          filial = (columns[9] || '').trim() || null;
+          operacao = (columns[10] || '').trim() || null;
+          
+          // Extrair tipo de veículo do campo "Valor Combinado" se contiver "Tipo veículo"
+          if (valorCombinado && (valorCombinado.toLowerCase().includes('tipo veículo') || valorCombinado.toLowerCase().includes('tipo veiculo'))) {
+            const match = valorCombinado.match(/tipo\s+ve[íi]culo\s*:?\s*([^,]+)/i);
+            if (match && match[1]) {
+              tipoVeiculo = match[1].trim();
+            } else {
+              tipoVeiculo = null;
+            }
+          } else {
+            tipoVeiculo = null;
+          }
+          
+          // Extrair cidade e UF de origem se vier no formato "CIDADE-UF"
+          const cidadeOrigemMatch = cidadeOrigem.match(/^(.+?)-([A-Z]{2})$/);
+          if (cidadeOrigemMatch) {
+            cidadeOrigem = cidadeOrigemMatch[1].trim();
+            if (!ufOrigem || !ufsValidas.includes(ufOrigem)) {
+              ufOrigem = cidadeOrigemMatch[2].trim();
+            }
+          }
+          
+          // Cidade de destino não está no formato de 11 colunas, mas temos UF de destino
+          // Tentar extrair cidade de destino se vier no formato "CIDADE-UF" em algum campo
+          // Se não houver, deixar null (apenas UF será salva)
+          cidadeDestino = null;
+          
+          // Se a UF de destino vier no formato "CIDADE-UF", extrair
+          // Mas no formato padrão de 11 colunas, a coluna 7 é apenas UF, não cidade-uf
+          // Então cidadeDestino permanece null, mas ufDestino será salvo
+          
+          // Razão social não está no CSV, usar tipo_produto como nome
+          razaoSocial = tipoProduto || 'Cliente sem nome';
+          
+          // Validar data de atualização
+          if (ultimaAtualizacaoRaw) {
+            const dataTeste = new Date(ultimaAtualizacaoRaw);
+            if (!isNaN(dataTeste.getTime())) {
+              ultimaAtualizacao = dataTeste.toISOString();
+            } else {
+              ultimaAtualizacao = null;
+            }
+          } else {
+            ultimaAtualizacao = null;
+          }
+          
+        } else if (isFormatoNovo && columns.length >= 13) {
           // Formato novo: CNPJ, Razão Social, Cidade de Origem, Cidade de Destino, Tipo de Produto, Atualizado por, Ultima Atualização, Código da Tabela, UF Cidade de Origem, UF Cidade de Destino, Tipo veículo, Filial, Operação
           cnpj = (columns[0] || '').trim();
           razaoSocial = (columns[1] || '').trim();
@@ -23469,15 +23737,27 @@ app.post('/api/clientes/importar-csv', requireAuth, upload.single('csv'), async 
           cidadeDestino = (columns[3] || '').trim();
           tipoProduto = (columns[4] || '').trim();
           atualizadoPor = (columns[5] || '').trim();
-          ultimaAtualizacao = (columns[6] || '').trim();
+          const ultimaAtualizacaoRaw = (columns[6] || '').trim();
+          // Validar se é uma data válida antes de usar
+          if (ultimaAtualizacaoRaw) {
+            const dataTeste = new Date(ultimaAtualizacaoRaw);
+            if (!isNaN(dataTeste.getTime())) {
+              ultimaAtualizacao = ultimaAtualizacaoRaw;
+            } else {
+              // Não é uma data válida, usar null para usar data atual depois
+              ultimaAtualizacao = null;
+            }
+          } else {
+            ultimaAtualizacao = null;
+          }
           codigoTabela = (columns[7] || '').trim();
           ufOrigem = (columns[8] || '').trim();
           ufDestino = (columns[9] || '').trim();
           tipoVeiculo = (columns[10] || '').trim();
           filial = (columns[11] || '').trim() || null;
           operacao = (columns[12] || '').trim() || null;
-        } else if (columns.length >= 11) {
-          // Formato antigo: CNPJ, Nome, Cidade Origem, UF Origem, Cidade Destino, UF Destino, Tipo Produto, Código Tabela, Filial, Operação, Tipo Veículo
+        } else if (columns.length >= 10) {
+          // Formato padrão: CNPJ, Nome, Cidade Origem, UF Origem, Cidade Destino, UF Destino, Tipo Produto, Código Tabela, Filial, Operação
           cnpj = (columns[0] || '').trim();
           razaoSocial = (columns[1] || '').trim(); // Nome vira razao_social
           cidadeOrigem = (columns[2] || '').trim();
@@ -23486,14 +23766,55 @@ app.post('/api/clientes/importar-csv', requireAuth, upload.single('csv'), async 
           ufDestino = (columns[5] || '').trim();
           tipoProduto = (columns[6] || '').trim();
           codigoTabela = (columns[7] || '').trim();
-          filial = (columns[8] || '').trim();
-          operacao = (columns[9] || '').trim();
-          tipoVeiculo = (columns[10] || '').trim();
+          
+          // Debug: log para verificar mapeamento (primeira linha e a cada 100)
+          if (i === startLine || (i - startLine) % 100 === 0) {
+            console.log(`📋 Linha ${i + 1} - Colunas detectadas: ${columns.length}`);
+            console.log(`   Coluna[6] (Tipo Produto esperado): "${tipoProduto}"`);
+            console.log(`   Todas as colunas: ${columns.map((c, idx) => `${idx}: "${c.substring(0, 30)}"`).join(', ')}`);
+          }
+          
+          // Verificar se tipo_produto parece ser um nome (indicando que as colunas estão desalinhadas)
+          if (tipoProduto && (tipoProduto.includes(' - ') || tipoProduto.length < 10)) {
+            console.warn(`⚠️ Linha ${i + 1}: Tipo Produto parece ser um nome: "${tipoProduto}". Verificando se há coluna extra...`);
+            // Se houver mais colunas, pode ser que tipo_produto esteja em outra posição
+            if (columns.length > 10) {
+              console.warn(`   ⚠️ CSV tem ${columns.length} colunas (esperado 10). Pode haver coluna extra causando desalinhamento.`);
+            }
+          }
+          
+          // Detectar automaticamente qual campo é filial e qual é operação
+          const campo8 = (columns[8] || '').trim();
+          const campo9 = (columns[9] || '').trim();
+          
+          if (isFilial(campo8)) {
+            filial = campo8;
+            operacao = campo9 || null;
+          } else if (isOperacao(campo8)) {
+            // Campo 8 é operação, então campo 9 pode ser filial ou estar vazio
+            operacao = campo8;
+            filial = isFilial(campo9) ? campo9 : null;
+          } else if (isFilial(campo9)) {
+            filial = campo9;
+            operacao = campo8 || null;
+          } else if (isOperacao(campo9)) {
+            operacao = campo9;
+            filial = campo8 || null;
+          } else {
+            // Tentar usar campo8 como filial e campo9 como operação
+            filial = campo8 || null;
+            operacao = campo9 || null;
+          }
+          
+          tipoVeiculo = (columns[10] || '').trim() || null;
           atualizadoPor = null;
           ultimaAtualizacao = null;
         } else {
           falhas++;
-          detalhesFalhas.push(`Linha ${i + 1}: Formato inválido - encontradas ${columns.length} colunas (esperado: 13 colunas). Formato novo: CNPJ, Razão Social, Cidade de Origem, Cidade de Destino, Tipo de Produto, Atualizado por, Ultima Atualização, Código da Tabela, UF Cidade de Origem, UF Cidade de Destino, Tipo veículo, Filial, Operação. Linha: "${line.substring(0, 100)}..."`);
+          const colunasEncontradas = columns.length;
+          const colunasEsperadas = 13;
+          const previewColunas = columns.slice(0, 5).join(' | ');
+          detalhesFalhas.push(`Linha ${i + 1}: Formato inválido - encontradas ${colunasEncontradas} colunas (esperado: ${colunasEsperadas} colunas). Delimitador detectado: "${delimiter}". Primeiras colunas: "${previewColunas}...". Formato esperado: CNPJ, Razão Social, Cidade de Origem, Cidade de Destino, Tipo de Produto, Atualizado por, Ultima Atualização, Código da Tabela, UF Cidade de Origem, UF Cidade de Destino, Tipo veículo, Filial, Operação. Linha completa: "${line.substring(0, 200)}..."`);
           continue;
         }
 
@@ -23510,6 +23831,47 @@ app.post('/api/clientes/importar-csv', requireAuth, upload.single('csv'), async 
         
         // Usar CNPJ normalizado
         cnpj = cnpjNormalizado;
+        
+        // Função para separar cidade e UF se vierem juntos no formato "CIDADE-UF"
+        function separarCidadeUF(cidadeUF) {
+          if (!cidadeUF) return { cidade: '', uf: '' };
+          
+          // Tentar separar por hífen (formato: "CIDADE-UF")
+          const match = cidadeUF.match(/^(.+?)-([A-Z]{2})$/);
+          if (match && ufsValidas.includes(match[2])) {
+            return { cidade: match[1].trim(), uf: match[2].trim() };
+          }
+          
+          // Tentar separar por espaço e UF no final
+          const match2 = cidadeUF.match(/^(.+?)\s+([A-Z]{2})$/);
+          if (match2 && ufsValidas.includes(match2[2])) {
+            return { cidade: match2[1].trim(), uf: match2[2].trim() };
+          }
+          
+          return { cidade: cidadeUF, uf: '' };
+        }
+        
+        // Separar cidade e UF se necessário (quando cidade vem no formato "CIDADE-UF")
+        if (cidadeOrigem && (!ufOrigem || !ufsValidas.includes(ufOrigem))) {
+          const origem = separarCidadeUF(cidadeOrigem);
+          if (origem.uf) {
+            cidadeOrigem = origem.cidade;
+            ufOrigem = origem.uf;
+          }
+        }
+        
+        if (cidadeDestino && (!ufDestino || !ufsValidas.includes(ufDestino))) {
+          const destino = separarCidadeUF(cidadeDestino);
+          if (destino.uf) {
+            cidadeDestino = destino.cidade;
+            ufDestino = destino.uf;
+          }
+        }
+
+        // Se razão social não foi preenchida, usar tipo_produto como fallback
+        if (!razaoSocial || razaoSocial.trim() === '') {
+          razaoSocial = tipoProduto || 'Cliente sem nome';
+        }
 
         if (!razaoSocial || razaoSocial.length < 2 || razaoSocial.length > 200) {
           falhas++;
@@ -23523,23 +23885,63 @@ app.post('/api/clientes/importar-csv', requireAuth, upload.single('csv'), async 
           continue;
         }
 
-        if (!ufOrigem || !ufsValidas.includes(ufOrigem)) {
+        // Validar UF de origem
+        if (!ufOrigem) {
           falhas++;
-          detalhesFalhas.push(`Linha ${i + 1}: UF de origem inválida (${ufOrigem})`);
+          detalhesFalhas.push(`Linha ${i + 1}: UF de origem não informada`);
           continue;
         }
 
-        if (!cidadeDestino || cidadeDestino.length < 2 || cidadeDestino.length > 100) {
+        // Verificar se é uma UF válida (algumas UFs também são filiais, então verificar UF primeiro)
+        if (!ufsValidas.includes(ufOrigem.toUpperCase())) {
+          // Se não é uma UF válida, verificar se é uma filial (para dar mensagem de erro mais clara)
+          if (filiaisValidas.includes(ufOrigem.toUpperCase())) {
+            falhas++;
+            detalhesFalhas.push(`Linha ${i + 1}: UF de origem inválida (${ufOrigem}). Parece ser uma filial, não uma UF.`);
+          } else {
+            falhas++;
+            detalhesFalhas.push(`Linha ${i + 1}: UF de origem inválida (${ufOrigem}). UFs válidas: ${ufsValidas.join(', ')}`);
+          }
+          continue;
+        }
+        
+        // Normalizar UF para maiúscula
+        ufOrigem = ufOrigem.toUpperCase();
+
+        // Cidade de destino é opcional (pode não estar no CSV)
+        if (cidadeDestino && (cidadeDestino.length < 2 || cidadeDestino.length > 100)) {
           falhas++;
           detalhesFalhas.push(`Linha ${i + 1}: Cidade de destino inválida (${cidadeDestino})`);
           continue;
         }
 
-        if (!ufDestino || !ufsValidas.includes(ufDestino)) {
+        // Validar UF de destino (opcional se não houver cidade de destino)
+        if (ufDestino) {
+          // Verificar se é uma UF válida (algumas UFs também são filiais, então verificar UF primeiro)
+          if (!ufsValidas.includes(ufDestino.toUpperCase())) {
+            // Se não é uma UF válida, verificar se é uma filial (para dar mensagem de erro mais clara)
+            if (filiaisValidas.includes(ufDestino.toUpperCase())) {
+              // Se filial não foi preenchida, pode ser que ufDestino seja na verdade a filial
+              if (!filial) {
+                filial = ufDestino.toUpperCase();
+                ufDestino = null; // Deixar null para o usuário corrigir depois
+                console.warn(`⚠️ Linha ${i + 1}: UF de destino parece ser uma filial (${ufDestino}). Assumindo que é a filial. UF de destino deixada como null.`);
+              } else {
           falhas++;
-          detalhesFalhas.push(`Linha ${i + 1}: UF de destino inválida (${ufDestino})`);
+                detalhesFalhas.push(`Linha ${i + 1}: UF de destino inválida (${ufDestino}). Parece ser uma filial, não uma UF.`);
           continue;
         }
+            } else {
+              falhas++;
+              detalhesFalhas.push(`Linha ${i + 1}: UF de destino inválida (${ufDestino}). UFs válidas: ${ufsValidas.join(', ')}`);
+              continue;
+            }
+          } else {
+            // É uma UF válida, normalizar para maiúscula
+            ufDestino = ufDestino.toUpperCase();
+          }
+        }
+        // Se ufDestino não foi informado, deixar null (opcional)
 
         if (!tipoProduto || tipoProduto.length < 2 || tipoProduto.length > 100) {
           falhas++;
@@ -23553,16 +23955,52 @@ app.post('/api/clientes/importar-csv', requireAuth, upload.single('csv'), async 
           continue;
         }
 
-        if (!filial || !filiaisValidas.includes(filial)) {
+        // Validar filial - se o valor for uma operação, tratar como operação e não como filial
+        if (filial && isOperacao(filial)) {
+          // Se o campo "filial" contém uma operação, mover para operação
+          if (!operacao) {
+            operacao = filial;
+            filial = null;
+          }
+        }
+        
+        // Se filial não foi preenchida mas operação foi, tentar extrair filial da operação
+        if (!filial && operacao) {
+          const operacaoLower = operacao.toLowerCase();
+          if (operacaoLower.includes('jbo')) filial = 'JBO';
+          else if (operacaoLower.includes('cabo')) filial = 'CABO';
+          else if (operacaoLower.includes('_sp') || operacaoLower.includes('sp')) filial = 'SP';
+          else if (operacaoLower.includes('_ba') || operacaoLower.includes('ba')) filial = 'BA';
+          else if (operacaoLower.includes('_se') || operacaoLower.includes('se')) filial = 'SE';
+          else if (operacaoLower.includes('_al') || operacaoLower.includes('al')) filial = 'AL';
+          else if (operacaoLower.includes('_pe') || operacaoLower.includes('pe')) filial = 'PE';
+          else if (operacaoLower.includes('_pb') || operacaoLower.includes('pb')) filial = 'PB';
+          else if (operacaoLower.includes('_ce') || operacaoLower.includes('ce')) filial = 'CE';
+          else if (operacaoLower.includes('ambev')) filial = 'AMBEV';
+          else if (operacaoLower.includes('usina') || operacaoLower.includes('us')) filial = 'US';
+          else if (operacaoLower.includes('paratibe')) filial = 'PARATIBE';
+        }
+        
+        // Validar filial apenas se foi preenchida
+        if (filial && !filiaisValidas.includes(filial.toUpperCase())) {
           falhas++;
-          detalhesFalhas.push(`Linha ${i + 1}: Filial inválida (${filial})`);
+          detalhesFalhas.push(`Linha ${i + 1}: Filial inválida (${filial}). Filiais válidas: ${filiaisValidas.join(', ')}`);
           continue;
         }
-
-        if (operacao && !operacoesValidas.includes(operacao)) {
-          falhas++;
-          detalhesFalhas.push(`Linha ${i + 1}: Operação inválida (${operacao})`);
-          continue;
+        
+        // Validar operação apenas se foi preenchida
+        if (operacao && !operacoesValidas.includes(operacao.toLowerCase())) {
+          // Tentar normalizar operação
+          const operacaoLower = operacao.toLowerCase().trim();
+          if (operacaoLower.startsWith('operacoes_')) {
+            operacao = operacaoLower;
+          } else if (operacoesValidas.some(op => op.includes(operacaoLower) || operacaoLower.includes(op))) {
+            operacao = operacoesValidas.find(op => op.includes(operacaoLower) || operacaoLower.includes(op));
+          } else {
+            falhas++;
+            detalhesFalhas.push(`Linha ${i + 1}: Operação inválida (${operacao}). Operações válidas: ${operacoesValidas.slice(0, 5).join(', ')}...`);
+            continue;
+          }
         }
 
         // Obter nome do usuário para atualizado_por (se não vier do CSV)
@@ -23574,12 +24012,26 @@ app.post('/api/clientes/importar-csv', requireAuth, upload.single('csv'), async 
         
         const nomeUsuario = atualizadoPor || userProfile?.nome || user.email || 'Sistema';
         const agora = new Date().toISOString();
-        const dataAtualizacao = ultimaAtualizacao || agora;
+        
+        // Validar e converter data de atualização
+        let dataAtualizacao = agora; // Valor padrão
+        if (ultimaAtualizacao && ultimaAtualizacao.trim() !== '') {
+          // Tentar converter para data válida
+          const dataTeste = new Date(ultimaAtualizacao);
+          if (!isNaN(dataTeste.getTime())) {
+            // É uma data válida
+            dataAtualizacao = dataTeste.toISOString();
+          } else {
+            // Não é uma data válida, usar data atual
+            console.warn(`⚠️ Data de atualização inválida na linha ${i + 1}: "${ultimaAtualizacao}". Usando data atual.`);
+            dataAtualizacao = agora;
+          }
+        }
 
         // Verificar se cliente já existe (por CNPJ)
         const { data: clienteExistente, error: checkError } = await supabaseAdmin
           .from('clientes')
-          .select('id, cnpj, nome, razao_social, filial')
+          .select('id, cnpj, razao_social, filial')
           .eq('cnpj', cnpj.trim())
           .maybeSingle();
 
@@ -23589,25 +24041,26 @@ app.post('/api/clientes/importar-csv', requireAuth, upload.single('csv'), async 
 
         if (clienteExistente) {
           // Atualizar se existir
-          const { error: updateError } = await supabaseAdmin
-            .from('clientes')
-            .update({
-              nome: razaoSocial.trim(), // Manter nome para compatibilidade
+          const dadosUpdate = {
               razao_social: razaoSocial.trim(),
-              cidade_origem: cidadeOrigem.trim(),
-              uf_origem: ufOrigem,
-              cidade_destino: cidadeDestino.trim(),
-              uf_destino: ufDestino,
-              tipo_produto: tipoProduto.trim(),
-              codigo_tabela: codigoTabela.trim(),
-              tipo_veiculo: tipoVeiculo.trim(),
-              filial: filial || clienteExistente.filial,
+            cidade_origem: cidadeOrigem ? cidadeOrigem.trim() : null,
+            uf_origem: ufOrigem || null,
+            cidade_destino: cidadeDestino ? cidadeDestino.trim() : null,
+            uf_destino: ufDestino ? ufDestino.trim().toUpperCase() : null,
+            tipo_produto: tipoProduto ? tipoProduto.trim() : null,
+            codigo_tabela: codigoTabela ? codigoTabela.trim() : null,
+            tipo_veiculo: tipoVeiculo ? tipoVeiculo.trim() : null,
+              filial: filial && filiaisValidas.includes(filial.toUpperCase()) ? filial.toUpperCase() : (clienteExistente.filial || null),
               operacao: operacao && operacao.trim() !== '' ? operacao.trim() : null,
               ativo: true,
               atualizado_por: nomeUsuario,
               ultima_atualizacao: dataAtualizacao,
               updated_at: agora
-            })
+          };
+          
+          const { error: updateError } = await supabaseAdmin
+            .from('clientes')
+            .update(dadosUpdate)
             .eq('id', clienteExistente.id);
 
           if (updateError) throw updateError;
@@ -23615,45 +24068,73 @@ app.post('/api/clientes/importar-csv', requireAuth, upload.single('csv'), async 
           detalhesSucessos.push(`${razaoSocial} (${cnpj}) - Atualizado`);
         } else {
           // Inserir novo
-          const { error: insertError } = await supabaseAdmin
-            .from('clientes')
-            .insert({
+          const dadosInsert = {
               cnpj: cnpj.trim(),
-              nome: razaoSocial.trim(), // Manter nome para compatibilidade
               razao_social: razaoSocial.trim(),
-              cidade_origem: cidadeOrigem.trim(),
-              uf_origem: ufOrigem,
-              cidade_destino: cidadeDestino.trim(),
-              uf_destino: ufDestino,
-              tipo_produto: tipoProduto.trim(),
-              codigo_tabela: codigoTabela.trim(),
-              tipo_veiculo: tipoVeiculo.trim(),
-              filial: filial,
+            cidade_origem: cidadeOrigem ? cidadeOrigem.trim() : null,
+            uf_origem: ufOrigem || null,
+            cidade_destino: cidadeDestino ? cidadeDestino.trim() : null,
+            uf_destino: ufDestino ? ufDestino.trim().toUpperCase() : null,
+            tipo_produto: tipoProduto ? tipoProduto.trim() : null,
+            codigo_tabela: codigoTabela ? codigoTabela.trim() : null,
+            tipo_veiculo: tipoVeiculo ? tipoVeiculo.trim() : null,
+              filial: filial && filiaisValidas.includes(filial.toUpperCase()) ? filial.toUpperCase() : null,
               operacao: operacao && operacao.trim() !== '' ? operacao.trim() : null,
               ativo: true,
               atualizado_por: nomeUsuario,
               ultima_atualizacao: dataAtualizacao
+          };
+          
+          // Log para debug (apenas primeira linha e a cada 100)
+          if (i === startLine || (i - startLine) % 100 === 0) {
+            console.log(`📤 Linha ${i + 1} - Inserindo cliente:`, {
+              cnpj: cnpj.substring(0, 20),
+              razao_social: razaoSocial.substring(0, 30),
+              cidade_origem: cidadeOrigem || 'null',
+              uf_origem: ufOrigem || 'null',
+              cidade_destino: cidadeDestino || 'null',
+              uf_destino: ufDestino || 'null'
             });
+          }
+          
+          const { error: insertError, data: insertedData } = await supabaseAdmin
+            .from('clientes')
+            .insert(dadosInsert)
+            .select();
 
-          if (insertError) throw insertError;
+          if (insertError) {
+            console.error(`❌ Erro ao inserir cliente na linha ${i + 1}:`, insertError);
+            console.error(`   Dados tentados:`, JSON.stringify(dadosInsert, null, 2));
+            throw insertError;
+          }
           sucessos++;
           detalhesSucessos.push(`${razaoSocial} (${cnpj}) - Criado`);
         }
 
       } catch (error) {
         falhas++;
-        detalhesFalhas.push(`Linha ${i + 1}: ${error.message || 'Erro desconhecido'}`);
+        const errorMsg = error.message || 'Erro desconhecido';
+        detalhesFalhas.push(`Linha ${i + 1}: ${errorMsg}`);
+        
+        // Log detalhado de erros para debug
+        if (falhas <= 20 || falhas % 50 === 0) {
+          console.error(`❌ Erro na linha ${i + 1}:`, errorMsg);
+        }
       }
     }
 
+    const totalLinhasProcessadas = lines.length - startLine;
+    console.log(`✅ Importação finalizada: ${sucessos} sucesso(s), ${falhas} falha(s) de ${totalLinhasProcessadas} linhas totais`);
+    
     res.json({
       success: true,
-      total: lines.length - startLine,
+      total: totalLinhasProcessadas,
       sucessos,
       falhas,
       detalhesSucessos: detalhesSucessos.slice(0, 10), // Limitar para não sobrecarregar
       detalhesFalhas: detalhesFalhas.slice(0, 10),
-      mensagem: `Importação concluída: ${sucessos} sucesso(s), ${falhas} falha(s)`
+      totalFalhas: detalhesFalhas.length, // Total real de falhas
+      mensagem: `Importação concluída: ${sucessos} sucesso(s), ${falhas} falha(s) de ${totalLinhasProcessadas} linha(s) processada(s)`
     });
 
   } catch (error) {
@@ -23674,11 +24155,10 @@ app.get('/api/clientes/filial/:filial', async (req, res) => {
 
     const { data: clientes, error } = await supabaseAdmin
       .from('clientes')
-      .select('id, cnpj, nome, razao_social, cidade_origem, uf_origem, cidade_destino, uf_destino, tipo_produto, codigo_tabela, tipo_veiculo, filial, operacao, ativo')
+      .select('id, cnpj, razao_social, cidade_origem, uf_origem, cidade_destino, uf_destino, tipo_produto, codigo_tabela, tipo_veiculo, filial, operacao, ativo')
       .eq('filial', filial)
       .eq('ativo', true)
-      .order('razao_social', { ascending: true })
-      .order('nome', { ascending: true });
+      .order('razao_social', { ascending: true });
 
     if (error) throw error;
 
@@ -23729,8 +24209,8 @@ app.post('/api/clientes/sincronizar', async (req, res) => {
           // Verificar se o cliente já existe
           const { data: clienteExistente, error: checkError } = await supabaseAdmin
             .from('clientes')
-            .select('id, nome, filial, ativo')
-            .eq('nome', nomeCliente.trim())
+            .select('id, razao_social, filial, ativo')
+            .eq('razao_social', nomeCliente.trim())
             .eq('filial', filial)
             .maybeSingle();
 
@@ -23754,7 +24234,7 @@ app.post('/api/clientes/sincronizar', async (req, res) => {
             const { error: insertError } = await supabaseAdmin
               .from('clientes')
               .insert({
-                nome: nomeCliente.trim(),
+                razao_social: nomeCliente.trim(),
                 filial: filial,
                 ativo: true
               });
@@ -23802,7 +24282,7 @@ app.post('/api/clientes', async (req, res) => {
       return res.status(403).json({ success: false, error: 'Apenas administradores podem criar clientes' });
     }
 
-    let { cnpj, nome, razao_social, cidade_origem, uf_origem, cidade_destino, uf_destino, tipo_produto, codigo_tabela, tipo_veiculo, filial, operacao, ativo = true } = req.body;
+    let { cnpj, nome, razao_social, cidade_origem, uf_origem, cidade_destino, uf_destino, tipo_produto, codigo_tabela, valor_combinado, tipo_veiculo, filial, operacao, ativo = true } = req.body;
 
     // ✅ Função para normalizar CNPJ (aceita com ou sem máscara)
     function normalizarCNPJ(cnpjInput) {
@@ -23867,7 +24347,7 @@ app.post('/api/clientes', async (req, res) => {
       return res.status(400).json({ success: false, error: 'Código da tabela deve ter entre 1 e 50 caracteres' });
     }
 
-    const filiaisValidas = ['JBO', 'CABO', 'AL', 'SP', 'BA', 'CE', 'SE', 'PB', 'PE', 'AMBEV', 'US', 'PARATIBE'];
+    const filiaisValidas = ['JBO', 'CABO', 'AL', 'SP', 'BA', 'CE', 'SE', 'PB', 'PE', 'AMBEV', 'US', 'PARATIBE', 'USINA'];
     if (!filial || !filiaisValidas.includes(filial)) {
       return res.status(400).json({ success: false, error: 'Filial inválida' });
     }
@@ -23905,7 +24385,6 @@ app.post('/api/clientes', async (req, res) => {
       .from('clientes')
       .insert({
         cnpj: cnpj.trim(),
-        nome: nome || razaoSocialFinal.trim(), // Manter nome para compatibilidade
         razao_social: razaoSocialFinal.trim(),
         cidade_origem: cidade_origem.trim(),
         uf_origem: uf_origem,
@@ -23913,6 +24392,8 @@ app.post('/api/clientes', async (req, res) => {
         uf_destino: uf_destino,
         tipo_produto: tipo_produto.trim(),
         codigo_tabela: codigo_tabela.trim(),
+        // valor_combinado será adicionado quando o campo existir no banco
+        // valor_combinado: valor_combinado !== undefined && valor_combinado !== null ? parseFloat(valor_combinado) : null,
         tipo_veiculo: tipo_veiculo.trim(),
         filial,
         operacao: operacao && operacao.trim() !== '' ? operacao.trim() : null,
@@ -23953,10 +24434,10 @@ app.put('/api/clientes/:id', async (req, res) => {
     }
 
     const { id } = req.params;
-    const { cnpj, nome, razao_social, cidade_origem, uf_origem, cidade_destino, uf_destino, tipo_produto, codigo_tabela, tipo_veiculo, filial, operacao, ativo } = req.body;
+    const { cnpj, nome, razao_social, cidade_origem, uf_origem, cidade_destino, uf_destino, tipo_produto, codigo_tabela, valor_combinado, tipo_veiculo, filial, operacao, ativo } = req.body;
 
     const ufsValidas = ['AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO'];
-    const filiaisValidas = ['JBO', 'CABO', 'AL', 'SP', 'BA', 'CE', 'SE', 'PB', 'PE', 'AMBEV', 'US', 'PARATIBE'];
+    const filiaisValidas = ['JBO', 'CABO', 'AL', 'SP', 'BA', 'CE', 'SE', 'PB', 'PE', 'AMBEV', 'US', 'PARATIBE', 'USINA'];
     const operacoesValidas = [
       'operacoes_jbo', 'operacoes_cabo', 'operacoes_sp', 'operacoes_ba', 'operacoes_se',
       'operacoes_al', 'operacoes_pe', 'operacoes_pb', 'operacoes_ce', 'operacoes_ambev',
@@ -24050,7 +24531,7 @@ app.put('/api/clientes/:id', async (req, res) => {
     // Verificar se cliente existe
     const { data: clienteExistente, error: checkError } = await supabaseAdmin
       .from('clientes')
-      .select('id, nome, filial, cnpj')
+      .select('id, razao_social, filial, cnpj')
       .eq('id', id)
       .maybeSingle();
 
@@ -24098,6 +24579,8 @@ app.put('/api/clientes/:id', async (req, res) => {
     if (uf_destino !== undefined) dadosAtualizacao.uf_destino = uf_destino;
     if (tipo_produto !== undefined) dadosAtualizacao.tipo_produto = tipo_produto.trim();
     if (codigo_tabela !== undefined) dadosAtualizacao.codigo_tabela = codigo_tabela.trim();
+    // valor_combinado será adicionado quando o campo existir no banco
+    // if (valor_combinado !== undefined) dadosAtualizacao.valor_combinado = valor_combinado !== null ? parseFloat(valor_combinado) : null;
     if (tipo_veiculo !== undefined) dadosAtualizacao.tipo_veiculo = tipo_veiculo.trim();
     if (filial !== undefined) dadosAtualizacao.filial = filial;
     if (operacao !== undefined) dadosAtualizacao.operacao = operacao && operacao.trim() !== '' ? operacao.trim() : null;
@@ -24233,6 +24716,509 @@ app.post('/api/its/:itId/clientes', async (req, res) => {
   }
 });
 
+// Endpoint para verificar estrutura da tabela clientes
+app.get('/api/admin/verificar-estrutura-clientes', requireAuth, async (req, res) => {
+  try {
+    const { user, error: authError } = await getUserFromRequest(req);
+    if (authError || !user) {
+      return res.status(401).json({ success: false, error: 'Não autenticado' });
+    }
+
+    // Verificar se é admin
+    const { data: userProfile } = await supabaseAdmin
+      .from('user_profiles')
+      .select('role')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    const isAdmin = userProfile?.role === 'admin' || user.isAdmin === true;
+    if (!isAdmin) {
+      return res.status(403).json({ success: false, error: 'Apenas administradores podem acessar' });
+    }
+
+    // Buscar um registro de exemplo para ver todas as colunas
+    const { data: exemplo, error } = await supabaseAdmin
+      .from('clientes')
+      .select('*')
+      .limit(1)
+      .single();
+
+    if (error && error.code !== 'PGRST116') throw error;
+
+    // Listar todas as colunas disponíveis
+    const colunas = exemplo ? Object.keys(exemplo) : [];
+
+    return res.json({
+      success: true,
+      colunas: colunas,
+      totalColunas: colunas.length,
+      exemplo: exemplo,
+      colunasEsperadas: [
+        'id', 'cnpj', 'nome', 'razao_social', 'cidade_origem', 'uf_origem', 
+        'cidade_destino', 'uf_destino', 'tipo_produto', 'codigo_tabela', 
+        'tipo_veiculo', 'filial', 'operacao', 'ativo', 'atualizado_por', 
+        'ultima_atualizacao', 'created_at', 'updated_at'
+      ]
+    });
+
+  } catch (error) {
+    console.error('❌ Erro ao verificar estrutura:', error);
+    res.status(500).json({ success: false, error: 'Erro ao verificar estrutura: ' + error.message });
+  }
+});
+
+// Endpoint para consultar dados do banco diretamente (para debug)
+app.get('/api/admin/verificar-clientes-bd', requireAuth, async (req, res) => {
+  try {
+    const { user, error: authError } = await getUserFromRequest(req);
+    if (authError || !user) {
+      return res.status(401).json({ success: false, error: 'Não autenticado' });
+    }
+
+    // Verificar se é admin
+    const { data: userProfile } = await supabaseAdmin
+      .from('user_profiles')
+      .select('role')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    const isAdmin = userProfile?.role === 'admin' || user.isAdmin === true;
+    if (!isAdmin) {
+      return res.status(403).json({ success: false, error: 'Apenas administradores podem acessar' });
+    }
+
+    const limit = parseInt(req.query.limit) || 20;
+
+    // Buscar registros
+    const { data: clientes, error } = await supabaseAdmin
+      .from('clientes')
+      .select('id, cnpj, tipo_produto, atualizado_por, razao_social, nome')
+      .limit(limit);
+
+    if (error) throw error;
+
+    // Identificar registros com problema
+    const clientesComProblema = clientes.filter(c => {
+      const tipoProduto = (c.tipo_produto || '').toString().trim();
+      const atualizadoPor = (c.atualizado_por || '').toString().trim();
+      
+      // Lista de tipos de produtos válidos comuns
+      const tiposProdutoValidos = [
+        'cimento', 'areia', 'aço', 'madeira', 'tijolo', 'concreto', 'argamassa', 
+        'pedra', 'brita', 'ferro', 'cal', 'gesso', 'telha', 'bloco', 'tinta',
+        'tinta', 'verniz', 'lã', 'vidro', 'alumínio', 'cobre', 'plástico',
+        'papel', 'cartão', 'tecido', 'couro', 'borracha', 'cerâmica', 'porcelanato'
+      ];
+      
+      // Verificar se tipo_produto parece ser um nome de pessoa
+      const tipoProdutoPareceNome = 
+        // Contém @ (email)
+        tipoProduto.includes('@') || 
+        // Contém " - " (formato nome - departamento/cargo)
+        tipoProduto.includes(' - ') ||
+        // É muito curto (menos de 10 caracteres) e não é um produto conhecido
+        (tipoProduto.length < 10 && !tiposProdutoValidos.some(prod => tipoProduto.toLowerCase().includes(prod))) ||
+        // Tem mais de 30 caracteres e não começa com produto conhecido
+        (tipoProduto.length > 30 && !tiposProdutoValidos.some(prod => tipoProduto.toLowerCase().startsWith(prod))) ||
+        // Começa com maiúscula e contém espaço (formato de nome próprio)
+        (tipoProduto.length > 0 && tipoProduto[0] === tipoProduto[0].toUpperCase() && 
+         tipoProduto.includes(' ') && tipoProduto.length < 50 &&
+         !tiposProdutoValidos.some(prod => tipoProduto.toLowerCase().includes(prod)));
+      
+      // Verificar se atualizado_por parece ser um tipo de produto válido
+      const atualizadoPorPareceProduto = atualizadoPor && 
+        !atualizadoPor.includes('@') && 
+        !atualizadoPor.includes(' - ') &&
+        (tiposProdutoValidos.some(prod => atualizadoPor.toLowerCase().includes(prod)) ||
+         atualizadoPor.length <= 50);
+      
+      return tipoProdutoPareceNome && atualizadoPorPareceProduto;
+    });
+
+    return res.json({
+      success: true,
+      totalConsultados: clientes.length,
+      totalComProblema: clientesComProblema.length,
+      amostra: clientes.slice(0, 10),
+      problemas: clientesComProblema.slice(0, 10)
+    });
+
+  } catch (error) {
+    console.error('❌ Erro ao consultar banco:', error);
+    res.status(500).json({ success: false, error: 'Erro ao consultar banco: ' + error.message });
+  }
+});
+
+// Endpoint para detectar e corrigir desalinhamento completo de colunas na importação
+app.post('/api/admin/corrigir-desalinhamento-clientes', requireAuth, async (req, res) => {
+  try {
+    const { user, error: authError } = await getUserFromRequest(req);
+    if (authError || !user) {
+      return res.status(401).json({ success: false, error: 'Não autenticado' });
+    }
+
+    // Verificar se é admin
+    const { data: userProfile } = await supabaseAdmin
+      .from('user_profiles')
+      .select('role')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    const isAdmin = userProfile?.role === 'admin' || user.isAdmin === true;
+    if (!isAdmin) {
+      return res.status(403).json({ success: false, error: 'Apenas administradores podem executar esta correção' });
+    }
+
+    const { executarCorrecao, limit = 10000 } = req.body;
+
+    console.log('🔍 Detectando desalinhamento de colunas...');
+
+    // Buscar registros onde tipo_produto parece ser um nome
+    const { data: todosClientes, error: fetchError } = await supabaseAdmin
+      .from('clientes')
+      .select('id, cnpj, tipo_produto, atualizado_por, codigo_tabela, uf_origem, uf_destino, filial')
+      .limit(parseInt(limit));
+
+    if (fetchError) throw fetchError;
+
+    // Identificar registros com problema
+    const clientesComProblema = todosClientes.filter(c => {
+      const tipoProduto = (c.tipo_produto || '').toString().trim();
+      const atualizadoPor = (c.atualizado_por || '').toString().trim();
+      const codigoTabela = (c.codigo_tabela || '').toString().trim();
+      
+      // Se tipo_produto parece ser um nome E atualizado_por parece ser um tipo de produto
+      const tipoProdutoPareceNome = tipoProduto.includes(' - ') || 
+                                    (tipoProduto.length < 10 && !tipoProduto.match(/^(Cimento|Areia|Aço|Madeira|Tijolo|Concreto|Argamassa|Pedra|Brita)/i)) ||
+                                    (tipoProduto.length > 0 && tipoProduto[0] === tipoProduto[0].toUpperCase() && tipoProduto.includes(' ') && tipoProduto.length < 50);
+      
+      // Se atualizado_por parece ser um tipo de produto (não contém @, não contém " - ", tem tamanho razoável)
+      const atualizadoPorPareceProduto = atualizadoPor && 
+        !atualizadoPor.includes('@') && 
+        !atualizadoPor.includes(' - ') &&
+        atualizadoPor.length > 2 && atualizadoPor.length <= 50;
+      
+      // Se codigo_tabela parece ser uma UF (2 letras maiúsculas)
+      const codigoTabelaPareceUF = /^[A-Z]{2}$/.test(codigoTabela);
+      
+      return tipoProdutoPareceNome && atualizadoPorPareceProduto;
+    });
+
+    if (clientesComProblema.length === 0) {
+      return res.json({
+        success: true,
+        message: 'Nenhum desalinhamento detectado.',
+        totalVerificados: todosClientes.length
+      });
+    }
+
+    if (!executarCorrecao) {
+      return res.json({
+        success: true,
+        message: `${clientesComProblema.length} registros com desalinhamento detectados. Envie executarCorrecao: true para corrigir.`,
+        problemas: clientesComProblema.slice(0, 10),
+        totalProblemas: clientesComProblema.length,
+        totalVerificados: todosClientes.length,
+        exemplo: {
+          antes: {
+            tipo_produto: clientesComProblema[0]?.tipo_produto,
+            atualizado_por: clientesComProblema[0]?.atualizado_por
+          },
+          depois: {
+            tipo_produto: clientesComProblema[0]?.atualizado_por,
+            atualizado_por: clientesComProblema[0]?.tipo_produto
+          }
+        }
+      });
+    }
+
+    // Executar correção: trocar tipo_produto com atualizado_por
+    console.log(`🔧 Corrigindo ${clientesComProblema.length} registros...`);
+    let corrigidos = 0;
+    const erros = [];
+
+    for (const cliente of clientesComProblema) {
+      try {
+        // Valores atuais (incorretos)
+        const tipoProdutoAtual = (cliente.tipo_produto || '').toString().trim(); // Nome da pessoa (ex: "Illa Lins - Pricing")
+        const atualizadoPorAtual = (cliente.atualizado_por || '').toString().trim(); // Data (ex: "2025-05-14 18:18:02.0")
+        
+        // Preparar dados de correção
+        const dadosCorrecao = {};
+        
+        // tipo_produto: O valor correto foi perdido durante a importação
+        // Deixar null para o usuário preencher manualmente depois
+        dadosCorrecao.tipo_produto = null;
+        
+        // atualizado_por: usar o nome que está em tipo_produto (que é quem atualizou)
+        dadosCorrecao.atualizado_por = tipoProdutoAtual;
+        
+        // Se codigo_tabela é UF (2 letras), provavelmente está errado
+        const codigoTabelaAtual = (cliente.codigo_tabela || '').toString().trim();
+        if (/^[A-Z]{2}$/.test(codigoTabelaAtual)) {
+          dadosCorrecao.codigo_tabela = null; // Deixar null para preencher depois
+        }
+        
+        // Se tipo_veiculo é UF (2 letras), provavelmente está errado
+        const tipoVeiculoAtual = (cliente.tipo_veiculo || '').toString().trim();
+        if (/^[A-Z]{2}$/.test(tipoVeiculoAtual)) {
+          dadosCorrecao.tipo_veiculo = null; // Deixar null para preencher depois
+        }
+        
+        // Atualizar os campos
+        const { error: updateError } = await supabaseAdmin
+          .from('clientes')
+          .update(dadosCorrecao)
+          .eq('id', cliente.id);
+
+        if (updateError) {
+          erros.push({ id: cliente.id, erro: updateError.message });
+        } else {
+          corrigidos++;
+        }
+      } catch (error) {
+        erros.push({ id: cliente.id, erro: error.message });
+      }
+    }
+
+    return res.json({
+      success: true,
+      message: `Correção concluída: ${corrigidos} registros corrigidos, ${erros.length} erros.`,
+      corrigidos,
+      erros: erros.length > 0 ? erros.slice(0, 10) : undefined,
+      totalProblemas: clientesComProblema.length
+    });
+
+  } catch (error) {
+    console.error('❌ Erro ao corrigir desalinhamento:', error);
+    res.status(500).json({ success: false, error: 'Erro ao corrigir: ' + error.message });
+  }
+});
+
+// Endpoint temporário para verificar e corrigir dados trocados na tabela clientes via SQL
+app.post('/api/admin/corrigir-tipo-produto-clientes', requireAuth, async (req, res) => {
+  try {
+    const { user, error: authError } = await getUserFromRequest(req);
+    if (authError || !user) {
+      return res.status(401).json({ success: false, error: 'Não autenticado' });
+    }
+
+    // Verificar se é admin
+    const { data: userProfile } = await supabaseAdmin
+      .from('user_profiles')
+      .select('role')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    const isAdmin = userProfile?.role === 'admin' || user.isAdmin === true;
+    if (!isAdmin) {
+      return res.status(403).json({ success: false, error: 'Apenas administradores podem executar esta correção' });
+    }
+
+    const { executarCorrecao, limit = 10000 } = req.body;
+
+    console.log('🔍 Verificando dados da tabela clientes via SQL...');
+
+    // Query SQL para identificar registros com problema
+    // tipo_produto contém @ (email) ou tem mais de 30 caracteres (provavelmente nome)
+    // E atualizado_por não contém @ (pode ser tipo de produto)
+    const queryVerificacao = `
+      SELECT 
+        id, 
+        cnpj, 
+        tipo_produto, 
+        atualizado_por, 
+        razao_social,
+        nome
+      FROM clientes
+      WHERE 
+        (
+          tipo_produto LIKE '%@%' 
+          OR (LENGTH(tipo_produto) > 30 AND tipo_produto NOT SIMILAR TO '%(Cimento|Areia|Aço|Madeira|Tijolo|Concreto|Argamassa|Pedra|Brita)%')
+        )
+        AND atualizado_por IS NOT NULL 
+        AND atualizado_por NOT LIKE '%@%'
+        AND atualizado_por != ''
+      LIMIT $1
+    `;
+
+    // Executar query via RPC se disponível, senão usar select normal
+    let clientesComProblema = [];
+    try {
+      // Tentar executar SQL direto via RPC
+      const { data: rpcData, error: rpcError } = await supabaseAdmin.rpc('exec_sql', {
+        sql_query: queryVerificacao.replace('$1', limit.toString())
+      });
+
+      if (!rpcError && rpcData) {
+        clientesComProblema = rpcData;
+      } else {
+        // Fallback: buscar todos e filtrar
+        const { data: todosClientes, error: fetchError } = await supabaseAdmin
+          .from('clientes')
+          .select('id, cnpj, tipo_produto, atualizado_por, razao_social, nome')
+          .limit(parseInt(limit));
+
+        if (fetchError) throw fetchError;
+
+        clientesComProblema = todosClientes.filter(c => {
+          const tipoProduto = (c.tipo_produto || '').toString().trim();
+          const atualizadoPor = (c.atualizado_por || '').toString().trim();
+          
+          // Lista de tipos de produtos válidos comuns
+          const tiposProdutoValidos = [
+            'cimento', 'areia', 'aço', 'madeira', 'tijolo', 'concreto', 'argamassa', 
+            'pedra', 'brita', 'ferro', 'cal', 'gesso', 'telha', 'bloco', 'tinta',
+            'tinta', 'verniz', 'lã', 'vidro', 'alumínio', 'cobre', 'plástico',
+            'papel', 'cartão', 'tecido', 'couro', 'borracha', 'cerâmica', 'porcelanato'
+          ];
+          
+          // Verificar se tipo_produto parece ser um nome de pessoa
+          const tipoProdutoPareceNome = 
+            // Contém @ (email)
+            tipoProduto.includes('@') || 
+            // Contém " - " (formato nome - departamento/cargo)
+            tipoProduto.includes(' - ') ||
+            // É muito curto (menos de 10 caracteres) e não é um produto conhecido
+            (tipoProduto.length < 10 && !tiposProdutoValidos.some(prod => tipoProduto.toLowerCase().includes(prod))) ||
+            // Tem mais de 30 caracteres e não começa com produto conhecido
+            (tipoProduto.length > 30 && !tiposProdutoValidos.some(prod => tipoProduto.toLowerCase().startsWith(prod))) ||
+            // Começa com maiúscula e contém espaço (formato de nome próprio)
+            (tipoProduto.length > 0 && tipoProduto[0] === tipoProduto[0].toUpperCase() && 
+             tipoProduto.includes(' ') && tipoProduto.length < 50 &&
+             !tiposProdutoValidos.some(prod => tipoProduto.toLowerCase().includes(prod)));
+          
+          // Verificar se atualizado_por parece ser um tipo de produto válido
+          const atualizadoPorPareceProduto = atualizadoPor && 
+            !atualizadoPor.includes('@') && 
+            !atualizadoPor.includes(' - ') &&
+            (tiposProdutoValidos.some(prod => atualizadoPor.toLowerCase().includes(prod)) ||
+             atualizadoPor.length <= 50);
+          
+          return tipoProdutoPareceNome && atualizadoPorPareceProduto;
+        });
+      }
+    } catch (error) {
+      console.warn('⚠️ Erro ao executar query SQL, usando método alternativo:', error);
+      // Fallback: buscar todos e filtrar
+      const { data: todosClientes, error: fetchError } = await supabaseAdmin
+        .from('clientes')
+        .select('id, cnpj, tipo_produto, atualizado_por, razao_social, nome')
+        .limit(parseInt(limit));
+
+      if (fetchError) throw fetchError;
+
+      clientesComProblema = todosClientes.filter(c => {
+        const tipoProduto = (c.tipo_produto || '').toString().trim();
+        const atualizadoPor = (c.atualizado_por || '').toString().trim();
+        
+        // Lista de tipos de produtos válidos comuns
+        const tiposProdutoValidos = [
+          'cimento', 'areia', 'aço', 'madeira', 'tijolo', 'concreto', 'argamassa', 
+          'pedra', 'brita', 'ferro', 'cal', 'gesso', 'telha', 'bloco', 'tinta',
+          'tinta', 'verniz', 'lã', 'vidro', 'alumínio', 'cobre', 'plástico',
+          'papel', 'cartão', 'tecido', 'couro', 'borracha', 'cerâmica', 'porcelanato'
+        ];
+        
+        // Verificar se tipo_produto parece ser um nome de pessoa
+        const tipoProdutoPareceNome = 
+          // Contém @ (email)
+          tipoProduto.includes('@') || 
+          // Contém " - " (formato nome - departamento/cargo)
+          tipoProduto.includes(' - ') ||
+          // É muito curto (menos de 10 caracteres) e não é um produto conhecido
+          (tipoProduto.length < 10 && !tiposProdutoValidos.some(prod => tipoProduto.toLowerCase().includes(prod))) ||
+          // Tem mais de 30 caracteres e não começa com produto conhecido
+          (tipoProduto.length > 30 && !tiposProdutoValidos.some(prod => tipoProduto.toLowerCase().startsWith(prod))) ||
+          // Começa com maiúscula e contém espaço (formato de nome próprio)
+          (tipoProduto.length > 0 && tipoProduto[0] === tipoProduto[0].toUpperCase() && 
+           tipoProduto.includes(' ') && tipoProduto.length < 50 &&
+           !tiposProdutoValidos.some(prod => tipoProduto.toLowerCase().includes(prod)));
+        
+        // Verificar se atualizado_por parece ser um tipo de produto válido
+        const atualizadoPorPareceProduto = atualizadoPor && 
+          !atualizadoPor.includes('@') && 
+          !atualizadoPor.includes(' - ') &&
+          (tiposProdutoValidos.some(prod => atualizadoPor.toLowerCase().includes(prod)) ||
+           atualizadoPor.length <= 50);
+        
+        return tipoProdutoPareceNome && atualizadoPorPareceProduto;
+      });
+    }
+
+    if (clientesComProblema.length === 0) {
+      return res.json({
+        success: true,
+        message: 'Nenhum problema detectado. Os dados parecem estar corretos.',
+        totalVerificados: limit
+      });
+    }
+
+    if (!executarCorrecao) {
+      return res.json({
+        success: true,
+        message: `${clientesComProblema.length} registros com problema detectados. Envie executarCorrecao: true para corrigir.`,
+        problemas: clientesComProblema.slice(0, 10), // Mostrar apenas primeiros 10
+        totalProblemas: clientesComProblema.length,
+        totalVerificados: limit
+      });
+    }
+
+    // Executar correção: trocar tipo_produto com atualizado_por
+    console.log(`🔧 Corrigindo ${clientesComProblema.length} registros...`);
+    let corrigidos = 0;
+    const erros = [];
+
+    // Query SQL para atualizar em lote
+    const idsParaCorrigir = clientesComProblema.map(c => c.id);
+    
+    // Atualizar em lotes de 50
+    const batchSize = 50;
+    for (let i = 0; i < idsParaCorrigir.length; i += batchSize) {
+      const batch = idsParaCorrigir.slice(i, i + batchSize);
+      
+      for (const clienteId of batch) {
+        const cliente = clientesComProblema.find(c => c.id === clienteId);
+        if (!cliente) continue;
+
+        try {
+          const tipoProdutoOriginal = cliente.tipo_produto;
+          const atualizadoPorOriginal = cliente.atualizado_por;
+
+          // Trocar os valores
+          const { error: updateError } = await supabaseAdmin
+            .from('clientes')
+            .update({
+              tipo_produto: atualizadoPorOriginal,
+              atualizado_por: tipoProdutoOriginal
+            })
+            .eq('id', clienteId);
+
+          if (updateError) {
+            erros.push({ id: clienteId, erro: updateError.message });
+          } else {
+            corrigidos++;
+          }
+        } catch (error) {
+          erros.push({ id: clienteId, erro: error.message });
+        }
+      }
+    }
+
+    return res.json({
+      success: true,
+      message: `Correção concluída: ${corrigidos} registros corrigidos, ${erros.length} erros.`,
+      corrigidos,
+      erros: erros.length > 0 ? erros.slice(0, 10) : undefined,
+      totalProblemas: clientesComProblema.length
+    });
+
+  } catch (error) {
+    console.error('❌ Erro ao verificar/corrigir dados:', error);
+    res.status(500).json({ success: false, error: 'Erro ao verificar dados: ' + error.message });
+  }
+});
+
 // Endpoint para buscar clientes vinculados a uma IT
 app.get('/api/its/:itId/clientes', async (req, res) => {
   try {
@@ -24296,7 +25282,7 @@ app.get('/api/clientes/nome/:nomeCliente/its', async (req, res) => {
     let query = supabaseAdmin
       .from('clientes')
       .select('id, filial, operacao')
-      .eq('nome', nomeClienteDecodificado)
+      .eq('razao_social', nomeClienteDecodificado)
       .eq('ativo', true);
     
     // Se foi informada uma filial, filtrar também por ela
@@ -24316,7 +25302,7 @@ app.get('/api/clientes/nome/:nomeCliente/its', async (req, res) => {
       const queryCaseInsensitive = supabaseAdmin
         .from('clientes')
         .select('id, filial, operacao')
-        .ilike('nome', nomeClienteDecodificado)
+        .ilike('razao_social', nomeClienteDecodificado)
         .eq('ativo', true)
         .limit(1)
         .maybeSingle();
@@ -24332,7 +25318,7 @@ app.get('/api/clientes/nome/:nomeCliente/its', async (req, res) => {
       const querySemFilial = supabaseAdmin
         .from('clientes')
         .select('id, filial, operacao')
-        .eq('nome', nomeClienteDecodificado)
+        .eq('razao_social', nomeClienteDecodificado)
         .eq('ativo', true)
         .limit(1)
         .maybeSingle();

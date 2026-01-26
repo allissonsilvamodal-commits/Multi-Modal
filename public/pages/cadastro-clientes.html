@@ -288,6 +288,60 @@
             margin-bottom: 2rem;
             border: 1px solid #e5e7eb;
         }
+        
+        .table-responsive {
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        
+        .table-modern {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            margin: 0;
+        }
+        
+        .table-modern thead {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+        }
+        
+        .table-modern thead th {
+            padding: 1rem;
+            text-align: left;
+            font-weight: 600;
+            font-size: 0.875rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border: none;
+        }
+        
+        .table-modern tbody tr {
+            border-bottom: 1px solid #e5e7eb;
+            transition: background-color 0.2s;
+        }
+        
+        .table-modern tbody tr:hover {
+            background-color: #f8fafc;
+        }
+        
+        .table-modern tbody td {
+            padding: 1rem;
+            font-size: 0.875rem;
+            color: #374151;
+            vertical-align: middle;
+        }
+        
+        .table-modern tbody tr.inativo {
+            opacity: 0.6;
+            background-color: #f9fafb;
+        }
+        
+        .table-actions {
+            display: flex;
+            gap: 0.5rem;
+            justify-content: center;
+        }
     </style>
 </head>
 <body>
@@ -663,6 +717,18 @@
                                 </div>
                                 
                                 <div class="col-md-4 mb-3">
+                                    <label for="clienteValorCombinado" class="form-label fw-bold">Valor Combinado</label>
+                                    <input type="text" id="clienteValorCombinado" class="form-control" 
+                                           placeholder="0,00"
+                                           aria-describedby="clienteValorCombinadoError"
+                                           oninput="this.value = this.value.replace(/[^\d,.-]/g, '').replace(/(\..*)\./g, '$1')">
+                                    <small class="form-text text-muted">Digite o valor combinado (ex: 1500,00)</small>
+                                    <div class="field-error" id="clienteValorCombinadoError"></div>
+                                </div>
+                            </div>
+                            
+                            <div class="row">
+                                <div class="col-md-4 mb-3">
                                     <label for="clienteTipoVeiculo" class="form-label fw-bold">Tipo Veículo <span class="text-danger">*</span></label>
                                     <select id="clienteTipoVeiculo" class="form-select" required aria-describedby="clienteTipoVeiculoError">
                                         <option value="">Selecione o tipo de veículo</option>
@@ -813,14 +879,14 @@
         </div>
 
         <!-- Modal Importação CSV -->
-        <div class="modal fade" id="importacaoCSVModal" tabindex="-1">
+        <div class="modal fade" id="importacaoCSVModal" tabindex="-1" aria-labelledby="importacaoCSVModalLabel" aria-hidden="true">
             <div class="modal-dialog modal-dialog-centered">
                 <div class="modal-content" style="border-radius: 16px; border: none;">
                     <div class="modal-header" style="background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); color: white; border-radius: 16px 16px 0 0;">
-                        <h5 class="modal-title">
+                        <h5 class="modal-title" id="importacaoCSVModalLabel">
                             <i class="fas fa-file-import me-2"></i>Importar Clientes via CSV
                         </h5>
-                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fechar"></button>
                     </div>
                     <div class="modal-body p-4">
                         <div class="alert alert-info">
@@ -1060,7 +1126,23 @@
 
                 // Inicializar modais
                 clienteModal = new bootstrap.Modal(document.getElementById('clienteModal'));
-                importacaoCSVModal = new bootstrap.Modal(document.getElementById('importacaoCSVModal'));
+                const importacaoModalElement = document.getElementById('importacaoCSVModal');
+                if (importacaoModalElement) {
+                    importacaoCSVModal = new bootstrap.Modal(importacaoModalElement, {
+                        backdrop: true,
+                        keyboard: true,
+                        focus: true
+                    });
+                    
+                    // Corrigir problema de aria-hidden quando o modal é aberto
+                    importacaoModalElement.addEventListener('shown.bs.modal', function() {
+                        this.removeAttribute('aria-hidden');
+                    });
+                    
+                    importacaoModalElement.addEventListener('hidden.bs.modal', function() {
+                        this.setAttribute('aria-hidden', 'true');
+                    });
+                }
 
                 // Carregar clientes
                 await carregarClientes();
@@ -1117,8 +1199,20 @@
 
                             const response = await fetch('/api/clientes/importar-csv', {
                                 method: 'POST',
-                                body: formData
+                                body: formData,
+                                credentials: 'include'
                             });
+
+                            if (!response.ok) {
+                                const errorText = await response.text();
+                                let errorData;
+                                try {
+                                    errorData = JSON.parse(errorText);
+                                } catch (e) {
+                                    errorData = { error: errorText || `Erro ${response.status}: ${response.statusText}` };
+                                }
+                                throw new Error(errorData.error || `Erro ${response.status}: ${response.statusText}`);
+                            }
 
                             const data = await response.json();
 
@@ -1161,11 +1255,25 @@
                             }
 
                         } catch (error) {
-                            ErrorHandler.handle(error, 'Erro ao importar CSV');
+                            console.error('❌ Erro ao importar CSV:', error);
+                            const resultadoDiv = document.getElementById('resultadoImportacao');
+                            const resultadoConteudo = document.getElementById('resultadoImportacaoConteudo');
+                            
+                            if (resultadoDiv && resultadoConteudo) {
+                                resultadoConteudo.innerHTML = `<div class="alert alert-danger">
+                                    <strong>❌ Erro ao importar CSV:</strong><br>
+                                    ${error.message || 'Erro desconhecido. Verifique o console para mais detalhes.'}
+                                </div>`;
+                                resultadoDiv.style.display = 'block';
+                            } else {
+                                ErrorHandler.handle(error, 'Erro ao importar CSV');
+                            }
                         } finally {
                             const btn = e.target.querySelector('button[type="submit"]');
-                            btn.disabled = false;
-                            btn.innerHTML = '<i class="fas fa-upload me-2"></i>Importar';
+                            if (btn) {
+                                btn.disabled = false;
+                                btn.innerHTML = '<i class="fas fa-upload me-2"></i>Importar';
+                            }
                         }
                     });
                 }
@@ -1376,24 +1484,6 @@
                 return;
             }
 
-            container.innerHTML = clientesParaRenderizar.map(cliente => {
-                const statusBadge = cliente.ativo 
-                    ? '<span class="badge-status badge-ativo">Ativo</span>'
-                    : '<span class="badge-status badge-inativo">Inativo</span>';
-                
-                const actions = isAdmin ? `
-                    <div class="cliente-actions">
-                        <button class="btn-icon btn-edit" onclick="editarCliente('${cliente.id}')" 
-                                title="Editar cliente" aria-label="Editar cliente">
-                            <i class="fas fa-edit"></i>
-                        </button>
-                        <button class="btn-icon btn-delete" onclick="confirmarExclusao('${cliente.id}', '${escapeHtml(cliente.razao_social || cliente.nome)}')" 
-                                title="Excluir cliente" aria-label="Excluir cliente">
-                            <i class="fas fa-trash"></i>
-                        </button>
-                    </div>
-                ` : '';
-
                 // Mapear operação para nome legível
                 const operacoesMap = {
                     'operacoes_jbo': 'Operações - JBO',
@@ -1426,37 +1516,98 @@
                     'outros': 'Outros'
                 };
                 
-                const operacaoNome = cliente.operacao ? operacoesMap[cliente.operacao] || cliente.operacao : null;
-                const operacaoBadge = operacaoNome 
-                    ? `<span class="badge-operacao" style="background: #8b5cf6; color: white; padding: 0.25rem 0.75rem; border-radius: 12px; font-size: 0.75rem; font-weight: 600;"><i class="fas fa-building me-1"></i>${escapeHtml(operacaoNome)}</span>`
-                    : '';
+            // Função para formatar valor
+            const formatarValor = (valor) => {
+                if (!valor) return '-';
+                const num = parseFloat(valor);
+                if (isNaN(num)) return '-';
+                return new Intl.NumberFormat('pt-BR', {
+                    style: 'currency',
+                    currency: 'BRL'
+                }).format(num);
+            };
 
-                const cnpjInfo = cliente.cnpj ? `<span><i class="fas fa-id-card me-1"></i>CNPJ: ${escapeHtml(cliente.cnpj)}</span>` : '';
-                const origemInfo = cliente.cidade_origem && cliente.uf_origem ? `<span><i class="fas fa-map-marker-alt me-1"></i>Origem: ${escapeHtml(cliente.cidade_origem)}/${escapeHtml(cliente.uf_origem)}</span>` : '';
-                const destinoInfo = cliente.cidade_destino && cliente.uf_destino ? `<span><i class="fas fa-map-marker-alt me-1"></i>Destino: ${escapeHtml(cliente.cidade_destino)}/${escapeHtml(cliente.uf_destino)}</span>` : '';
-                const produtoInfo = cliente.tipo_produto ? `<span><i class="fas fa-box me-1"></i>Produto: ${escapeHtml(cliente.tipo_produto)}</span>` : '';
-                const tabelaInfo = cliente.codigo_tabela ? `<span><i class="fas fa-code me-1"></i>Tabela: ${escapeHtml(cliente.codigo_tabela)}</span>` : '';
+            // Função para formatar data
+            const formatarData = (data) => {
+                if (!data) return '-';
+                try {
+                    return new Date(data).toLocaleString('pt-BR', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                    });
+                } catch (e) {
+                    return '-';
+                }
+            };
+
+            const tabelaHTML = `
+                <div class="table-responsive">
+                    <table class="table-modern">
+                        <thead>
+                            <tr>
+                                <th>CNPJ</th>
+                                <th>Tipo de Produto</th>
+                                <th>Cidade de Origem</th>
+                                <th>Cidade de Destino</th>
+                                <th>Atualizado por</th>
+                                <th>Ultima Atualização</th>
+                                <th>Código da Tabela</th>
+                                <th>UF Cidade de Origem</th>
+                                <th>UF Cidade de Destino</th>
+                                <th>Valor Combinado</th>
+                                <th>Filial</th>
+                                <th>Operação</th>
+                                ${isAdmin ? '<th style="text-align: center;">Ações</th>' : ''}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${clientesParaRenderizar.map(cliente => {
+                                const operacaoNome = cliente.operacao ? operacoesMap[cliente.operacao] || cliente.operacao : '-';
+                                // Verificar se valor_combinado existe (pode não existir no banco ainda)
+                                const valorCombinado = cliente.valor_combinado !== undefined && cliente.valor_combinado !== null ? formatarValor(cliente.valor_combinado) : '-';
+                                const ultimaAtualizacao = formatarData(cliente.ultima_atualizacao);
+                                const atualizadoPor = cliente.atualizado_por || '-';
+                                
+                                const actions = isAdmin ? `
+                                    <td class="table-actions">
+                                        <button class="btn-icon btn-edit" onclick="editarCliente('${cliente.id}')" 
+                                                title="Editar cliente" aria-label="Editar cliente">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <button class="btn-icon btn-delete" onclick="confirmarExclusao('${cliente.id}', '${escapeHtml(cliente.razao_social || cliente.nome)}')" 
+                                                title="Excluir cliente" aria-label="Excluir cliente">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </td>
+                                ` : '';
 
                 return `
-                    <div class="cliente-card ${!cliente.ativo ? 'inativo' : ''}">
-                        <div class="cliente-info">
-                            <div class="cliente-nome">${escapeHtml(cliente.razao_social || cliente.nome)}</div>
-                            <div class="cliente-meta">
-                                <span class="badge-filial">${escapeHtml(cliente.filial)}</span>
-                                ${operacaoBadge}
-                                ${statusBadge}
-                                ${cnpjInfo}
-                                ${origemInfo}
-                                ${destinoInfo}
-                                ${produtoInfo}
-                                ${tabelaInfo}
-                                <span><i class="fas fa-calendar me-1"></i>Criado em: ${new Date(cliente.created_at).toLocaleDateString('pt-BR')}</span>
-                            </div>
-                        </div>
+                                    <tr class="${!cliente.ativo ? 'inativo' : ''}">
+                                        <td>${escapeHtml(cliente.cnpj || '-')}</td>
+                                        <td>${escapeHtml(cliente.tipo_produto || '-')}</td>
+                                        <td>${escapeHtml(cliente.cidade_origem || '-')}</td>
+                                        <td>${escapeHtml(cliente.cidade_destino || '-')}</td>
+                                        <td>${escapeHtml(atualizadoPor)}</td>
+                                        <td>${ultimaAtualizacao}</td>
+                                        <td>${escapeHtml(cliente.codigo_tabela || '-')}</td>
+                                        <td>${escapeHtml(cliente.uf_origem || '-')}</td>
+                                        <td>${escapeHtml(cliente.uf_destino || '-')}</td>
+                                        <td>${cliente.tipo_veiculo ? `Tipo veículo : ${escapeHtml(cliente.tipo_veiculo)}` : (valorCombinado !== '-' ? valorCombinado : '-')}</td>
+                                        <td>${escapeHtml(cliente.filial || '-')}</td>
+                                        <td>${escapeHtml(operacaoNome)}</td>
                         ${actions}
+                                    </tr>
+                                `;
+                            }).join('')}
+                        </tbody>
+                    </table>
                     </div>
                 `;
-            }).join('');
+
+            container.innerHTML = tabelaHTML;
         }
 
         // Função antiga mantida para compatibilidade (não usada mais)
@@ -1509,6 +1660,8 @@
             document.getElementById('clienteUFDestino').value = cliente.uf_destino || '';
             document.getElementById('clienteTipoProduto').value = cliente.tipo_produto || '';
             document.getElementById('clienteCodigoTabela').value = cliente.codigo_tabela || '';
+            const valorCombinado = cliente.valor_combinado ? parseFloat(cliente.valor_combinado).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '';
+            document.getElementById('clienteValorCombinado').value = valorCombinado;
             document.getElementById('clienteTipoVeiculo').value = cliente.tipo_veiculo || '';
             document.getElementById('clienteFilial').value = cliente.filial || '';
             document.getElementById('clienteOperacao').value = cliente.operacao || '';
@@ -1536,6 +1689,9 @@
             const ufDestino = document.getElementById('clienteUFDestino').value;
             const tipoProduto = document.getElementById('clienteTipoProduto').value.trim();
             const codigoTabela = document.getElementById('clienteCodigoTabela').value.trim();
+            const valorCombinadoInput = document.getElementById('clienteValorCombinado').value.trim();
+            // Converter valor combinado para número (substituir vírgula por ponto)
+            const valorCombinado = valorCombinadoInput ? parseFloat(valorCombinadoInput.replace(/\./g, '').replace(',', '.')) : null;
             const tipoVeiculo = document.getElementById('clienteTipoVeiculo').value;
             const filial = document.getElementById('clienteFilial').value;
             const operacao = document.getElementById('clienteOperacao').value || null;
@@ -1630,6 +1786,7 @@
                         uf_destino: ufDestino,
                         tipo_produto: tipoProduto,
                         codigo_tabela: codigoTabela,
+                        valor_combinado: valorCombinado,
                         tipo_veiculo: tipoVeiculo,
                         filial,
                         operacao,

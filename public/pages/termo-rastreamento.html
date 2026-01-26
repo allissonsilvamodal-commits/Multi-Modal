@@ -794,6 +794,10 @@
         }
 
         // Função para iniciar rastreamento GPS diretamente na página do termo
+        // Contador de tentativas de reaceitar termo (para evitar loop infinito)
+        let tentativasReaceitarTermo = 0;
+        const MAX_TENTATIVAS_REACEITAR = 2;
+
         function iniciarRastreamentoGPS(coletaId, tokenRastreamento) {
             console.log('🚀 iniciarRastreamentoGPS chamado:', { coletaId, temToken: !!tokenRastreamento });
             
@@ -1006,7 +1010,10 @@
             console.log('📤 Enviando posição para servidor:', {
                 coletaId: coletaId,
                 latitude: dadosPosicao.latitude,
-                longitude: dadosPosicao.longitude
+                longitude: dadosPosicao.longitude,
+                tokenLength: tokenRastreamento ? tokenRastreamento.length : 0,
+                tokenPreview: tokenRastreamento ? tokenRastreamento.substring(0, 30) + '...' : 'N/A',
+                tokenCompleto: tokenRastreamento ? tokenRastreamento : 'N/A'
             });
 
             try {
@@ -1042,7 +1049,101 @@
                     console.error('❌ Erro ao enviar posição:', response.status, errorData);
                     
                     if (response.status === 401 || response.status === 403) {
+                        const errorMsg = errorData.error || 'Erro de autenticação';
+                        console.error('❌ Erro de autenticação:', errorMsg);
+                        
+                        // Se o erro for "Token não encontrado ou inválido", tentar reaceitar o termo
+                        if (errorMsg.includes('Token não encontrado') || errorMsg.includes('Token inválido')) {
+                            if (tentativasReaceitarTermo < MAX_TENTATIVAS_REACEITAR) {
+                                tentativasReaceitarTermo++;
+                                console.log(`🔄 Token inválido. Tentando reaceitar termo (tentativa ${tentativasReaceitarTermo}/${MAX_TENTATIVAS_REACEITAR})...`);
+                                try {
+                                    const reaceitarResponse = await fetch('/api/rastreamento/aceitar-termo', {
+                                        method: 'POST',
+                                        headers: {
+                                            'Content-Type': 'application/json'
+                                        },
+                                        credentials: 'include',
+                                        body: JSON.stringify({
+                                            coletaId: coletaId,
+                                            termoVersao: '1.0',
+                                            userAgent: navigator.userAgent
+                                        })
+                                    });
+                                    
+                                    if (reaceitarResponse.ok) {
+                                        const reaceitarResult = await reaceitarResponse.json();
+                                        if (reaceitarResult.success && reaceitarResult.tokenRastreamento) {
+                                            localStorage.setItem(`rastreamento_token_${coletaId}`, reaceitarResult.tokenRastreamento);
+                                            console.log('✅ Novo token obtido após reaceitar termo');
+                                            tentativasReaceitarTermo = 0;
+                                            atualizarStatusRastreamento('✅ Token atualizado. Continuando rastreamento...', 'success');
+                                            setTimeout(() => {
+                                                enviarPosicaoGPS(position, coletaId, reaceitarResult.tokenRastreamento);
+                                            }, 500);
+                                            return;
+                                        }
+                                    }
+                                } catch (reaceitarError) {
+                                    console.warn('⚠️ Erro ao tentar reaceitar termo:', reaceitarError);
+                                }
+                            }
+                        }
+                        
                         atualizarStatusRastreamento('⚠️ Erro de autenticação. Verifique se o termo foi aceito corretamente.', 'warning');
+                    } else if (response.status === 404) {
+                        const errorMsg = errorData.error || 'Recurso não encontrado';
+                        console.error('❌ Erro 404:', errorMsg);
+                        if (errorMsg.includes('Motorista não encontrado')) {
+                            console.warn('⚠️ Motorista não encontrado para o token. Tentando verificar se o termo ainda está válido...');
+                            
+                            // Tentar reaceitar o termo para obter novo token (com limite de tentativas)
+                            if (tentativasReaceitarTermo < MAX_TENTATIVAS_REACEITAR) {
+                                tentativasReaceitarTermo++;
+                                try {
+                                    console.log(`🔄 Tentando reaceitar o termo para obter novo token (tentativa ${tentativasReaceitarTermo}/${MAX_TENTATIVAS_REACEITAR})...`);
+                                    const reaceitarResponse = await fetch('/api/rastreamento/aceitar-termo', {
+                                        method: 'POST',
+                                        headers: {
+                                            'Content-Type': 'application/json'
+                                        },
+                                        credentials: 'include',
+                                        body: JSON.stringify({
+                                            coletaId: coletaId,
+                                            termoVersao: '1.0',
+                                            userAgent: navigator.userAgent
+                                        })
+                                    });
+                                    
+                                    if (reaceitarResponse.ok) {
+                                        const reaceitarResult = await reaceitarResponse.json();
+                                        if (reaceitarResult.success && reaceitarResult.tokenRastreamento) {
+                                            // Novo token disponível, atualizar
+                                            localStorage.setItem(`rastreamento_token_${coletaId}`, reaceitarResult.tokenRastreamento);
+                                            console.log('✅ Novo token obtido após reaceitar termo');
+                                            tentativasReaceitarTermo = 0; // Resetar contador em caso de sucesso
+                                            atualizarStatusRastreamento('✅ Token atualizado. Continuando rastreamento...', 'success');
+                                            // Tentar enviar a posição novamente com o novo token
+                                            setTimeout(() => {
+                                                enviarPosicaoGPS(position, coletaId, reaceitarResult.tokenRastreamento);
+                                            }, 500);
+                                            return; // Retornar sem mostrar erro ao usuário
+                                        }
+                                    } else {
+                                        const reaceitarError = await reaceitarResponse.json().catch(() => ({}));
+                                        console.warn('⚠️ Não foi possível reaceitar termo:', reaceitarResponse.status, reaceitarError);
+                                    }
+                                } catch (reaceitarError) {
+                                    console.warn('⚠️ Erro ao tentar reaceitar termo:', reaceitarError);
+                                }
+                            } else {
+                                console.warn('⚠️ Limite de tentativas de reaceitar termo atingido. Parando tentativas.');
+                            }
+                            
+                            atualizarStatusRastreamento('⚠️ Motorista não encontrado. O termo pode ter sido invalidado. Por favor, recarregue a página e aceite o termo novamente se necessário.', 'warning');
+                        } else {
+                            atualizarStatusRastreamento('⚠️ Recurso não encontrado. Verifique se a coleta ainda está ativa.', 'warning');
+                        }
                     } else {
                         atualizarStatusRastreamento('⚠️ Erro ao enviar localização. Tentando novamente...', 'warning');
                     }
@@ -1113,25 +1214,47 @@
                 return originalReplaceState.apply(history, arguments);
             };
             
-            // Interceptar window.location.href
-            let locationDescriptor = Object.getOwnPropertyDescriptor(window, 'location');
-            if (!locationDescriptor) {
-                locationDescriptor = Object.getOwnPropertyDescriptor(Object.getPrototypeOf(window), 'location');
-            }
-            
-            if (locationDescriptor && locationDescriptor.set) {
-                const originalSetter = locationDescriptor.set;
-                Object.defineProperty(window, 'location', {
-                    set: function(value) {
-                        if (typeof value === 'string' && value.includes('portal-motorista')) {
-                            console.warn('⚠️ Tentativa de redirecionamento para portal-motorista bloqueada. Permanecemos na página do termo.');
-                            console.trace('Stack trace do redirecionamento bloqueado:');
-                            return; // Bloquear redirecionamento
-                        }
-                        return originalSetter.call(window, value);
-                    },
-                    get: locationDescriptor.get
-                });
+            // Interceptar window.location.href (tentativa mais segura)
+            try {
+                let locationDescriptor = Object.getOwnPropertyDescriptor(window, 'location');
+                if (!locationDescriptor) {
+                    locationDescriptor = Object.getOwnPropertyDescriptor(Object.getPrototypeOf(window), 'location');
+                }
+                
+                // Verificar se a propriedade é configurável antes de tentar redefini-la
+                if (locationDescriptor && locationDescriptor.set && locationDescriptor.configurable) {
+                    const originalSetter = locationDescriptor.set;
+                    Object.defineProperty(window, 'location', {
+                        configurable: true,
+                        set: function(value) {
+                            if (typeof value === 'string' && value.includes('portal-motorista')) {
+                                console.warn('⚠️ Tentativa de redirecionamento para portal-motorista bloqueada. Permanecemos na página do termo.');
+                                console.trace('Stack trace do redirecionamento bloqueado:');
+                                return; // Bloquear redirecionamento
+                            }
+                            return originalSetter.call(window, value);
+                        },
+                        get: locationDescriptor.get
+                    });
+                } else {
+                    // Se não for configurável, interceptar window.location.href diretamente
+                    const originalLocationHref = Object.getOwnPropertyDescriptor(window.location, 'href');
+                    if (originalLocationHref && originalLocationHref.set && originalLocationHref.configurable) {
+                        Object.defineProperty(window.location, 'href', {
+                            configurable: true,
+                            set: function(value) {
+                                if (typeof value === 'string' && value.includes('portal-motorista')) {
+                                    console.warn('⚠️ Tentativa de redirecionamento para portal-motorista bloqueada via location.href. Permanecemos na página do termo.');
+                                    return; // Bloquear redirecionamento
+                                }
+                                return originalLocationHref.set.call(window.location, value);
+                            },
+                            get: originalLocationHref.get
+                        });
+                    }
+                }
+            } catch (error) {
+                console.warn('⚠️ Não foi possível interceptar window.location (pode ser uma limitação do navegador):', error);
             }
         })();
 
