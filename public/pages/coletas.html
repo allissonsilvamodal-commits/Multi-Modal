@@ -646,6 +646,20 @@
             position: relative;
         }
 
+        /* Zoom em telas menores: 100% em telas grandes fica pesado; reduzir para melhor aproveitamento */
+        @media (max-width: 1600px) {
+            html { zoom: 0.9; }
+        }
+        @media (max-width: 1400px) {
+            html { zoom: 0.85; }
+        }
+        @media (max-width: 1200px) {
+            html { zoom: 0.8; }
+        }
+        @media (max-width: 992px) {
+            html { zoom: 0.75; }
+        }
+
         /* Header Moderno */
         .main-header {
             background: linear-gradient(135deg, #002776 0%, #0044AA 100%);
@@ -3720,6 +3734,13 @@
             color: #495057 !important;
         }
 
+        /* ✅ CORREÇÃO: Nome do cliente sempre visível em cards brancos (ex.: coleta em risco movida para etapa nova) */
+        .kanban-card.card-branco .kanban-card-title > span:first-child,
+        .kanban-card[style*="background: #ffffff"] .kanban-card-title > span:first-child,
+        .kanban-card[style*="background: #ffffff !important"] .kanban-card-title > span:first-child {
+            color: #212529 !important;
+        }
+
         .kanban-card-header {
             display: flex;
             justify-content: space-between;
@@ -3733,6 +3754,23 @@
             cursor: pointer;
         }
 
+        .kanban-card-etiquetas {
+            min-height: 0;
+        }
+        .kanban-etiqueta-badge {
+            max-width: 100%;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .kanban-card[style*="color: white"] .kanban-etiqueta-badge,
+        .kanban-card[style*="color: #fff"] .kanban-etiqueta-badge {
+            color: #fff !important;
+            border-color: rgba(255,255,255,0.4) !important;
+        }
+        .kanban-card.card-branco .kanban-etiqueta-badge,
+        .kanban-card[style*="background: #ffffff"] .kanban-etiqueta-badge {
+            color: #fff !important;
+        }
         .kanban-card-badges {
             display: flex;
             flex-wrap: wrap;
@@ -5191,6 +5229,367 @@
             box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
         }
 
+        /* Modal Vincular Motorista - layout padronizado */
+        #modalVincularMotorista {
+            font-family: inherit;
+        }
+        #modalVincularMotorista .modal-vincular-dialog {
+            background: #fff;
+            border-radius: 16px;
+            box-shadow: 0 24px 48px rgba(0,39,118,0.12), 0 0 0 1px rgba(0,0,0,0.04);
+            max-width: 720px;
+            width: 100%;
+            max-height: 85vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        #modalVincularMotorista .modal-vincular-header {
+            background: linear-gradient(135deg, #002776 0%, #003d99 100%);
+            color: #fff;
+            padding: 1.25rem 1.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-shrink: 0;
+        }
+        #modalVincularMotorista .modal-vincular-header h2 {
+            margin: 0;
+            font-size: 1.25rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        #modalVincularMotorista .modal-vincular-close {
+            width: 36px;
+            height: 36px;
+            border: none;
+            background: rgba(255,255,255,0.15);
+            color: #fff;
+            border-radius: 10px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+            transition: background 0.2s;
+        }
+        #modalVincularMotorista .modal-vincular-close:hover {
+            background: rgba(255,255,255,0.25);
+        }
+        #modalVincularMotorista .modal-vincular-body {
+            padding: 1.5rem;
+            overflow-y: auto;
+            background: #fafbfc;
+            color: #1e293b;
+        }
+        #modalVincularMotorista .modal-vincular-filters {
+            background: #fff;
+            border-radius: 12px;
+            padding: 1.25rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+            border: 1px solid #e5e7eb;
+        }
+        #modalVincularMotorista .modal-vincular-filters h3 {
+            margin: 0 0 1rem 0;
+            font-size: 0.9375rem;
+            font-weight: 600;
+            color: #334155;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        #modalVincularMotorista .modal-vincular-filters h3 i {
+            color: #002776;
+            opacity: 0.9;
+        }
+        #modalVincularMotorista .motorista-filters-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+        }
+        #modalVincularMotorista .modal-vincular-filters label {
+            display: block;
+            font-size: 0.8125rem;
+            font-weight: 600;
+            color: #475569;
+            margin-bottom: 0.375rem;
+        }
+        #modalVincularMotorista .modal-vincular-filters input,
+        #modalVincularMotorista .modal-vincular-filters select {
+            width: 100%;
+            padding: 0.625rem 0.75rem;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 0.9375rem;
+            color: #1e293b;
+            background: #fff;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        #modalVincularMotorista .modal-vincular-filters input:focus,
+        #modalVincularMotorista .modal-vincular-filters select:focus {
+            outline: none;
+            border-color: #002776;
+            box-shadow: 0 0 0 3px rgba(0,39,118,0.12);
+        }
+        #modalVincularMotorista .modal-vincular-filters input::placeholder {
+            color: #94a3b8;
+        }
+        #modalVincularMotorista .modal-vincular-list-title {
+            font-size: 0.9375rem;
+            font-weight: 600;
+            color: #334155;
+            margin-bottom: 0.75rem;
+        }
+        #modalVincularMotorista .motoristas-list {
+            max-height: 380px;
+            overflow-y: auto;
+            padding-right: 4px;
+        }
+        #modalVincularMotorista .motoristas-list::-webkit-scrollbar {
+            width: 8px;
+        }
+        #modalVincularMotorista .motoristas-list::-webkit-scrollbar-track {
+            background: #f1f5f9;
+            border-radius: 4px;
+        }
+        #modalVincularMotorista .motoristas-list::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        #modalVincularMotorista .motorista-item {
+            background: #fff !important;
+            border: 1px solid #e5e7eb !important;
+            border-radius: 12px !important;
+            margin-bottom: 0.5rem !important;
+            padding: 1rem 1.25rem !important;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+        }
+        #modalVincularMotorista .motorista-item:hover {
+            border-color: #002776 !important;
+            box-shadow: 0 4px 12px rgba(0,39,118,0.12) !important;
+            background: #fff !important;
+        }
+        #modalVincularMotorista .modal-vincular-footer {
+            padding: 1rem 1.5rem;
+            background: #fff;
+            border-top: 1px solid #e5e7eb;
+            display: flex;
+            justify-content: flex-end;
+            gap: 0.75rem;
+            flex-shrink: 0;
+        }
+        #modalVincularMotorista .modal-vincular-footer .btn-cadastrar {
+            padding: 0.625rem 1.25rem;
+            background: #16a34a;
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.9375rem;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        #modalVincularMotorista .modal-vincular-footer .btn-cadastrar:hover {
+            background: #15803d;
+        }
+        #modalVincularMotorista .modal-vincular-footer .btn-cancelar {
+            padding: 0.625rem 1.25rem;
+            background: #fff;
+            color: #475569;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.9375rem;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        #modalVincularMotorista .modal-vincular-footer .btn-cancelar:hover {
+            background: #f8fafc;
+            border-color: #cbd5e1;
+        }
+        @media (max-width: 576px) {
+            #modalVincularMotorista .motorista-filters-grid {
+                grid-template-columns: 1fr !important;
+            }
+        }
+
+        /* Modal Cadastrar Novo Motorista - mesmo padrão do Vincular Motorista */
+        #modalCadastroMotorista {
+            font-family: inherit;
+        }
+        #modalCadastroMotorista .modal-cadastro-dialog {
+            background: #fff;
+            border-radius: 16px;
+            box-shadow: 0 24px 48px rgba(0,39,118,0.12), 0 0 0 1px rgba(0,0,0,0.04);
+            max-width: 720px;
+            width: 100%;
+            max-height: 85vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        #modalCadastroMotorista .modal-cadastro-header {
+            background: linear-gradient(135deg, #002776 0%, #003d99 100%);
+            color: #fff;
+            padding: 1.25rem 1.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-shrink: 0;
+        }
+        #modalCadastroMotorista .modal-cadastro-header h2 {
+            margin: 0;
+            font-size: 1.25rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        #modalCadastroMotorista .modal-cadastro-close {
+            width: 36px;
+            height: 36px;
+            border: none;
+            background: rgba(255,255,255,0.15);
+            color: #fff;
+            border-radius: 10px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+            transition: background 0.2s;
+        }
+        #modalCadastroMotorista .modal-cadastro-close:hover {
+            background: rgba(255,255,255,0.25);
+        }
+        #modalCadastroMotorista .modal-cadastro-body {
+            padding: 1.5rem;
+            overflow-y: auto;
+            background: #fafbfc;
+            color: #1e293b;
+        }
+        #modalCadastroMotorista .modal-cadastro-section {
+            background: #fff;
+            border-radius: 12px;
+            padding: 1.25rem;
+            margin-bottom: 1.25rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+            border: 1px solid #e5e7eb;
+        }
+        #modalCadastroMotorista .modal-cadastro-section h3 {
+            margin: 0 0 1rem 0;
+            font-size: 0.9375rem;
+            font-weight: 600;
+            color: #334155;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        #modalCadastroMotorista .modal-cadastro-section h3 i {
+            color: #002776;
+            opacity: 0.9;
+        }
+        #modalCadastroMotorista .modal-cadastro-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1rem;
+        }
+        #modalCadastroMotorista .modal-cadastro-grid.cols-2 {
+            grid-template-columns: repeat(2, 1fr);
+        }
+        #modalCadastroMotorista .modal-cadastro-section label {
+            display: block;
+            font-size: 0.8125rem;
+            font-weight: 600;
+            color: #475569;
+            margin-bottom: 0.375rem;
+        }
+        #modalCadastroMotorista .modal-cadastro-section input,
+        #modalCadastroMotorista .modal-cadastro-section select {
+            width: 100%;
+            padding: 0.625rem 0.75rem;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 0.9375rem;
+            color: #1e293b;
+            background: #fff;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        #modalCadastroMotorista .modal-cadastro-section input:focus,
+        #modalCadastroMotorista .modal-cadastro-section select:focus {
+            outline: none;
+            border-color: #002776;
+            box-shadow: 0 0 0 3px rgba(0,39,118,0.12);
+        }
+        #modalCadastroMotorista .modal-cadastro-section input::placeholder {
+            color: #94a3b8;
+        }
+        #modalCadastroMotorista .modal-cadastro-section .field-hint {
+            font-size: 0.75rem;
+            color: #64748b;
+            margin-top: 0.25rem;
+        }
+        #modalCadastroMotorista .modal-cadastro-footer {
+            padding: 1rem 1.5rem;
+            background: #fff;
+            border-top: 1px solid #e5e7eb;
+            display: flex;
+            justify-content: flex-end;
+            gap: 0.75rem;
+            flex-shrink: 0;
+        }
+        #modalCadastroMotorista .modal-cadastro-footer .btn-cadastrar {
+            padding: 0.625rem 1.25rem;
+            background: #16a34a;
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.9375rem;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        #modalCadastroMotorista .modal-cadastro-footer .btn-cadastrar:hover {
+            background: #15803d;
+        }
+        #modalCadastroMotorista .modal-cadastro-footer .btn-cancelar {
+            padding: 0.625rem 1.25rem;
+            background: #fff;
+            color: #475569;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.9375rem;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        #modalCadastroMotorista .modal-cadastro-footer .btn-cancelar:hover {
+            background: #f8fafc;
+            border-color: #cbd5e1;
+        }
+        @media (max-width: 768px) {
+            #modalCadastroMotorista .modal-cadastro-grid {
+                grid-template-columns: 1fr !important;
+            }
+            #modalCadastroMotorista .modal-cadastro-grid.cols-2,
+            #modalCadastroMotorista .modal-cadastro-grid.modal-cadastro-grid-4 {
+                grid-template-columns: 1fr !important;
+            }
+        }
+
         /* Estilos para formulário de motorista */
         .form-group {
             margin-bottom: 1rem;
@@ -6413,6 +6812,10 @@
             <div class="funil-etapas-wrapper" id="funilEtapasWrapper">
                 <!-- Etapas serão renderizadas dinamicamente via JavaScript -->
             </div>
+            <div class="funil-grafico-tempo-container" id="funilGraficoTempoContainer" style="margin-top: 1.5rem;">
+                <h4 class="funil-grafico-tempo-titulo"><i class="fas fa-chart-bar"></i> Tempo médio por etapa</h4>
+                <div id="funilGraficoTempoBarras" class="funil-grafico-tempo-barras"><!-- Barras renderizadas via criarGraficoTempoPorEtapa() --></div>
+            </div>
         </div>
 
         <!-- Grid de Coletas -->
@@ -6905,6 +7308,7 @@
                 </label>
                 <select id="anexoCategoriaSelect" style="width: 100%; padding: 0.8rem; border: 2px solid #e9ecef; border-radius: 10px; font-size: 1rem; background: white;" onchange="toggleTituloContratoModal(this.value)">
                     <option value="">Selecione a categoria</option>
+                    <option value="canhoto">📋 Canhoto (comprovante de entrega)</option>
                     <option value="documentos_motorista">📄 Documentos do Motorista</option>
                     <option value="documentos_proprietario">📋 Documentos do Proprietário</option>
                     <option value="documentos_veiculo">🚛 Documentos do Veículo</option>
@@ -7153,6 +7557,12 @@
                         <option value="Reembolso">Reembolso</option>
                         <option value="Reembolso SEST/SENAT">Reembolso SEST/SENAT</option>
                     </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">
+                        <i class="fas fa-money-bill-wave"></i> Valor (R$) <span class="required-asterisk">*</span>
+                    </label>
+                    <input type="text" id="valorPagamentoConfirmar" class="form-control" required placeholder="Ex: 1500,00 ou 1500.50" inputmode="decimal" title="Informe o valor referente ao tipo de pagamento (ex: 1500,00)">
                 </div>
                 <div class="form-group">
                     <label class="form-label">
@@ -7519,6 +7929,8 @@
         // ========== VARIÁVEIS GLOBAIS ==========
         let currentUser = null;
         let coletasData = [];
+        /** Agregado tempo por etapa (preenchido em enriquecerColetasComTempoParado) para o gráfico */
+        let tempoPorEtapaAgregado = [];
         let currentEditingId = null;
         let currentAnexosColetaId = null;
         let selectedFiles = [];
@@ -9451,6 +9863,9 @@
             return ETAPAS.find(e => e.id === etapaId)?.nome || etapaId;
         }
 
+        // Mapa cliente -> { origens[], destinos[], registros[] } para popular origem/destino após seleção (sem duplicar clientes)
+        let mapaClienteOrigemDestino = {};
+
         // ========== MAPEAMENTO DE CLIENTES POR FILIAL ==========
         const clientesPorFilial = {
             'JBO': [
@@ -9649,29 +10064,45 @@
                 const data = await response.json();
                 
                 if (data.success && data.clientes) {
+                    // Agrupar por razao_social para evitar duplicados e montar mapa origem/destino por cliente
+                    const agrupado = {};
+                    data.clientes.forEach(cliente => {
+                        const razaoSocial = (cliente.razao_social || cliente.nome || '').trim();
+                        if (!razaoSocial) return;
+                        if (!agrupado[razaoSocial]) {
+                            agrupado[razaoSocial] = { origens: new Set(), destinos: new Set(), registros: [] };
+                        }
+                        const g = agrupado[razaoSocial];
+                        g.registros.push(cliente);
+                        const co = (cliente.cidade_origem || '').trim();
+                        const uo = (cliente.uf_origem || '').trim();
+                        if (co || uo) {
+                            g.origens.add(co && uo ? `${co} - ${uo}` : (co || uo));
+                        }
+                        const cd = (cliente.cidade_destino || '').trim();
+                        const ud = (cliente.uf_destino || '').trim();
+                        if (cd || ud) {
+                            g.destinos.add(cd && ud ? `${cd} - ${ud}` : (cd || ud));
+                        }
+                    });
+                    mapaClienteOrigemDestino = {};
+                    Object.keys(agrupado).sort().forEach(razaoSocial => {
+                        const g = agrupado[razaoSocial];
+                        mapaClienteOrigemDestino[razaoSocial] = {
+                            origens: Array.from(g.origens).sort(),
+                            destinos: Array.from(g.destinos).sort(),
+                            registros: g.registros
+                        };
+                    });
                     // Limpar e adicionar opção padrão
                     clienteSelect.innerHTML = '<option value="">Selecione o cliente</option>';
-                    
-                    // Adicionar clientes
-                    data.clientes.forEach(cliente => {
+                    // Uma option por cliente único (sem duplicar por origem/destino)
+                    Object.keys(mapaClienteOrigemDestino).forEach(razaoSocial => {
                         const option = document.createElement('option');
-                        const razaoSocial = cliente.razao_social || cliente.nome || '';
-                        option.value = razaoSocial; // Usar razão social como valor
+                        option.value = razaoSocial;
                         option.textContent = razaoSocial;
-                        option.dataset.clienteId = cliente.id;
-                        // Garantir que os dados de origem e destino sejam atribuídos corretamente
-                        option.dataset.cidadeOrigem = (cliente.cidade_origem || '').trim();
-                        option.dataset.ufOrigem = (cliente.uf_origem || '').trim();
-                        option.dataset.cidadeDestino = (cliente.cidade_destino || '').trim();
-                        option.dataset.ufDestino = (cliente.uf_destino || '').trim();
-                        option.dataset.tipoProduto = (cliente.tipo_produto || '').trim();
-                        option.dataset.codigoTabela = (cliente.codigo_tabela || '').trim();
-                        
-                        // Debug: log para verificar se os dados estão sendo atribuídos
-                        if (cliente.cidade_destino || cliente.uf_destino) {
-                            console.log(`✅ Cliente ${razaoSocial}: Destino = ${cliente.cidade_destino || ''} - ${cliente.uf_destino || ''}`);
-                        }
-                        
+                        const primeiro = mapaClienteOrigemDestino[razaoSocial].registros[0];
+                        if (primeiro) option.dataset.clienteId = primeiro.id;
                         clienteSelect.appendChild(option);
                     });
                 } else {
@@ -9684,13 +10115,14 @@
         }
 
         // Função para preencher origem, destino, tipo de produto e código da tabela quando cliente for selecionado
+        // Usa mapaClienteOrigemDestino: ao selecionar 1 cliente, mostra todas as opções de origem e destino daquele cliente
         function preencherOrigemDestino() {
             const clienteSelect = document.getElementById('cliente');
             const origemSelect = document.getElementById('origem');
             const destinoSelect = document.getElementById('destino');
             const tipoProdutoSelect = document.getElementById('tipoProduto');
             const codigoTabelaInput = document.getElementById('codigoTabela');
-            const clienteSelecionado = clienteSelect.options[clienteSelect.selectedIndex];
+            const razaoSocial = (clienteSelect.value || '').trim();
 
             // Limpar selects e campos
             origemSelect.innerHTML = '<option value="">Selecione a origem</option>';
@@ -9700,190 +10132,110 @@
                 codigoTabelaInput.value = '';
             }
 
-            if (!clienteSelecionado || !clienteSelecionado.value) {
+            if (!razaoSocial) {
                 origemSelect.disabled = true;
                 destinoSelect.disabled = true;
                 tipoProdutoSelect.disabled = true;
-                if (codigoTabelaInput) {
-                    codigoTabelaInput.value = '';
-                }
+                if (codigoTabelaInput) codigoTabelaInput.value = '';
                 return;
             }
 
-            // Obter dados do cliente selecionado
-            const cidadeOrigem = (clienteSelecionado.dataset.cidadeOrigem || '').trim();
-            const ufOrigem = (clienteSelecionado.dataset.ufOrigem || '').trim();
-            const cidadeDestino = (clienteSelecionado.dataset.cidadeDestino || '').trim();
-            const ufDestino = (clienteSelecionado.dataset.ufDestino || '').trim();
-            const tipoProdutoCliente = (clienteSelecionado.dataset.tipoProduto || '').trim();
-            const codigoTabela = (clienteSelecionado.dataset.codigoTabela || '').trim();
-            
-            // Debug: log para verificar os dados obtidos
-            console.log(`🔍 Cliente selecionado: ${clienteSelecionado.value}`);
-            console.log(`   Origem: ${cidadeOrigem} - ${ufOrigem}`);
-            console.log(`   Destino: ${cidadeDestino} - ${ufDestino}`);
+            const dados = mapaClienteOrigemDestino[razaoSocial];
+            if (!dados) {
+                origemSelect.disabled = true;
+                destinoSelect.disabled = true;
+                tipoProdutoSelect.disabled = true;
+                origemSelect.innerHTML = '<option value="">Origem não cadastrada</option>';
+                destinoSelect.innerHTML = '<option value="">Destino não cadastrado</option>';
+                tipoProdutoSelect.innerHTML = '<option value="">Nenhum tipo de produto cadastrado</option>';
+                return;
+            }
 
-            // Habilitar selects
             origemSelect.disabled = false;
             destinoSelect.disabled = false;
             tipoProdutoSelect.disabled = false;
 
-            // Preencher origem
-            if (cidadeOrigem || ufOrigem) {
-                // Se tiver pelo menos cidade ou UF, mostrar
-                let origemValue = '';
-                if (cidadeOrigem && ufOrigem) {
-                    origemValue = `${cidadeOrigem} - ${ufOrigem}`;
-                } else if (cidadeOrigem) {
-                    origemValue = cidadeOrigem;
-                } else if (ufOrigem) {
-                    origemValue = ufOrigem;
-                }
-                
-                const optionOrigem = document.createElement('option');
-                optionOrigem.value = origemValue;
-                optionOrigem.textContent = origemValue;
-                optionOrigem.selected = true;
-                origemSelect.appendChild(optionOrigem);
-            } else {
+            // Preencher origem com todas as opções do cliente
+            (dados.origens || []).forEach(val => {
+                const opt = document.createElement('option');
+                opt.value = val;
+                opt.textContent = val;
+                origemSelect.appendChild(opt);
+            });
+            if (dados.origens.length === 0) {
                 origemSelect.innerHTML = '<option value="">Origem não cadastrada</option>';
             }
 
-            // Preencher destino
-            if (cidadeDestino || ufDestino) {
-                // Se tiver pelo menos cidade ou UF, mostrar
-                let destinoValue = '';
-                if (cidadeDestino && ufDestino) {
-                    destinoValue = `${cidadeDestino} - ${ufDestino}`;
-                } else if (cidadeDestino) {
-                    destinoValue = cidadeDestino;
-                } else if (ufDestino) {
-                    destinoValue = ufDestino;
-                }
-                
-                const optionDestino = document.createElement('option');
-                optionDestino.value = destinoValue;
-                optionDestino.textContent = destinoValue;
-                optionDestino.selected = true;
-                destinoSelect.appendChild(optionDestino);
-            } else {
+            // Preencher destino com todas as opções do cliente
+            (dados.destinos || []).forEach(val => {
+                const opt = document.createElement('option');
+                opt.value = val;
+                opt.textContent = val;
+                destinoSelect.appendChild(opt);
+            });
+            if (dados.destinos.length === 0) {
                 destinoSelect.innerHTML = '<option value="">Destino não cadastrado</option>';
             }
 
-            // Preencher tipo de produto com todos os tipos únicos dos clientes da filial
-            const filialSelect = document.getElementById('filial');
-            const filialSelecionada = filialSelect.value;
-            
-            if (filialSelecionada) {
-                // Buscar todos os clientes da filial para obter tipos de produto únicos
-                const todasOpcoesClientes = Array.from(clienteSelect.options);
-                const tiposProdutoUnicos = new Set();
-                
-                todasOpcoesClientes.forEach(option => {
-                    if (option.dataset.tipoProduto && option.dataset.tipoProduto.trim()) {
-                        tiposProdutoUnicos.add(option.dataset.tipoProduto.trim());
-                    }
-                });
-                
-                // Ordenar tipos de produto
-                const tiposOrdenados = Array.from(tiposProdutoUnicos).sort();
-                
-                // Adicionar opções ao select
-                tiposOrdenados.forEach(tipo => {
-                    const option = document.createElement('option');
-                    option.value = tipo;
-                    option.textContent = tipo;
-                    // Selecionar o tipo do cliente se existir
-                    if (tipo === tipoProdutoCliente) {
-                        option.selected = true;
-                    }
-                    tipoProdutoSelect.appendChild(option);
-                });
-                
-                // Se não houver tipos cadastrados, mostrar mensagem
-                if (tiposOrdenados.length === 0) {
-                    tipoProdutoSelect.innerHTML = '<option value="">Nenhum tipo de produto cadastrado</option>';
-                }
-            } else {
-                tipoProdutoSelect.innerHTML = '<option value="">Selecione primeiro a filial</option>';
+            // Tipo de produto: tipos únicos dos registros deste cliente
+            const tiposSet = new Set();
+            (dados.registros || []).forEach(r => {
+                const t = (r.tipo_produto || r.tipoProduto || '').trim();
+                if (t) tiposSet.add(t);
+            });
+            const tiposOrdenados = Array.from(tiposSet).sort();
+            tiposOrdenados.forEach(tipo => {
+                const option = document.createElement('option');
+                option.value = tipo;
+                option.textContent = tipo;
+                tipoProdutoSelect.appendChild(option);
+            });
+            if (tiposOrdenados.length === 0) {
+                tipoProdutoSelect.innerHTML = '<option value="">Nenhum tipo de produto cadastrado</option>';
             }
 
-            // Preencher código da tabela baseado no cliente selecionado
-            // A tabela correta é determinada pela combinação Cliente + Tipo de Produto
             atualizarCodigoTabela();
         }
 
-        // Função para atualizar código da tabela baseado em Cliente + Tipo de Produto
+        // Função para atualizar código da tabela baseado em Cliente + Tipo de Produto (usa mapa de registros por cliente)
         function atualizarCodigoTabela() {
             const clienteSelect = document.getElementById('cliente');
             const tipoProdutoSelect = document.getElementById('tipoProduto');
             const codigoTabelaInput = document.getElementById('codigoTabela');
-            
             if (!codigoTabelaInput) return;
-            
-            const clienteSelecionado = clienteSelect.options[clienteSelect.selectedIndex];
-            const tipoProdutoSelecionado = tipoProdutoSelect.value;
-            
-            // Se não houver cliente ou tipo de produto selecionado, limpar
-            if (!clienteSelecionado || !clienteSelecionado.value || !tipoProdutoSelecionado) {
+
+            const razaoSocial = (clienteSelect.value || '').trim();
+            const tipoProdutoSelecionado = (tipoProdutoSelect.value || '').trim();
+            codigoTabelaInput.placeholder = 'Será preenchido automaticamente';
+            codigoTabelaInput.title = '';
+
+            if (!razaoSocial || !tipoProdutoSelecionado) {
                 codigoTabelaInput.value = '';
                 return;
             }
-            
-            // Buscar o código da tabela que corresponde ao cliente + tipo de produto
-            const clienteId = clienteSelecionado.dataset.clienteId;
-            const tipoProdutoCliente = clienteSelecionado.dataset.tipoProduto || '';
-            const codigoTabelaCliente = clienteSelecionado.dataset.codigoTabela || '';
-            
-            // Se o tipo de produto selecionado for o mesmo do cliente, usar o código do cliente
-            if (tipoProdutoSelecionado === tipoProdutoCliente && codigoTabelaCliente) {
-                codigoTabelaInput.value = codigoTabelaCliente;
+
+            const dados = mapaClienteOrigemDestino[razaoSocial];
+            if (!dados || !dados.registros || !dados.registros.length) {
+                codigoTabelaInput.value = '';
                 return;
             }
-            
-            // Se o tipo de produto for diferente, buscar na lista de clientes da filial
-            // o código da tabela que corresponde à combinação Cliente + Tipo de Produto
-            const filialSelect = document.getElementById('filial');
-            const filialSelecionada = filialSelect.value;
-            
-            if (filialSelecionada && clienteId) {
-                // Buscar todos os clientes da filial para encontrar correspondência
-                const todasOpcoesClientes = Array.from(clienteSelect.options);
-                
-                // Procurar cliente com mesmo ID e tipo de produto selecionado
-                const clienteComTipoProduto = todasOpcoesClientes.find(option => {
-                    return option.dataset.clienteId === clienteId && 
-                           option.dataset.tipoProduto === tipoProdutoSelecionado;
-                });
-                
-                if (clienteComTipoProduto && clienteComTipoProduto.dataset.codigoTabela) {
-                    codigoTabelaInput.value = clienteComTipoProduto.dataset.codigoTabela;
-                } else {
-                    // Se não encontrar correspondência exata, buscar códigos disponíveis para aquele tipo de produto
-                    const codigosDisponiveis = new Set();
-                    todasOpcoesClientes.forEach(option => {
-                        if (option.dataset.tipoProduto === tipoProdutoSelecionado && 
-                            option.dataset.codigoTabela) {
-                            codigosDisponiveis.add(option.dataset.codigoTabela);
-                        }
-                    });
-                    
-                    if (codigosDisponiveis.size === 1) {
-                        // Se houver apenas um código para aquele tipo, usar ele
-                        codigoTabelaInput.value = Array.from(codigosDisponiveis)[0];
-                    } else if (codigosDisponiveis.size > 1) {
-                        // Se houver múltiplos códigos, deixar vazio e mostrar aviso
-                        codigoTabelaInput.value = '';
-                        codigoTabelaInput.placeholder = `Múltiplos códigos disponíveis: ${Array.from(codigosDisponiveis).join(', ')}`;
-                        codigoTabelaInput.title = `Este tipo de produto tem ${codigosDisponiveis.size} códigos de tabela diferentes. Selecione o cliente correto ou informe manualmente.`;
-                    } else {
-                        // Nenhum código encontrado
-                        codigoTabelaInput.value = '';
-                        codigoTabelaInput.placeholder = 'Código não encontrado para esta combinação';
-                    }
-                }
+
+            const codigosDoTipo = new Set();
+            dados.registros.forEach(r => {
+                const t = (r.tipo_produto || r.tipoProduto || '').trim();
+                const c = (r.codigo_tabela || r.codigoTabela || '').trim();
+                if (t === tipoProdutoSelecionado && c) codigosDoTipo.add(c);
+            });
+
+            if (codigosDoTipo.size === 1) {
+                codigoTabelaInput.value = Array.from(codigosDoTipo)[0];
+            } else if (codigosDoTipo.size > 1) {
+                codigoTabelaInput.value = '';
+                codigoTabelaInput.placeholder = `Múltiplos códigos: ${Array.from(codigosDoTipo).join(', ')}`;
+                codigoTabelaInput.title = `Este tipo de produto tem ${codigosDoTipo.size} códigos de tabela diferentes para este cliente.`;
             } else {
-                codigoTabelaInput.value = codigoTabelaCliente || '';
+                codigoTabelaInput.value = '';
+                codigoTabelaInput.placeholder = 'Código não encontrado para esta combinação';
             }
         }
 
@@ -10436,9 +10788,11 @@
             }
 
             if (tipo === 'grid') {
-                // Mostrar grid e ocultar kanban
+                // Mostrar grid (tabela de cards) e ocultar kanban
                 gridContainer.style.display = 'grid';
+                gridContainer.style.visibility = 'visible';
                 kanbanContainer.style.display = 'none';
+                gridContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
                 
                 // Atualizar estilos dos botões
                 btnGrid.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
@@ -11650,7 +12004,8 @@
                 // Risco de perder cliente - Preto
                 cardStyle = 'background: linear-gradient(135deg, #1a1a1a 0%, #000000 100%); color: white; border: 2px solid #000000; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);';
                 textColor = 'color: white;';
-                badgePrioridade = '<span style="background: rgba(255, 255, 255, 0.3); color: white; padding: 0.2rem 0.6rem; border-radius: 12px; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap; flex-shrink: 0; animation: piscarBadgeUrgente 1.5s ease-in-out infinite;"><i class="fas fa-exclamation-circle"></i> RISCO CLIENTE</span>';
+                // Badge com fundo escuro/vermelho explícito para ficar legível em qualquer fundo (evita texto branco em fundo claro ao mover para etapa nova)
+                badgePrioridade = '<span style="background: linear-gradient(135deg, #dc3545 0%, #c82333 100%); color: #ffffff !important; padding: 0.2rem 0.6rem; border-radius: 12px; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap; flex-shrink: 0; border: 1px solid rgba(255,255,255,0.3); animation: piscarBadgeUrgente 1.5s ease-in-out infinite;"><i class="fas fa-exclamation-circle"></i> RISCO CLIENTE</span>';
             } else if (prioridadeAuto.nivel === 'urgente' || (isUrgente && prioridadeAuto.nivel !== 'urgente')) {
                 // Urgente (automático ou manual) - Vermelho
                 cardStyle = `background: ${prioridadeAuto.bgGradient}; color: white; border: 2px solid ${prioridadeAuto.borderColor}; box-shadow: 0 4px 12px rgba(220, 53, 69, 0.3);`;
@@ -11677,6 +12032,9 @@
             // ✅ CORREÇÃO: Adicionar classe para identificar cards brancos
             const isCardBranco = prioridadeAuto.nivel === 'baixa' && !isDiaria && !riscoPerderCliente;
             const cardClass = `kanban-card ${!podeMover ? 'no-drag' : ''} ${isCardBranco ? 'card-branco' : ''}`;
+            // ✅ CORREÇÃO: Cor do texto do cliente sempre derivada do fundo real do card (cardStyle) — evita texto branco em fundo claro ao mover coleta em risco para etapa nova (novo tempo)
+            const cardFundoClaro = (cardStyle.indexOf('#ffffff') >= 0 || cardStyle.indexOf('background: white') >= 0);
+            const corTextoCliente = cardFundoClaro ? 'color: #212529 !important;' : (prioridadeAuto.nivel === 'normal' ? 'color: #333 !important;' : 'color: #ffffff !important;');
             
             return `
                 <div class="${cardClass}" 
@@ -11687,7 +12045,7 @@
                      style="${cardStyle}">
                     <div class="kanban-card-header">
                         <div class="kanban-card-title" style="${textColor}; display: flex; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
-                            <span style="flex: 1; min-width: 0; ${textColor};">${escapeHtml(coleta.cliente || 'Sem cliente')}</span>
+                            <span style="flex: 1; min-width: 0; ${corTextoCliente}">${escapeHtml(coleta.cliente || 'Sem cliente')}</span>
                             ${isDiaria ? '<span style="background: rgba(255, 255, 255, 0.3); color: white; padding: 0.2rem 0.6rem; border-radius: 12px; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap; flex-shrink: 0;"><i class="fas fa-calendar-day"></i> DIÁRIA</span>' : ''}
                             ${badgePrioridade || ''}
                             ${isUrgente && !badgePrioridade ? '<span style="background: rgba(255, 255, 255, 0.3); color: white; padding: 0.2rem 0.6rem; border-radius: 12px; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap; flex-shrink: 0; animation: piscarBadgeUrgente 1.5s ease-in-out infinite;"><i class="fas fa-exclamation-triangle"></i> URGENTE</span>' : ''}
@@ -11746,6 +12104,15 @@
                                         <i class="fab fa-whatsapp"></i> Enviar Link
                                     </button>
                                 ` : ''}
+                            </div>
+                        ` : ''}
+                        ${coleta.etiquetas && coleta.etiquetas.length > 0 ? `
+                            <div class="kanban-card-etiquetas" style="margin-top: 0.5rem; display: flex; flex-wrap: wrap; gap: 0.25rem; align-items: center;">
+                                ${coleta.etiquetas.map(et => `
+                                    <span class="kanban-etiqueta-badge" style="background: ${et.cor || '#667eea'}; color: #fff; padding: 0.2rem 0.45rem; border-radius: 6px; font-size: 0.65rem; font-weight: 600; display: inline-flex; align-items: center; gap: 0.2rem; white-space: nowrap; box-shadow: 0 1px 3px rgba(0,0,0,0.12); border: 1px solid rgba(255,255,255,0.3);">
+                                        <i class="fas fa-tag" style="font-size: 0.55rem; opacity: 0.9;"></i>${escapeHtml((et.nome || '').trim()) || '—'}
+                                    </span>
+                                `).join('')}
                             </div>
                         ` : ''}
                     </div>
@@ -12348,8 +12715,35 @@
                 `;
             });
             
+            const tipoProduto = coleta.tipo_produto ?? coleta.tipoProduto ?? '';
+            const tabela = coleta.codigo_tabela ?? coleta.codigoTabela ?? '';
+            const valorCte = coleta.valor != null ? (Number(coleta.valor)).toFixed(2) : '0,00';
+            const freteMotorista = coleta.frete_motorista ?? coleta.freteMotorista ?? '';
+            const kmVal = coleta.km != null && coleta.km !== '' ? coleta.km : '0';
             return `
                 <div class="coleta-info-grid" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.5rem; margin-bottom: 1.5rem;">
+                    <div>
+                        <strong><i class="fas fa-cube"></i> Tipo de produto:</strong>
+                        <div style="margin-top: 0.5rem; color: #666;">${escapeHtml(tipoProduto || 'N/A')}</div>
+                    </div>
+                    <div>
+                        <strong><i class="fas fa-table"></i> Tabela:</strong>
+                        <div style="margin-top: 0.5rem; color: #666;">${escapeHtml(tabela || 'N/A')}</div>
+                    </div>
+                    <div>
+                        <strong><i class="fas fa-file-invoice-dollar"></i> Valor CTE:</strong>
+                        <div style="margin-top: 0.5rem; color: #667eea; font-weight: 600; font-size: 1.1rem;">
+                            R$ ${valorCte}
+                        </div>
+                    </div>
+                    <div>
+                        <strong><i class="fas fa-money-bill-wave"></i> Frete Motorista:</strong>
+                        <div style="margin-top: 0.5rem; color: #666;">${freteMotorista !== '' && freteMotorista != null ? ('R$ ' + (Number(freteMotorista)).toFixed(2)) : 'N/A'}</div>
+                    </div>
+                    <div>
+                        <strong><i class="fas fa-route"></i> KM:</strong>
+                        <div style="margin-top: 0.5rem; color: #666;">${kmVal} km</div>
+                    </div>
                     <div>
                         <strong><i class="fas fa-map-marker-alt"></i> Origem:</strong>
                         <div style="margin-top: 0.5rem; color: #666;">${escapeHtml(coleta.origem || 'N/A')}</div>
@@ -12357,16 +12751,6 @@
                     <div>
                         <strong><i class="fas fa-flag-checkered"></i> Destino:</strong>
                         <div style="margin-top: 0.5rem; color: #666;">${escapeHtml(coleta.destino || 'N/A')}</div>
-                    </div>
-                    <div>
-                        <strong><i class="fas fa-dollar-sign"></i> Valor:</strong>
-                        <div style="margin-top: 0.5rem; color: #667eea; font-weight: 600; font-size: 1.1rem;">
-                            R$ ${(coleta.valor || 0).toFixed(2)}
-                        </div>
-                    </div>
-                    <div>
-                        <strong><i class="fas fa-route"></i> KM:</strong>
-                        <div style="margin-top: 0.5rem; color: #666;">${coleta.km || '0'} km</div>
                     </div>
                     <div>
                         <strong><i class="fas fa-truck"></i> Tipos de Veículo:</strong>
@@ -12445,12 +12829,16 @@
                             <i class="fas fa-check-circle"></i> Canhoto Anexado - Aguardando Validação
                         </div>
                         <div style="color: #333; margin-bottom: 1rem; font-size: 0.9rem;">
-                            O motorista anexou o canhoto da entrega. Verifique o documento nos anexos e finalize a operação quando estiver tudo correto.
+                            O motorista anexou o canhoto da entrega. Verifique o documento nos anexos. Só é possível finalizar a operação com canhoto anexado; ao finalizar, a coleta vai para o histórico.
                         </div>
                         <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
                             <button onclick="trocarTabDrawer('anexos')" 
                                     style="background: #ffc107; color: #333; border: none; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.85rem;">
                                 <i class="fas fa-paperclip"></i> Ver Anexos
+                            </button>
+                            <button onclick="finalizarOperacao('${coleta.id}')" 
+                                    style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%); color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.85rem;">
+                                <i class="fas fa-flag-checkered"></i> Finalizar Operação
                             </button>
                         </div>
                     </div>
@@ -12619,6 +13007,7 @@
             }
             
             const categoriasOrdenadas = [
+                'canhoto',
                 'documentos_motorista',
                 'documentos_proprietario',
                 'documentos_veiculo',
@@ -12756,6 +13145,7 @@
                             </p>
                             <select id="drawerCategoriaSelect" style="width: 100%; padding: 0.8rem; border: 2px solid #e9ecef; border-radius: 10px; font-size: 1rem; background: white;">
                                 <option value="">Selecione a categoria</option>
+                                <option value="canhoto">📋 Canhoto (comprovante de entrega)</option>
                                 <option value="documentos_motorista">📄 Documentos do Motorista</option>
                                 <option value="documentos_proprietario">📋 Documentos do Proprietário</option>
                                 <option value="documentos_veiculo">🚛 Documentos do Veículo</option>
@@ -13216,6 +13606,12 @@
                                         onmouseout="this.style.background='white'; this.style.color='#667eea';">
                                     <i class="fas fa-info-circle"></i> Ver Detalhes
                                 </button>
+                                <button onclick="visualizarTermoAceito('${coleta.id}')" 
+                                        style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 10px; cursor: pointer; font-weight: 600; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3); transition: all 0.3s; flex: 1; min-width: 150px;"
+                                        onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 16px rgba(16, 185, 129, 0.4)';"
+                                        onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px rgba(16, 185, 129, 0.3)';">
+                                    <i class="fas fa-file-signature"></i> Ver Termo Aceito
+                                </button>
                             </div>
                         ` : ''}
                     </div>
@@ -13342,19 +13738,18 @@
                 return;
             }
 
-            // ✅ VALIDAÇÃO: Não pode sair de contratação se o motorista estiver reprovado
-            if (coleta.etapa_atual === 'contratacao' && coleta.motorista_id) {
-                try {
-                    const motorista = await buscarMotoristaPorId(coleta.motorista_id);
-                    const reprovacaoInfo = verificarReprovacaoPorColeta(motorista, coleta.id);
-                    if (reprovacaoInfo.reprovado) {
-                        showNotification('⚠️ O motorista vinculado está reprovado para esta coleta. É obrigatório trocar o motorista ou solicitar uma nova análise antes de avançar.', 'warning');
-                        return;
-                    }
-                } catch (err) {
-                    console.warn('⚠️ Erro ao verificar status do motorista:', err);
-                    // Continuar mesmo se houver erro na verificação
-                }
+            // ✅ Não pode ir para a etapa GR sem motorista vinculado
+            if (novaEtapaId === 'gr' && !coleta.motorista_id) {
+                showNotification('⚠️ Para mover para a etapa GR, é necessário vincular um motorista à coleta.', 'warning');
+                return;
+            }
+
+            // ✅ Só bloqueia se o motorista já foi reprovado NESTA coleta (gr_aprovado === false).
+            // Ao mover para a etapa GR, sempre permitir – o GR fará nova avaliação.
+            const reprovadoNestaColeta = coleta.gr_aprovado === false || coleta.gr_aprovado === 'false' || coleta.gr_aprovado === 0;
+            if (coleta.etapa_atual === 'contratacao' && coleta.motorista_id && reprovadoNestaColeta && novaEtapaId !== 'gr') {
+                showNotification('⚠️ O motorista foi reprovado pelo GR nesta coleta. Troque o motorista ou mova para a etapa GR para nova avaliação.', 'warning');
+                return;
             }
 
             // ✅ VALIDAÇÃO: Não pode sair de GR sem aprovação ou reprovação
@@ -13710,8 +14105,10 @@
 
             // Limpar campos
             const tipoPagamento = document.getElementById('tipoPagamentoConfirmar');
+            const valorPagamento = document.getElementById('valorPagamentoConfirmar');
             const observacoes = document.getElementById('observacoesPagamento');
             if (tipoPagamento) tipoPagamento.value = '';
+            if (valorPagamento) valorPagamento.value = '';
             if (observacoes) observacoes.value = '';
 
             // Mostrar modal
@@ -13893,11 +14290,26 @@
             }
 
             const tipoPagamento = document.getElementById('tipoPagamentoConfirmar');
+            const valorPagamentoEl = document.getElementById('valorPagamentoConfirmar');
             const observacoes = document.getElementById('observacoesPagamento');
 
             if (!tipoPagamento || !tipoPagamento.value) {
                 showNotification('Por favor, selecione o tipo de pagamento.', 'warning');
                 tipoPagamento?.focus();
+                return;
+            }
+
+            // Validar valor obrigatório
+            const valorStr = (valorPagamentoEl && valorPagamentoEl.value) ? valorPagamentoEl.value.trim() : '';
+            if (!valorStr) {
+                showNotification('Por favor, informe o valor referente ao tipo de pagamento.', 'warning');
+                valorPagamentoEl?.focus();
+                return;
+            }
+            const valorNumerico = parseFloat(valorStr.replace(',', '.').replace(/\s/g, ''));
+            if (isNaN(valorNumerico) || valorNumerico <= 0) {
+                showNotification('Informe um valor numérico válido e maior que zero (ex: 1500,00).', 'warning');
+                valorPagamentoEl?.focus();
                 return;
             }
 
@@ -13970,18 +14382,20 @@
             }
             
             console.log('✅ Coleta validada, processando confirmação de pagamento...');
-            await processarConfirmacaoPagamento(coleta, tipoPagamento.value, observacoes?.value || '');
+            await processarConfirmacaoPagamento(coleta, tipoPagamento.value, valorNumerico, observacoes?.value || '');
         }
 
-        async function processarConfirmacaoPagamento(coleta, tipoPagamentoValor, observacoesValor) {
+        async function processarConfirmacaoPagamento(coleta, tipoPagamentoValor, valorPagamentoValor, observacoesValor) {
             const coletaId = coleta.id;
+            const valorFormatado = typeof valorPagamentoValor === 'number' ? valorPagamentoValor.toFixed(2).replace('.', ',') : String(valorPagamentoValor || '0,00');
             console.log('📤 Processando confirmação de pagamento:', {
                 coletaId: coletaId,
                 tipoPagamento: tipoPagamentoValor,
+                valor: valorPagamentoValor,
                 etapaAtual: coleta.etapa_atual
             });
 
-            if (!confirm(`Confirmar pagamento do tipo "${tipoPagamentoValor}" para a coleta de ${coleta.cliente || 'cliente desconhecido'}?\n\nA coleta será movida automaticamente para a etapa "Em viagem".`)) {
+            if (!confirm(`Confirmar pagamento do tipo "${tipoPagamentoValor}" no valor de R$ ${valorFormatado} para a coleta de ${coleta.cliente || 'cliente desconhecido'}?\n\nA coleta será movida automaticamente para a etapa "Em viagem".`)) {
                 return;
             }
 
@@ -13993,13 +14407,15 @@
                     etapa_atual: 'em_viagem' // Mover automaticamente para em_viagem
                 };
 
-                // Adicionar observações se houver
-                if (observacoesValor && observacoesValor.trim()) {
-                    const obsAtual = coleta.observacoes || '';
-                    dadosAtualizacao.observacoes = obsAtual 
-                        ? `${obsAtual}\n\n[Pagamento - ${new Date().toLocaleString('pt-BR')}] ${observacoesValor.trim()}`
-                        : `[Pagamento - ${new Date().toLocaleString('pt-BR')}] ${observacoesValor.trim()}`;
-                }
+                // Adicionar valor e observações às observações da coleta
+                const valorTexto = `Valor: R$ ${typeof valorPagamentoValor === 'number' ? valorPagamentoValor.toFixed(2).replace('.', ',') : (valorPagamentoValor || '0,00')}`;
+                const obsPagamento = observacoesValor && observacoesValor.trim() 
+                    ? `${valorTexto}. ${observacoesValor.trim()}` 
+                    : valorTexto;
+                const obsAtual = coleta.observacoes || '';
+                dadosAtualizacao.observacoes = obsAtual 
+                    ? `${obsAtual}\n\n[Pagamento - ${new Date().toLocaleString('pt-BR')}] Tipo: ${tipoPagamentoValor}. ${obsPagamento}`
+                    : `[Pagamento - ${new Date().toLocaleString('pt-BR')}] Tipo: ${tipoPagamentoValor}. ${obsPagamento}`;
 
                 console.log('📤 Confirmando pagamento e movendo para em_viagem:', {
                     coletaId: coletaId,
@@ -14011,17 +14427,20 @@
 
                 // Primeiro, atualizar os dados do pagamento diretamente no Supabase
                 console.log('💾 Atualizando dados do pagamento no Supabase...');
+                const valorTextoUpdate = `Valor: R$ ${typeof valorPagamentoValor === 'number' ? valorPagamentoValor.toFixed(2).replace('.', ',') : (valorPagamentoValor || '0,00')}`;
+                const obsPagamentoUpdate = observacoesValor && observacoesValor.trim() 
+                    ? `${valorTextoUpdate}. ${observacoesValor.trim()}` 
+                    : valorTextoUpdate;
+                const obsColetaUpdate = coleta.observacoes 
+                    ? `${coleta.observacoes}\n\n[Pagamento - ${new Date().toLocaleString('pt-BR')}] Tipo: ${tipoPagamentoValor}. ${obsPagamentoUpdate}`
+                    : `[Pagamento - ${new Date().toLocaleString('pt-BR')}] Tipo: ${tipoPagamentoValor}. ${obsPagamentoUpdate}`;
                 const { error: updateError } = await supabaseClient
                     .from('coletas')
                     .update({
                         contas_pagar_tipo: tipoPagamentoValor,
                         contas_pagar_pago: true,
                         contas_pagar_data: new Date().toISOString(),
-                        ...(observacoesValor && observacoesValor.trim() ? {
-                            observacoes: coleta.observacoes 
-                                ? `${coleta.observacoes}\n\n[Pagamento - ${new Date().toLocaleString('pt-BR')}] ${observacoesValor.trim()}`
-                                : `[Pagamento - ${new Date().toLocaleString('pt-BR')}] ${observacoesValor.trim()}`
-                        } : {})
+                        observacoes: obsColetaUpdate
                     })
                     .eq('id', coletaId);
 
@@ -14036,7 +14455,8 @@
                 try {
                     const userData = JSON.parse(localStorage.getItem('loggedInUser') || '{}');
                     const usuarioNome = currentUser?.nome || currentUser?.username || userData?.email || 'Sistema';
-                    const detalhesHistorico = `Pagamento do tipo "${tipoPagamentoValor}" confirmado por ${usuarioNome}${observacoesValor && observacoesValor.trim() ? '. Observações: ' + observacoesValor.trim() : ''}`;
+                    const valorFormatadoHist = typeof valorPagamentoValor === 'number' ? valorPagamentoValor.toFixed(2).replace('.', ',') : (valorPagamentoValor || '0,00');
+                    const detalhesHistorico = `Pagamento do tipo "${tipoPagamentoValor}" no valor de R$ ${valorFormatadoHist} confirmado por ${usuarioNome}${observacoesValor && observacoesValor.trim() ? '. Observações: ' + observacoesValor.trim() : ''}`;
                     await salvarNoHistorico(coletaId, 'pagamento_confirmado', detalhesHistorico);
                     console.log('✅ Histórico de pagamento salvo com sucesso');
                 } catch (errorHistorico) {
@@ -14933,6 +15353,7 @@
         window.abrirModalValidarCanhoto = abrirModalValidarCanhoto;
         window.fecharModalValidarCanhoto = fecharModalValidarCanhoto;
         window.confirmarFinalizarOperacao = confirmarFinalizarOperacao;
+        window.finalizarOperacao = finalizarOperacao;
         
         window.executarMigracaoConstraint = executarMigracaoConstraint;
 
@@ -14987,19 +15408,18 @@
                     return;
                 }
 
-                // ✅ VALIDAÇÃO OBRIGATÓRIA: Não pode sair da etapa contratação se o motorista estiver reprovado
-                if (coleta.etapa_atual === 'contratacao' && coleta.motorista_id) {
-                    try {
-                        const motorista = await buscarMotoristaPorId(coleta.motorista_id);
-                        const reprovacaoInfo = verificarReprovacaoPorColeta(motorista, coleta.id);
-                        if (reprovacaoInfo.reprovado) {
-                            alert('⚠️ O motorista vinculado está reprovado para esta coleta. É obrigatório trocar o motorista ou solicitar uma nova análise antes de avançar.');
-                            return;
-                        }
-                    } catch (err) {
-                        console.warn('⚠️ Erro ao verificar status do motorista:', err);
-                        // Continuar mesmo se houver erro na verificação
-                    }
+                // ✅ Não pode ir para a etapa GR sem motorista vinculado
+                if (etapaDestino === 'gr' && !coleta.motorista_id) {
+                    alert('⚠️ Para mover para a etapa GR, é necessário vincular um motorista à coleta.');
+                    return;
+                }
+
+                // ✅ Só bloqueia se o motorista já foi reprovado NESTA coleta (gr_aprovado === false).
+                // Ao mover para a etapa GR, sempre permitir – o GR fará nova avaliação (mesmo se reprovado antes).
+                const reprovadoNestaColeta = coleta.gr_aprovado === false || coleta.gr_aprovado === 'false' || coleta.gr_aprovado === 0;
+                if (coleta.etapa_atual === 'contratacao' && coleta.motorista_id && reprovadoNestaColeta && etapaDestino !== 'gr') {
+                    alert('⚠️ O motorista foi reprovado pelo GR nesta coleta. Troque o motorista ou mova para a etapa GR para nova avaliação.');
+                    return;
                 }
 
                 // ✅ VALIDAÇÃO OBRIGATÓRIA: Não pode sair da etapa GR sem aprovação ou reprovação
@@ -15448,114 +15868,90 @@
                 modal.id = 'modalVincularMotorista';
                 modal.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.7); backdrop-filter: blur(10px); display: flex; justify-content: center; align-items: center; z-index: 10001; padding: 2rem;';
                 modal.innerHTML = `
-                    <div class="modal-dialog" style="background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.98) 100%); backdrop-filter: blur(20px); border-radius: 20px; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3); max-width: 900px; width: 100%; max-height: 90vh; overflow: hidden; display: flex; flex-direction: column;">
-                        <div class="modal-content" style="padding: 0; background: transparent;">
-                            <div class="modal-header" style="background: linear-gradient(135deg, #002776 0%, #0044AA 100%); color: white; border-radius: 8px 8px 0 0;">
-                                <h5 class="modal-title"><i class="fas fa-user-tie"></i> Vincular Motorista</h5>
-                                <button type="button" class="btn-close" style="filter: invert(1);" onclick="fecharModalMotorista()"></button>
-                            </div>
-                            <div class="modal-body" style="flex: 1; overflow-y: auto; padding: 2rem;">
-                                <!-- Área de filtros -->
-                                <div class="motorista-filters" style="background: linear-gradient(135deg, rgba(248, 250, 252, 0.8) 0%, rgba(241, 245, 249, 0.8) 100%); padding: 1.5rem; border-radius: 16px; margin-bottom: 1.5rem; border: 2px solid #e2e8f0; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);">
-                                    <div style="font-weight: 700; color: #1e293b; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem; font-size: 1.1rem;">
-                                        <i class="fas fa-filter" style="color: #667eea;"></i> Filtros de Busca
-                                        </div>
-                                    <div class="row g-3">
-                                        <div class="col-md-6">
-                                            <label style="font-weight: 600; color: #475569; font-size: 0.9rem; margin-bottom: 0.5rem; display: block;">
-                                                <i class="fas fa-user"></i> Nome
-                                            </label>
-                                            <input type="text" id="filtroNome" class="form-control form-control-modern" placeholder="Digite o nome do motorista...">
-                                        </div>
-                                        <div class="col-md-6">
-                                            <label style="font-weight: 600; color: #475569; font-size: 0.9rem; margin-bottom: 0.5rem; display: block;">
-                                                <i class="fas fa-id-badge"></i> CNH
-                                            </label>
-                                            <input type="text" id="filtroCNH" class="form-control form-control-modern" placeholder="Digite o número da CNH...">
+                    <div class="modal-vincular-dialog">
+                        <header class="modal-vincular-header">
+                            <h2><i class="fas fa-user-plus"></i> Vincular Motorista</h2>
+                            <button type="button" class="modal-vincular-close" onclick="fecharModalMotorista()" aria-label="Fechar"><i class="fas fa-times"></i></button>
+                        </header>
+                        <div class="modal-vincular-body">
+                            <section class="modal-vincular-filters motorista-filters">
+                                <h3><i class="fas fa-filter"></i> Filtros de busca</h3>
+                                <div class="motorista-filters-grid">
+                                    <div>
+                                        <label for="filtroNome">Nome</label>
+                                        <input type="text" id="filtroNome" placeholder="Nome do motorista...">
                                     </div>
-                                        <div class="col-md-6">
-                                            <label style="font-weight: 600; color: #475569; font-size: 0.9rem; margin-bottom: 0.5rem; display: block;">
-                                                <i class="fas fa-car"></i> Categoria CNH
-                                            </label>
-                                            <select id="filtroCategoria" class="form-select form-select-modern">
-                                                <option value="">Todas as Categorias</option>
-                                                <option value="A">A - Moto</option>
-                                                <option value="B">B - Carro</option>
-                                                <option value="C">C - Caminhão</option>
-                                                <option value="D">D - Ônibus</option>
-                                                <option value="E">E - Caminhão + Reboque</option>
-                                            </select>
-                                        </div>
-                                        <div class="col-md-6">
-                                            <label style="font-weight: 600; color: #475569; font-size: 0.9rem; margin-bottom: 0.5rem; display: block;">
-                                                <i class="fas fa-check-circle"></i> Status
-                                            </label>
-                                            <select id="filtroStatus" class="form-select form-select-modern">
-                                                <option value="">Todos os Status</option>
-                                                <option value="ativo">Ativo</option>
-                                                <option value="inativo">Inativo</option>
-                                                <option value="suspenso">Suspenso</option>
-                                            </select>
-                                        </div>
+                                    <div>
+                                        <label for="filtroCNH">CNH</label>
+                                        <input type="text" id="filtroCNH" placeholder="Número da CNH...">
+                                    </div>
+                                    <div>
+                                        <label for="filtroCategoria">Categoria CNH</label>
+                                        <select id="filtroCategoria">
+                                            <option value="">Todas</option>
+                                            <option value="A">A - Moto</option>
+                                            <option value="B">B - Carro</option>
+                                            <option value="C">C - Caminhão</option>
+                                            <option value="D">D - Ônibus</option>
+                                            <option value="E">E - Caminhão + Reboque</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label for="filtroStatus">Status</label>
+                                        <select id="filtroStatus">
+                                            <option value="">Todos</option>
+                                            <option value="ativo">Ativo</option>
+                                            <option value="inativo">Inativo</option>
+                                            <option value="suspenso">Suspenso</option>
+                                        </select>
                                     </div>
                                 </div>
-                                
-                                <!-- Lista de motoristas -->
-                                <div class="motoristas-list" id="motoristasListContainer" style="max-height: 450px; overflow-y: auto; padding-right: 0.5rem;">
-                                    <div id="motoristasListContent">
+                            </section>
+                            <h3 class="modal-vincular-list-title">Selecione um motorista</h3>
+                            <div class="motoristas-list" id="motoristasListContainer">
+                                <div id="motoristasListContent">
                                     ${motoristas.map(motorista => {
                                         const iniciais = motorista.nome ? motorista.nome.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() : 'M';
                                         const telefone = motorista.telefone1 || motorista.telefone2 || '';
                                         const telefoneFormatado = telefone ? telefone.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3') : 'N/A';
+                                        const status = motorista.status || 'ativo';
+                                        const badgeStyle = status === 'ativo' ? 'background: #22c55e; color: #ffffff;' : status === 'inativo' ? 'background: #475569; color: #ffffff;' : 'background: #f59e0b; color: #1e293b;';
                                         return `
-                                        <div class="motorista-item" data-nome="${motorista.nome}" data-cnh="${motorista.cnh || ''}" data-categoria="${motorista.categoria_cnh || ''}" data-status="${motorista.status || 'ativo'}" onclick="selecionarMotorista('${coletaId}', '${motorista.id}')">
-                                            <div class="motorista-info">
-                                                <div class="motorista-avatar">${iniciais}</div>
-                                                <div class="motorista-content">
-                                                <div class="motorista-nome">${motorista.nome}</div>
-                                                <div class="motorista-detalhes">
-                                                        ${motorista.cnh ? `<span><i class="fas fa-id-badge"></i> ${motorista.cnh}</span>` : ''}
-                                                        ${motorista.categoria_cnh ? `<span><i class="fas fa-car"></i> ${motorista.categoria_cnh}</span>` : ''}
-                                                        ${telefone ? `<span><i class="fas fa-phone"></i> ${telefoneFormatado}</span>` : ''}
+                                        <div class="motorista-item" data-nome="${motorista.nome}" data-cnh="${motorista.cnh || ''}" data-categoria="${motorista.categoria_cnh || ''}" data-status="${status}" onclick="selecionarMotorista('${coletaId}', '${motorista.id}')" style="display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.25rem; background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; margin-bottom: 0.5rem; cursor: pointer; transition: all 0.2s;">
+                                            <div style="display: flex; align-items: center; gap: 1rem; flex: 1; min-width: 0;">
+                                                <div style="width: 44px; height: 44px; border-radius: 10px; background: linear-gradient(135deg, #002776 0%, #003d99 100%); display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 700; font-size: 0.9rem; flex-shrink: 0;">${iniciais}</div>
+                                                <div style="flex: 1; min-width: 0;">
+                                                    <div style="font-weight: 700; color: #1e293b; font-size: 1rem; margin-bottom: 0.4rem;">${escapeHtml(motorista.nome || 'N/A')}</div>
+                                                    <div style="display: flex; flex-wrap: wrap; gap: 0.75rem; font-size: 0.85rem; color: #475569;">
+                                                        ${motorista.categoria_cnh ? `<span style="display: inline-flex; align-items: center; gap: 0.35rem; color: #475569;"><i class="fas fa-car" style="color: #667eea;"></i> ${escapeHtml(motorista.categoria_cnh)}</span>` : ''}
+                                                        ${motorista.cnh ? `<span style="display: inline-flex; align-items: center; gap: 0.35rem; color: #475569;"><i class="fas fa-id-badge" style="color: #667eea;"></i> ${escapeHtml(motorista.cnh)}</span>` : ''}
+                                                        ${telefone ? `<span style="display: inline-flex; align-items: center; gap: 0.35rem; color: #475569;"><i class="fas fa-phone" style="color: #667eea;"></i> ${telefoneFormatado}</span>` : ''}
                                                     </div>
                                                 </div>
                                             </div>
-                                            <div class="motorista-status">
-                                                <span class="badge ${motorista.status === 'ativo' ? 'bg-success' : motorista.status === 'inativo' ? 'bg-secondary' : 'bg-warning'}">
-                                                    <i class="fas fa-circle" style="font-size: 0.5rem; margin-right: 0.35rem;"></i>${motorista.status || 'ativo'}
-                                                </span>
-                                            </div>
+                                            <span style="padding: 0.4rem 0.85rem; border-radius: 8px; font-size: 0.8rem; font-weight: 700; flex-shrink: 0; text-transform: capitalize; ${badgeStyle}">
+                                                ${status}
+                                            </span>
                                         </div>
                                     `;
                                     }).join('')}
-                                    </div>
-                                    ${resultado.hasMore ? `
-                                    <div id="carregarMaisContainer" style="text-align: center; padding: 1rem; border-top: 1px solid #e2e8f0; margin-top: 1rem;">
-                                        <button type="button" class="btn btn-modern btn-modern-primary" onclick="carregarMaisMotoristas('${coletaId}')" id="btnCarregarMais">
-                                            <i class="fas fa-arrow-down me-2"></i>Carregar Mais Motoristas
-                                        </button>
-                                        <p style="margin-top: 0.5rem; font-size: 0.85rem; color: #6c757d;">
-                                            Mostrando ${motoristas.length} de ${totalMotoristas} motoristas
-                                        </p>
-                                    </div>
-                                    ` : totalMotoristas > 0 ? `
-                                    <div style="text-align: center; padding: 1rem; border-top: 1px solid #e2e8f0; margin-top: 1rem;">
-                                        <p style="font-size: 0.85rem; color: #6c757d;">
-                                            Todos os ${totalMotoristas} motoristas foram carregados
-                                        </p>
-                                    </div>
-                                    ` : ''}
                                 </div>
+                                ${resultado.hasMore ? `
+                                <div id="carregarMaisContainer" style="text-align: center; padding: 1rem; margin-top: 0.75rem; border-top: 1px solid #e5e7eb;">
+                                    <button type="button" onclick="carregarMaisMotoristas('${coletaId}')" id="btnCarregarMais" style="padding: 0.5rem 1rem; background: #002776; color: #fff; border: none; border-radius: 8px; font-weight: 600; font-size: 0.875rem; cursor: pointer;">
+                                        <i class="fas fa-chevron-down" style="margin-right: 0.4rem;"></i>Carregar mais
+                                    </button>
+                                    <p style="margin-top: 0.5rem; font-size: 0.8125rem; color: #64748b;">${motoristas.length} de ${totalMotoristas} motoristas</p>
+                                </div>
+                                ` : totalMotoristas > 0 ? `
+                                <div style="text-align: center; padding: 0.75rem; font-size: 0.8125rem; color: #64748b;">Todos os ${totalMotoristas} motoristas carregados</div>
+                                ` : ''}
                             </div>
-                            <div class="modal-footer" style="padding: 1.5rem 2rem; background: linear-gradient(135deg, rgba(248, 250, 252, 0.95) 0%, rgba(241, 245, 249, 0.95) 100%); border-top: 2px solid #e2e8f0; margin-top: auto; display: flex; justify-content: space-between; align-items: center;">
-                                <button type="button" class="btn btn-modern btn-modern-success" onclick="abrirModalCadastroMotorista('${coletaId}')">
-                                    <i class="fas fa-user-plus me-2"></i>Cadastrar Novo Motorista
-                                </button>
-                                <button type="button" class="btn btn-modern btn-modern-warning" onclick="fecharModalMotorista()">
-                                    <i class="fas fa-times me-2"></i>Cancelar
-                                </button>
                             </div>
-                        </div>
+                            <footer class="modal-vincular-footer">
+                                <button type="button" class="btn-cancelar" onclick="fecharModalMotorista()"><i class="fas fa-times"></i> Cancelar</button>
+                                <button type="button" class="btn-cadastrar" onclick="abrirModalCadastroMotorista('${coletaId}')"><i class="fas fa-user-plus"></i> Cadastrar novo motorista</button>
+                            </footer>
                     </div>
                 `;
                 
@@ -15679,24 +16075,22 @@
                             const iniciais = motorista.nome ? motorista.nome.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() : 'M';
                             const telefone = motorista.telefone1 || motorista.telefone2 || '';
                             const telefoneFormatado = telefone ? telefone.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3') : 'N/A';
+                            const status = motorista.status || 'ativo';
+                            const badgeStyle = status === 'ativo' ? 'background: #22c55e; color: #ffffff;' : status === 'inativo' ? 'background: #475569; color: #ffffff;' : 'background: #f59e0b; color: #1e293b;';
                             return `
-                            <div class="motorista-item" data-nome="${motorista.nome}" data-cnh="${motorista.cnh || ''}" data-categoria="${motorista.categoria_cnh || ''}" data-status="${motorista.status || 'ativo'}" onclick="selecionarMotorista('${coletaId}', '${motorista.id}')">
-                                <div class="motorista-info">
-                                    <div class="motorista-avatar">${iniciais}</div>
-                                    <div class="motorista-content">
-                                    <div class="motorista-nome">${motorista.nome}</div>
-                                    <div class="motorista-detalhes">
-                                            ${motorista.cnh ? `<span><i class="fas fa-id-badge"></i> ${motorista.cnh}</span>` : ''}
-                                            ${motorista.categoria_cnh ? `<span><i class="fas fa-car"></i> ${motorista.categoria_cnh}</span>` : ''}
-                                            ${telefone ? `<span><i class="fas fa-phone"></i> ${telefoneFormatado}</span>` : ''}
+                            <div class="motorista-item" data-nome="${motorista.nome}" data-cnh="${motorista.cnh || ''}" data-categoria="${motorista.categoria_cnh || ''}" data-status="${status}" onclick="selecionarMotorista('${coletaId}', '${motorista.id}')" style="display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.25rem; background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; margin-bottom: 0.5rem; cursor: pointer;">
+                                <div style="display: flex; align-items: center; gap: 1rem; flex: 1; min-width: 0;">
+                                    <div style="width: 44px; height: 44px; border-radius: 10px; background: linear-gradient(135deg, #002776 0%, #003d99 100%); display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 700; font-size: 0.9rem; flex-shrink: 0;">${iniciais}</div>
+                                    <div style="flex: 1; min-width: 0;">
+                                        <div style="font-weight: 700; color: #1e293b; font-size: 1rem; margin-bottom: 0.4rem;">${escapeHtml(motorista.nome || 'N/A')}</div>
+                                        <div style="display: flex; flex-wrap: wrap; gap: 0.75rem; font-size: 0.85rem; color: #475569;">
+                                            ${motorista.categoria_cnh ? `<span style="display: inline-flex; align-items: center; gap: 0.35rem;"><i class="fas fa-car" style="color: #667eea;"></i> ${escapeHtml(motorista.categoria_cnh)}</span>` : ''}
+                                            ${motorista.cnh ? `<span style="display: inline-flex; align-items: center; gap: 0.35rem;"><i class="fas fa-id-badge" style="color: #667eea;"></i> ${escapeHtml(motorista.cnh)}</span>` : ''}
+                                            ${telefone ? `<span style="display: inline-flex; align-items: center; gap: 0.35rem;"><i class="fas fa-phone" style="color: #667eea;"></i> ${telefoneFormatado}</span>` : ''}
                                         </div>
                                     </div>
                                 </div>
-                                <div class="motorista-status">
-                                    <span class="badge ${motorista.status === 'ativo' ? 'bg-success' : motorista.status === 'inativo' ? 'bg-secondary' : 'bg-warning'}">
-                                        <i class="fas fa-circle" style="font-size: 0.5rem; margin-right: 0.35rem;"></i>${motorista.status || 'ativo'}
-                                    </span>
-                                </div>
+                                <span style="padding: 0.4rem 0.85rem; border-radius: 8px; font-size: 0.8rem; font-weight: 700; flex-shrink: 0; text-transform: capitalize; ${badgeStyle}">${status}</span>
                             </div>
                         `;
                         }).join('');
@@ -15764,24 +16158,22 @@
                 const iniciais = motorista.nome ? motorista.nome.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() : 'M';
                 const telefone = motorista.telefone1 || motorista.telefone2 || '';
                 const telefoneFormatado = telefone ? telefone.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3') : 'N/A';
+                const status = motorista.status || 'ativo';
+                const badgeStyle = status === 'ativo' ? 'background: #22c55e; color: #ffffff;' : status === 'inativo' ? 'background: #475569; color: #ffffff;' : 'background: #f59e0b; color: #1e293b;';
                 return `
-                <div class="motorista-item" data-nome="${motorista.nome}" data-cnh="${motorista.cnh || ''}" data-categoria="${motorista.categoria_cnh || ''}" data-status="${motorista.status || 'ativo'}" onclick="selecionarMotorista('${coletaId}', '${motorista.id}')">
-                    <div class="motorista-info">
-                        <div class="motorista-avatar">${iniciais}</div>
-                        <div class="motorista-content">
-                        <div class="motorista-nome">${motorista.nome}</div>
-                        <div class="motorista-detalhes">
-                                ${motorista.cnh ? `<span><i class="fas fa-id-badge"></i> ${motorista.cnh}</span>` : ''}
-                                ${motorista.categoria_cnh ? `<span><i class="fas fa-car"></i> ${motorista.categoria_cnh}</span>` : ''}
-                                ${telefone ? `<span><i class="fas fa-phone"></i> ${telefoneFormatado}</span>` : ''}
+                <div class="motorista-item" data-nome="${motorista.nome}" data-cnh="${motorista.cnh || ''}" data-categoria="${motorista.categoria_cnh || ''}" data-status="${status}" onclick="selecionarMotorista('${coletaId}', '${motorista.id}')" style="display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.25rem; background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; margin-bottom: 0.5rem; cursor: pointer;">
+                    <div style="display: flex; align-items: center; gap: 1rem; flex: 1; min-width: 0;">
+                        <div style="width: 44px; height: 44px; border-radius: 10px; background: linear-gradient(135deg, #002776 0%, #003d99 100%); display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 700; font-size: 0.9rem; flex-shrink: 0;">${iniciais}</div>
+                        <div style="flex: 1; min-width: 0;">
+                            <div style="font-weight: 700; color: #1e293b; font-size: 1rem; margin-bottom: 0.4rem;">${escapeHtml(motorista.nome || 'N/A')}</div>
+                            <div style="display: flex; flex-wrap: wrap; gap: 0.75rem; font-size: 0.85rem; color: #475569;">
+                                ${motorista.categoria_cnh ? `<span style="display: inline-flex; align-items: center; gap: 0.35rem;"><i class="fas fa-car" style="color: #667eea;"></i> ${escapeHtml(motorista.categoria_cnh)}</span>` : ''}
+                                ${motorista.cnh ? `<span style="display: inline-flex; align-items: center; gap: 0.35rem;"><i class="fas fa-id-badge" style="color: #667eea;"></i> ${escapeHtml(motorista.cnh)}</span>` : ''}
+                                ${telefone ? `<span style="display: inline-flex; align-items: center; gap: 0.35rem;"><i class="fas fa-phone" style="color: #667eea;"></i> ${telefoneFormatado}</span>` : ''}
                             </div>
                         </div>
                     </div>
-                    <div class="motorista-status">
-                        <span class="badge ${motorista.status === 'ativo' ? 'bg-success' : motorista.status === 'inativo' ? 'bg-secondary' : 'bg-warning'}">
-                            <i class="fas fa-circle" style="font-size: 0.5rem; margin-right: 0.35rem;"></i>${motorista.status || 'ativo'}
-                        </span>
-                    </div>
+                    <span style="padding: 0.4rem 0.85rem; border-radius: 8px; font-size: 0.8rem; font-weight: 700; flex-shrink: 0; text-transform: capitalize; ${badgeStyle}">${status}</span>
                 </div>
             `;
             }).join('');
@@ -15853,29 +16245,26 @@
                 // Atualizar coleta com motorista vinculado
                 // (sempre permite, mesmo se já tiver motorista)
                 // NOTA: Não arquivar aqui - a coleta só deve ser arquivada quando finalizada (ganhou/perdeu)
-                // ✅ IMPORTANTE: Resetar status do GR quando motorista é trocado
-                // Cada coleta precisa de sua própria aprovação do GR, independente do motorista
+                // ✅ SEMPRE resetar status do GR ao vincular motorista (primeira vinculação ou troca).
+                // Cada coleta exige nova avaliação do GR para o motorista vinculado; reprovação em outra coleta não deve virar "reprovado" aqui.
                 const updateData = { 
-                    motorista_id: motoristaId
+                    motorista_id: motoristaId,
+                    gr_aprovado: null,
+                    gr_aprovado_por: null,
+                    gr_reprovado_por: null,
+                    gr_motivo_reprovacao: null,
+                    gr_data_reprovacao: null,
+                    gr_data_aprovacao: null
                 };
 
-                // Se está trocando motorista (não é primeira vinculação), resetar status do GR
-                // A aprovação do GR é específica para cada coleta com cada motorista
-                if (motoristaAnteriorId && motoristaAnteriorId !== motoristaId) {
-                    updateData.gr_aprovado = null;
-                    updateData.gr_aprovado_por = null;
-                    updateData.gr_reprovado_por = null;
-                    updateData.gr_motivo_reprovacao = null;
-                    updateData.gr_data_reprovacao = null;
-                    updateData.gr_data_aprovacao = null;
-                    
-                    // Se estava na etapa GR, voltar para contratação para nova validação
-                    if (isEtapaGR(coleta.etapa_atual)) {
-                        updateData.etapa_atual = 'contratacao';
-                        detalhes += ' - Status do GR resetado (nova aprovação necessária)';
-                    } else {
-                        detalhes += ' - Status do GR resetado devido à troca de motorista';
-                    }
+                // Se estava na etapa GR, voltar para contratação para exigir nova validação do GR
+                if (isEtapaGR(coleta.etapa_atual)) {
+                    updateData.etapa_atual = 'contratacao';
+                    detalhes += ' - Nova avaliação do GR necessária';
+                } else if (motoristaAnteriorId && motoristaAnteriorId !== motoristaId) {
+                    detalhes += ' - Status do GR resetado (nova aprovação necessária)';
+                } else if (!motoristaAnteriorId) {
+                    detalhes += ' - Aguardando avaliação do GR';
                 }
 
                 const { error } = await supabaseClient
@@ -15888,12 +16277,10 @@
                 // Registrar no histórico
                 await salvarNoHistorico(coletaId, motoristaAnteriorId ? 'motorista_trocado' : 'motorista_vinculado', detalhes);
 
-                // Se resetou o GR, registrar isso também
-                if (motoristaAnteriorId && motoristaAnteriorId !== motoristaId && isEtapaGR(coleta.etapa_atual)) {
-                    await salvarNoHistorico(coletaId, 'gr_resetado', 
-                        'Status do GR resetado devido à troca de motorista. Nova aprovação necessária.'
-                    );
-                }
+                // Registrar que esta coleta exige nova avaliação do GR (sempre ao vincular motorista)
+                await salvarNoHistorico(coletaId, 'gr_resetado', 
+                    'Nova avaliação do GR necessária para o motorista vinculado.'
+                );
 
                 showNotification('Motorista vinculado com sucesso!', 'success');
                 fecharModalMotorista();
@@ -15939,161 +16326,174 @@
             // Fechar modal de vinculação primeiro
             fecharModalMotorista();
             
-            // Criar modal de cadastro
+            // Criar modal de cadastro (mesmo padrão visual do Vincular Motorista)
             const modal = document.createElement('div');
             modal.className = 'modal fade show';
             modal.id = 'modalCadastroMotorista';
-            modal.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.75); backdrop-filter: blur(12px); display: flex; justify-content: center; align-items: center; z-index: 10002; padding: 2rem; animation: fadeIn 0.3s ease;';
+            modal.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.7); backdrop-filter: blur(10px); display: flex; justify-content: center; align-items: center; z-index: 10002; padding: 2rem;';
             modal.innerHTML = `
-                <div class="modal-dialog" style="background: white; border-radius: 24px; box-shadow: 0 25px 70px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.1); max-width: 850px; width: 100%; max-height: 92vh; overflow: hidden; display: flex; flex-direction: column; animation: slideUp 0.4s cubic-bezier(0.4, 0, 0.2, 1);">
-                    <div class="modal-content" style="padding: 0; background: transparent; height: 100%; display: flex; flex-direction: column;">
-                        <div class="modal-header" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 24px 24px 0 0; padding: 2rem 2.5rem; position: relative; overflow: hidden;">
-                            <div style="position: absolute; top: -50px; right: -50px; width: 200px; height: 200px; background: rgba(255, 255, 255, 0.1); border-radius: 50%;"></div>
-                            <div style="position: absolute; bottom: -30px; left: -30px; width: 150px; height: 150px; background: rgba(255, 255, 255, 0.08); border-radius: 50%;"></div>
-                            <div style="position: relative; z-index: 1; display: flex; justify-content: space-between; align-items: center; width: 100%;">
-                                <div>
-                                    <h5 class="modal-title" style="margin: 0; font-size: 1.5rem; font-weight: 700; display: flex; align-items: center; gap: 0.75rem;">
-                                        <div style="width: 48px; height: 48px; background: rgba(255, 255, 255, 0.2); border-radius: 12px; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(10px);">
-                                            <i class="fas fa-user-plus" style="font-size: 1.3rem;"></i>
-                                        </div>
-                                        Cadastrar Novo Motorista
-                                    </h5>
-                                    <p style="margin: 0.5rem 0 0 0; opacity: 0.9; font-size: 0.9rem;">Preencha os dados para cadastrar e vincular automaticamente</p>
-                                </div>
-                                <button type="button" class="btn-close" style="filter: invert(1); opacity: 0.9; background: rgba(255, 255, 255, 0.2); border-radius: 8px; padding: 0.5rem; transition: all 0.2s;" onmouseover="this.style.opacity='1'; this.style.background='rgba(255,255,255,0.3)';" onmouseout="this.style.opacity='0.9'; this.style.background='rgba(255,255,255,0.2)';" onclick="fecharModalCadastroMotorista()"></button>
-                            </div>
-                        </div>
-                        <div class="modal-body" style="flex: 1; overflow-y: auto; padding: 2.5rem; background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);">
-                            <form id="formCadastroMotoristaRapido">
-                                <!-- Informações Pessoais -->
-                                <div class="form-section" style="margin-bottom: 1.5rem;">
-                                    <div class="section-title">
-                                        <i class="fas fa-id-card"></i>
-                                        Informações Pessoais
+                <div class="modal-cadastro-dialog">
+                    <header class="modal-cadastro-header">
+                        <h2><i class="fas fa-user-plus"></i> Cadastrar Novo Motorista</h2>
+                        <button type="button" class="modal-cadastro-close" onclick="fecharModalCadastroMotorista()" aria-label="Fechar"><i class="fas fa-times"></i></button>
+                    </header>
+                    <div class="modal-cadastro-body">
+                        <form id="formCadastroMotoristaRapido">
+                            <section class="modal-cadastro-section">
+                                <h3><i class="fas fa-id-card"></i> Informações Pessoais</h3>
+                                <div class="modal-cadastro-grid cols-2">
+                                    <div style="grid-column: span 2;">
+                                        <label for="nomeMotorista">Nome Completo *</label>
+                                        <input type="text" id="nomeMotorista" required placeholder="Ex: João da Silva" maxlength="100">
                                     </div>
-                                    <div class="row g-3">
-                                        <div class="col-md-6">
-                                            <label class="form-label-modern">
-                                                <i class="fas fa-user" style="color: #667eea; margin-right: 0.5rem;"></i>
-                                                Nome Completo *
-                                            </label>
-                                            <input type="text" id="nomeMotorista" class="form-control form-control-modern" required placeholder="Ex: João da Silva" maxlength="100">
-                                        </div>
-                                        <div class="col-md-3">
-                                            <label class="form-label-modern">
-                                                <i class="fas fa-id-badge" style="color: #667eea; margin-right: 0.5rem;"></i>
-                                                CNH
-                                            </label>
-                                            <input type="text" id="cnhMotorista" class="form-control form-control-modern" placeholder="00000000000" maxlength="11" pattern="[0-9]{11}" title="CNH deve conter exatamente 11 dígitos numéricos">
-                                        </div>
-                                        <div class="col-md-3">
-                                            <label class="form-label-modern">
-                                                <i class="fas fa-car" style="color: #667eea; margin-right: 0.5rem;"></i>
-                                                Categoria CNH
-                                            </label>
-                                            <select id="categoriaCNH" class="form-select form-select-modern">
-                                                <option value="">Selecione</option>
-                                                <option value="A">A - Motos</option>
-                                                <option value="B">B - Carros</option>
-                                                <option value="C">C - Caminhões</option>
-                                                <option value="D">D - Ônibus</option>
-                                                <option value="E">E - Carreta</option>
-                                            </select>
-                                        </div>
+                                    <div>
+                                        <label for="cnhMotorista">CNH</label>
+                                        <input type="text" id="cnhMotorista" placeholder="00000000000" maxlength="11" pattern="[0-9]{11}" title="CNH deve conter exatamente 11 dígitos numéricos">
+                                    </div>
+                                    <div>
+                                        <label for="categoriaCNH">Categoria CNH</label>
+                                        <select id="categoriaCNH">
+                                            <option value="">Selecione</option>
+                                            <option value="A">A - Motos</option>
+                                            <option value="B">B - Carros</option>
+                                            <option value="C">C - Caminhões</option>
+                                            <option value="D">D - Ônibus</option>
+                                            <option value="E">E - Carreta</option>
+                                        </select>
                                     </div>
                                 </div>
-                                
-                                <!-- Contatos -->
-                                <div class="form-section">
-                                    <div class="section-title">
-                                        <i class="fas fa-phone"></i>
-                                        Contatos
+                            </section>
+                            <section class="modal-cadastro-section">
+                                <h3><i class="fas fa-phone"></i> Contatos</h3>
+                                <div class="modal-cadastro-grid">
+                                    <div>
+                                        <label for="telefone1Motorista">Telefone 1 *</label>
+                                        <input type="text" id="telefone1Motorista" required placeholder="5511999999999" maxlength="13" pattern="[0-9]{11,13}" title="Telefone deve ter 11 ou 13 dígitos (formato: 55+DDD+9+Número)">
+                                        <span class="field-hint">Formato: 55+DDD+9+Número</span>
                                     </div>
-                                    <div class="row g-3">
-                                        <div class="col-md-4">
-                                            <label class="form-label-modern">
-                                                <i class="fas fa-phone-alt" style="color: #667eea; margin-right: 0.5rem;"></i>
-                                                Telefone 1 *
-                                            </label>
-                                            <input type="text" id="telefone1Motorista" class="form-control form-control-modern" required placeholder="5511999999999" maxlength="13" pattern="[0-9]{11,13}" title="Telefone deve ter 11 ou 13 dígitos (formato: 55+DDD+9+Número)">
-                                            <small style="color: #64748b; font-size: 0.75rem; margin-top: 0.25rem; display: block;">Formato: 55+DDD+9+Número</small>
-                                        </div>
-                                        <div class="col-md-4">
-                                            <label class="form-label-modern">
-                                                <i class="fas fa-mobile-alt" style="color: #667eea; margin-right: 0.5rem;"></i>
-                                                Telefone 2
-                                            </label>
-                                            <input type="text" id="telefone2Motorista" class="form-control form-control-modern" placeholder="5511888888888" maxlength="13" pattern="[0-9]{11,13}" title="Telefone deve ter 11 ou 13 dígitos (formato: 55+DDD+9+Número)">
-                                        </div>
-                                        <div class="col-md-4">
-                                            <label class="form-label-modern">
-                                                <i class="fas fa-map-marker-alt" style="color: #667eea; margin-right: 0.5rem;"></i>
-                                                Estado (DDD)
-                                            </label>
-                                            <select id="estadoMotorista" class="form-select form-select-modern">
-                                                <option value="">Selecione o estado</option>
-                                                <option value="SP">São Paulo</option>
-                                                <option value="RJ">Rio de Janeiro</option>
-                                                <option value="MG">Minas Gerais</option>
-                                                <option value="ES">Espírito Santo</option>
-                                                <option value="PR">Paraná</option>
-                                                <option value="SC">Santa Catarina</option>
-                                                <option value="RS">Rio Grande do Sul</option>
-                                                <option value="MS">Mato Grosso do Sul</option>
-                                                <option value="MT">Mato Grosso</option>
-                                                <option value="GO">Goiás</option>
-                                                <option value="DF">Distrito Federal</option>
-                                                <option value="BA">Bahia</option>
-                                                <option value="SE">Sergipe</option>
-                                                <option value="AL">Alagoas</option>
-                                                <option value="PE">Pernambuco</option>
-                                                <option value="PB">Paraíba</option>
-                                                <option value="RN">Rio Grande do Norte</option>
-                                                <option value="CE">Ceará</option>
-                                                <option value="PI">Piauí</option>
-                                                <option value="MA">Maranhão</option>
-                                                <option value="PA">Pará</option>
-                                                <option value="AP">Amapá</option>
-                                                <option value="AM">Amazonas</option>
-                                                <option value="RR">Roraima</option>
-                                                <option value="AC">Acre</option>
-                                                <option value="RO">Rondônia</option>
-                                                <option value="TO">Tocantins</option>
-                                            </select>
-                                        </div>
+                                    <div>
+                                        <label for="telefone2Motorista">Telefone 2</label>
+                                        <input type="text" id="telefone2Motorista" placeholder="5511888888888" maxlength="13" pattern="[0-9]{11,13}" title="Telefone deve ter 11 ou 13 dígitos (formato: 55+DDD+9+Número)">
+                                    </div>
+                                    <div>
+                                        <label for="estadoMotorista">Estado (DDD)</label>
+                                        <select id="estadoMotorista">
+                                            <option value="">Selecione o estado</option>
+                                            <option value="SP">São Paulo</option>
+                                            <option value="RJ">Rio de Janeiro</option>
+                                            <option value="MG">Minas Gerais</option>
+                                            <option value="ES">Espírito Santo</option>
+                                            <option value="PR">Paraná</option>
+                                            <option value="SC">Santa Catarina</option>
+                                            <option value="RS">Rio Grande do Sul</option>
+                                            <option value="MS">Mato Grosso do Sul</option>
+                                            <option value="MT">Mato Grosso</option>
+                                            <option value="GO">Goiás</option>
+                                            <option value="DF">Distrito Federal</option>
+                                            <option value="BA">Bahia</option>
+                                            <option value="SE">Sergipe</option>
+                                            <option value="AL">Alagoas</option>
+                                            <option value="PE">Pernambuco</option>
+                                            <option value="PB">Paraíba</option>
+                                            <option value="RN">Rio Grande do Norte</option>
+                                            <option value="CE">Ceará</option>
+                                            <option value="PI">Piauí</option>
+                                            <option value="MA">Maranhão</option>
+                                            <option value="PA">Pará</option>
+                                            <option value="AP">Amapá</option>
+                                            <option value="AM">Amazonas</option>
+                                            <option value="RR">Roraima</option>
+                                            <option value="AC">Acre</option>
+                                            <option value="RO">Rondônia</option>
+                                            <option value="TO">Tocantins</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label for="cidadeMotorista">Cidade</label>
+                                        <input type="text" id="cidadeMotorista" placeholder="Ex: São Paulo" maxlength="100">
                                     </div>
                                 </div>
-                            </form>
-                        </div>
-                        <div class="modal-footer" style="padding: 2rem 2.5rem; background: white; border-top: 2px solid #e2e8f0; margin-top: auto; display: flex; gap: 1rem; justify-content: flex-end; border-radius: 0 0 24px 24px;">
-                            <button type="button" class="btn btn-modern btn-modern-warning" onclick="fecharModalCadastroMotorista()">
-                                <i class="fas fa-times me-2"></i>Cancelar
-                            </button>
-                            <button type="button" class="btn btn-modern btn-modern-success" onclick="salvarMotoristaRapido('${coletaId}')" style="min-width: 180px;">
-                                <i class="fas fa-save me-2"></i>Salvar e Vincular
-                            </button>
-                        </div>
+                            </section>
+                            <section class="modal-cadastro-section">
+                                <h3><i class="fas fa-truck"></i> Veículo</h3>
+                                <div class="modal-cadastro-grid">
+                                    <div>
+                                        <label for="classeVeiculoMotorista">Classe do veículo</label>
+                                        <select id="classeVeiculoMotorista">
+                                            <option value="">Selecione</option>
+                                            <option value="leve">Leve</option>
+                                            <option value="medio">Médio</option>
+                                            <option value="pesado">Pesado</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label for="tipoVeiculoMotorista">Tipo de veículo</label>
+                                        <select id="tipoVeiculoMotorista" disabled>
+                                            <option value="">Selecione a classe primeiro</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label for="tipoCarroceriaMotorista">Tipo de carroceria</label>
+                                        <select id="tipoCarroceriaMotorista" disabled>
+                                            <option value="">Selecione a classe primeiro</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </section>
+                            <section class="modal-cadastro-section">
+                                <h3><i class="fas fa-id-card-alt"></i> Placas</h3>
+                                <div class="modal-cadastro-grid modal-cadastro-grid-4">
+                                    <div>
+                                        <label for="placaCavaloMotorista">Placa do cavalo</label>
+                                        <input type="text" id="placaCavaloMotorista" placeholder="ABC1D23" maxlength="7" style="text-transform: uppercase;">
+                                    </div>
+                                    <div>
+                                        <label for="placaCarreta1Motorista">Placa carreta 1</label>
+                                        <input type="text" id="placaCarreta1Motorista" placeholder="XYZ4W56" maxlength="7" style="text-transform: uppercase;">
+                                    </div>
+                                    <div>
+                                        <label for="placaCarreta2Motorista">Placa carreta 2</label>
+                                        <input type="text" id="placaCarreta2Motorista" placeholder="QRS7T89" maxlength="7" style="text-transform: uppercase;">
+                                    </div>
+                                    <div>
+                                        <label for="placaCarreta3Motorista">Placa carreta 3</label>
+                                        <input type="text" id="placaCarreta3Motorista" placeholder="LMN8P10" maxlength="7" style="text-transform: uppercase;">
+                                    </div>
+                                </div>
+                            </section>
+                        </form>
                     </div>
+                    <footer class="modal-cadastro-footer">
+                        <button type="button" class="btn-cancelar" onclick="fecharModalCadastroMotorista()"><i class="fas fa-times"></i> Cancelar</button>
+                        <button type="button" class="btn-cadastrar" onclick="salvarMotoristaRapido('${coletaId}')"><i class="fas fa-save"></i> Salvar e Vincular</button>
+                    </footer>
                 </div>
-                <style>
-                    @keyframes fadeIn {
-                        from { opacity: 0; }
-                        to { opacity: 1; }
-                    }
-                    @keyframes slideUp {
-                        from { 
-                            opacity: 0;
-                            transform: translateY(30px) scale(0.95);
-                        }
-                        to { 
-                            opacity: 1;
-                            transform: translateY(0) scale(1);
-                        }
-                    }
-                </style>
             `;
             
             document.body.appendChild(modal);
+            
+            // Inicializar selects dinâmicos de veículo (classe -> tipo_veiculo / tipo_carroceria)
+            const tiposVeiculoCadastro = { leve: ['3/4', 'Fiorino', 'Toco', 'VLC'], medio: ['Bitruck', 'Truck'], pesado: ['Bitrem', 'Carreta', 'Carreta LS', 'Rodotrem', 'Vanderleia'] };
+            const bodyworkByClassCadastro = { leve: ['bau', 'bau_frigorifico', 'bau_refrigerado', 'cacamba', 'prancha'], medio: ['bau', 'bau_frigorifico', 'sider', 'graneleiro', 'plataforma', 'basculante', 'cacamba'], pesado: ['bau', 'sider', 'graneleiro', 'grade_baixa', 'bitrem', 'carreta', 'carreta_ls', 'rodotrem', 'vanderleia', 'apenas_cavalo', 'cegonheiro', 'gaiola', 'tanque', 'porta_container_20', 'porta_container_40', 'basculante', 'cacamba'] };
+            const tiposCarroceriaMapCadastro = { bau: 'Baú', bau_frigorifico: 'Baú Frigorífico', bau_refrigerado: 'Baú Refrigerado', sider: 'Sider', cacamba: 'Caçamba', graneleiro: 'Graneleiro', plataforma: 'Plataforma', prancha: 'Prancha', bitrem: 'Bitrem', carreta: 'Carreta', carreta_ls: 'Carreta LS', rodotrem: 'Rodotrem', vanderleia: 'Vanderleia', apenas_cavalo: 'Apenas Cavalo', cegonheiro: 'Cegonheiro', gaiola: 'Gaiola', tanque: 'Tanque', grade_baixa: 'Grade Baixa', basculante: 'Basculante', porta_container_20: 'Porta Container 20', porta_container_40: 'Porta Container 40' };
+            const selClasse = document.getElementById('classeVeiculoMotorista');
+            const selTipo = document.getElementById('tipoVeiculoMotorista');
+            const selCarroceria = document.getElementById('tipoCarroceriaMotorista');
+            if (selClasse && selTipo && selCarroceria) {
+                selClasse.addEventListener('change', function() {
+                    const classe = this.value;
+                    selTipo.innerHTML = '<option value="">Não informado</option>';
+                    selCarroceria.innerHTML = '<option value="">Não informado</option>';
+                    selTipo.disabled = !classe;
+                    selCarroceria.disabled = !classe;
+                    if (classe && tiposVeiculoCadastro[classe]) {
+                        tiposVeiculoCadastro[classe].forEach(t => { const o = document.createElement('option'); o.value = t.toLowerCase().replace(/ /g, '_'); o.textContent = t; selTipo.appendChild(o); });
+                    }
+                    if (classe && bodyworkByClassCadastro[classe]) {
+                        bodyworkByClassCadastro[classe].forEach(t => { const o = document.createElement('option'); o.value = t; o.textContent = tiposCarroceriaMapCadastro[t] || t; selCarroceria.appendChild(o); });
+                    }
+                });
+            }
         }
         
         function fecharModalCadastroMotorista() {
@@ -16106,6 +16506,13 @@
         // ✅ FUNÇÃO PARA SALVAR MOTORISTA RÁPIDO E VINCULAR À COLETA
         async function salvarMotoristaRapido(coletaId) {
             try {
+                // Usuário logado (obrigatório para usuario_id na tabela motoristas)
+                const userId = (typeof currentUser !== 'undefined' && currentUser) ? (currentUser.id || currentUser.user_id || currentUser.userId) : null;
+                if (!userId) {
+                    showNotification('Não foi possível identificar o usuário. Faça login novamente.', 'error');
+                    return;
+                }
+                
                 // Validar campos obrigatórios
                 const nomeEl = document.getElementById('nomeMotorista');
                 const telefone1El = document.getElementById('telefone1Motorista');
@@ -16176,7 +16583,24 @@
                     return;
                 }
                 
-                // Preparar dados do motorista
+                // Normalizar placa (uppercase, apenas A-Z0-9, max 7)
+                const normalizarPlaca = (v) => {
+                    if (!v || typeof v !== 'string') return null;
+                    const s = v.toUpperCase().replace(/\s/g, '').replace(/[^A-Z0-9]/g, '').slice(0, 7);
+                    return s.length >= 1 ? s : null;
+                };
+                const placaCavalo = normalizarPlaca(document.getElementById('placaCavaloMotorista')?.value);
+                const placaCarreta1 = normalizarPlaca(document.getElementById('placaCarreta1Motorista')?.value);
+                const placaCarreta2 = normalizarPlaca(document.getElementById('placaCarreta2Motorista')?.value);
+                const placaCarreta3 = normalizarPlaca(document.getElementById('placaCarreta3Motorista')?.value);
+                const classeVeiculo = (document.getElementById('classeVeiculoMotorista')?.value || '').trim() || null;
+                let tipoVeiculo = (document.getElementById('tipoVeiculoMotorista')?.value || '').trim() || null;
+                let tipoCarroceria = (document.getElementById('tipoCarroceriaMotorista')?.value || '').trim() || null;
+                if (!tipoVeiculo || tipoVeiculo === '') tipoVeiculo = 'nao_informado';
+                if (!tipoCarroceria || tipoCarroceria === '') tipoCarroceria = 'nao_informado';
+                
+                // Preparar dados do motorista (usuario_id e created_by obrigatórios na tabela)
+                // Nota: coluna 'cidade' não existe na tabela motoristas
                 const motoristaData = {
                     nome: nome,
                     telefone1: telefone1Normalizado,
@@ -16184,7 +16608,17 @@
                     cnh: cnhNormalizada,
                     categoria_cnh: (document.getElementById('categoriaCNH')?.value) || null,
                     estado: (document.getElementById('estadoMotorista')?.value) || null,
+                    classe_veiculo: classeVeiculo,
+                    tipo_veiculo: tipoVeiculo,
+                    tipo_carroceria: tipoCarroceria,
+                    placa_cavalo: placaCavalo,
+                    placa_carreta1: placaCarreta1,
+                    placa_carreta2: placaCarreta2,
+                    placa_carreta3: placaCarreta3,
                     status: 'ativo',
+                    usuario_id: userId,
+                    created_by: userId,
+                    created_by_departamento: (typeof currentUser !== 'undefined' && currentUser && currentUser.departamento) ? currentUser.departamento : 'coletas',
                     data_cadastro: new Date().toISOString(),
                     data_atualizacao: new Date().toISOString()
                 };
@@ -16196,7 +16630,10 @@
                     .select()
                     .single();
                 
-                if (error) throw error;
+                if (error) {
+                    console.error('❌ Supabase insert motoristas:', error);
+                    throw error;
+                }
                 
                 showNotification('✅ Motorista cadastrado com sucesso!', 'success');
                 
@@ -16208,7 +16645,8 @@
                 
             } catch (error) {
                 console.error('❌ Erro ao cadastrar motorista:', error);
-                showNotification('Erro ao cadastrar motorista: ' + error.message, 'error');
+                const msg = (error && (error.message || error.details || error.hint)) ? (error.message || error.details || error.hint) : 'Erro ao salvar';
+                showNotification('Erro ao cadastrar motorista: ' + msg, 'error');
             }
         }
 
@@ -17343,6 +17781,130 @@
             });
         }
 
+        async function visualizarTermoAceito(coletaId) {
+            try {
+                // Mostrar loading
+                const loadingModal = document.createElement('div');
+                loadingModal.className = 'modal fade show';
+                loadingModal.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.7); backdrop-filter: blur(10px); display: flex; justify-content: center; align-items: center; z-index: 10001;';
+                loadingModal.innerHTML = `
+                    <div style="background: white; padding: 2rem; border-radius: 15px; text-align: center;">
+                        <i class="fas fa-spinner fa-spin fa-3x" style="color: #667eea; margin-bottom: 1rem;"></i>
+                        <p>Carregando termo aceito...</p>
+                    </div>
+                `;
+                document.body.appendChild(loadingModal);
+
+                // Buscar termo aceito
+                const response = await fetch(`/api/rastreamento/termo-aceito?coletaId=${coletaId}`);
+                const result = await response.json();
+
+                loadingModal.remove();
+
+                if (!result.success) {
+                    showNotification(result.error || 'Erro ao buscar termo aceito', 'error');
+                    return;
+                }
+
+                if (!result.termo) {
+                    showNotification('Nenhum termo aceito encontrado para esta coleta', 'warning');
+                    return;
+                }
+
+                const termo = result.termo;
+                const motoristaInfo = termo.motorista_info || {};
+                const dataAceite = termo.aceito_em ? new Date(termo.aceito_em) : null;
+
+                // Criar modal com o termo
+                const modal = document.createElement('div');
+                modal.className = 'modal fade show';
+                modal.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.7); backdrop-filter: blur(10px); display: flex; justify-content: center; align-items: center; z-index: 10001; padding: 2rem;';
+                modal.innerHTML = `
+                    <div class="modal-dialog" style="background: white; border-radius: 20px; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3); max-width: 900px; width: 100%; max-height: 90vh; overflow-y: auto;">
+                        <div class="modal-content" style="padding: 2rem;">
+                            <div class="modal-header" style="margin-bottom: 2rem; padding-bottom: 1.5rem; border-bottom: 2px solid #e9ecef; display: flex; justify-content: space-between; align-items: center;">
+                                <h5 class="modal-title" style="font-size: 1.5rem; font-weight: 700; color: #10b981; display: flex; align-items: center; gap: 0.7rem;">
+                                    <i class="fas fa-file-signature"></i>
+                                    Termo de Rastreamento Aceito
+                                </h5>
+                                <button class="btn-close" onclick="this.closest('.modal').remove()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #999;">&times;</button>
+                            </div>
+                            
+                            <!-- Informações do Termo -->
+                            <div style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(5, 150, 105, 0.1) 100%); padding: 1.5rem; border-radius: 15px; margin-bottom: 2rem; border: 1px solid #10b981;">
+                                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
+                                    <div>
+                                        <strong style="color: #10b981; font-size: 0.9rem;">Motorista</strong>
+                                        <div style="font-size: 1.1rem; margin-top: 0.5rem;">${escapeHtml(termo.motorista_nome_termo || motoristaInfo.nome || 'N/A')}</div>
+                                    </div>
+                                    <div>
+                                        <strong style="color: #10b981; font-size: 0.9rem;">CNH</strong>
+                                        <div style="font-size: 1.1rem; margin-top: 0.5rem;">${escapeHtml(termo.motorista_cnh_termo || motoristaInfo.cnh || 'N/A')}</div>
+                                    </div>
+                                    <div>
+                                        <strong style="color: #10b981; font-size: 0.9rem;">Versão do Termo</strong>
+                                        <div style="font-size: 1.1rem; margin-top: 0.5rem;">${escapeHtml(termo.termo_versao || 'N/A')}</div>
+                                    </div>
+                                    ${dataAceite ? `
+                                    <div>
+                                        <strong style="color: #10b981; font-size: 0.9rem;">Data de Aceite</strong>
+                                        <div style="font-size: 1.1rem; margin-top: 0.5rem;">${dataAceite.toLocaleDateString('pt-BR')} às ${dataAceite.toLocaleTimeString('pt-BR')}</div>
+                                    </div>
+                                    ` : ''}
+                                </div>
+                                ${termo.ip_address ? `
+                                <div style="display: flex; gap: 1rem; flex-wrap: wrap; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid rgba(16, 185, 129, 0.2);">
+                                    <div style="color: #6c757d; font-size: 0.85rem;">
+                                        <i class="fas fa-network-wired"></i> IP: ${escapeHtml(termo.ip_address)}
+                                    </div>
+                                    ${termo.user_agent ? `
+                                    <div style="color: #6c757d; font-size: 0.85rem;">
+                                        <i class="fas fa-desktop"></i> ${escapeHtml(termo.user_agent.length > 50 ? termo.user_agent.substring(0, 50) + '...' : termo.user_agent)}
+                                    </div>
+                                    ` : ''}
+                                </div>
+                                ` : ''}
+                            </div>
+                            
+                            <!-- Conteúdo do Termo -->
+                            <div style="background: #f8f9fa; padding: 2rem; border-radius: 15px; margin-bottom: 2rem; border: 1px solid #e9ecef;">
+                                <h6 style="font-size: 1.1rem; font-weight: 700; color: #333; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.5rem;">
+                                    <i class="fas fa-file-alt"></i>
+                                    Conteúdo do Termo Aceito
+                                </h6>
+                                ${termo.conteudo_termo ? `
+                                    <div style="background: white; padding: 1.5rem; border-radius: 10px; border: 1px solid #e9ecef; white-space: pre-wrap; line-height: 1.8; color: #333; font-size: 0.95rem; max-height: 500px; overflow-y: auto;">
+                                        ${escapeHtml(termo.conteudo_termo)}
+                                    </div>
+                                ` : `
+                                    <div style="text-align: center; padding: 2rem; background: white; border-radius: 10px; color: #6c757d;">
+                                        <i class="fas fa-file-alt" style="font-size: 3rem; opacity: 0.3; margin-bottom: 1rem;"></i>
+                                        <p>Conteúdo do termo não disponível</p>
+                                    </div>
+                                `}
+                            </div>
+                            
+                            <div class="modal-footer" style="padding-top: 1.5rem; border-top: 1px solid #e9ecef; display: flex; justify-content: flex-end;">
+                                <button class="btn btn-secondary" onclick="this.closest('.modal').remove()" style="padding: 0.75rem 1.5rem; border-radius: 10px; border: none; font-weight: 600; background: #6c757d; color: white; cursor: pointer;">Fechar</button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                document.body.appendChild(modal);
+                
+                // Fechar modal ao clicar no backdrop
+                modal.addEventListener('click', (e) => {
+                    if (e.target === modal) {
+                        modal.remove();
+                    }
+                });
+            } catch (error) {
+                console.error('❌ Erro ao visualizar termo aceito:', error);
+                showNotification('Erro ao carregar termo aceito: ' + error.message, 'error');
+            }
+        }
+
         async function reprovarMotorista(coletaId, motoristaId) {
             console.log('🔄 Função reprovarMotorista chamada:', { coletaId, motoristaId });
             
@@ -18118,7 +18680,7 @@
                 // v2.0 - Campos corrigidos: removidos contas_pagar_adiantamento, contas_pagar_saldo, pendencia_saldo (não existem na tabela)
                 const { data, error } = await supabaseClient
                     .from('coletas')
-                    .select('id, filial, numero_coleta, cliente, data_recebimento, data_entrega, origem, destino, valor, km, tipos_veiculo, tipos_carroceria, status, etapa_atual, observacoes, prioridade, motorista_id, etapas_concluidas, arquivado, resultado_final, data_finalizacao, created_at, updated_at, created_by, updated_by, data_atualizacao, gr_aprovado, gr_reprovado_por, gr_motivo_reprovacao, gr_data_reprovacao, contas_pagar_pago, contas_pagar_tipo, contas_pagar_data, contas_pagar_pago_por, diaria')
+                    .select('id, filial, numero_coleta, cliente, data_recebimento, data_entrega, origem, destino, tipo_produto, codigo_tabela, valor, frete_motorista, km, tipos_veiculo, tipos_carroceria, status, etapa_atual, observacoes, prioridade, motorista_id, etapas_concluidas, arquivado, resultado_final, data_finalizacao, created_at, updated_at, created_by, updated_by, data_atualizacao, gr_aprovado, gr_reprovado_por, gr_motivo_reprovacao, gr_data_reprovacao, contas_pagar_pago, contas_pagar_tipo, contas_pagar_data, contas_pagar_pago_por, diaria')
                     .order('created_at', { ascending: false });
 
                 if (error) throw error;
@@ -18310,6 +18872,68 @@
             } catch (error) {
                 await handleError(error, 'salvarColeta');
                 throw error;
+            }
+        }
+
+        /** Finalizar operação: só ganha se tiver canhoto anexado. Ao ganhar, redireciona para historico_coletas.html */
+        async function finalizarOperacao(coletaId) {
+            try {
+                if (!supabaseClient) {
+                    showNotification('Erro: Supabase não inicializado', 'error');
+                    return;
+                }
+                const coleta = coletasData.find(c => String(c.id) === String(coletaId));
+                if (!coleta) {
+                    showNotification('Coleta não encontrada.', 'error');
+                    return;
+                }
+                if (coleta.etapa_atual !== 'finalizar_operacao') {
+                    showNotification('Esta coleta não está na etapa Finalizar Operação.', 'warning');
+                    return;
+                }
+                const anexos = await carregarAnexos(coletaId, true);
+                const temCanhoto = anexos && anexos.some(a => {
+                    const nome = (a.nome_arquivo || '').toString().toLowerCase();
+                    const cat = (a.categoria || '').toString().toLowerCase();
+                    return nome.includes('canhoto') || cat === 'canhoto';
+                });
+                if (!temCanhoto) {
+                    showNotification('É necessário ter canhoto anexado na coleta para finalizar a operação. Anexe o canhoto e tente novamente.', 'warning');
+                    return;
+                }
+                if (!confirm(`Confirmar finalização da operação?\n\nA coleta "${coleta.cliente || 'Sem cliente'}" será marcada como ganha e enviada ao histórico.`)) {
+                    return;
+                }
+                const usuarioNome = (typeof currentUser !== 'undefined' && currentUser) ? (currentUser.nome || currentUser.username || currentUser.email) : 'Sistema';
+                // Usar apenas colunas existentes na tabela coletas (canhoto_validado* podem não existir)
+                const dadosAtualizacao = {
+                    etapa_atual: 'finalizar_operacao',
+                    status: 'concluida',
+                    arquivado: true,
+                    resultado_final: 'ganhou',
+                    data_finalizacao: new Date().toISOString()
+                };
+                const { error: updateError } = await supabaseClient
+                    .from('coletas')
+                    .update(dadosAtualizacao)
+                    .eq('id', coletaId);
+                if (updateError) {
+                    console.error('❌ Supabase update coletas:', updateError);
+                    throw updateError;
+                }
+                try {
+                    await salvarNoHistorico(coletaId, 'operacao_finalizada', `Operação finalizada. Canhoto validado por ${usuarioNome}. Coleta enviada ao histórico.`);
+                } catch (e) {
+                    console.warn('Erro ao salvar histórico:', e);
+                }
+                showNotification('Operação finalizada com sucesso! Redirecionando para o histórico...', 'success');
+                setTimeout(() => {
+                    window.location.href = 'historico_coletas.html';
+                }, 800);
+            } catch (error) {
+                console.error('❌ Erro ao finalizar operação:', error);
+                const msg = (error && (error.message || error.details || error.hint)) ? (error.message || error.details || error.hint) : 'Erro ao finalizar';
+                showNotification('Erro ao finalizar operação: ' + msg, 'error');
             }
         }
 
@@ -21442,10 +22066,10 @@
                         </button>
                         ` : ''}
                         ${coleta.etapa_atual === 'finalizar_operacao' ? `
-                            <button class="action-btn success" onclick="event.stopPropagation(); finalizarColeta('${coleta.id}', 'ganhou')" title="🎉 Ganhar Oportunidade - Marcar coleta como concluída com sucesso!" style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%); box-shadow: 0 4px 20px rgba(40, 167, 69, 0.5); font-weight: 700; border: 2px solid #1e7e34; font-size: 0.95rem; padding: 0.8rem 1.5rem; animation: pulse-success 2s infinite;">
-                                <i class="fas fa-trophy"></i> Ganhar Oportunidade
+                            <button class="action-btn success" onclick="event.stopPropagation(); finalizarOperacao('${coleta.id}')" title="Finalizar operação — só conclui se houver canhoto anexado; em seguida envia ao histórico" style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%); box-shadow: 0 4px 20px rgba(40, 167, 69, 0.5); font-weight: 700; border: 2px solid #1e7e34; font-size: 0.95rem; padding: 0.8rem 1.5rem; animation: pulse-success 2s infinite;">
+                                <i class="fas fa-flag-checkered"></i> Finalizar Operação
                             </button>
-                            <button class="action-btn danger" onclick="event.stopPropagation(); finalizarColeta('${coleta.id}', 'perdeu')" title="⚠️ Perder Oportunidade - Marcar coleta como cancelada" style="background: linear-gradient(135deg, #dc3545 0%, #c82333 100%); box-shadow: 0 4px 20px rgba(220, 53, 69, 0.5); font-weight: 700; border: 2px solid #bd2130; font-size: 0.95rem; padding: 0.8rem 1.5rem;">
+                            <button class="action-btn danger" onclick="event.stopPropagation(); finalizarColeta('${coleta.id}', 'perdeu')" title="Perder Oportunidade — Marcar coleta como cancelada" style="background: linear-gradient(135deg, #dc3545 0%, #c82333 100%); box-shadow: 0 4px 20px rgba(220, 53, 69, 0.5); font-weight: 700; border: 2px solid #bd2130; font-size: 0.95rem; padding: 0.8rem 1.5rem;">
                                 <i class="fas fa-times-circle"></i> Perder Oportunidade
                             </button>
                         ` : ''}
@@ -22307,6 +22931,7 @@
             });
             
             const categoriasOrdenadas = [
+                'canhoto',
                 'documentos_motorista',
                 'documentos_proprietario',
                 'documentos_veiculo',
@@ -23268,19 +23893,18 @@
                 return;
             }
 
-            // ✅ VALIDAÇÃO OBRIGATÓRIA: Não pode sair da etapa contratação se o motorista estiver reprovado
-            if (coleta.etapa_atual === 'contratacao' && coleta.motorista_id) {
-                try {
-                    const motorista = await buscarMotoristaPorId(coleta.motorista_id);
-                    const reprovacaoInfo = verificarReprovacaoPorColeta(motorista, coleta.id);
-                    if (reprovacaoInfo.reprovado) {
-                        showNotification('⚠️ O motorista vinculado está reprovado para esta coleta. É obrigatório trocar o motorista ou solicitar uma nova análise antes de avançar.', 'warning');
-                        return;
-                    }
-                } catch (err) {
-                    console.warn('⚠️ Erro ao verificar status do motorista:', err);
-                    // Continuar mesmo se houver erro na verificação
-                }
+            // ✅ Não pode ir para a etapa GR sem motorista vinculado
+            if (novaEtapaId === 'gr' && !coleta.motorista_id) {
+                showNotification('⚠️ Para mover para a etapa GR, é necessário vincular um motorista à coleta.', 'warning');
+                return;
+            }
+
+            // ✅ Só bloqueia se o motorista já foi reprovado NESTA coleta (gr_aprovado === false).
+            // Ao mover para a etapa GR, sempre permitir – o GR fará nova avaliação.
+            const reprovadoNestaColeta = coleta.gr_aprovado === false || coleta.gr_aprovado === 'false' || coleta.gr_aprovado === 0;
+            if (coleta.etapa_atual === 'contratacao' && coleta.motorista_id && reprovadoNestaColeta && novaEtapaId !== 'gr') {
+                showNotification('⚠️ O motorista foi reprovado pelo GR nesta coleta. Troque o motorista ou mova para a etapa GR para nova avaliação.', 'warning');
+                return;
             }
             
             // ✅ VALIDAÇÃO: Não pode avançar para documentação ou monitoramento sem aprovação no GR
@@ -23933,6 +24557,7 @@
         // Função para obter nome amigável da categoria
         function obterNomeCategoria(categoria) {
             const categorias = {
+                'canhoto': 'Canhoto (comprovante de entrega)',
                 'documentos_motorista': 'Documentos do Motorista',
                 'documentos_proprietario': 'Documentos do Proprietário',
                 'documentos_veiculo': 'Documentos do Veículo',
@@ -23948,6 +24573,7 @@
         // Função para obter ícone da categoria
         function obterIconeCategoria(categoria) {
             const icones = {
+                'canhoto': 'fa-file-signature',
                 'documentos_motorista': 'fa-user',
                 'documentos_proprietario': 'fa-building',
                 'documentos_veiculo': 'fa-truck',
@@ -23963,6 +24589,7 @@
         // Função para obter cor da categoria
         function obterCorCategoria(categoria) {
             const cores = {
+                'canhoto': '#059669',
                 'documentos_motorista': '#28a745',
                 'documentos_proprietario': '#667eea',
                 'documentos_veiculo': '#ffc107',
@@ -24592,7 +25219,7 @@
                             ">
                                 <p style="
                                     color: #495057; 
-                                    margin-bottom: 1.5rem; 
+                                    margin-bottom: 1rem; 
                                     font-size: 0.95rem;
                                     font-weight: 500;
                                     display: flex;
@@ -24602,12 +25229,50 @@
                                     <i class="fas fa-magic" style="color: #667eea;"></i>
                                     <span>Selecione as etiquetas que deseja vincular à esta coleta:</span>
                                 </p>
+                                <div class="filtro-etiquetas-wrapper" style="margin-bottom: 1.25rem;">
+                                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem;">
+                                        <label for="filtroEtiquetasModal" style="font-size: 0.85rem; font-weight: 600; color: #475569; display: flex; align-items: center; gap: 0.4rem;">
+                                            <i class="fas fa-search" style="color: #667eea;"></i> Buscar etiqueta
+                                        </label>
+                                        <span id="filtroEtiquetasContador" style="font-size: 0.8rem; color: #64748b; font-weight: 500;">${etiquetasDisponiveis.length} etiqueta${etiquetasDisponiveis.length !== 1 ? 's' : ''}</span>
+                                    </div>
+                                    <div style="position: relative; display: flex; align-items: center;">
+                                        <i class="fas fa-search" style="position: absolute; left: 1rem; color: #94a3b8; font-size: 0.9rem; pointer-events: none;"></i>
+                                        <input type="text" 
+                                               id="filtroEtiquetasModal" 
+                                               placeholder="Nome ou descrição..." 
+                                               autocomplete="off"
+                                               style="
+                                                    width: 100%;
+                                                    padding: 0.7rem 2.5rem 0.7rem 2.75rem;
+                                                    border: 2px solid #e2e8f0;
+                                                    border-radius: 12px;
+                                                    font-size: 0.95rem;
+                                                    color: #1e293b;
+                                                    background: #fff;
+                                                    transition: border-color 0.2s, box-shadow 0.2s;
+                                               ">
+                                        <button type="button" id="btnLimparFiltroEtiquetas" title="Limpar busca" style="
+                                            position: absolute; right: 0.5rem; width: 32px; height: 32px;
+                                            border: none; background: transparent; color: #94a3b8; cursor: pointer;
+                                            border-radius: 8px; display: none; align-items: center; justify-content: center;
+                                            transition: color 0.2s, background 0.2s;
+                                        " onmouseover="this.style.color='#64748b'; this.style.background='#f1f5f9';" onmouseout="this.style.color='#94a3b8'; this.style.background='transparent';">
+                                            <i class="fas fa-times"></i>
+                                        </button>
+                                    </div>
+                                    <div id="etiquetasNenhumResultado" style="display: none; margin-top: 1rem; padding: 1.5rem; text-align: center; background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); border: 2px dashed #e2e8f0; border-radius: 12px; color: #64748b; font-size: 0.9rem;">
+                                        <i class="fas fa-inbox" style="font-size: 2rem; opacity: 0.4; margin-bottom: 0.75rem; display: block; color: #94a3b8;"></i>
+                                        <strong style="color: #475569;">Nenhuma etiqueta encontrada</strong><br>
+                                        <span style="font-size: 0.85rem;">Tente outro termo ou clique em ✕ para limpar a busca.</span>
+                                    </div>
+                                </div>
                                 <div id="lista-etiquetas-modal" style="
                                     display: grid; 
                                     gap: 1rem;
                                 ">
                                     ${etiquetasDisponiveis.map((et, index) => `
-                                        <label class="etiqueta-checkbox-ultra-modern" for="etiqueta-${et.id}" style="
+                                        <label class="etiqueta-checkbox-ultra-modern" for="etiqueta-${et.id}" data-etiqueta-nome="${String(et.nome || '').toLowerCase().replace(/"/g, '')}" data-etiqueta-descricao="${String(et.descricao || '').toLowerCase().replace(/"/g, '')}" style="
                                             display: flex;
                                             align-items: center;
                                             padding: 1.2rem 1.5rem;
@@ -24772,6 +25437,62 @@
             const modalDiv = document.createElement('div');
             modalDiv.innerHTML = modalHTML;
             document.body.appendChild(modalDiv);
+
+            // Filtro de busca: por nome ou descrição, contador, mensagem vazia, botão limpar, foco automático
+            const filtroEl = document.getElementById('filtroEtiquetasModal');
+            const listaEl = document.getElementById('lista-etiquetas-modal');
+            const contadorEl = document.getElementById('filtroEtiquetasContador');
+            const nenhumEl = document.getElementById('etiquetasNenhumResultado');
+            const btnLimpar = document.getElementById('btnLimparFiltroEtiquetas');
+            const totalEtiquetas = etiquetasDisponiveis.length;
+
+            function atualizarFiltroEtiquetas() {
+                const term = (filtroEl && filtroEl.value ? filtroEl.value : '').trim().toLowerCase();
+                if (btnLimpar) btnLimpar.style.display = term ? 'flex' : 'none';
+                if (!listaEl) return;
+                let visiveis = 0;
+                listaEl.querySelectorAll('label[data-etiqueta-nome]').forEach(function(label) {
+                    const nome = (label.getAttribute('data-etiqueta-nome') || '').toLowerCase();
+                    const desc = (label.getAttribute('data-etiqueta-descricao') || '').toLowerCase();
+                    const match = term === '' || nome.indexOf(term) !== -1 || desc.indexOf(term) !== -1;
+                    label.style.display = match ? '' : 'none';
+                    if (match) visiveis++;
+                });
+                if (contadorEl) {
+                    if (term === '') {
+                        contadorEl.textContent = totalEtiquetas + ' etiqueta' + (totalEtiquetas !== 1 ? 's' : '');
+                    } else {
+                        contadorEl.textContent = visiveis + ' de ' + totalEtiquetas + ' etiqueta' + (totalEtiquetas !== 1 ? 's' : '');
+                    }
+                }
+                if (nenhumEl) nenhumEl.style.display = (term && visiveis === 0) ? 'block' : 'none';
+            }
+
+            if (filtroEl && listaEl) {
+                filtroEl.addEventListener('input', atualizarFiltroEtiquetas);
+                filtroEl.addEventListener('focus', function() {
+                    this.style.borderColor = '#667eea';
+                    this.style.boxShadow = '0 0 0 3px rgba(102, 126, 234, 0.15)';
+                });
+                filtroEl.addEventListener('blur', function() {
+                    this.style.borderColor = '#e2e8f0';
+                    this.style.boxShadow = 'none';
+                });
+            }
+            if (btnLimpar) {
+                btnLimpar.addEventListener('click', function() {
+                    if (filtroEl) {
+                        filtroEl.value = '';
+                        filtroEl.focus();
+                        atualizarFiltroEtiquetas();
+                    }
+                });
+            }
+            setTimeout(function() {
+                if (filtroEl) {
+                    filtroEl.focus();
+                }
+            }, 150);
 
             // Adicionar overlay
             const overlay = document.createElement('div');
@@ -25145,6 +25866,23 @@
                     coleta.data_entrada_etapa = dataEntradaEtapa;
                     }
                 });
+
+                // Agregar tempo por etapa para o gráfico (usa ETAPAS e coletasData já enriquecidas)
+                if (typeof ETAPAS !== 'undefined' && ETAPAS.length) {
+                    tempoPorEtapaAgregado = ETAPAS.map(etapa => {
+                        const naEtapa = coletasData.filter(c => c.etapa_atual === etapa.id);
+                        const totalMinutos = naEtapa.reduce((s, c) => s + (c.tempo_acumulado_etapa || 0), 0);
+                        const qtd = naEtapa.length;
+                        return {
+                            etapaId: etapa.id,
+                            nome: etapa.nome,
+                            ordem: etapa.ordem,
+                            totalMinutos,
+                            coletaCount: qtd,
+                            mediaMinutos: qtd > 0 ? totalMinutos / qtd : 0
+                        };
+                    });
+                }
             } catch (error) {
                 console.warn('⚠️ Erro ao enriquecer coletas com tempo parado:', error);
                 // Fallback: usar created_at para todas
@@ -25152,6 +25890,7 @@
                     coleta.data_entrada_etapa = coleta.created_at || coleta.updated_at;
                     coleta.tempo_acumulado_etapa = 0;
                 });
+                tempoPorEtapaAgregado = [];
             }
         }
         
@@ -25259,10 +25998,13 @@
                     coleta.etiquetas = [];
                     });
                 }
+                
+                // Re-renderizar para exibir etiquetas nos cards do Kanban (o primeiro render ocorreu antes das etiquetas)
+                if (typeof renderColetasWrapper === 'function') {
+                    await renderColetasWrapper();
+                }
             }
             
-            // Não precisa chamar renderColetas() novamente, pois originalCarregarColetas já chama
-            // Apenas atualizar stats se necessário
             updateStats();
         };
 

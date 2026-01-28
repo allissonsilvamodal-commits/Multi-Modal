@@ -664,6 +664,15 @@
                     headers['Authorization'] = `Bearer ${authToken}`;
                 }
 
+                // Capturar o conteúdo completo do termo
+                const termoContent = document.querySelector('.termo-content');
+                const conteudoTermo = termoContent ? termoContent.innerText || termoContent.textContent : '';
+                
+                // Capturar informações do motorista do termo
+                const motoristaNomeTermo = document.getElementById('motoristaNome')?.textContent || '';
+                const motoristaCNHTermo = document.getElementById('motoristaCNH')?.textContent || '';
+                const termoData = document.getElementById('termoData')?.textContent || new Date().toLocaleDateString('pt-BR');
+                
                 // Enviar aceite do termo (não requer autenticação se tiver motorista_id na coleta)
                 const response = await fetch('/api/rastreamento/aceitar-termo', {
                     method: 'POST',
@@ -672,7 +681,11 @@
                     body: JSON.stringify({
                         coletaId: coletaId,
                         termoVersao: '1.0',
-                        userAgent: navigator.userAgent
+                        userAgent: navigator.userAgent,
+                        conteudoTermo: conteudoTermo,
+                        motoristaNome: motoristaNomeTermo,
+                        motoristaCNH: motoristaCNHTermo,
+                        termoData: termoData
                         // IP será obtido no servidor
                     })
                 });
@@ -797,6 +810,249 @@
         // Contador de tentativas de reaceitar termo (para evitar loop infinito)
         let tentativasReaceitarTermo = 0;
         const MAX_TENTATIVAS_REACEITAR = 2;
+        let wakeLock = null; // Para manter dispositivo acordado
+        let serviceWorkerRegistration = null;
+        
+        // IndexedDB para armazenar posições GPS
+        const DB_NAME = 'rastreamento-db';
+        const DB_VERSION = 1;
+        const STORE_NAME = 'posicoes-pendentes';
+        let db = null;
+
+        // Inicializar IndexedDB na página
+        async function abrirDB() {
+            if (db) return db;
+            
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open(DB_NAME, DB_VERSION);
+                
+                request.onerror = () => reject(request.error);
+                request.onsuccess = () => {
+                    db = request.result;
+                    resolve(db);
+                };
+                
+                request.onupgradeneeded = (event) => {
+                    const db = event.target.result;
+                    let store;
+                    if (!db.objectStoreNames.contains(STORE_NAME)) {
+                        store = db.createObjectStore(STORE_NAME, { keyPath: 'id', autoIncrement: true });
+                        store.createIndex('timestamp', 'timestamp', { unique: false });
+                        store.createIndex('coletaId', 'coletaId', { unique: false });
+                    } else {
+                        // Se o store já existe, verificar se o índice coletaId existe
+                        const transaction = event.target.transaction;
+                        store = transaction.objectStore(STORE_NAME);
+                        if (!store.indexNames.contains('coletaId')) {
+                            store.createIndex('coletaId', 'coletaId', { unique: false });
+                        }
+                    }
+                };
+            });
+        }
+
+        // Salvar posição no IndexedDB
+        async function salvarPosicaoNoIndexedDB(position, coletaId, tokenRastreamento) {
+            try {
+                if (!db) {
+                    await abrirDB();
+                }
+                
+                const { latitude, longitude, accuracy } = position.coords;
+                
+                const dadosPosicao = {
+                    coletaId: coletaId,
+                    latitude: parseFloat(latitude.toFixed(6)),
+                    longitude: parseFloat(longitude.toFixed(6)),
+                    precisao: accuracy ? parseFloat(accuracy.toFixed(2)) : null,
+                    velocidade: position.coords.speed ? parseFloat((position.coords.speed * 3.6).toFixed(2)) : null,
+                    direcao: position.coords.heading ? parseFloat(position.coords.heading.toFixed(2)) : null,
+                    tokenRastreamento: tokenRastreamento,
+                    timestamp: new Date().toISOString(),
+                    tentativas: 0
+                };
+                
+                const transaction = db.transaction([STORE_NAME], 'readwrite');
+                const store = transaction.objectStore(STORE_NAME);
+                
+                await new Promise((resolve, reject) => {
+                    const request = store.add(dadosPosicao);
+                    request.onsuccess = () => {
+                        console.log('💾 Posição salva no IndexedDB');
+                        resolve();
+                    };
+                    request.onerror = () => reject(request.error);
+                });
+                
+                // Notificar Service Worker que há nova posição
+                if (serviceWorkerRegistration && serviceWorkerRegistration.active) {
+                    serviceWorkerRegistration.active.postMessage({
+                        type: 'NOVA_POSICAO_INDEXEDDB',
+                        coletaId: coletaId
+                    });
+                }
+            } catch (error) {
+                console.error('❌ Erro ao salvar posição no IndexedDB:', error);
+            }
+        }
+
+        // Registrar Service Worker para rastreamento em background
+        async function registrarServiceWorker() {
+            if ('serviceWorker' in navigator) {
+                try {
+                    const registration = await navigator.serviceWorker.register('/sw-rastreamento.js');
+                    serviceWorkerRegistration = registration;
+                    console.log('✅ Service Worker registrado:', registration.scope);
+                    
+                    // Escutar mensagens do Service Worker
+                    navigator.serviceWorker.addEventListener('message', (event) => {
+                        console.log('[Cliente] Mensagem do SW:', event.data);
+                        
+                        if (event.data.type === 'OBTER_POSICAO_GPS') {
+                            // Service Worker pediu posição GPS
+                            obterPosicaoParaServiceWorker(event.data.coletaId);
+                        }
+                    });
+                    
+                    return registration;
+                } catch (error) {
+                    console.error('❌ Erro ao registrar Service Worker:', error);
+                    return null;
+                }
+            }
+            return null;
+        }
+
+        // Obter posição GPS para enviar ao Service Worker
+        function obterPosicaoParaServiceWorker(coletaId) {
+            if (!navigator.geolocation) return;
+            
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    // Enviar posição para o Service Worker
+                    if (serviceWorkerRegistration && serviceWorkerRegistration.active) {
+                        serviceWorkerRegistration.active.postMessage({
+                            type: 'POSICAO_GPS',
+                            position: position,
+                            coletaId: coletaId
+                        });
+                    }
+                },
+                (error) => {
+                    console.error('[Cliente] Erro ao obter posição para SW:', error);
+                },
+                {
+                    enableHighAccuracy: true,
+                    timeout: 10000,
+                    maximumAge: 60000
+                }
+            );
+        }
+
+        // Solicitar Wake Lock para manter dispositivo acordado
+        async function solicitarWakeLock() {
+            if ('wakeLock' in navigator) {
+                try {
+                    wakeLock = await navigator.wakeLock.request('screen');
+                    console.log('✅ Wake Lock ativado - dispositivo permanecerá acordado');
+                    
+                    // Escutar quando Wake Lock é liberado
+                    wakeLock.addEventListener('release', () => {
+                        console.log('⚠️ Wake Lock liberado');
+                    });
+                } catch (error) {
+                    console.warn('⚠️ Não foi possível ativar Wake Lock:', error);
+                }
+            }
+        }
+
+        // Liberar Wake Lock
+        function liberarWakeLock() {
+            if (wakeLock) {
+                wakeLock.release();
+                wakeLock = null;
+                console.log('✅ Wake Lock liberado');
+            }
+        }
+
+        // Detectar quando página está em background e continuar rastreamento
+        document.addEventListener('visibilitychange', async () => {
+            if (document.hidden) {
+                console.log('📱 Página em background - salvando última posição e continuando via Service Worker');
+                // Salvar última posição conhecida antes de ir para background
+                if (navigator.geolocation && rastreamentoAtivo && coletaId) {
+                    navigator.geolocation.getCurrentPosition(
+                        async (position) => {
+                            const token = localStorage.getItem(`rastreamento_token_${coletaId}`);
+                            if (token) {
+                                await salvarPosicaoNoIndexedDB(position, coletaId, token);
+                            }
+                        },
+                        (error) => console.warn('⚠️ Erro ao obter posição antes de background:', error),
+                        { enableHighAccuracy: false, timeout: 5000, maximumAge: 60000 }
+                    );
+                }
+            } else {
+                console.log('📱 Página em primeiro plano - rastreamento ativo');
+            }
+        });
+
+        // Salvar última posição antes de fechar a página
+        window.addEventListener('pagehide', async (event) => {
+            if (rastreamentoAtivo && coletaId && navigator.geolocation) {
+                console.log('💾 Salvando última posição antes de fechar página...');
+                // Usar getCurrentPosition com timeout curto
+                navigator.geolocation.getCurrentPosition(
+                    async (position) => {
+                        const token = localStorage.getItem(`rastreamento_token_${coletaId}`);
+                        if (token) {
+                            await salvarPosicaoNoIndexedDB(position, coletaId, token);
+                            console.log('✅ Última posição salva antes de fechar');
+                        }
+                    },
+                    (error) => console.warn('⚠️ Erro ao salvar última posição:', error),
+                    { enableHighAccuracy: false, timeout: 2000, maximumAge: 300000 }
+                );
+            }
+        });
+
+        // Também usar beforeunload como fallback
+        window.addEventListener('beforeunload', async () => {
+            if (rastreamentoAtivo && coletaId && navigator.geolocation) {
+                // Tentar obter posição rapidamente
+                navigator.geolocation.getCurrentPosition(
+                    async (position) => {
+                        const token = localStorage.getItem(`rastreamento_token_${coletaId}`);
+                        if (token) {
+                            // Salvar de forma síncrona se possível
+                            try {
+                                if (!db) await abrirDB();
+                                const { latitude, longitude, accuracy } = position.coords;
+                                const dadosPosicao = {
+                                    coletaId: coletaId,
+                                    latitude: parseFloat(latitude.toFixed(6)),
+                                    longitude: parseFloat(longitude.toFixed(6)),
+                                    precisao: accuracy ? parseFloat(accuracy.toFixed(2)) : null,
+                                    velocidade: position.coords.speed ? parseFloat((position.coords.speed * 3.6).toFixed(2)) : null,
+                                    direcao: position.coords.heading ? parseFloat(position.coords.heading.toFixed(2)) : null,
+                                    tokenRastreamento: token,
+                                    timestamp: new Date().toISOString(),
+                                    tentativas: 0
+                                };
+                                
+                                const transaction = db.transaction([STORE_NAME], 'readwrite');
+                                const store = transaction.objectStore(STORE_NAME);
+                                store.add(dadosPosicao);
+                            } catch (error) {
+                                console.warn('⚠️ Erro ao salvar no beforeunload:', error);
+                            }
+                        }
+                    },
+                    () => {},
+                    { enableHighAccuracy: false, timeout: 1000, maximumAge: 300000 }
+                );
+            }
+        });
 
         function iniciarRastreamentoGPS(coletaId, tokenRastreamento) {
             console.log('🚀 iniciarRastreamentoGPS chamado:', { coletaId, temToken: !!tokenRastreamento });
@@ -831,6 +1087,44 @@
 
             console.log('✅ Iniciando rastreamento GPS para coleta:', coletaId);
             rastreamentoAtivo = true;
+
+            // Inicializar IndexedDB
+            abrirDB().then(() => {
+                console.log('✅ IndexedDB inicializado para armazenamento de posições');
+            }).catch(error => {
+                console.error('❌ Erro ao inicializar IndexedDB:', error);
+            });
+
+            // Registrar Service Worker para rastreamento em background
+            registrarServiceWorker().then(registration => {
+                if (registration) {
+                    // Iniciar rastreamento no Service Worker
+                    if (registration.active) {
+                        registration.active.postMessage({
+                            type: 'INICIAR_RASTREAMENTO',
+                            coletaId: coletaId,
+                            tokenRastreamento: tokenRastreamento
+                        });
+                    } else {
+                        // Aguardar Service Worker estar ativo
+                        registration.addEventListener('updatefound', () => {
+                            const newWorker = registration.installing;
+                            newWorker.addEventListener('statechange', () => {
+                                if (newWorker.state === 'activated' && registration.active) {
+                                    registration.active.postMessage({
+                                        type: 'INICIAR_RASTREAMENTO',
+                                        coletaId: coletaId,
+                                        tokenRastreamento: tokenRastreamento
+                                    });
+                                }
+                            });
+                        });
+                    }
+                }
+            });
+
+            // Solicitar Wake Lock para manter dispositivo acordado
+            solicitarWakeLock();
 
             // Atualizar status
             atualizarStatusRastreamento('📍 Rastreamento GPS ativo! Aguardando primeira localização...', 'info');
@@ -900,13 +1194,28 @@
             );
 
             // Iniciar watchPosition para monitoramento contínuo
+            // watchPosition continua funcionando mesmo quando a página está em background
             watchId = navigator.geolocation.watchPosition(
                 (position) => {
                     console.log('📍 Nova posição detectada:', {
                         lat: position.coords.latitude,
                         lng: position.coords.longitude
                     });
+                    
+                    // Enviar posição normalmente
                     enviarPosicaoGPS(position, coletaId, tokenRastreamento);
+                    
+                    // Salvar no IndexedDB para garantir persistência
+                    salvarPosicaoNoIndexedDB(position, coletaId, tokenRastreamento);
+                    
+                    // Também enviar para Service Worker para garantir envio em background
+                    if (serviceWorkerRegistration && serviceWorkerRegistration.active) {
+                        serviceWorkerRegistration.active.postMessage({
+                            type: 'POSICAO_GPS',
+                            position: position,
+                            coletaId: coletaId
+                        });
+                    }
                 },
                 (error) => {
                     console.warn('⚠️ Erro no watchPosition:', error);
@@ -915,7 +1224,13 @@
                         rastreamentoAtivo = false;
                     }
                 },
-                options
+                {
+                    ...options,
+                    // Configurações otimizadas para funcionar em background
+                    enableHighAccuracy: true,
+                    timeout: 60000,
+                    maximumAge: 120000
+                }
             );
 
             // Enviar posição periodicamente (a cada 2 minutos para garantir envio frequente)
@@ -950,9 +1265,11 @@
 
                 console.log('📍 Solicitando posição periódica...');
                 navigator.geolocation.getCurrentPosition(
-                    (position) => {
+                    async (position) => {
                         console.log('✅ Posição periódica obtida, enviando...');
                         enviarPosicaoGPS(position, coletaId, tokenRastreamento);
+                        // Também salvar no IndexedDB
+                        await salvarPosicaoNoIndexedDB(position, coletaId, tokenRastreamento);
                     },
                     (error) => {
                         console.warn('⚠️ Erro ao obter posição periódica:', error);
@@ -965,8 +1282,34 @@
                 );
             }, INTERVALO_ENVIO_MS);
 
-            atualizarStatusRastreamento('✅ Rastreamento GPS ativo! Sua localização será enviada a cada 2 minutos.', 'success');
+            atualizarStatusRastreamento('✅ Rastreamento GPS ativo! Sua localização será enviada a cada 2 minutos. O rastreamento continuará mesmo se você fechar a aba ou mudar de aplicativo.', 'success');
             console.log('✅ Rastreamento GPS configurado e ativo!');
+        }
+
+        // Parar rastreamento quando necessário
+        function pararRastreamentoGPS() {
+            console.log('⏹️ Parando rastreamento GPS');
+            rastreamentoAtivo = false;
+            
+            if (watchId !== null) {
+                navigator.geolocation.clearWatch(watchId);
+                watchId = null;
+            }
+            
+            if (intervaloRastreamento !== null) {
+                clearInterval(intervaloRastreamento);
+                intervaloRastreamento = null;
+            }
+            
+            // Parar Service Worker
+            if (serviceWorkerRegistration && serviceWorkerRegistration.active) {
+                serviceWorkerRegistration.active.postMessage({
+                    type: 'PARAR_RASTREAMENTO'
+                });
+            }
+            
+            // Liberar Wake Lock
+            liberarWakeLock();
         }
 
         // Função para enviar posição GPS
@@ -1058,6 +1401,13 @@
                                 tentativasReaceitarTermo++;
                                 console.log(`🔄 Token inválido. Tentando reaceitar termo (tentativa ${tentativasReaceitarTermo}/${MAX_TENTATIVAS_REACEITAR})...`);
                                 try {
+                                    // Capturar conteúdo do termo para reaceitar
+                                    const termoContent = document.querySelector('.termo-content');
+                                    const conteudoTermo = termoContent ? termoContent.innerText || termoContent.textContent : '';
+                                    const motoristaNomeTermo = document.getElementById('motoristaNome')?.textContent || '';
+                                    const motoristaCNHTermo = document.getElementById('motoristaCNH')?.textContent || '';
+                                    const termoData = document.getElementById('termoData')?.textContent || new Date().toLocaleDateString('pt-BR');
+                                    
                                     const reaceitarResponse = await fetch('/api/rastreamento/aceitar-termo', {
                                         method: 'POST',
                                         headers: {
@@ -1067,7 +1417,11 @@
                                         body: JSON.stringify({
                                             coletaId: coletaId,
                                             termoVersao: '1.0',
-                                            userAgent: navigator.userAgent
+                                            userAgent: navigator.userAgent,
+                                            conteudoTermo: conteudoTermo,
+                                            motoristaNome: motoristaNomeTermo,
+                                            motoristaCNH: motoristaCNHTermo,
+                                            termoData: termoData
                                         })
                                     });
                                     
@@ -1102,6 +1456,13 @@
                                 tentativasReaceitarTermo++;
                                 try {
                                     console.log(`🔄 Tentando reaceitar o termo para obter novo token (tentativa ${tentativasReaceitarTermo}/${MAX_TENTATIVAS_REACEITAR})...`);
+                                    // Capturar conteúdo do termo para reaceitar
+                                    const termoContent = document.querySelector('.termo-content');
+                                    const conteudoTermo = termoContent ? termoContent.innerText || termoContent.textContent : '';
+                                    const motoristaNomeTermo = document.getElementById('motoristaNome')?.textContent || '';
+                                    const motoristaCNHTermo = document.getElementById('motoristaCNH')?.textContent || '';
+                                    const termoData = document.getElementById('termoData')?.textContent || new Date().toLocaleDateString('pt-BR');
+                                    
                                     const reaceitarResponse = await fetch('/api/rastreamento/aceitar-termo', {
                                         method: 'POST',
                                         headers: {
@@ -1111,7 +1472,11 @@
                                         body: JSON.stringify({
                                             coletaId: coletaId,
                                             termoVersao: '1.0',
-                                            userAgent: navigator.userAgent
+                                            userAgent: navigator.userAgent,
+                                            conteudoTermo: conteudoTermo,
+                                            motoristaNome: motoristaNomeTermo,
+                                            motoristaCNH: motoristaCNHTermo,
+                                            termoData: termoData
                                         })
                                     });
                                     

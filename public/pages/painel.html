@@ -4495,12 +4495,32 @@ const estados = [
                     headers: { ...headers, 'Content-Type': 'application/json' },
                     credentials: 'include'
                 });
-                const data = await response.json();
+
+                let data;
+                try {
+                    data = await response.json();
+                } catch (parseErr) {
+                    if (response.status === 502 || response.status === 503 || response.status === 504) {
+                        throw new Error('Evolution API indisponível (erro ' + response.status + '). Verifique se o servidor Evolution está online e a URL em Settings > Evolution API está correta.');
+                    }
+                    throw new Error('Resposta inválida do servidor. A Evolution API pode estar indisponível. Tente novamente.');
+                }
+
+                if (!response.ok) {
+                    const errorMsg = data?.error || (response.status === 502 ? 'Evolution API indisponível (502). Verifique se o servidor está online e a URL em Settings.' : 'Não foi possível gerar o QR Code.');
+                    if (errorMsg.includes('não configurada') || (data?.error && data.error.includes('não configurada'))) {
+                        throw new Error('Você precisa configurar sua instância Evolution primeiro. Vá em Settings > Evolution API e cadastre sua instância.');
+                    }
+                    throw new Error(errorMsg);
+                }
 
                 if (!data.success) {
                     const errorMsg = data.error || 'Não foi possível gerar o QR Code.';
                     if (errorMsg.includes('não configurada')) {
                         throw new Error('Você precisa configurar sua instância Evolution primeiro. Vá em Settings > Evolution API e cadastre sua instância.');
+                    }
+                    if (errorMsg.includes('Evolution API não retornou')) {
+                        throw new Error('Evolution API respondeu com formato inesperado. Verifique se a versão da Evolution API é compatível e se a URL em Settings está correta. Tente novamente.');
                     }
                     throw new Error(errorMsg);
                 }

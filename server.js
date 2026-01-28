@@ -426,13 +426,17 @@ async function getEvolutionConfigByUser(usuario) {
     }
     
     // Buscar na tabela user_evolution_apis usando o user_id
+    // Sempre ordenar por updated_at desc para usar a URL/config mais recente do DB (evita "cache" de URL antiga)
     logger.info(`🔍 Buscando em user_evolution_apis com user_id: ${userId}`);
-    let { data: userEvolutionData, error: userEvolutionError } = await supabaseAdmin
+    let { data: userEvolutionRows, error: userEvolutionError } = await supabaseAdmin
       .from('user_evolution_apis')
       .select('*')
       .eq('user_id', userId)
       .eq('active', true)
-      .maybeSingle();
+      .order('updated_at', { ascending: false })
+      .limit(1);
+
+    let userEvolutionData = (userEvolutionRows && userEvolutionRows[0]) || null;
 
     if (userEvolutionError && userEvolutionError.code !== 'PGRST116') {
       logger.error(`❌ Erro ao buscar user_evolution_apis:`, userEvolutionError);
@@ -441,15 +445,16 @@ async function getEvolutionConfigByUser(usuario) {
     // Se não encontrou, tentar buscar pelo ID do Supabase Auth diretamente (caso o user_id seja o ID do Auth)
     if (!userEvolutionData && isUUID && usuario === userId) {
       logger.info(`🔄 Tentando buscar com ID do Supabase Auth diretamente: ${usuario}`);
-      const { data: configByAuthId, error: configByAuthIdError } = await supabaseAdmin
+      const { data: configByAuthRows, error: configByAuthIdError } = await supabaseAdmin
         .from('user_evolution_apis')
         .select('*')
         .eq('user_id', usuario)
         .eq('active', true)
-        .maybeSingle();
+        .order('updated_at', { ascending: false })
+        .limit(1);
       
-      if (!configByAuthIdError && configByAuthId) {
-        userEvolutionData = configByAuthId;
+      if (!configByAuthIdError && configByAuthRows && configByAuthRows[0]) {
+        userEvolutionData = configByAuthRows[0];
         logger.info(`✅ Config encontrada usando ID do Supabase Auth diretamente: ${userEvolutionData.instance_name}`);
       }
     }
@@ -467,13 +472,15 @@ async function getEvolutionConfigByUser(usuario) {
       
       if (profileDataFull && profileDataFull.id) {
         logger.info(`🔄 Tentando buscar com ID do profile: ${profileDataFull.id}`);
-        const { data: configByProfileId, error: configByProfileIdError } = await supabaseAdmin
+        const { data: configByProfileRows, error: configByProfileIdError } = await supabaseAdmin
           .from('user_evolution_apis')
           .select('*')
           .eq('user_id', profileDataFull.id)
           .eq('active', true)
-          .maybeSingle();
+          .order('updated_at', { ascending: false })
+          .limit(1);
         
+        const configByProfileId = configByProfileRows && configByProfileRows[0];
         if (!configByProfileIdError && configByProfileId) {
           userEvolutionData = configByProfileId;
           logger.info(`✅ Config encontrada via busca por profile ID: ${userEvolutionData.instance_name}`);
@@ -490,9 +497,9 @@ async function getEvolutionConfigByUser(usuario) {
         
         if (!allConfigsError && allConfigs && allConfigs.length > 0) {
           logger.info(`📋 Encontradas ${allConfigs.length} configurações ativas. Verificando correspondências...`);
-          
-          // Para cada configuração, verificar se o user_id corresponde a um profile com o email
-          for (const config of allConfigs) {
+          // Usar a mais recente primeiro (updated_at desc) para pegar a URL atualizada do DB
+          const allConfigsSorted = [...allConfigs].sort((a, b) => new Date(b.updated_at || 0) - new Date(a.updated_at || 0));
+          for (const config of allConfigsSorted) {
             const { data: profileCheck, error: profileCheckError } = await supabaseAdmin
               .from('user_profiles')
               .select('id, email')
@@ -676,7 +683,9 @@ function normalizeEvolutionConfig(config) {
     return null;
   }
 
-  const apiUrl = config.apiUrl || config.api_url || EVOLUTION_CONFIG.baseUrl || process.env.EVOLUTION_BASE_URL;
+  // URL do DB tem prioridade absoluta: usar EVOLUTION_CONFIG/.env só quando api_url do DB estiver vazia
+  const dbUrl = (config.apiUrl && String(config.apiUrl).trim()) || (config.api_url && String(config.api_url).trim());
+  const apiUrl = dbUrl || EVOLUTION_CONFIG.baseUrl || process.env.EVOLUTION_BASE_URL;
   const apiKey = config.apiKey || config.api_key;
   const instanceName = config.instanceName || config.instance_name;
 
@@ -5135,6 +5144,61 @@ app.get('/api/rastreamento/verificar-termo', async (req, res) => {
   }
 });
 
+// Buscar termo aceito completo
+app.get('/api/rastreamento/termo-aceito', async (req, res) => {
+  try {
+    const { coletaId } = req.query;
+    
+    if (!coletaId) {
+      return res.status(400).json({ success: false, error: 'ID da coleta é obrigatório.' });
+    }
+
+    // Buscar termo aceito para esta coleta
+    const { data: termo, error: termoError } = await supabaseAdmin
+      .from('rastreamento_termos')
+      .select('id, motorista_id, coleta_id, termo_versao, conteudo_termo, motorista_nome_termo, motorista_cnh_termo, termo_data, ip_address, user_agent, aceito_em, ativo')
+      .eq('coleta_id', coletaId)
+      .eq('ativo', true)
+      .order('aceito_em', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (termoError) {
+      console.error('❌ Erro ao buscar termo:', termoError);
+      return res.status(500).json({ success: false, error: 'Erro ao buscar termo aceito.' });
+    }
+
+    if (!termo) {
+      return res.json({ success: true, termo: null, message: 'Nenhum termo aceito encontrado para esta coleta.' });
+    }
+
+    // Buscar informações do motorista
+    let motoristaInfo = null;
+    if (termo.motorista_id) {
+      const { data: motorista, error: motoristaError } = await supabaseAdmin
+        .from('motoristas')
+        .select('id, nome, cnh')
+        .eq('id', termo.motorista_id)
+        .single();
+      
+      if (!motoristaError && motorista) {
+        motoristaInfo = motorista;
+      }
+    }
+
+    return res.json({ 
+      success: true, 
+      termo: {
+        ...termo,
+        motorista_info: motoristaInfo
+      }
+    });
+  } catch (error) {
+    console.error('❌ Erro ao buscar termo aceito:', error);
+    res.status(500).json({ success: false, error: 'Erro ao processar requisição.' });
+  }
+});
+
 // Aceitar termo de rastreamento
 app.post('/api/rastreamento/aceitar-termo', express.json(), async (req, res) => {
   try {
@@ -5144,7 +5208,7 @@ app.post('/api/rastreamento/aceitar-termo', express.json(), async (req, res) => 
       hasUserAgent: !!req.body.userAgent
     });
 
-    const { coletaId, termoVersao, userAgent } = req.body;
+    const { coletaId, termoVersao, userAgent, conteudoTermo, motoristaNome, motoristaCNH, termoData } = req.body;
 
     if (!coletaId || !termoVersao) {
       console.warn('⚠️ Dados incompletos na requisição');
@@ -5218,8 +5282,25 @@ app.post('/api/rastreamento/aceitar-termo', express.json(), async (req, res) => 
       .single();
 
     if (termoExistente) {
-      // Se o termo já foi aceito, verificar se há token de rastreamento existente
+      // Se o termo já foi aceito, atualizar com o conteúdo novo se fornecido
       console.log('ℹ️ Termo já aceito anteriormente para esta coleta');
+      
+      // Se houver conteúdo novo do termo, atualizar o registro existente
+      if (conteudoTermo || motoristaNome || motoristaCNH || termoData) {
+        const dadosAtualizacao = {};
+        if (conteudoTermo) dadosAtualizacao.conteudo_termo = conteudoTermo;
+        if (motoristaNome) dadosAtualizacao.motorista_nome_termo = motoristaNome;
+        if (motoristaCNH) dadosAtualizacao.motorista_cnh_termo = motoristaCNH;
+        if (termoData) dadosAtualizacao.termo_data = termoData;
+        
+        // Atualizar o termo existente com os novos dados
+        await supabaseAdmin
+          .from('rastreamento_termos')
+          .update(dadosAtualizacao)
+          .eq('id', termoExistente.id);
+        
+        console.log('✅ Termo existente atualizado com novo conteúdo');
+      }
       
       // Tentar buscar token de rastreamento existente
       let tokenRastreamento = null;
@@ -5271,16 +5352,37 @@ app.post('/api/rastreamento/aceitar-termo', express.json(), async (req, res) => 
       termo_versao: termoVersao
     });
 
+    // Preparar dados do termo para inserção
+    const dadosTermo = {
+      motorista_id: motorista.id,
+      coleta_id: coletaId,
+      termo_versao: termoVersao,
+      ip_address: ipAddress || req.ip || 'desconhecido',
+      user_agent: userAgent || req.headers['user-agent'] || 'desconhecido',
+      ativo: true
+    };
+    
+    // Adicionar conteúdo do termo se fornecido
+    if (conteudoTermo) {
+      dadosTermo.conteudo_termo = conteudoTermo;
+    }
+    
+    // Adicionar informações adicionais se fornecidas
+    if (motoristaNome) {
+      dadosTermo.motorista_nome_termo = motoristaNome;
+    }
+    
+    if (motoristaCNH) {
+      dadosTermo.motorista_cnh_termo = motoristaCNH;
+    }
+    
+    if (termoData) {
+      dadosTermo.termo_data = termoData;
+    }
+
     const { data: novoTermo, error: insertError } = await supabaseAdmin
       .from('rastreamento_termos')
-      .insert({
-        motorista_id: motorista.id,
-        coleta_id: coletaId,
-        termo_versao: termoVersao,
-        ip_address: ipAddress || req.ip || 'desconhecido',
-        user_agent: userAgent || req.headers['user-agent'] || 'desconhecido',
-        ativo: true
-      })
+      .insert(dadosTermo)
       .select()
       .single();
 
@@ -9663,33 +9765,59 @@ app.get('/api/evolution/instance/qrcode', requireAuth, async (req, res) => {
     }
 
     const qrUrl = `${evolutionConfig.apiUrl}/instance/connect/${encodeURIComponent(evolutionConfig.instanceName)}`;
-    const response = await fetchWithTimeout(qrUrl, {
-      method: 'GET',
-      headers: {
-        apikey: evolutionConfig.apiKey,
-        'Content-Type': 'application/json'
-      }
-    }, 20000);
+    let response;
+    try {
+      response = await fetchWithTimeout(qrUrl, {
+        method: 'GET',
+        headers: {
+          apikey: evolutionConfig.apiKey,
+          'Content-Type': 'application/json'
+        }
+      }, 20000);
+    } catch (fetchErr) {
+      console.error('❌ Falha ao conectar na Evolution API:', fetchErr.message);
+      return res.status(502).json({
+        success: false,
+        error: 'Evolution API indisponível ou inacessível. Verifique se o servidor está online e se a URL em Settings > Evolution API está correta.'
+      });
+    }
 
     if (!response.ok) {
       const errorText = await response.text();
+      const is5xx = response.status >= 500;
+      const msg = is5xx
+        ? `Evolution API indisponível (erro ${response.status}). Verifique se o servidor está online e a URL em Settings está correta.`
+        : (errorText || 'Erro ao gerar QR code');
       return res.status(response.status).json({
         success: false,
-        error: 'Erro ao gerar QR code',
+        error: msg,
         details: errorText || null
       });
     }
 
-    const data = await response.json();
-    const qrValue = data?.qrcode || data?.qrCode || data?.base64 || data?.qr || data?.code || data?.data?.qrcode || data?.result?.qrcode || null;
-
-    if (!qrValue && !data?.url) {
+    let data;
+    try {
+      data = await response.json();
+    } catch (parseErr) {
+      console.error('❌ Evolution API retornou corpo inválido (não é JSON):', parseErr.message);
       return res.status(502).json({
         success: false,
-        error: 'Evolution API não retornou o QR code esperado'
+        error: 'Evolution API respondeu com formato inválido. Verifique a URL e a versão da API.'
       });
     }
 
+    const qrValue = data?.qrcode || data?.qrCode || data?.base64 || data?.qr || data?.code || data?.data?.qrcode || data?.result?.qrcode || null;
+
+    if (!qrValue && !data?.url) {
+      console.warn('⚠️ Evolution API retornou resposta sem QR code:', JSON.stringify(data).slice(0, 200));
+      return res.status(502).json({
+        success: false,
+        error: 'Evolution API não retornou o QR code esperado. Verifique se a instância existe e se a versão da Evolution API é compatível.'
+      });
+    }
+
+    // Header de debug: URL realmente usada (para confirmar que veio do DB e não do .env)
+    res.setHeader('X-Evolution-Url-Used', evolutionConfig.apiUrl || '');
     res.json({
       success: true,
       qrcode: qrValue || data.url,
@@ -10772,51 +10900,35 @@ app.get('/webhook/status-evolution', async (req, res) => {
   try {
     console.log('🔍 Verificando status da Evolution API (modo alternativo)...');
     
-    // ✅ Buscar credenciais do usuário específico
     const { usuario } = req.query;
     let config = null;
     
+    // Usar a mesma lógica de getEvolutionConfigByUser para obter sempre a URL mais recente do DB
     if (usuario) {
-      console.log('👤 Verificando credenciais para usuário:', usuario);
-      
-      // Buscar ID do usuário pelo email
-      const { data: authUsers } = await supabaseAdmin.auth.admin.listUsers();
-      const user = authUsers?.users?.find(u => u.email === usuario);
-      
-      if (user) {
-        console.log('✅ Usuário encontrado:', user.id);
-        
-        // Buscar credenciais na tabela user_evolution_apis
-        const { data: userCreds } = await supabaseAdmin
-          .from('user_evolution_apis')
-          .select('*')
-          .eq('user_id', user.id)
-          .eq('active', true)
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .maybeSingle();
-        
-        if (userCreds) {
-          console.log('✅ Usando credenciais do usuário:', userCreds.instance_name);
+      console.log('👤 Buscando config Evolution para usuário:', usuario);
+      const userConfig = await getEvolutionConfigByUser(usuario);
+      if (userConfig && !userConfig.error) {
+        const normalized = normalizeEvolutionConfig(userConfig);
+        if (normalized) {
           config = {
-            api_url: userCreds.api_url,
-            api_key: userCreds.api_key,
-            instance_name: userCreds.instance_name,
+            api_url: normalized.apiUrl,
+            api_key: normalized.apiKey,
+            instance_name: normalized.instanceName,
             source: 'user_credentials'
           };
+          console.log('✅ Config do DB (URL mais recente):', config.api_url);
         }
       }
     }
     
-    // ✅ Fallback para configuração padrão do .env
     if (!config) {
-      console.log('🔄 Usando configuração padrão do .env');
+      console.log('🔄 Nenhuma config do usuário; usando .env');
       config = {
-      api_url: process.env.EVOLUTION_BASE_URL || '',
-      api_key: process.env.EVOLUTION_API_KEY || '',
+        api_url: process.env.EVOLUTION_BASE_URL || '',
+        api_key: process.env.EVOLUTION_API_KEY || '',
         instance_name: process.env.EVOLUTION_INSTANCE_NAME || '',
         source: 'env_default'
-    };
+      };
     }
     
     console.log('📋 Configuração Evolution:', {
