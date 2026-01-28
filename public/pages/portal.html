@@ -1548,7 +1548,7 @@
 
     <!-- Rodapé com versão e melhorias -->
     <div class="version-footer" onclick="abrirModalMelhorias()" title="Clique para ver todas as melhorias! 🚀">
-        <span class="version-badge" id="versionBadge">v1.5.0</span>
+        <span class="version-badge" id="versionBadge">v1.6.0</span>
         <span class="improvements-count">
             <i class="fas fa-sparkles"></i>
             <span id="improvementsCount">0</span> melhorias implementadas
@@ -1570,13 +1570,13 @@
                     <div class="version-info mb-4">
                         <div class="d-flex align-items-center justify-content-between">
                             <div>
-                                <span class="version-badge-large">v1.5.0</span>
+                                <span class="version-badge-large" id="modalVersionBadge">v1.6.0</span>
                                 <p class="mb-0 mt-2 text-muted">Versão atual do sistema</p>
                             </div>
                             <div class="text-end">
                                 <div class="improvements-total">
                                     <i class="fas fa-sparkles"></i>
-                                    <span id="totalMelhoriasModal">127</span>
+                                    <span id="totalMelhoriasModal">0</span>
                                 </div>
                                 <p class="mb-0 mt-2 text-muted">Melhorias implementadas</p>
                             </div>
@@ -1629,7 +1629,7 @@
         let systemChart = null;
 
         // ========== INFORMAÇÕES DO SISTEMA ==========
-        const SYSTEM_VERSION = '1.5.0';
+        const SYSTEM_VERSION = '1.6.0';
 
         // ========== INICIALIZAÇÃO ==========
         document.addEventListener('DOMContentLoaded', async function() {
@@ -3147,7 +3147,11 @@
                     'Criação em lote de múltiplas coletas simultaneamente',
                     'Interface renovada com cards elegantes e modernos',
                     'Filtros otimizados por etapa totalmente funcionais',
-                    'Visualização aprimorada de dados expandidos'
+                    'Visualização aprimorada de dados expandidos',
+                    'Permissões por etapa: só quem tem permissão na etapa pode alterar ou movimentar a coleta',
+                    'Tempo por etapa agregado no Funil Geral para análises e métricas',
+                    'Cálculo de tempo acumulado por etapa considerando múltiplas entradas na mesma etapa',
+                    'Funil Geral com tempo médio por etapa e totais de valor e quantidade'
                 ]
             },
             'Relatórios e BI': {
@@ -3233,7 +3237,8 @@
                     'Mensagens de erro e sucesso claras',
                     'Loading states em operações assíncronas',
                     'Tooltips e ajuda contextual',
-                    'Interface intuitiva e fácil de usar'
+                    'Interface intuitiva e fácil de usar',
+                    'Card de versão e melhorias no portal sempre atualizado'
                 ]
             },
             'Performance e Otimização': {
@@ -3375,6 +3380,10 @@
         function carregarMelhorias() {
             const container = document.getElementById('melhoriasContainer');
             const totalMelhoriasModal = document.getElementById('totalMelhoriasModal');
+            const modalVersionBadge = document.getElementById('modalVersionBadge');
+            if (modalVersionBadge && typeof SYSTEM_VERSION !== 'undefined') {
+                modalVersionBadge.textContent = `v${SYSTEM_VERSION}`;
+            }
             
             // Calcular total de melhorias
             let total = 0;
