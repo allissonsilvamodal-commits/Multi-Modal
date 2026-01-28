@@ -502,6 +502,26 @@
             color: #ff9800;
         }
 
+        .motorista-ligar {
+            width: 32px;
+            height: 32px;
+            border: none;
+            border-radius: 8px;
+            background: rgba(37, 211, 102, 0.15);
+            color: #25d366;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-decoration: none;
+            flex-shrink: 0;
+        }
+        .motorista-ligar:hover {
+            background: rgba(37, 211, 102, 0.3);
+            color: #20bd5a;
+        }
+
         /* Pagination */
         .pagination-container {
             background: #f8f9fa;
@@ -3146,6 +3166,12 @@ const estados = [
                 const temErro = temErroTelefone1 || temErroTelefone2;
                 const desabilitado = temErro ? 'disabled' : '';
                 const classeErro = temErro ? 'telefone-erro' : '';
+                const telLigacao = (!temErroTelefone1 && motorista.telefone1) ? motorista.telefone1 : ((!temErroTelefone2 && motorista.telefone2) ? motorista.telefone2 : null);
+                let waLink = '';
+                if (telLigacao) {
+                    const d = String(telLigacao).replace(/\D/g, '');
+                    if (d.length >= 10) waLink = 'https://wa.me/' + (d.startsWith('55') ? d : '55' + d);
+                }
                 
                 return `
                 <div class="motorista-item ${selectedMotoristas.has(motorista.id) ? 'selected' : ''} ${classeErro}" 
@@ -3174,6 +3200,7 @@ const estados = [
                         </div>
                     </div>
                     <div class="motorista-actions">
+                        ${waLink ? `<a href="${waLink}" target="_blank" rel="noopener noreferrer" class="motorista-ligar" onclick="event.stopPropagation();" title="Ligar / Abrir no WhatsApp"><i class="fab fa-whatsapp"></i></a>` : ''}
                         <button class="motorista-favorito ${motoristasFavoritos.has(motorista.id) ? 'active' : ''}" 
                                 data-motorista-id="${motorista.id}" 
                                 onclick="event.stopPropagation(); toggleFavorito('${motorista.id}')"
@@ -4718,6 +4745,35 @@ const estados = [
             
             delayCounterContainer.style.display = 'none';
         }
+
+        // ========== AGUARDAR PAUSA AUTOMÁTICA (exibe contador em minutos) ==========
+        async function aguardarPausaAutomatica(minutos) {
+            const delayCounterContainer = document.getElementById('delayCounterContainer');
+            const delayCounter = document.getElementById('delayCounter');
+            const segundosTotais = Math.max(1, Math.floor(minutos) * 60);
+            let segundosRestantes = segundosTotais;
+
+            if (!delayCounterContainer || !delayCounter) {
+                await new Promise(resolve => setTimeout(resolve, segundosTotais * 1000));
+                return;
+            }
+
+            delayCounterContainer.style.display = 'block';
+            while (segundosRestantes > 0 && !disparoCancelado) {
+                if (disparosPausados) {
+                    delayCounter.textContent = '⏸️ PAUSADO - Aguardando retomada...';
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                    continue;
+                }
+                const min = Math.floor(segundosRestantes / 60);
+                const seg = segundosRestantes % 60;
+                const texto = min > 0 ? `${min} min ${seg} s` : `${seg} s`;
+                delayCounter.textContent = `⏳ Pausa automática: ${texto} restante(s) — retomando em seguida`;
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                segundosRestantes--;
+            }
+            delayCounterContainer.style.display = 'none';
+        }
         
         // ========== PARAR DISPARO ==========
         function pararDisparo() {
@@ -5012,14 +5068,14 @@ const estados = [
 
                     if (response.status === 429) {
                         data = await response.json().catch(() => ({}));
-                        totalFalhas++;
-                        const restanteMin = data.remainingMinutes ?? 15;
-                        adicionarLog(`⛔ Limite de envios atingido. Pausa obrigatória de ${restanteMin} minuto(s).`, 'warning');
-                        mostrarAviso(`Limite de envios atingido.<br>Aguarde ${restanteMin} minuto(s) antes de continuar.`);
-                        disparoCancelado = true;
-                        motivoCancelamento = 'cooldown';
-                        minutosCooldownRestante = restanteMin;
-                        break;
+                        const restanteMin = data.remainingMinutes ?? configDisparo.cooldownMinutes ?? 15;
+                        adicionarLog(`⛔ Limite de envios atingido. Pausa automática de ${restanteMin} minuto(s) — aguardando e retomando...`, 'warning');
+                        mostrarAviso(`Limite de envios atingido.<br>Pausa automática: aguardando ${restanteMin} minuto(s) e retomando em seguida.`);
+                        await aguardarPausaAutomatica(restanteMin);
+                        if (disparoCancelado) break;
+                        adicionarLog(`▶️ Pausa automática encerrada. Retomando envios...`, 'success');
+                        i--; // Repetir esta mesma mensagem (não foi enviada)
+                        continue;
                     }
 
                     if (response.ok) {
@@ -5036,16 +5092,14 @@ const estados = [
                                 adicionarLog(`🏷️ Usando instância: ${data.instancia}`, 'info');
                             }
                             if (data.cooldownTriggered) {
-                                const cooldownMsg = data.cooldownMinutes
-                                    ? `⏳ Limite atingido. Pausa automática de ${data.cooldownMinutes} minuto(s) iniciada.`
-                                    : '⏳ Limite atingido. Pausa automática iniciada.';
-                                adicionarLog(cooldownMsg, 'warning');
-                                mostrarAviso(`${cooldownMsg}<br>Retome os envios após a pausa.`);
-                                disparoCancelado = true;
-                                motivoCancelamento = 'cooldown';
-                                minutosCooldownRestante = data.cooldownMinutes || minutosCooldownRestante;
-                                break;
-                            }
+                                const cooldownMin = data.cooldownMinutes || configDisparo.cooldownMinutes || 15;
+                                adicionarLog(`⏳ Limite do bloco atingido. Pausa automática de ${cooldownMin} minuto(s) — aguardando e retomando...`, 'warning');
+                                mostrarAviso(`Limite do bloco atingido.<br>Pausa automática: aguardando ${cooldownMin} minuto(s) e retomando em seguida.`);
+                                await aguardarPausaAutomatica(cooldownMin);
+                                if (disparoCancelado) break;
+                                adicionarLog(`▶️ Pausa automática encerrada. Retomando envios...`, 'success');
+                                // Continuar para o próximo motorista (esta mensagem já foi enviada)
+                            } else {
                             
                             // ✅ APLICAR DELAY APENAS APÓS SUCESSO (exceto se for o último motorista)
                             // IMPORTANTE: O delay NÃO é aplicado em caso de erro - o próximo envio é instantâneo
@@ -5058,6 +5112,7 @@ const estados = [
                                 
                                 // Verificar se foi cancelado durante a espera
                                 if (disparoCancelado) break;
+                            }
                             }
                         } else {
                             // ❌ ERRO: Número inválido ou falha no envio

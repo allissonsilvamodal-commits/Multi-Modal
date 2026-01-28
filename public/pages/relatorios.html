@@ -1078,6 +1078,16 @@
                             <input type="text" id="filtroColetaEspecifica" class="form-control" placeholder="Ex: Filial #123, cliente ou número..."
                                 onchange="aplicarFiltros()" onkeypress="if(event.key==='Enter'){ event.preventDefault(); aplicarFiltros(); }" title="Buscar análise de uma coleta por identificação (Filial #Número), cliente ou número da coleta">
                         </div>
+                        <div class="col-md-4 mb-2 d-flex flex-column">
+                            <label class="form-label"><i class="fas fa-clock"></i> Linha do tempo da coleta</label>
+                            <div class="d-flex gap-2">
+                                <input type="text" id="buscaLinhaTempoColeta" class="form-control" placeholder="Nº, Filial #Número, cliente ou ID..."
+                                    onkeypress="if(event.key==='Enter'){ event.preventDefault(); buscarLinhaTempoColeta(); }" title="Pesquisar e ver o histórico completo da coleta">
+                                <button type="button" class="btn btn-outline-light btn-sm flex-shrink-0" onclick="buscarLinhaTempoColeta();" title="Abrir linha do tempo">
+                                    <i class="fas fa-history me-1"></i> Ver linha do tempo
+                                </button>
+                            </div>
+                        </div>
                         <div class="col-12 mt-2 d-flex align-items-end">
                             <button type="button" class="btn btn-outline-light btn-sm" onclick="limparFiltrosColetas();" title="Limpar todos os filtros e recarregar">
                                 <i class="fas fa-eraser me-1"></i> Limpar filtros
@@ -1164,6 +1174,18 @@
                         <div class="card-header-futuristic"><h5><i class="fas fa-calendar-alt"></i> Evolução de Valores por Mês</h5></div>
                         <div class="chart-container"><canvas id="chartValoresMensal"></canvas></div>
                         <small class="text-muted d-block text-center mt-2" style="padding: 0 1rem;"><i class="fas fa-mouse-pointer"></i> Clique em um ponto para ver detalhes</small>
+                    </div>
+                </div>
+                <div class="charts-row">
+                    <div class="card-futuristic">
+                        <div class="card-header-futuristic"><h5><i class="fas fa-user-check"></i> Contratação por Usuário</h5></div>
+                        <div class="chart-container"><canvas id="chartContratacaoUsuario"></canvas></div>
+                        <small class="text-muted d-block text-center mt-2" style="padding: 0 1rem;"><i class="fas fa-info-circle"></i> Vinculações de motorista à coleta no período</small>
+                    </div>
+                    <div class="card-futuristic">
+                        <div class="card-header-futuristic"><h5><i class="fas fa-building"></i> Contratação por Departamento</h5></div>
+                        <div class="chart-container"><canvas id="chartContratacaoDepartamento"></canvas></div>
+                        <small class="text-muted d-block text-center mt-2" style="padding: 0 1rem;"><i class="fas fa-info-circle"></i> Vinculações por departamento no período</small>
                     </div>
                 </div>
 
@@ -1960,6 +1982,7 @@
 	// ====== BI DE COLETAS ======
 	let chartStatus = null, chartMensal = null, chartUsuarios = null, chartPrioridade = null;
 	let chartFilial = null, chartClientes = null, chartEtapas = null, chartTiposVeiculo = null;
+	let chartContratacaoUsuario = null, chartContratacaoDepartamento = null;
 	let chartTiposCarroceria = null, chartResultadoFinal = null, chartRotas = null, chartValoresMensal = null;
 	let chartTempoPorEtapa = null;
 	let ultimasColetasBI = []; // dados atuais do relatório (para exportar CSV)
@@ -2213,9 +2236,116 @@
 
 			console.log('Coletas carregadas:', coletasFiltradas?.length || 0);
 			processarDadosColetas(coletasFiltradas);
-
+			carregarGraficosContratacao(range?.inicio, range?.fim);
 		} catch (error) {
 			console.error('Erro ao carregar BI de coletas:', error);
+		}
+	}
+
+	async function carregarGraficosContratacao(inicio, fim) {
+		try {
+			const params = new URLSearchParams();
+			if (inicio) params.set('inicio', new Date(inicio).toISOString());
+			if (fim) params.set('fim', new Date(fim).toISOString());
+			const response = await fetch('/api/relatorios/coletas/vinculacao-stats?' + params.toString(), { credentials: 'include' });
+			if (!response.ok) return;
+			const data = await response.json();
+			const byUsuario = (data.byUsuario || []).sort((a, b) => b.count - a.count).slice(0, 15);
+			const byDepartamento = (data.byDepartamento || []).sort((a, b) => b.count - a.count);
+			if (byUsuario.length > 0) {
+				criarGraficoContratacaoPorUsuario(byUsuario);
+			} else {
+				if (chartContratacaoUsuario) { chartContratacaoUsuario.destroy(); chartContratacaoUsuario = null; }
+				mostrarPlaceholderContratacao('chartContratacaoUsuario', 'Nenhuma vinculação por usuário no período');
+			}
+			if (byDepartamento.length > 0) {
+				criarGraficoContratacaoPorDepartamento(byDepartamento);
+			} else {
+				if (chartContratacaoDepartamento) { chartContratacaoDepartamento.destroy(); chartContratacaoDepartamento = null; }
+				mostrarPlaceholderContratacao('chartContratacaoDepartamento', 'Nenhuma vinculação por departamento no período');
+			}
+		} catch (e) {
+			console.warn('Erro ao carregar gráficos de contratação:', e);
+		}
+	}
+
+	function criarGraficoContratacaoPorUsuario(entries) {
+		try {
+			const ctx = document.getElementById('chartContratacaoUsuario');
+			if (!ctx || typeof Chart === 'undefined') return;
+			const colors = getChartColors();
+			if (chartContratacaoUsuario) chartContratacaoUsuario.destroy();
+			const total = entries.reduce((s, e) => s + e.count, 0);
+			chartContratacaoUsuario = ensureChart('chartContratacaoUsuario', 'bar', {
+				labels: entries.map(e => (e.nome && e.nome.length > 25 ? e.nome.substring(0, 25) + '...' : e.nome)),
+				datasets: [{
+					label: 'Vinculações',
+					data: entries.map(e => e.count),
+					backgroundColor: techBarBackground('#06b6d4', '#6366f1'),
+					borderColor: 'rgba(99,102,241,0.5)',
+					borderWidth: 1
+				}]
+			}, {
+				plugins: { legend: { display: false } },
+				onClick: (event, elements) => {
+					if (elements.length > 0) {
+						const idx = elements[0].index;
+						const nome = entries[idx].nome;
+						const valor = entries[idx].count;
+						const pct = total > 0 ? ((valor / total) * 100).toFixed(1) : 0;
+						mostrarDetalhesColetas('Usuário (contratação)', nome, valor, pct, {});
+					}
+				},
+				onHover: (event, elements) => {
+					event.native.target.style.cursor = elements.length > 0 ? 'pointer' : 'default';
+				},
+				scales: {
+					y: { beginAtZero: true, ticks: { color: colors.textColor }, grid: { color: colors.gridColor } },
+					x: { ticks: { color: colors.textColor, maxRotation: 45, minRotation: 45 }, grid: { color: colors.gridColor } }
+				}
+			});
+		} catch (e) {
+			console.error('Erro ao criar gráfico Contratação por Usuário:', e);
+		}
+	}
+
+	function criarGraficoContratacaoPorDepartamento(entries) {
+		try {
+			const ctx = document.getElementById('chartContratacaoDepartamento');
+			if (!ctx || typeof Chart === 'undefined') return;
+			const colors = getChartColors();
+			if (chartContratacaoDepartamento) chartContratacaoDepartamento.destroy();
+			const total = entries.reduce((s, e) => s + e.count, 0);
+			chartContratacaoDepartamento = ensureChart('chartContratacaoDepartamento', 'bar', {
+				labels: entries.map(e => (e.departamento && e.departamento.length > 20 ? e.departamento.substring(0, 20) + '...' : e.departamento)),
+				datasets: [{
+					label: 'Vinculações',
+					data: entries.map(e => e.count),
+					backgroundColor: TECH_CHART_PALETTE.slice(0, entries.length),
+					borderWidth: 1,
+					borderRadius: { topLeft: 6, topRight: 6, bottomLeft: 0, bottomRight: 0 }
+				}]
+			}, {
+				plugins: { legend: { display: false } },
+				onClick: (event, elements) => {
+					if (elements.length > 0) {
+						const idx = elements[0].index;
+						const dept = entries[idx].departamento;
+						const valor = entries[idx].count;
+						const pct = total > 0 ? ((valor / total) * 100).toFixed(1) : 0;
+						mostrarDetalhesColetas('Departamento (contratação)', dept, valor, pct, {});
+					}
+				},
+				onHover: (event, elements) => {
+					event.native.target.style.cursor = elements.length > 0 ? 'pointer' : 'default';
+				},
+				scales: {
+					y: { beginAtZero: true, ticks: { color: colors.textColor }, grid: { color: colors.gridColor } },
+					x: { ticks: { color: colors.textColor, maxRotation: 45, minRotation: 45 }, grid: { color: colors.gridColor } }
+				}
+			});
+		} catch (e) {
+			console.error('Erro ao criar gráfico Contratação por Departamento:', e);
 		}
 	}
 
@@ -3395,6 +3525,94 @@
 		carregarColetasBI();
 	}
 
+	// Pesquisar e exibir a linha do tempo (histórico) de uma coleta
+	async function buscarLinhaTempoColeta() {
+		const input = document.getElementById('buscaLinhaTempoColeta');
+		const q = (input && input.value || '').toString().trim();
+		if (!q) {
+			alert('Digite o número da coleta, Filial #Número, cliente ou ID para pesquisar.');
+			if (input) input.focus();
+			return;
+		}
+		const modalEl = document.getElementById('modalLinhaTempoColeta');
+		const tituloEl = document.getElementById('modalLinhaTempoTitulo');
+		const conteudoEl = document.getElementById('modalLinhaTempoConteudo');
+		if (!modalEl || !conteudoEl) return;
+		if (tituloEl) tituloEl.textContent = 'Linha do tempo';
+		conteudoEl.innerHTML = '<div class="text-center py-4"><div class="spinner-border text-primary" role="status"></div><p class="mt-3">Buscando coleta e histórico...</p></div>';
+		const modal = new bootstrap.Modal(modalEl);
+		modal.show();
+		try {
+			const response = await fetch(`/api/relatorios/coletas/linha-tempo?q=${encodeURIComponent(q)}`, { credentials: 'include' });
+			const data = await response.json().catch(() => ({}));
+			if (!response.ok) {
+				conteudoEl.innerHTML = `<div class="alert alert-warning"><i class="fas fa-search me-2"></i>${data.error || 'Coleta não encontrada.'}</div>`;
+				return;
+			}
+			const { coleta, historico } = data;
+			const ident = (coleta.filial && coleta.numero_coleta) ? `${coleta.filial} #${coleta.numero_coleta}` : (coleta.id || '').substring(0, 8);
+			if (tituloEl) tituloEl.textContent = `Linha do tempo — ${ident}`;
+			let html = `
+				<div class="mb-4 p-3 rounded" style="background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1);">
+					<div class="row g-2 small">
+						<div class="col-md-6"><strong>Cliente:</strong> ${(coleta.cliente || '-')}</div>
+						<div class="col-md-6"><strong>Rota:</strong> ${(coleta.origem || '-')} → ${(coleta.destino || '-')}</div>
+						<div class="col-md-6"><strong>Status:</strong> ${(coleta.status || '-')}</div>
+						<div class="col-md-6"><strong>Etapa:</strong> ${(coleta.etapa_atual || '-')}</div>
+					</div>
+				</div>
+				<h6 class="mb-3"><i class="fas fa-history me-2"></i>Histórico (${historico.length} registro(s))</h6>
+				<div class="timeline-list">
+			`;
+			if (historico.length === 0) {
+				html += '<p class="text-muted">Nenhum registro no histórico desta coleta.</p>';
+			} else {
+				function formatarTempoDecorrido(ms) {
+					if (ms < 0 || !isFinite(ms)) return '';
+					const seg = Math.floor(ms / 1000);
+					const min = Math.floor(seg / 60);
+					const hor = Math.floor(min / 60);
+					const dia = Math.floor(hor / 24);
+					if (dia > 0) return `${dia}d ${hor % 24}h ${min % 60}min`;
+					if (hor > 0) return `${hor}h ${min % 60}min`;
+					if (min > 0) return `${min}min`;
+					return `${seg}s`;
+				}
+				const primeiroTs = historico[0].created_at ? new Date(historico[0].created_at).getTime() : null;
+				historico.forEach((h, i) => {
+					const dataHora = h.created_at ? new Date(h.created_at).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '-';
+					const horaCompleta = h.created_at ? new Date(h.created_at).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '-';
+					const ts = h.created_at ? new Date(h.created_at).getTime() : null;
+					const anteriorTs = i > 0 && historico[i - 1].created_at ? new Date(historico[i - 1].created_at).getTime() : null;
+					const desdeAnterior = (anteriorTs != null && ts != null) ? formatarTempoDecorrido(ts - anteriorTs) : '';
+					const desdeInicio = (primeiroTs != null && ts != null && i > 0) ? formatarTempoDecorrido(ts - primeiroTs) : '';
+					const usuario = (h.usuario_nome || '') + (h.departamento ? ` (${h.departamento})` : '');
+					html += `
+						<div class="d-flex gap-3 mb-3 pb-3" style="border-bottom: 1px solid rgba(255,255,255,0.08);">
+							<div class="flex-shrink-0 text-nowrap small" style="min-width: 10rem;">
+								<div class="fw-semibold text-white">${dataHora}</div>
+								<div class="text-muted" style="font-size: 0.75rem;" title="${horaCompleta}">${horaCompleta}</div>
+								${i === 0 ? '<div class="badge bg-secondary mt-1">Início</div>' : ''}
+								${desdeAnterior ? `<div class="mt-1 text-info small"><i class="fas fa-clock me-1"></i>+ ${desdeAnterior} desde o anterior</div>` : ''}
+								${desdeInicio && i > 0 ? `<div class="mt-0 text-muted small">Total: ${desdeInicio}</div>` : ''}
+							</div>
+							<div class="flex-grow-1">
+								<div class="fw-semibold">${(h.acao || '-')}</div>
+								${h.detalhes ? `<div class="small text-secondary">${String(h.detalhes).replace(/</g, '&lt;')}</div>` : ''}
+								${usuario ? `<div class="small mt-1"><i class="fas fa-user me-1"></i>${usuario.replace(/</g, '&lt;')}</div>` : ''}
+							</div>
+						</div>
+					`;
+				});
+			}
+			html += '</div>';
+			conteudoEl.innerHTML = html;
+		} catch (err) {
+			console.error('Erro ao buscar linha do tempo:', err);
+			conteudoEl.innerHTML = `<div class="alert alert-danger"><i class="fas fa-exclamation-triangle me-2"></i>Erro ao carregar: ${err.message}</div>`;
+		}
+	}
+
 	// Variável global para armazenar dados das coletas
 	let coletasDetalhes = [];
 
@@ -3642,6 +3860,7 @@
 	window.atualizarVisibilidadeDatasColetas = atualizarVisibilidadeDatasColetas;
 	window.exportarColetasCSV = exportarColetasCSV;
 	window.limparFiltrosColetas = limparFiltrosColetas;
+	window.buscarLinhaTempoColeta = buscarLinhaTempoColeta;
 
 	// ====== MOTORISTAS - FILTROS E CARGA ======
 	let chartUsuarioMot = null, chartDepartamentoMot = null, chartTemporalMot = null;
@@ -6304,6 +6523,27 @@
                     <div id="modalColetasConteudo">
                         <p>Carregando detalhes...</p>
                     </div>
+                </div>
+                <div class="modal-footer" style="background: transparent; border-top: 1px solid var(--glass-border);">
+                    <button type="button" class="btn btn-futuristic" data-bs-dismiss="modal">Fechar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Linha do tempo da coleta -->
+    <div class="modal fade" id="modalLinhaTempoColeta" tabindex="-1" aria-labelledby="modalLinhaTempoColetaLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content" style="background: var(--glass); border: 1px solid var(--glass-border); backdrop-filter: blur(20px);">
+                <div class="modal-header" style="background: linear-gradient(135deg, #06b6d4 0%, #6366f1 100%); border-bottom: none; padding: 1rem 1.5rem;">
+                    <h5 class="modal-title" id="modalLinhaTempoColetaLabel" style="color: white; font-weight: 700;">
+                        <i class="fas fa-history me-2"></i>
+                        <span id="modalLinhaTempoTitulo">Linha do tempo</span>
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                </div>
+                <div class="modal-body" style="background: transparent; color: var(--text-primary); padding: 1.5rem;">
+                    <div id="modalLinhaTempoConteudo">Digite um termo e clique em "Ver linha do tempo".</div>
                 </div>
                 <div class="modal-footer" style="background: transparent; border-top: 1px solid var(--glass-border);">
                     <button type="button" class="btn btn-futuristic" data-bs-dismiss="modal">Fechar</button>

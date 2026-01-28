@@ -14021,7 +14021,7 @@ app.post('/api/historico/salvar', express.json(), async (req, res) => {
       return res.status(401).json({ error: 'Usuário não autenticado' });
     }
 
-    const { coleta_id, acao, detalhes, usuario_id, usuario_nome } = req.body;
+    const { coleta_id, acao, detalhes, usuario_id, usuario_nome, departamento, motorista_id } = req.body;
 
     if (!coleta_id || !acao) {
       console.error('❌ Dados incompletos para salvar histórico:', { coleta_id, acao });
@@ -14040,6 +14040,7 @@ app.post('/api/historico/salvar', express.json(), async (req, res) => {
 
     const usuarioNome = usuario_nome || user.email || user.user_metadata?.nome || 'Sistema';
     const usuarioId = usuario_id || user.id || null;
+    const departamentoLog = departamento || user.user_metadata?.departamento || null;
 
     // Inserir em historico_coletas (para compatibilidade)
     const historicoColetasId = 'HIST-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
@@ -14058,24 +14059,21 @@ app.post('/api/historico/salvar', express.json(), async (req, res) => {
       console.warn('⚠️ Erro ao salvar em historico_coletas:', error1);
     }
 
-    // Inserir em historico_movimentacoes (usada pelo modal completo)
-    console.log('📝 Inserindo em historico_movimentacoes:', {
-      coleta_id,
-      acao,
+    // Inserir em historico_movimentacoes (usada pelo modal completo; departamento para controle "quem mais contratou")
+    const movimentacaoRow = {
+      coleta_id: coleta_id,
+      acao: acao,
+      detalhes: detalhesFormatado,
       usuario_id: usuarioId,
-      usuario_nome: usuarioNome
-    });
-    
+      usuario_nome: usuarioNome,
+      created_at: new Date().toISOString()
+    };
+    if (departamentoLog != null) movimentacaoRow.departamento = departamentoLog;
+    console.log('📝 Inserindo em historico_movimentacoes:', { coleta_id, acao, usuario_id: usuarioId, usuario_nome: usuarioNome, departamento: departamentoLog });
+
     const { error: error2, data: data2 } = await supabaseAdmin
       .from('historico_movimentacoes')
-      .insert([{
-        coleta_id: coleta_id,
-        acao: acao,
-        detalhes: detalhesFormatado,
-        usuario_id: usuarioId,
-        usuario_nome: usuarioNome,
-        created_at: new Date().toISOString()
-      }])
+      .insert([movimentacaoRow])
       .select();
 
     if (error2) {
@@ -14091,6 +14089,24 @@ app.post('/api/historico/salvar', express.json(), async (req, res) => {
         details: error2.message || 'Erro desconhecido',
         code: error2.code || 'UNKNOWN_ERROR'
       });
+    }
+
+    // Log de vinculação: quem vinculou motorista à coleta (para controle "quem mais contratou")
+    const isVinculacao = (acao === 'motorista_vinculado' || acao === 'motorista_trocado') && motorista_id;
+    if (isVinculacao) {
+      try {
+        await supabaseAdmin.from('coletas_vinculacao_log').insert([{
+          coleta_id: coleta_id,
+          motorista_id: motorista_id,
+          usuario_id: usuarioId,
+          usuario_nome: usuarioNome,
+          departamento: departamentoLog || 'N/A',
+          created_at: new Date().toISOString()
+        }]);
+        console.log('✅ Log de vinculação salvo (coletas_vinculacao_log):', { coleta_id, motorista_id, usuario_nome: usuarioNome, departamento: departamentoLog });
+      } catch (errLog) {
+        console.warn('⚠️ Erro ao salvar em coletas_vinculacao_log (tabela pode não existir):', errLog?.message || errLog);
+      }
     }
 
     console.log('✅ Histórico salvo com sucesso em ambas as tabelas:', acao);
@@ -14997,6 +15013,112 @@ app.get('/api/relatorio-dados', requireAuth, async (req, res) => {
         console.error('❌ Erro ao obter dados do relatório:', error);
         res.status(500).json({ error: 'Erro ao obter dados do relatório' });
     }
+});
+
+// ========== RELATÓRIOS COLETAS: Contratação por usuário e departamento ==========
+app.get('/api/relatorios/coletas/vinculacao-stats', requireAuth, async (req, res) => {
+  try {
+    const { inicio, fim } = req.query;
+    let query = supabaseAdmin
+      .from('historico_movimentacoes')
+      .select('usuario_id, usuario_nome, departamento, created_at')
+      .in('acao', ['motorista_vinculado', 'motorista_trocado']);
+
+    if (inicio) query = query.gte('created_at', inicio);
+    if (fim) query = query.lte('created_at', fim);
+
+    const { data: rows, error } = await query;
+    if (error) throw error;
+
+    const byUsuario = {};
+    const byDepartamento = {};
+    (rows || []).forEach((r) => {
+      const nome = (r.usuario_nome || 'Não informado').toString().trim() || 'Não informado';
+      byUsuario[nome] = (byUsuario[nome] || 0) + 1;
+      const dept = (r.departamento != null && r.departamento !== '') ? r.departamento.toString().trim() : 'N/A';
+      byDepartamento[dept] = (byDepartamento[dept] || 0) + 1;
+    });
+
+    res.json({
+      byUsuario: Object.entries(byUsuario).map(([nome, count]) => ({ nome, count })),
+      byDepartamento: Object.entries(byDepartamento).map(([departamento, count]) => ({ departamento, count }))
+    });
+  } catch (error) {
+    console.error('❌ Erro ao obter stats de vinculação:', error);
+    res.status(500).json({ error: 'Erro ao carregar estatísticas de contratação' });
+  }
+});
+
+// Linha do tempo de uma coleta (pesquisa por número, filial#número, cliente ou ID)
+app.get('/api/relatorios/coletas/linha-tempo', requireAuth, async (req, res) => {
+  try {
+    const q = (req.query.q || '').toString().trim();
+    if (!q) {
+      return res.status(400).json({ error: 'Informe o termo de busca (número da coleta, Filial #Número, cliente ou ID).' });
+    }
+
+    // Buscar coleta: por ID (UUID), por numero_coleta, por cliente ou por filial#numero
+    const term = q.replace(/\s/g, ' ');
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(term);
+    let coleta = null;
+
+    if (isUuid) {
+      const { data: one } = await supabaseAdmin.from('coletas').select('*').eq('id', term).limit(1).maybeSingle();
+      coleta = one;
+    }
+    if (!coleta && /#|\d+/.test(term)) {
+      const [filialPart, numPart] = term.split('#').map(s => s.trim());
+      if (numPart) {
+        const { data: list } = await supabaseAdmin.from('coletas').select('*').eq('numero_coleta', numPart).limit(20);
+        if (list && list.length > 0) {
+          coleta = filialPart ? list.find(c => (c.filial || '').toLowerCase() === filialPart.toLowerCase()) || list[0] : list[0];
+        }
+      }
+      if (!coleta && !isNaN(term)) {
+        const { data: list } = await supabaseAdmin.from('coletas').select('*').eq('numero_coleta', term).limit(1);
+        coleta = list && list[0] ? list[0] : null;
+      }
+    }
+    if (!coleta) {
+      const { data: list } = await supabaseAdmin.from('coletas').select('*').ilike('cliente', `%${term}%`).order('created_at', { ascending: false }).limit(5);
+      coleta = list && list.length > 0 ? list[0] : null;
+    }
+    if (!coleta) {
+      return res.status(404).json({ error: 'Nenhuma coleta encontrada para o termo informado.' });
+    }
+
+    const { data: historico, error: errHist } = await supabaseAdmin
+      .from('historico_movimentacoes')
+      .select('acao, detalhes, usuario_nome, departamento, created_at')
+      .eq('coleta_id', coleta.id)
+      .order('created_at', { ascending: true });
+
+    if (errHist) throw errHist;
+
+    res.json({
+      coleta: {
+        id: coleta.id,
+        filial: coleta.filial,
+        numero_coleta: coleta.numero_coleta,
+        cliente: coleta.cliente,
+        origem: coleta.origem,
+        destino: coleta.destino,
+        status: coleta.status,
+        etapa_atual: coleta.etapa_atual,
+        created_at: coleta.created_at
+      },
+      historico: (historico || []).map(h => ({
+        acao: h.acao,
+        detalhes: h.detalhes || '',
+        usuario_nome: h.usuario_nome || '',
+        departamento: h.departamento || null,
+        created_at: h.created_at
+      }))
+    });
+  } catch (error) {
+    console.error('❌ Erro ao buscar linha do tempo:', error);
+    res.status(500).json({ error: 'Erro ao carregar linha do tempo da coleta' });
+  }
 });
 
 // ========== RELATÓRIOS: MOTORISTAS (KPIs e Séries) ==========

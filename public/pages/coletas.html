@@ -16230,6 +16230,13 @@
                 const motoristaAnteriorId = coleta?.motorista_id || null;
                 let detalhes = `Motorista vinculado: ${motorista?.nome || motoristaId}`;
                 
+                // Usuário e departamento que estão vinculando (para log e controle "quem mais contratou")
+                const userData = JSON.parse(localStorage.getItem('loggedInUser') || '{}');
+                const usuarioNome = currentUser?.nome || currentUser?.username || userData?.nome || userData?.email || 'Sistema';
+                const usuarioId = currentUser?.id || userData?.id || null;
+                const departamento = (currentUser?.departamento ?? userData?.departamento ?? 'N/A').toString().trim() || 'N/A';
+                detalhes += ` | Vinculado por: ${usuarioNome} (${departamento})`;
+                
                 // Verificar se é o mesmo motorista
                 if (motoristaAnteriorId === motoristaId) {
                     showNotification('Este motorista já está vinculado a esta coleta.', 'info');
@@ -16239,7 +16246,7 @@
                 
                 if (motoristaAnteriorId) {
                     const motoristaAnterior = await buscarMotoristaPorId(motoristaAnteriorId);
-                    detalhes = `Motorista trocado: ${motoristaAnterior?.nome || motoristaAnteriorId} → ${motorista?.nome || motoristaId}`;
+                    detalhes = `Motorista trocado: ${motoristaAnterior?.nome || motoristaAnteriorId} → ${motorista?.nome || motoristaId} | Vinculado por: ${usuarioNome} (${departamento})`;
                 }
 
                 // Atualizar coleta com motorista vinculado
@@ -16274,8 +16281,8 @@
 
                 if (error) throw error;
 
-                // Registrar no histórico
-                await salvarNoHistorico(coletaId, motoristaAnteriorId ? 'motorista_trocado' : 'motorista_vinculado', detalhes);
+                // Registrar no histórico (com usuário e departamento para controle "quem mais contratou")
+                await salvarNoHistorico(coletaId, motoristaAnteriorId ? 'motorista_trocado' : 'motorista_vinculado', detalhes, { departamento, motorista_id: motoristaId });
 
                 // Registrar que esta coleta exige nova avaliação do GR (sempre ao vincular motorista)
                 await salvarNoHistorico(coletaId, 'gr_resetado', 
@@ -20060,13 +20067,25 @@
         }
 
         // Função para salvar no histórico (salva em ambas as tabelas)
-        async function salvarNoHistorico(coletaId, acao, detalhes = '') {
+        // opts: { departamento, motorista_id } — usado na vinculação para log "quem mais contratou"
+        async function salvarNoHistorico(coletaId, acao, detalhes = '', opts = {}) {
             try {
                 const userData = JSON.parse(localStorage.getItem('loggedInUser')) || {};
                 const usuarioNome = currentUser?.nome || currentUser?.username || userData?.email || 'Sistema';
                 const usuarioId = currentUser?.id || userData?.id || null;
+                const departamento = opts.departamento ?? currentUser?.departamento ?? userData?.departamento ?? null;
                 
-                console.log('📝 Salvando histórico via API:', { coletaId, acao, usuarioNome });
+                console.log('📝 Salvando histórico via API:', { coletaId, acao, usuarioNome, departamento: departamento || '(não informado)' });
+                
+                const body = {
+                    coleta_id: coletaId,
+                    acao: acao,
+                    detalhes: detalhes,
+                    usuario_id: usuarioId,
+                    usuario_nome: usuarioNome
+                };
+                if (departamento != null) body.departamento = departamento;
+                if (opts.motorista_id != null) body.motorista_id = opts.motorista_id;
                 
                 // Usar API do servidor para salvar histórico (contorna RLS)
                 const headers = await getSupabaseAuthHeaders();
@@ -20077,13 +20096,7 @@
                         ...headers
                     },
                     credentials: 'include',
-                    body: JSON.stringify({
-                        coleta_id: coletaId,
-                        acao: acao,
-                        detalhes: detalhes,
-                        usuario_id: usuarioId,
-                        usuario_nome: usuarioNome
-                    })
+                    body: JSON.stringify(body)
                 });
 
                 if (!response.ok) {
