@@ -84,7 +84,7 @@
             -webkit-backdrop-filter: blur(20px) saturate(180%);
             border-bottom: 2px solid rgba(102, 126, 234, 0.1);
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-            padding: 1rem 0;
+            padding: 0.5rem 0;
         }
 
         .navbar-brand {
@@ -149,10 +149,13 @@
             transform: translateX(4px);
         }
         
-        /* Main Container */
+        /* Main Container - mínimo espaço no topo para tela subir */
         .main-container {
-            padding: 2rem 0;
-            min-height: calc(100vh - 80px);
+            padding: 0.25rem 0 2rem;
+        }
+        .main-container > .container {
+            padding-top: 0 !important;
+            margin-top: 0 !important;
         }
 
         /* Cards */
@@ -1041,57 +1044,117 @@
             color: white;
         }
         
-        /* Tabs */
-        .nav-tabs {
-            border: none;
-            margin-bottom: 2rem;
-            background: transparent;
+        /* Layout: menu lateral + conteúdo */
+        .settings-layout {
+            display: flex;
+            gap: 0;
+            align-items: flex-start;
         }
-        
-        .nav-tabs .nav-link {
-            border: 2px solid transparent;
+        .settings-sidebar {
+            width: 260px;
+            flex-shrink: 0;
+            background: rgba(255, 255, 255, 0.98);
+            backdrop-filter: blur(20px);
+            border-radius: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            padding: 0.75rem 0.5rem;
+            margin-right: 1rem;
+            position: sticky;
+            top: 0.5rem;
+        }
+        .settings-sidebar .nav {
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+        .settings-sidebar .nav-item {
+            margin-bottom: 0.15rem;
+        }
+        .settings-sidebar .nav-item:last-child {
+            margin-bottom: 0;
+        }
+        .settings-sidebar .nav-link {
+            display: flex;
+            align-items: center;
+            padding: 0.6rem 1rem;
             border-radius: 12px;
-            padding: 1rem 1.5rem;
-            color: white !important;
+            color: #495057 !important;
             font-weight: 600;
             transition: var(--transition);
-            margin-right: 0.5rem;
-            background: rgba(255, 255, 255, 0.15);
-            backdrop-filter: blur(10px);
-            position: relative;
-            overflow: hidden;
-        }
-        
-        .nav-tabs .nav-link::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
+            border: none;
+            text-align: left;
             width: 100%;
-            height: 100%;
-            background: rgba(255, 255, 255, 0.1);
-            transition: var(--transition);
         }
-        
-        .nav-tabs .nav-link:hover::before {
-            left: 100%;
+        .settings-sidebar .nav-link i {
+            width: 1.5rem;
+            margin-right: 0.75rem;
+            opacity: 0.85;
         }
-        
-        .nav-tabs .nav-link:hover {
-            background: rgba(255, 255, 255, 0.25);
-            border-color: rgba(255, 255, 255, 0.3);
-            transform: translateY(-2px);
+        .settings-sidebar .nav-link:hover {
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.12), rgba(118, 75, 162, 0.12));
+            color: #667eea !important;
         }
-        
-        .nav-tabs .nav-link.active {
-            background: rgba(255, 255, 255, 0.25);
-            border-color: white;
+        .settings-sidebar .nav-link.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white !important;
-            box-shadow: 0 4px 20px rgba(255, 255, 255, 0.3);
+            box-shadow: 0 4px 16px rgba(102, 126, 234, 0.4);
+        }
+        .settings-sidebar .nav-link.active i {
+            opacity: 1;
+        }
+        .settings-content {
+            flex: 1;
+            min-width: 0;
+            padding: 0 !important;
+            margin: 0 !important;
+            display: block !important;
+            align-self: flex-start;
+            height: fit-content;
+        }
+        #configTabContent.tab-content {
+            display: block !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            min-height: 0 !important;
+        }
+        .main-container .tab-pane {
+            min-height: 0 !important;
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+        .main-container .tab-pane > .card:first-child,
+        .main-container .tab-pane > .etiquetas-container:first-child {
+            margin-top: 0 !important;
+        }
+        .tab-pane {
+            animation: fadeIn 0.3s ease-in;
+        }
+        /* Sidebar responsivo: em mobile vira drawer/toggle */
+        @media (max-width: 991px) {
+            .settings-layout {
+                flex-direction: column;
+                min-height: auto;
+            }
+            .settings-sidebar {
+                width: 100%;
+                margin-right: 0;
+                margin-bottom: 1rem;
+                position: static;
+                padding: 0.75rem;
+            }
+            .settings-sidebar .nav {
+                flex-direction: row;
+                flex-wrap: wrap;
+                width: 100%;
+            }
+            .settings-sidebar .nav-item {
+                flex: 1 1 auto;
+                min-width: 140px;
+            }
         }
         
-        .nav-tabs .nav-link i {
-            margin-right: 0.5rem;
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
         }
         
         /* Modals */
@@ -1166,16 +1229,11 @@
         /* Responsive */
         @media (max-width: 768px) {
             .main-container {
-                padding: 1rem 0;
+                padding: 0.25rem 0 1.5rem;
             }
             
             .card-body {
                 padding: 1.5rem;
-            }
-            
-            .nav-tabs .nav-link {
-                padding: 0.75rem 1rem;
-                font-size: 0.875rem;
             }
         }
         
@@ -1268,46 +1326,56 @@
     <!-- Main Container -->
     <div class="main-container">
         <div class="container">
-                <!-- Tabs -->
-                <ul class="nav nav-tabs" id="configTabs" role="tablist">
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tabUsuarios" type="button">
-                        <i class="fas fa-users me-2"></i>Usuários
-                        </button>
-                </li>
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabPermissoes" type="button">
-                        <i class="fas fa-shield-alt me-2"></i>Permissões
-                        </button>
-                </li>
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabEvolutionAPI" type="button">
-                            <i class="fas fa-key me-2"></i>Evolution API
-                        </button>
-                    </li>
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabEtiquetas" type="button">
-                            <i class="fas fa-tags me-2"></i>Etiquetas
-                        </button>
-                    </li>
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabAvisos" type="button">
-                            <i class="fas fa-bullhorn me-2"></i>Avisos
-                        </button>
-                    </li>
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabSistema" type="button">
-                            <i class="fas fa-cogs me-2"></i>Configurações
-                        </button>
-                </li>
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabManutencao" type="button">
-                            <i class="fas fa-tools me-2"></i>Manutenção
-                        </button>
-                </li>
-            </ul>
+                <div class="settings-layout">
+                    <!-- Menu lateral esquerdo -->
+                    <aside class="settings-sidebar">
+                        <h6 class="text-muted px-3 mb-1 mt-0 pt-0 small text-uppercase fw-bold">Módulos</h6>
+                        <ul class="nav flex-column" id="configTabs" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tabUsuarios" type="button" role="tab">
+                                    <i class="fas fa-users"></i>Usuários
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabPermissoes" type="button" role="tab">
+                                    <i class="fas fa-shield-alt"></i>Permissões
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabEvolutionAPI" type="button" role="tab">
+                                    <i class="fas fa-key"></i>Evolution API
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabEtiquetas" type="button" role="tab">
+                                    <i class="fas fa-tags"></i>Etiquetas
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabAvisos" type="button" role="tab">
+                                    <i class="fas fa-bullhorn"></i>Avisos
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabSistema" type="button" role="tab">
+                                    <i class="fas fa-cogs"></i>Configurações
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabDisparoUsuarios" type="button" role="tab">
+                                    <i class="fas fa-paper-plane"></i>Disparo (usuários)
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabManutencao" type="button" role="tab">
+                                    <i class="fas fa-tools"></i>Manutenção
+                                </button>
+                            </li>
+                        </ul>
+                    </aside>
 
-                <div class="tab-content mt-4">
+                    <div class="settings-content">
+                <div class="tab-content" id="configTabContent">
                 <!-- Tab Usuários -->
                     <div class="tab-pane fade show active" id="tabUsuarios" role="tabpanel">
                         <div class="card fade-in">
@@ -1657,6 +1725,122 @@
                             </div>
                         </div>
                     </div>
+
+                    <!-- Tab Configurações de disparo por usuário -->
+                    <div class="tab-pane fade" id="tabDisparoUsuarios" role="tabpanel">
+                        <div class="card fade-in">
+                            <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+                                <h5 class="mb-0">
+                                    <i class="fas fa-paper-plane me-2"></i>
+                                    Configurações de disparo por usuário
+                                </h5>
+                                <div class="d-flex gap-2">
+                                    <button type="button" class="btn btn-success btn-sm" onclick="abrirModalNovaConfigDisparo()" title="Criar configuração para um usuário">
+                                        <i class="fas fa-plus me-1"></i>Adicionar configuração
+                                    </button>
+                                    <button type="button" class="btn btn-primary btn-sm" onclick="carregarConfiguracoesDisparoUsuarios()" title="Atualizar lista">
+                                        <i class="fas fa-sync-alt me-1"></i>Atualizar
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <p class="text-muted mb-3">
+                                    <i class="fas fa-info-circle me-1"></i>
+                                    Configurações de disparo por usuário. Gerencie limite, janela, pausa, delays e opções. Use &quot;Bloquear alterações&quot; para impedir que o usuário altere as configs no painel.
+                                </p>
+                                <div class="table-responsive">
+                                    <table class="table table-hover align-middle">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th>Usuário</th>
+                                                <th>Limite</th>
+                                                <th>Janela</th>
+                                                <th>Pausa</th>
+                                                <th>Delay</th>
+                                                <th>Sim. dig.</th>
+                                                <th>Random IA</th>
+                                                <th>Bloqueado</th>
+                                                <th>Cooldown</th>
+                                                <th>Restante</th>
+                                                <th>Ações</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="tbodyDisparoConfigs">
+                                            <tr>
+                                                <td colspan="11" class="text-center py-4 text-muted">
+                                                    <i class="fas fa-sync-alt fa-spin me-2"></i>Clique em &quot;Atualizar&quot; para carregar as configurações.
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <p class="small text-muted mt-2 mb-0">
+                                    <strong>Limite:</strong> msgs/bloco. <strong>Janela / Pausa:</strong> minutos. <strong>Delay:</strong> min–max seg entre disparos. <strong>Bloqueado:</strong> usuário não pode alterar no painel.
+                                </p>
+                            </div>
+                        </div>
+
+                        <!-- Modal Editar config disparo -->
+                        <div class="modal fade" id="modalEditarDisparoConfig" tabindex="-1" aria-labelledby="modalEditarDisparoConfigLabel" aria-hidden="true">
+                            <div class="modal-dialog modal-lg">
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                        <h5 class="modal-title" id="modalEditarDisparoConfigLabel"><i class="fas fa-sliders-h me-2"></i>Editar configuração de disparo</h5>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                                    </div>
+                                    <div class="modal-body">
+                                        <p class="text-muted small mb-3" id="modalEditarDisparoConfigUser"></p>
+                                        <div class="row g-3">
+                                            <div class="col-md-4">
+                                                <label class="form-label">Limite (msgs/bloco)</label>
+                                                <input type="number" class="form-control" id="editDisparoThreshold" min="1" max="1000">
+                                            </div>
+                                            <div class="col-md-4">
+                                                <label class="form-label">Janela (min)</label>
+                                                <input type="number" class="form-control" id="editDisparoWindowMinutes" min="1" max="120">
+                                            </div>
+                                            <div class="col-md-4">
+                                                <label class="form-label">Pausa (min)</label>
+                                                <input type="number" class="form-control" id="editDisparoCooldownMinutes" min="1" max="240">
+                                            </div>
+                                            <div class="col-md-4">
+                                                <label class="form-label">Delay mín. (seg)</label>
+                                                <input type="number" class="form-control" id="editDisparoDelayMin" min="1" max="600">
+                                            </div>
+                                            <div class="col-md-4">
+                                                <label class="form-label">Delay máx. (seg)</label>
+                                                <input type="number" class="form-control" id="editDisparoDelayMax" min="1" max="600">
+                                            </div>
+                                            <div class="col-12">
+                                                <div class="form-check form-switch">
+                                                    <input class="form-check-input" type="checkbox" id="editDisparoSimulateTyping">
+                                                    <label class="form-check-label" for="editDisparoSimulateTyping">Simular digitação</label>
+                                                </div>
+                                            </div>
+                                            <div class="col-12">
+                                                <div class="form-check form-switch">
+                                                    <input class="form-check-input" type="checkbox" id="editDisparoRandomMessageAI">
+                                                    <label class="form-check-label" for="editDisparoRandomMessageAI">Randomização IA</label>
+                                                </div>
+                                            </div>
+                                            <div class="col-12">
+                                                <div class="form-check form-switch">
+                                                    <input class="form-check-input" type="checkbox" id="editDisparoAllowUserEdit">
+                                                    <label class="form-check-label" for="editDisparoAllowUserEdit"><strong>Permitir que o usuário altere</strong> (desmarque para bloquear alterações no painel)</label>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                                        <button type="button" class="btn btn-primary" id="btnSalvarEditarDisparoConfig" onclick="salvarEditarDisparoConfig()">
+                                            <i class="fas fa-save me-1"></i>Salvar
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                     
                     <!-- Tab Manutenção -->
                     <div class="tab-pane fade" id="tabManutencao" role="tabpanel">
@@ -1837,6 +2021,81 @@
                             </div>
                         </div>
                     </div>
+                </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Adicionar configuração de disparo (fora da tab para evitar travamento) -->
+    <div class="modal fade" id="modalNovaConfigDisparo" tabindex="-1" aria-labelledby="modalNovaConfigDisparoLabel" aria-hidden="true" data-bs-backdrop="true" data-bs-keyboard="true">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalNovaConfigDisparoLabel"><i class="fas fa-plus-circle me-2"></i>Adicionar configuração de disparo</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted small mb-3">Crie uma configuração de disparo para um usuário que ainda não possui. O usuário poderá usar o painel de disparo com esses limites e opções.</p>
+                    <div id="novaConfigDisparoSemUsuarios" class="alert alert-info mb-3" style="display: none;">
+                        <i class="fas fa-info-circle me-2"></i>Todos os usuários já possuem configuração. Use &quot;Editar&quot; na tabela para alterar.
+                    </div>
+                    <div id="novaConfigDisparoErro" class="alert alert-danger mb-3" style="display: none;"></div>
+                    <div id="novaConfigDisparoForm">
+                        <div class="row g-3">
+                            <div class="col-12">
+                                <label class="form-label">Usuário <span class="text-danger">*</span></label>
+                                <select id="selectNovaConfigDisparoUsuario" class="form-select" required>
+                                    <option value="">— Selecione um usuário —</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Limite (msgs/bloco)</label>
+                                <input type="number" class="form-control" id="novaConfigDisparoThreshold" min="1" max="1000" value="50">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Janela (min)</label>
+                                <input type="number" class="form-control" id="novaConfigDisparoWindowMinutes" min="1" max="120" value="5">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Pausa (min)</label>
+                                <input type="number" class="form-control" id="novaConfigDisparoCooldownMinutes" min="1" max="240" value="15">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Delay mín. (seg)</label>
+                                <input type="number" class="form-control" id="novaConfigDisparoDelayMin" min="1" max="600" value="10">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Delay máx. (seg)</label>
+                                <input type="number" class="form-control" id="novaConfigDisparoDelayMax" min="1" max="600" value="30">
+                            </div>
+                            <div class="col-12">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="novaConfigDisparoSimulateTyping" checked>
+                                    <label class="form-check-label" for="novaConfigDisparoSimulateTyping">Simular digitação</label>
+                                </div>
+                            </div>
+                            <div class="col-12">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="novaConfigDisparoRandomMessageAI" checked>
+                                    <label class="form-check-label" for="novaConfigDisparoRandomMessageAI">Randomização IA</label>
+                                </div>
+                            </div>
+                            <div class="col-12">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="novaConfigDisparoAllowUserEdit" checked>
+                                    <label class="form-check-label" for="novaConfigDisparoAllowUserEdit"><strong>Permitir que o usuário altere</strong> (desmarque para bloquear alterações no painel)</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                    <button type="button" class="btn btn-success" id="btnSalvarNovaConfigDisparo" onclick="salvarNovaConfigDisparo()">
+                        <i class="fas fa-plus me-1"></i>Criar configuração
+                    </button>
                 </div>
             </div>
         </div>
@@ -2283,6 +2542,26 @@
             await carregarCredenciaisAPI();
             await carregarConfiguracoes();
             // Não carregar avisos aqui - será carregado quando a tab for exibida
+            // Carregar configs de disparo quando a aba for exibida (via listener global abaixo)
+            // Também carregar se a aba já estiver ativa (caso o usuário recarregue a página com a aba aberta)
+            const tabDisparoUsuarios = document.getElementById('tabDisparoUsuarios');
+            if (tabDisparoUsuarios && tabDisparoUsuarios.classList.contains('show') && tabDisparoUsuarios.classList.contains('active')) {
+                setTimeout(() => {
+                    console.log('📊 Aba Disparo (usuários) já ativa, carregando configurações...');
+                    carregarConfiguracoesDisparoUsuarios();
+                }, 500);
+            }
+            
+            // Listener global para abas (menu lateral)
+            const tabList = document.querySelectorAll('#configTabs button[data-bs-toggle="tab"]');
+            tabList.forEach(tab => {
+                tab.addEventListener('shown.bs.tab', function(e) {
+                    if (e.target.getAttribute('data-bs-target') === '#tabDisparoUsuarios') {
+                        console.log('📊 Aba Disparo (usuários) ativada, carregando configurações...');
+                        carregarConfiguracoesDisparoUsuarios();
+                    }
+                });
+            });
             console.log('✅ Configurações carregadas com sucesso!');
         });
 
@@ -3122,6 +3401,331 @@
                 
                 // Tentar atualizar selects mesmo com erro
                 atualizarSelectUsuarios();
+            }
+        }
+
+        async function carregarConfiguracoesDisparoUsuarios() {
+            const tbody = document.getElementById('tbodyDisparoConfigs');
+            if (!tbody) {
+                console.warn('⚠️ tbodyDisparoConfigs não encontrado');
+                return;
+            }
+            tbody.innerHTML = '<tr><td colspan="11" class="text-center py-3"><i class="fas fa-sync-alt fa-spin me-2"></i>Carregando configurações de disparo...</td></tr>';
+            try {
+                const authHeaders = await getAuthHeaders();
+                const response = await fetch('/api/settings/disparo-configs', {
+                    method: 'GET',
+                    headers: authHeaders,
+                    credentials: 'include'
+                });
+                
+                if (!response.ok) {
+                    const errorText = await response.text().catch(() => '');
+                    let errorData = {};
+                    try {
+                        errorData = JSON.parse(errorText);
+                    } catch (e) {
+                        errorData = { error: errorText || `Erro HTTP ${response.status}` };
+                    }
+                    throw new Error(errorData.error || 'Erro ao carregar configurações de disparo');
+                }
+                
+                const result = await response.json().catch(() => ({}));
+                if (!result.success) {
+                    throw new Error(result.error || 'Erro ao carregar configurações');
+                }
+                
+                const configs = result.configs || [];
+                console.log('✅ Resposta parseada com sucesso');
+                console.log('📊 Configurações de disparo carregadas:', configs.length, 'usuário(s)');
+                if (configs.length > 0) {
+                    console.log('📊 Dados recebidos:', configs);
+                }
+                
+                if (configs.length === 0) {
+                    tbody.innerHTML = `
+                        <tr>
+                            <td colspan="11" class="text-center py-5">
+                                <div class="text-muted">
+                                    <i class="fas fa-info-circle fa-2x mb-3 d-block"></i>
+                                    <p class="mb-2"><strong>Nenhum usuário com configuração de disparo ativa no momento.</strong></p>
+                                    <p class="small mb-0">
+                                        As configurações aparecem aqui quando usuários fazem disparos pelo painel ou quando você edita um usuário.<br>
+                                        <strong>Nota:</strong> As configurações são salvas no banco de dados e persistem mesmo após reiniciar o servidor.
+                                    </p>
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+                    return;
+                }
+                
+                // Ordenar por nome do usuário
+                configs.sort((a, b) => {
+                    const nomeA = (a.userName || a.userId || '').toLowerCase();
+                    const nomeB = (b.userName || b.userId || '').toLowerCase();
+                    return nomeA.localeCompare(nomeB);
+                });
+                
+                window._disparoConfigsMap = window._disparoConfigsMap || {};
+                configs.forEach(c => { window._disparoConfigsMap[c.userId] = c; });
+
+                tbody.innerHTML = configs.map(c => {
+                    const userName = escapeHtml(c.userName || c.userId || 'Usuário desconhecido');
+                    const threshold = c.threshold != null ? c.threshold : '—';
+                    const windowMin = c.windowMinutes != null ? c.windowMinutes : '—';
+                    const cooldownMin = c.cooldownMinutes != null ? c.cooldownMinutes : '—';
+                    const delayMin = c.delayMin != null ? c.delayMin : '—';
+                    const delayMax = c.delayMax != null ? c.delayMax : '—';
+                    const delayStr = (delayMin !== '—' && delayMax !== '—') ? `${delayMin}–${delayMax}` : '—';
+                    const simDig = c.simulateTyping === true ? 'Sim' : 'Não';
+                    const randomIA = c.randomMessageAI === true ? 'Sim' : 'Não';
+                    const bloqueado = c.allowUserEdit === false;
+                    const isCooldown = c.cooldownActive === true;
+                    const remaining = isCooldown && c.remainingMinutes != null ? `${c.remainingMinutes} min` : '—';
+                    const uidAttr = (c.userId || '').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+                    return `
+                    <tr class="${isCooldown ? 'table-warning' : ''}" data-user-id="${uidAttr}">
+                        <td><span class="fw-medium">${userName}</span></td>
+                        <td>${threshold}</td>
+                        <td>${windowMin}</td>
+                        <td>${cooldownMin}</td>
+                        <td>${delayStr}</td>
+                        <td>${simDig}</td>
+                        <td>${randomIA}</td>
+                        <td>${bloqueado ? '<span class="badge bg-danger"><i class="fas fa-lock me-1"></i>Sim</span>' : '<span class="badge bg-secondary">Não</span>'}</td>
+                        <td>${isCooldown ? '<span class="badge bg-warning text-dark">Sim</span>' : '<span class="badge bg-success">Não</span>'}</td>
+                        <td>${remaining}</td>
+                        <td>
+                            <button type="button" class="btn btn-sm btn-outline-primary" data-action="editar-disparo" data-user-id="${uidAttr}" title="Editar">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+                }).join('');
+
+                tbody.querySelectorAll('[data-action="editar-disparo"]').forEach(btn => {
+                    btn.addEventListener('click', () => abrirModalEditarDisparoConfig(btn.getAttribute('data-user-id')));
+                });
+                
+                console.log('✅ Configurações de disparo renderizadas com sucesso');
+            } catch (e) {
+                console.error('❌ Erro ao carregar configurações de disparo:', e);
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="11" class="text-center py-4 text-danger">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            ${escapeHtml(e.message || 'Erro ao carregar configurações')}
+                            <br>
+                            <button class="btn btn-sm btn-primary mt-2" onclick="carregarConfiguracoesDisparoUsuarios()">
+                                <i class="fas fa-sync-alt me-1"></i>Tentar novamente
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }
+        }
+
+        function escapeHtml(s) {
+            if (s == null) return '';
+            const div = document.createElement('div');
+            div.textContent = s;
+            return div.innerHTML;
+        }
+
+        let _editarDisparoUserId = null;
+
+        function abrirModalEditarDisparoConfig(userId) {
+            const map = window._disparoConfigsMap || {};
+            const c = map[userId];
+            if (!c) return;
+            _editarDisparoUserId = userId;
+            const modalUser = document.getElementById('modalEditarDisparoConfigUser');
+            const userName = c.userName || c.userId || 'Usuário';
+            if (modalUser) modalUser.textContent = `Usuário: ${userName}`;
+            document.getElementById('editDisparoThreshold').value = c.threshold != null ? c.threshold : 50;
+            document.getElementById('editDisparoWindowMinutes').value = c.windowMinutes != null ? c.windowMinutes : 5;
+            document.getElementById('editDisparoCooldownMinutes').value = c.cooldownMinutes != null ? c.cooldownMinutes : 15;
+            document.getElementById('editDisparoDelayMin').value = c.delayMin != null ? c.delayMin : 10;
+            document.getElementById('editDisparoDelayMax').value = c.delayMax != null ? c.delayMax : 30;
+            document.getElementById('editDisparoSimulateTyping').checked = !!(c.simulateTyping !== false);
+            document.getElementById('editDisparoRandomMessageAI').checked = !!(c.randomMessageAI !== false);
+            document.getElementById('editDisparoAllowUserEdit').checked = !!(c.allowUserEdit !== false);
+            const modal = document.getElementById('modalEditarDisparoConfig');
+            if (modal && window.bootstrap) {
+                const m = new bootstrap.Modal(modal);
+                m.show();
+            }
+        }
+
+        function abrirModalNovaConfigDisparo() {
+            const formEl = document.getElementById('novaConfigDisparoForm');
+            const semUsuariosEl = document.getElementById('novaConfigDisparoSemUsuarios');
+            const erroEl = document.getElementById('novaConfigDisparoErro');
+            const selectEl = document.getElementById('selectNovaConfigDisparoUsuario');
+            const btnSalvar = document.getElementById('btnSalvarNovaConfigDisparo');
+            if (!formEl || !selectEl) return;
+
+            semUsuariosEl.style.display = 'none';
+            if (erroEl) { erroEl.style.display = 'none'; erroEl.textContent = ''; }
+            formEl.style.display = 'block';
+            btnSalvar.disabled = true;
+            selectEl.innerHTML = '<option value="">— Carregando usuários... —</option>';
+            selectEl.disabled = true;
+
+            const modalEl = document.getElementById('modalNovaConfigDisparo');
+            if (modalEl && window.bootstrap) {
+                document.querySelectorAll('.modal-backdrop').forEach(b => b.remove());
+                document.body.classList.remove('modal-open');
+                document.body.style.removeProperty('overflow');
+                document.body.style.removeProperty('padding-right');
+                const m = bootstrap.Modal.getOrCreateInstance(modalEl);
+                m.show();
+            }
+
+            function preencherSelect() {
+                const comConfig = new Set(Object.keys(window._disparoConfigsMap || {}));
+                const semConfig = (usuariosData || []).filter(u => u.id && !comConfig.has(String(u.id)));
+
+                selectEl.disabled = false;
+                selectEl.innerHTML = '<option value="">— Selecione um usuário —</option>';
+                semConfig.forEach(u => {
+                    const label = (u.nome && u.nome.trim()) || u.email || u.id;
+                    const opt = document.createElement('option');
+                    opt.value = u.id;
+                    opt.textContent = label + (u.role === 'admin' ? ' (Admin)' : '');
+                    selectEl.appendChild(opt);
+                });
+
+                if (semConfig.length === 0) {
+                    formEl.style.display = 'none';
+                    semUsuariosEl.style.display = 'block';
+                    btnSalvar.disabled = true;
+                } else {
+                    document.getElementById('novaConfigDisparoThreshold').value = 50;
+                    document.getElementById('novaConfigDisparoWindowMinutes').value = 5;
+                    document.getElementById('novaConfigDisparoCooldownMinutes').value = 15;
+                    document.getElementById('novaConfigDisparoDelayMin').value = 10;
+                    document.getElementById('novaConfigDisparoDelayMax').value = 30;
+                    document.getElementById('novaConfigDisparoSimulateTyping').checked = true;
+                    document.getElementById('novaConfigDisparoRandomMessageAI').checked = true;
+                    document.getElementById('novaConfigDisparoAllowUserEdit').checked = true;
+                    btnSalvar.disabled = false;
+                }
+            }
+
+            if (usuariosData && usuariosData.length > 0) {
+                preencherSelect();
+                return;
+            }
+
+            (async function () {
+                try {
+                    await carregarUsuarios();
+                    preencherSelect();
+                } catch (e) {
+                    console.warn('Erro ao carregar usuários:', e);
+                    selectEl.disabled = false;
+                    selectEl.innerHTML = '<option value="">— Erro ao carregar —</option>';
+                    formEl.style.display = 'none';
+                    if (erroEl) {
+                        erroEl.innerHTML = '<i class="fas fa-exclamation-triangle me-2"></i>' + escapeHtml(e.message || 'Erro ao carregar usuários') + '. Feche o modal e clique em Adicionar novamente.';
+                        erroEl.style.display = 'block';
+                    }
+                }
+            })();
+        }
+
+        async function salvarNovaConfigDisparo() {
+            const userId = document.getElementById('selectNovaConfigDisparoUsuario')?.value;
+            if (!userId || !userId.trim()) {
+                alert('Selecione um usuário.');
+                return;
+            }
+            const btn = document.getElementById('btnSalvarNovaConfigDisparo');
+            if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Criando...'; }
+            try {
+                const authHeaders = await getAuthHeaders();
+                let dMin = Math.max(1, Math.min(600, parseInt(document.getElementById('novaConfigDisparoDelayMin').value, 10) || 10));
+                let dMax = Math.max(1, Math.min(600, parseInt(document.getElementById('novaConfigDisparoDelayMax').value, 10) || 30));
+                if (dMax < dMin) dMax = dMin;
+                const body = {
+                    threshold: Math.max(1, Math.min(1000, parseInt(document.getElementById('novaConfigDisparoThreshold').value, 10) || 50)),
+                    windowMinutes: Math.max(1, Math.min(120, parseInt(document.getElementById('novaConfigDisparoWindowMinutes').value, 10) || 5)),
+                    cooldownMinutes: Math.max(1, Math.min(240, parseInt(document.getElementById('novaConfigDisparoCooldownMinutes').value, 10) || 15)),
+                    delayMin: dMin,
+                    delayMax: dMax,
+                    simulateTyping: document.getElementById('novaConfigDisparoSimulateTyping').checked,
+                    randomMessageAI: document.getElementById('novaConfigDisparoRandomMessageAI').checked,
+                    allowUserEdit: document.getElementById('novaConfigDisparoAllowUserEdit').checked
+                };
+                const res = await fetch(`/api/settings/disparo-configs/${encodeURIComponent(userId)}`, {
+                    method: 'PUT',
+                    headers: { ...authHeaders, 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify(body)
+                });
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok) {
+                    alert(data.error || 'Erro ao criar configuração.');
+                    return;
+                }
+                const modal = document.getElementById('modalNovaConfigDisparo');
+                if (modal && window.bootstrap) {
+                    const m = bootstrap.Modal.getInstance(modal);
+                    if (m) m.hide();
+                }
+                await carregarConfiguracoesDisparoUsuarios();
+            } catch (e) {
+                console.error(e);
+                alert(e.message || 'Erro ao criar configuração.');
+            } finally {
+                if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-plus me-1"></i>Criar configuração'; }
+            }
+        }
+
+        async function salvarEditarDisparoConfig() {
+            if (!_editarDisparoUserId) return;
+            const btn = document.getElementById('btnSalvarEditarDisparoConfig');
+            if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Salvando...'; }
+            try {
+                const authHeaders = await getAuthHeaders();
+                let dMin = Math.max(1, Math.min(600, parseInt(document.getElementById('editDisparoDelayMin').value, 10) || 10));
+                let dMax = Math.max(1, Math.min(600, parseInt(document.getElementById('editDisparoDelayMax').value, 10) || 30));
+                if (dMax < dMin) dMax = dMin;
+                const body = {
+                    threshold: Math.max(1, Math.min(1000, parseInt(document.getElementById('editDisparoThreshold').value, 10) || 50)),
+                    windowMinutes: Math.max(1, Math.min(120, parseInt(document.getElementById('editDisparoWindowMinutes').value, 10) || 5)),
+                    cooldownMinutes: Math.max(1, Math.min(240, parseInt(document.getElementById('editDisparoCooldownMinutes').value, 10) || 15)),
+                    delayMin: dMin,
+                    delayMax: dMax,
+                    simulateTyping: document.getElementById('editDisparoSimulateTyping').checked,
+                    randomMessageAI: document.getElementById('editDisparoRandomMessageAI').checked,
+                    allowUserEdit: document.getElementById('editDisparoAllowUserEdit').checked
+                };
+                const res = await fetch(`/api/settings/disparo-configs/${encodeURIComponent(_editarDisparoUserId)}`, {
+                    method: 'PUT',
+                    headers: { ...authHeaders, 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify(body)
+                });
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok) {
+                    alert(data.error || 'Erro ao salvar.');
+                    return;
+                }
+                const modal = document.getElementById('modalEditarDisparoConfig');
+                if (modal && window.bootstrap) {
+                    const m = bootstrap.Modal.getInstance(modal);
+                    if (m) m.hide();
+                }
+                await carregarConfiguracoesDisparoUsuarios();
+            } catch (e) {
+                console.error(e);
+                alert(e.message || 'Erro ao salvar.');
+            } finally {
+                if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-save me-1"></i>Salvar'; }
             }
         }
 
@@ -4389,46 +4993,33 @@
             }
         }
 
-        // ========== EVOLUTION API ==========
+        // ========== EVOLUTION API (via servidor - contorna RLS) ==========
         async function carregarCredenciaisAPI() {
             if (!currentUser || !currentUser.id) return;
 
+            const tbody = document.getElementById('listaCredenciaisAPI');
+            if (tbody) tbody.innerHTML = '<tr><td colspan="6" class="text-center py-3"><i class="fas fa-sync-alt fa-spin me-2"></i>Carregando credenciais...</td></tr>';
+
             try {
-                let query = window.supabase
-                    .from('user_evolution_apis')
-                    .select(`
-                        *,
-                        user_profiles:user_id (
-                            id,
-                            nome,
-                            email
-                        )
-                    `);
-                
-                // Se não é admin, mostrar apenas as próprias credenciais
-                if (!currentUser.isAdmin) {
-                    query = query.eq('user_id', currentUser.id);
+                const authHeaders = await getAuthHeaders();
+                const response = await fetch('/api/settings/evolution-apis', {
+                    method: 'GET',
+                    headers: authHeaders,
+                    credentials: 'include'
+                });
+                const result = await response.json().catch(() => ({}));
+                if (!response.ok) {
+                    throw new Error(result.error || 'Erro ao carregar credenciais');
                 }
-                
-                const { data, error } = await query
-                    .order('created_at', { ascending: false });
-
-                    if (error) throw error;
-
-                credenciaisAPI = data || [];
-                
-                // Corrigir referência de user_profiles se necessário
+                credenciaisAPI = result.credenciais || [];
                 for (let i = 0; i < credenciaisAPI.length; i++) {
-                    const credencial = credenciaisAPI[i];
-                    if (credencial.user_profiles && Array.isArray(credencial.user_profiles) && credencial.user_profiles.length > 0) {
-                        credencial.user_profile = credencial.user_profiles[0];
-                    }
+                    const c = credenciaisAPI[i];
+                    if (c.user_profile) continue;
+                    const up = c.user_profiles;
+                    c.user_profile = Array.isArray(up) && up[0] ? up[0] : (up && !Array.isArray(up) ? up : null);
                 }
-                
                 renderizarCredenciaisAPI();
                 console.log('✅ Credenciais carregadas:', credenciaisAPI.length);
-                
-                // Mostrar seção de atualização global apenas para admins
                 const secaoAtualizacaoGlobal = document.getElementById('secaoAtualizacaoGlobal');
                 if (secaoAtualizacaoGlobal && currentUser.isAdmin) {
                     secaoAtualizacaoGlobal.style.display = 'block';
@@ -4436,13 +5027,16 @@
             } catch (error) {
                 console.error('❌ Erro ao carregar credenciais:', error);
                 credenciaisAPI = [];
-                document.getElementById('listaCredenciaisAPI').innerHTML = `
-                    <tr>
-                        <td colspan="6" class="text-center py-5">
-                            <p class="text-danger">❌ Erro ao carregar credenciais: ${error.message}</p>
-                        </td>
-                    </tr>
-                `;
+                if (tbody) {
+                    tbody.innerHTML = `
+                        <tr>
+                            <td colspan="6" class="text-center py-5">
+                                <p class="text-danger">❌ Erro ao carregar credenciais: ${escapeHtml(error.message || '')}</p>
+                                <button class="btn btn-primary mt-2" onclick="carregarCredenciaisAPI()">Tentar novamente</button>
+                            </td>
+                        </tr>
+                    `;
+                }
             }
         }
 
@@ -4637,76 +5231,62 @@
                 const apiKey = document.getElementById('apiKey').value;
                 const maxConexoes = parseInt(document.getElementById('maxConexoes').value) || 10;
 
-                console.log('💾 Salvando credencial:');
-                console.log('👤 Usuário atual:', currentUser);
-                console.log('🆔 ID do usuário selecionado:', usuarioId);
-                console.log('🏷️ Instância:', nomeInstancia);
-
                 if (!usuarioId || !nomeInstancia || !urlAPI || !apiKey) {
                     mostrarErro('Preencha todos os campos obrigatórios');
                     return;
                 }
 
-                // Verificar se é admin ou se está tentando adicionar para si mesmo
                 if (!currentUser.isAdmin && usuarioId !== currentUser.id) {
                     mostrarErro('Você só pode adicionar credenciais para você mesmo');
                     return;
                 }
 
-                const novaCredencial = {
-                    user_id: usuarioId,
-                    instance_name: nomeInstancia,
-                    api_url: urlAPI,
-                    api_key: apiKey,
-                    max_connections: maxConexoes,
-                    active: true
-                };
-
-                console.log('📝 Dados a serem salvos:', {
-                    user_id: novaCredencial.user_id,
-                    instance_name: novaCredencial.instance_name,
-                    api_url: novaCredencial.api_url,
-                    api_key: novaCredencial.api_key ? '***' + novaCredencial.api_key.slice(-4) : 'N/A'
+                const authHeaders = await getAuthHeaders();
+                authHeaders['Content-Type'] = 'application/json';
+                const response = await fetch('/api/settings/evolution-apis', {
+                    method: 'POST',
+                    headers: authHeaders,
+                    credentials: 'include',
+                    body: JSON.stringify({
+                        user_id: usuarioId,
+                        instance_name: nomeInstancia,
+                        api_url: urlAPI,
+                        api_key: apiKey,
+                        max_connections: maxConexoes,
+                        active: true
+                    })
                 });
-
-                const { data, error } = await window.supabase
-                    .from('user_evolution_apis')
-                    .insert([novaCredencial])
-                    .select();
-
-                if (error) {
-                    console.error('❌ Erro ao salvar:', error);
-                    throw error;
+                const result = await response.json().catch(() => ({}));
+                if (!response.ok) {
+                    throw new Error(result.error || 'Erro ao salvar credencial');
                 }
-
-                console.log('✅ Credencial salva com sucesso:', data);
 
                 bootstrap.Modal.getInstance(document.getElementById('modalNovaCredencial')).hide();
                 mostrarSucesso('Credencial salva com sucesso!');
                 await carregarCredenciaisAPI();
             } catch (error) {
                 console.error('❌ Erro ao salvar credencial:', error);
-                mostrarErro('Erro ao salvar credencial: ' + error.message);
+                mostrarErro('Erro ao salvar credencial: ' + (error.message || ''));
             }
         }
 
         async function validarCredencial(credencialId) {
             try {
-                const { error } = await window.supabase
-                    .from('user_evolution_apis')
-                    .update({ 
-                        is_valid: true,
-                        last_validated: new Date().toISOString()
-                    })
-                    .eq('id', credencialId);
-
-                if (error) throw error;
-
+                const authHeaders = await getAuthHeaders();
+                authHeaders['Content-Type'] = 'application/json';
+                const response = await fetch('/api/settings/evolution-apis/' + encodeURIComponent(credencialId), {
+                    method: 'PATCH',
+                    headers: authHeaders,
+                    credentials: 'include',
+                    body: JSON.stringify({ is_valid: true })
+                });
+                const result = await response.json().catch(() => ({}));
+                if (!response.ok) throw new Error(result.error || 'Erro ao validar');
                 mostrarSucesso('Credencial validada com sucesso!');
                 await carregarCredenciaisAPI();
             } catch (error) {
                 console.error('❌ Erro ao validar credencial:', error);
-                mostrarErro('Erro ao validar credencial');
+                mostrarErro('Erro ao validar credencial: ' + (error.message || ''));
             }
         }
 
@@ -4714,18 +5294,19 @@
             if (!confirm('Tem certeza que deseja excluir esta credencial?')) return;
 
             try {
-                const { error } = await window.supabase
-                    .from('user_evolution_apis')
-                    .delete()
-                    .eq('id', credencialId);
-
-                if (error) throw error;
-
+                const authHeaders = await getAuthHeaders();
+                const response = await fetch('/api/settings/evolution-apis/' + encodeURIComponent(credencialId), {
+                    method: 'DELETE',
+                    headers: authHeaders,
+                    credentials: 'include'
+                });
+                const result = await response.json().catch(() => ({}));
+                if (!response.ok) throw new Error(result.error || 'Erro ao excluir');
                 mostrarSucesso('Credencial excluída com sucesso!');
                 await carregarCredenciaisAPI();
             } catch (error) {
                 console.error('❌ Erro ao excluir credencial:', error);
-                mostrarErro('Erro ao excluir credencial');
+                mostrarErro('Erro ao excluir credencial: ' + (error.message || ''));
             }
         }
 

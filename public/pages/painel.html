@@ -1671,6 +1671,10 @@
             <p class="text-muted mb-3">
               Use valores conservadores. Ignorar essas limitações pode levar ao bloqueio definitivo do número no WhatsApp, pois a plataforma monitora padrões de envio agressivos. A Multimodal não se responsabiliza por números bloqueados quando os parâmetros forem reduzidos abaixo das recomendações.
             </p>
+            <div id="configBloqueadoAlert" class="alert alert-warning mb-3" style="display: none;" role="alert">
+              <i class="fas fa-lock me-2"></i>
+              <strong>Configurações gerenciadas pelo administrador.</strong> Você não pode alterá-las. Entre em contato com o suporte se precisar de ajustes.
+            </div>
             <div class="row g-3">
               <div class="col-md-4">
                 <label class="form-label">Delay mínimo (segundos)</label>
@@ -1750,7 +1754,6 @@
         let supabaseUrl, supabaseKey;
         let supabaseClient = null; // Renomeado para evitar conflito com possível variável global do Supabase
         
-        const CONFIG_DISPARO_STORAGE_KEY = 'painelDisparoConfig';
         const DEFAULT_DISPARO_CONFIG = {
             delayMin: 10,
             delayMax: 30,
@@ -1758,7 +1761,8 @@
             cooldownMinutes: 15,
             windowMinutes: 5,
             simulateTyping: true,
-            randomMessageAI: true
+            randomMessageAI: true,
+            allowUserEdit: true
         };
         let configDisparo = { ...DEFAULT_DISPARO_CONFIG };
         let treinamentoConcluido = false;
@@ -1791,13 +1795,14 @@
         }
 
         function salvarConfigDisparo() {
-            localStorage.setItem(CONFIG_DISPARO_STORAGE_KEY, JSON.stringify(configDisparo));
+            /* Config é persistida via PUT /api/disparo/config ao clicar em Aplicar */
         }
 
-        function aplicarConfigDisparo(event, silencioso = false) {
+        async function aplicarConfigDisparo(event, silencioso = false) {
             if (event && typeof event.preventDefault === 'function') {
                 event.preventDefault();
             }
+            if (!configDisparo.allowUserEdit && !silencioso) return;
 
             const delayMinInput = document.getElementById('configDelayMin');
             const delayMaxInput = document.getElementById('configDelayMax');
@@ -1807,17 +1812,18 @@
             const simulateTypingInput = document.getElementById('configSimulateTyping');
             const randomMessageAIInput = document.getElementById('configRandomMessageAI');
 
-            const delayMin = lerNumeroSeguro(delayMinInput.value, configDisparo.delayMin, 1, 600);
-            let delayMax = lerNumeroSeguro(delayMaxInput.value, configDisparo.delayMax, delayMin, 600);
+            const delayMin = lerNumeroSeguro(delayMinInput?.value, configDisparo.delayMin, 1, 600);
+            let delayMax = lerNumeroSeguro(delayMaxInput?.value, configDisparo.delayMax, delayMin, 600);
             if (delayMax < delayMin) delayMax = delayMin;
 
-            const messageLimit = lerNumeroSeguro(messageLimitInput.value, configDisparo.messageLimit, 1, 1000);
-            const cooldownMinutes = lerNumeroSeguro(cooldownMinutesInput.value, configDisparo.cooldownMinutes, 1, 240);
-            const windowMinutes = lerNumeroSeguro(windowMinutesInput.value, configDisparo.windowMinutes, 1, 120);
+            const messageLimit = lerNumeroSeguro(messageLimitInput?.value, configDisparo.messageLimit, 1, 1000);
+            const cooldownMinutes = lerNumeroSeguro(cooldownMinutesInput?.value, configDisparo.cooldownMinutes, 1, 240);
+            const windowMinutes = lerNumeroSeguro(windowMinutesInput?.value, configDisparo.windowMinutes, 1, 120);
             const simulateTyping = simulateTypingInput?.checked ?? configDisparo.simulateTyping;
             const randomMessageAI = randomMessageAIInput?.checked ?? configDisparo.randomMessageAI;
 
             configDisparo = {
+                ...configDisparo,
                 delayMin,
                 delayMax,
                 messageLimit,
@@ -1827,30 +1833,77 @@
                 randomMessageAI
             };
 
-            delayMinInput.value = configDisparo.delayMin;
-            delayMaxInput.value = configDisparo.delayMax;
-            messageLimitInput.value = configDisparo.messageLimit;
-            cooldownMinutesInput.value = configDisparo.cooldownMinutes;
-            windowMinutesInput.value = configDisparo.windowMinutes;
+            if (delayMinInput) delayMinInput.value = configDisparo.delayMin;
+            if (delayMaxInput) delayMaxInput.value = configDisparo.delayMax;
+            if (messageLimitInput) messageLimitInput.value = configDisparo.messageLimit;
+            if (cooldownMinutesInput) cooldownMinutesInput.value = configDisparo.cooldownMinutes;
+            if (windowMinutesInput) windowMinutesInput.value = configDisparo.windowMinutes;
             if (simulateTypingInput) simulateTypingInput.checked = !!configDisparo.simulateTyping;
             if (randomMessageAIInput) randomMessageAIInput.checked = !!configDisparo.randomMessageAI;
 
-            salvarConfigDisparo();
             atualizarResumoConfig();
-            if (!silencioso) {
-                mostrarSucesso('Configurações de disparo atualizadas com sucesso!');
+            if (silencioso) return;
+
+            try {
+                const authHeaders = await getAuthHeaders();
+                const res = await fetch('/api/disparo/config', {
+                    method: 'PUT',
+                    headers: { ...authHeaders, 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({
+                        delayMin: configDisparo.delayMin,
+                        delayMax: configDisparo.delayMax,
+                        messageLimit: configDisparo.messageLimit,
+                        windowMinutes: configDisparo.windowMinutes,
+                        cooldownMinutes: configDisparo.cooldownMinutes,
+                        simulateTyping: configDisparo.simulateTyping,
+                        randomMessageAI: configDisparo.randomMessageAI
+                    })
+                });
+                const data = await res.json().catch(() => ({}));
+                if (res.status === 403) {
+                    mostrarErro(data.error || 'Configurações bloqueadas pelo administrador.');
+                    return;
+                }
+                if (!res.ok) {
+                    mostrarErro(data.error || 'Erro ao salvar configurações.');
+                    return;
+                }
+                if (data.config) {
+                    configDisparo = { ...configDisparo, ...data.config };
+                    atualizarResumoConfig();
+                }
+                mostrarSucesso('Configurações de disparo salvas no servidor com sucesso!');
+            } catch (e) {
+                console.warn('⚠️ Erro ao salvar config disparo:', e);
+                mostrarErro(e.message || 'Erro ao salvar configurações.');
             }
         }
 
-        function carregarConfigDisparo() {
+        async function carregarConfigDisparo() {
             try {
-                const stored = localStorage.getItem(CONFIG_DISPARO_STORAGE_KEY);
-                if (stored) {
-                    const parsed = JSON.parse(stored);
+                const authHeaders = await getAuthHeaders();
+                const res = await fetch('/api/disparo/config', {
+                    method: 'GET',
+                    headers: authHeaders,
+                    credentials: 'include'
+                });
+                const data = await res.json().catch(() => ({}));
+                if (res.ok && data.success && data.config) {
+                    const c = data.config;
                     configDisparo = {
                         ...DEFAULT_DISPARO_CONFIG,
-                        ...parsed
+                        delayMin: c.delayMin ?? DEFAULT_DISPARO_CONFIG.delayMin,
+                        delayMax: c.delayMax ?? DEFAULT_DISPARO_CONFIG.delayMax,
+                        messageLimit: c.messageLimit ?? DEFAULT_DISPARO_CONFIG.messageLimit,
+                        windowMinutes: c.windowMinutes ?? DEFAULT_DISPARO_CONFIG.windowMinutes,
+                        cooldownMinutes: c.cooldownMinutes ?? DEFAULT_DISPARO_CONFIG.cooldownMinutes,
+                        simulateTyping: !!(c.simulateTyping ?? DEFAULT_DISPARO_CONFIG.simulateTyping),
+                        randomMessageAI: !!(c.randomMessageAI ?? DEFAULT_DISPARO_CONFIG.randomMessageAI),
+                        allowUserEdit: !!(c.allowUserEdit ?? DEFAULT_DISPARO_CONFIG.allowUserEdit)
                     };
+                } else {
+                    configDisparo = { ...DEFAULT_DISPARO_CONFIG };
                 }
             } catch (error) {
                 console.warn('⚠️ Não foi possível carregar config de disparo:', error);
@@ -1864,6 +1917,7 @@
             const windowMinutesInput = document.getElementById('configWindowMinutes');
             const simulateTypingInput = document.getElementById('configSimulateTyping');
             const randomMessageAIInput = document.getElementById('configRandomMessageAI');
+            const configBloqueadoAlert = document.getElementById('configBloqueadoAlert');
 
             if (delayMinInput && delayMaxInput && messageLimitInput && cooldownMinutesInput && windowMinutesInput) {
                 delayMinInput.value = configDisparo.delayMin;
@@ -1873,8 +1927,16 @@
                 windowMinutesInput.value = configDisparo.windowMinutes;
                 if (simulateTypingInput) simulateTypingInput.checked = !!configDisparo.simulateTyping;
                 if (randomMessageAIInput) randomMessageAIInput.checked = !!configDisparo.randomMessageAI;
+
+                const bloqueado = !configDisparo.allowUserEdit;
+                [delayMinInput, delayMaxInput, messageLimitInput, cooldownMinutesInput, windowMinutesInput].forEach(el => { el.disabled = bloqueado; });
+                if (simulateTypingInput) simulateTypingInput.disabled = bloqueado;
+                if (randomMessageAIInput) randomMessageAIInput.disabled = bloqueado;
+                if (configBloqueadoAlert) configBloqueadoAlert.style.display = bloqueado ? 'block' : 'none';
+                const btnAplicar = document.getElementById('btnAplicarConfig');
+                if (btnAplicar) btnAplicar.style.display = bloqueado ? 'none' : 'inline-flex';
+
                 atualizarResumoConfig();
-                aplicarConfigDisparo(null, true);
             }
         }
 
@@ -2081,7 +2143,7 @@ const estados = [
                 console.log('⚠️ Modo offline - usando dados mockados');
             }
             
-            carregarConfigDisparo();
+            await carregarConfigDisparo();
             
             await verificarAutenticacao();
             
@@ -2120,8 +2182,9 @@ const estados = [
             if (configModalEl && window.bootstrap) {
                 const triggerElement = document.querySelector('[data-config-trigger="true"]');
                 configModalEl.addEventListener('shown.bs.modal', () => {
+                    carregarConfigDisparo();
                     const focusTarget = configModalEl.querySelector('#configDelayMin');
-                    if (focusTarget) {
+                    if (focusTarget && !focusTarget.disabled) {
                         focusTarget.focus();
                     }
                 });

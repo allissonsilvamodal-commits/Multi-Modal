@@ -800,11 +800,27 @@ async function listarConfiguracoesSimples() {
 const DEFAULT_DISPARO_CONFIG = {
   threshold: 50,
   windowMs: 5 * 60 * 1000,
-  cooldownMs: 15 * 60 * 1000
+  cooldownMs: 15 * 60 * 1000,
+  delayMin: 10,
+  delayMax: 30,
+  simulateTyping: true,
+  randomMessageAI: true,
+  allowUserEdit: true
 };
 
-const userDisparoConfig = new Map();
-const userDisparoState = new Map(); // userId => { count, lastReset, cooldownUntil }
+// ========== TABELA NECESSÁRIA NO SUPABASE ==========
+// Execute este SQL no Supabase para criar a tabela de configurações de disparo:
+// CREATE TABLE IF NOT EXISTS user_disparo_configs (
+//   user_id TEXT PRIMARY KEY,
+//   threshold INTEGER NOT NULL DEFAULT 50,
+//   window_ms INTEGER NOT NULL DEFAULT 300000,
+//   cooldown_ms INTEGER NOT NULL DEFAULT 900000,
+//   updated_at TIMESTAMPTZ DEFAULT NOW()
+// );
+// CREATE INDEX IF NOT EXISTS idx_user_disparo_configs_user_id ON user_disparo_configs(user_id);
+
+const userDisparoConfig = new Map(); // Cache em memória (sincronizado com DB)
+const userDisparoState = new Map(); // userId => { count, lastReset, cooldownUntil } - apenas em memória
 
 async function simulateTypingAction({ enabled, evolutionUrl, instanceName, apiKey, formattedNumber, message }) {
   if (!enabled) {
@@ -843,34 +859,96 @@ async function simulateTypingAction({ enabled, evolutionUrl, instanceName, apiKe
   await new Promise(resolve => setTimeout(resolve, typingSeconds * 1000));
 }
 
-function getUserConfig(userId) {
+async function getUserConfig(userId) {
   if (!userId) {
     return { ...DEFAULT_DISPARO_CONFIG };
   }
+  // Primeiro tentar da memória (mais rápido)
   const stored = userDisparoConfig.get(userId);
-  return { ...DEFAULT_DISPARO_CONFIG, ...(stored || {}) };
+  if (stored) {
+    return { ...DEFAULT_DISPARO_CONFIG, ...stored };
+  }
+  // Se não está em memória, buscar do banco
+  try {
+    const { data: dbConfig, error } = await supabaseAdmin
+      .from('user_disparo_configs')
+      .select('threshold, window_ms, cooldown_ms, delay_min, delay_max, simulate_typing, random_message_ai, allow_user_edit')
+      .eq('user_id', userId)
+      .maybeSingle();
+    if (!error && dbConfig) {
+      const config = {
+        threshold: dbConfig.threshold ?? DEFAULT_DISPARO_CONFIG.threshold,
+        windowMs: dbConfig.window_ms ?? DEFAULT_DISPARO_CONFIG.windowMs,
+        cooldownMs: dbConfig.cooldown_ms ?? DEFAULT_DISPARO_CONFIG.cooldownMs,
+        delayMin: dbConfig.delay_min ?? DEFAULT_DISPARO_CONFIG.delayMin,
+        delayMax: dbConfig.delay_max ?? DEFAULT_DISPARO_CONFIG.delayMax,
+        simulateTyping: dbConfig.simulate_typing ?? DEFAULT_DISPARO_CONFIG.simulateTyping,
+        randomMessageAI: dbConfig.random_message_ai ?? DEFAULT_DISPARO_CONFIG.randomMessageAI,
+        allowUserEdit: dbConfig.allow_user_edit ?? DEFAULT_DISPARO_CONFIG.allowUserEdit
+      };
+      userDisparoConfig.set(userId, config);
+      return { ...DEFAULT_DISPARO_CONFIG, ...config };
+    }
+  } catch (e) {
+    console.warn('⚠️ Erro ao buscar config do banco para', userId, ':', e.message);
+  }
+  return { ...DEFAULT_DISPARO_CONFIG };
 }
 
-function setUserConfig(userId, overrides = {}) {
+async function setUserConfig(userId, overrides = {}) {
   if (!userId || typeof overrides !== 'object') return;
   const sanitized = {};
-  if (overrides.threshold && Number.isFinite(overrides.threshold)) {
-    const threshold = Math.max(1, Math.min(1000, Math.floor(overrides.threshold)));
+  if (overrides.threshold != null && Number.isFinite(Number(overrides.threshold))) {
+    const threshold = Math.max(1, Math.min(1000, Math.floor(Number(overrides.threshold))));
     sanitized.threshold = threshold;
   }
-  if (overrides.windowMs && Number.isFinite(overrides.windowMs)) {
-    const windowMs = Math.max(60 * 1000, Math.min(120 * 60 * 1000, Math.floor(overrides.windowMs)));
+  if (overrides.windowMs != null && Number.isFinite(Number(overrides.windowMs))) {
+    const windowMs = Math.max(60 * 1000, Math.min(120 * 60 * 1000, Math.floor(Number(overrides.windowMs))));
     sanitized.windowMs = windowMs;
   }
-  if (overrides.cooldownMs && Number.isFinite(overrides.cooldownMs)) {
-    const cooldownMs = Math.max(60 * 1000, Math.min(240 * 60 * 1000, Math.floor(overrides.cooldownMs)));
+  if (overrides.cooldownMs != null && Number.isFinite(Number(overrides.cooldownMs))) {
+    const cooldownMs = Math.max(60 * 1000, Math.min(240 * 60 * 1000, Math.floor(Number(overrides.cooldownMs))));
     sanitized.cooldownMs = cooldownMs;
   }
-  if (Object.keys(sanitized).length === 0) return;
+  if (overrides.delayMin != null && Number.isFinite(Number(overrides.delayMin))) {
+    sanitized.delayMin = Math.max(1, Math.min(600, Math.floor(Number(overrides.delayMin))));
+  }
+  if (overrides.delayMax != null && Number.isFinite(Number(overrides.delayMax))) {
+    sanitized.delayMax = Math.max(1, Math.min(600, Math.floor(Number(overrides.delayMax))));
+  }
+  if (typeof overrides.simulateTyping === 'boolean') sanitized.simulateTyping = overrides.simulateTyping;
+  if (typeof overrides.randomMessageAI === 'boolean') sanitized.randomMessageAI = overrides.randomMessageAI;
+  if (typeof overrides.allowUserEdit === 'boolean') sanitized.allowUserEdit = overrides.allowUserEdit;
 
   const current = userDisparoConfig.get(userId) || {};
   const updated = { ...current, ...sanitized };
+  if (Object.keys(sanitized).length === 0) return;
+
   userDisparoConfig.set(userId, updated);
+
+  const payload = {
+    user_id: userId,
+    threshold: updated.threshold ?? DEFAULT_DISPARO_CONFIG.threshold,
+    window_ms: updated.windowMs ?? DEFAULT_DISPARO_CONFIG.windowMs,
+    cooldown_ms: updated.cooldownMs ?? DEFAULT_DISPARO_CONFIG.cooldownMs,
+    delay_min: updated.delayMin ?? DEFAULT_DISPARO_CONFIG.delayMin,
+    delay_max: updated.delayMax ?? DEFAULT_DISPARO_CONFIG.delayMax,
+    simulate_typing: !!(updated.simulateTyping ?? DEFAULT_DISPARO_CONFIG.simulateTyping),
+    random_message_ai: !!(updated.randomMessageAI ?? DEFAULT_DISPARO_CONFIG.randomMessageAI),
+    allow_user_edit: !!(updated.allowUserEdit ?? DEFAULT_DISPARO_CONFIG.allowUserEdit),
+    updated_at: new Date().toISOString()
+  };
+
+  try {
+    const { error: upsertError } = await supabaseAdmin
+      .from('user_disparo_configs')
+      .upsert(payload, { onConflict: 'user_id' });
+    if (upsertError) {
+      console.warn('⚠️ Erro ao salvar config no banco:', upsertError.message);
+    }
+  } catch (e) {
+    console.warn('⚠️ Erro ao persistir config:', e.message);
+  }
   console.log(`⚙️ Configuração de disparo ajustada para usuário ${userId}:`, updated);
 }
 
@@ -890,7 +968,7 @@ function getUserCooldownState(userId) {
   return { blocked: false };
 }
 
-function registerUserSend(userId) {
+async function registerUserSend(userId) {
   if (!userId) {
     return {
       cooldownTriggered: false,
@@ -899,7 +977,7 @@ function registerUserSend(userId) {
     };
   }
 
-  const config = getUserConfig(userId);
+  const config = await getUserConfig(userId);
   const threshold = Math.max(1, Math.floor(config.threshold || DEFAULT_DISPARO_CONFIG.threshold));
   const windowMs = Math.max(1, Math.floor(config.windowMs || DEFAULT_DISPARO_CONFIG.windowMs));
   const cooldownMs = Math.max(1, Math.floor(config.cooldownMs || DEFAULT_DISPARO_CONFIG.cooldownMs));
@@ -11429,11 +11507,17 @@ app.post('/webhook/send-supabase', (req, res, next) => {
     if (Number.isFinite(windowMinutesOverride) && windowMinutesOverride >= 1) {
       overrides.windowMs = windowMinutesOverride * 60 * 1000;
     }
+    const dMin = parseInt(req.body?.delayMin, 10);
+    if (Number.isFinite(dMin) && dMin >= 1) overrides.delayMin = Math.min(600, dMin);
+    const dMax = parseInt(req.body?.delayMax, 10);
+    if (Number.isFinite(dMax) && dMax >= 1) overrides.delayMax = Math.min(600, dMax);
+    if (req.body?.simulateTyping !== undefined) overrides.simulateTyping = req.body.simulateTyping === 'true' || req.body.simulateTyping === true;
+    if (req.body?.randomMessageAI !== undefined) overrides.randomMessageAI = req.body.randomMessageAI === 'true' || req.body.randomMessageAI === true;
     if (Object.keys(overrides).length) {
-      setUserConfig(userIdentity, overrides);
+      await setUserConfig(userIdentity, overrides);
     }
 
-    const userConfig = getUserConfig(userIdentity);
+    const userConfig = await getUserConfig(userIdentity);
     const cooldownState = getUserCooldownState(userIdentity);
     if (cooldownState.blocked) {
       const remainingMinutes = Math.ceil((cooldownState.remainingMs || 0) / 60000);
@@ -11698,7 +11782,7 @@ app.post('/webhook/send-supabase', (req, res, next) => {
           result = { success: true, message: 'Mensagem enviada (resposta não parseável)' };
         }
         console.log('✅ Mensagem enviada com sucesso:', result);
-        const cooldownInfo = registerUserSend(userIdentity);
+        const cooldownInfo = await registerUserSend(userIdentity);
         cleanupFile();
 
         // Registrar disparo no BI
@@ -12113,7 +12197,7 @@ app.post('/webhook/send-supabase', (req, res, next) => {
     const realmenteEnviado = evolutionResult && evolutionResult.key && evolutionResult.key.id;
     
     if (realmenteEnviado) {
-      const cooldownInfo = registerUserSend(userIdentity);
+      const cooldownInfo = await registerUserSend(userIdentity);
       const endpointUsado = attemptLogs.find(a => a.success)?.endpoint || null;
       
       console.log(`✅ Mídia enviada com sucesso via ${endpointUsado}`);
@@ -19638,6 +19722,388 @@ app.get('/api/ferramentas-qualidade/usuarios', async (req, res) => {
   } catch (error) {
     console.error('❌ Erro ao buscar usuários:', error);
     res.status(500).json({ success: false, error: 'Erro ao buscar usuários' });
+  }
+});
+
+// ========== EVOLUTION API CREDENTIALS (Settings - contorna RLS) ==========
+app.get('/api/settings/evolution-apis', requireAuth, async (req, res) => {
+  try {
+    const { user, error: authError } = await getUserFromRequest(req);
+    if (authError || !user) {
+      return res.status(401).json({ success: false, error: 'Não autenticado' });
+    }
+    const { data: profile } = await supabaseAdmin.from('user_profiles').select('role').eq('id', user.id).maybeSingle();
+    const isAdmin = profile?.role === 'admin' || user.isAdmin === true;
+
+    let query = supabaseAdmin
+      .from('user_evolution_apis')
+      .select(`
+        *,
+        user_profiles:user_id (id, nome, email)
+      `)
+      .order('created_at', { ascending: false });
+    if (!isAdmin) {
+      query = query.eq('user_id', user.id);
+    }
+    const { data: rows, error } = await query;
+    if (error) throw error;
+
+    const list = (rows || []).map(row => {
+      const up = row.user_profiles;
+      const profileObj = Array.isArray(up) ? up[0] : up;
+      return {
+        ...row,
+        user_profile: profileObj ? { id: profileObj.id, nome: profileObj.nome, email: profileObj.email } : null
+      };
+    });
+    res.json({ success: true, credenciais: list });
+  } catch (error) {
+    console.error('❌ Erro ao listar Evolution APIs:', error);
+    res.status(500).json({ success: false, error: 'Erro ao carregar credenciais' });
+  }
+});
+
+app.post('/api/settings/evolution-apis', requireAuth, async (req, res) => {
+  try {
+    const { user, error: authError } = await getUserFromRequest(req);
+    if (authError || !user) {
+      return res.status(401).json({ success: false, error: 'Não autenticado' });
+    }
+    const { data: profile } = await supabaseAdmin.from('user_profiles').select('role').eq('id', user.id).maybeSingle();
+    const isAdmin = profile?.role === 'admin' || user.isAdmin === true;
+
+    const { user_id: bodyUserId, instance_name, api_url, api_key, max_connections, active } = req.body || {};
+    const userId = (bodyUserId && bodyUserId.toString().trim()) || user.id;
+    if (!isAdmin && userId !== user.id) {
+      return res.status(403).json({ success: false, error: 'Só é permitido adicionar credencial para você mesmo' });
+    }
+    if (!instance_name || !api_url || !api_key) {
+      return res.status(400).json({ success: false, error: 'instance_name, api_url e api_key são obrigatórios' });
+    }
+
+    const { data: inserted, error } = await supabaseAdmin
+      .from('user_evolution_apis')
+      .insert([{
+        user_id: userId,
+        instance_name: (instance_name || '').toString().trim(),
+        api_url: (api_url || '').toString().trim(),
+        api_key: (api_key || '').toString().trim(),
+        max_connections: Number(max_connections) || 10,
+        active: active !== false
+      }])
+      .select()
+      .single();
+    if (error) throw error;
+    res.status(201).json({ success: true, credencial: inserted });
+  } catch (error) {
+    console.error('❌ Erro ao salvar Evolution API:', error);
+    res.status(500).json({ success: false, error: error.message || 'Erro ao salvar credencial' });
+  }
+});
+
+app.patch('/api/settings/evolution-apis/:id', requireAuth, async (req, res) => {
+  try {
+    const { user, error: authError } = await getUserFromRequest(req);
+    if (authError || !user) {
+      return res.status(401).json({ success: false, error: 'Não autenticado' });
+    }
+    const { data: profile } = await supabaseAdmin.from('user_profiles').select('role').eq('id', user.id).maybeSingle();
+    const isAdmin = profile?.role === 'admin' || user.isAdmin === true;
+
+    const id = req.params.id;
+    const { data: existing } = await supabaseAdmin.from('user_evolution_apis').select('user_id').eq('id', id).maybeSingle();
+    if (!existing) {
+      return res.status(404).json({ success: false, error: 'Credencial não encontrada' });
+    }
+    if (!isAdmin && existing.user_id !== user.id) {
+      return res.status(403).json({ success: false, error: 'Sem permissão para esta credencial' });
+    }
+
+    const updates = {};
+    if (req.body.is_valid !== undefined) updates.is_valid = !!req.body.is_valid;
+    if (req.body.last_validated !== undefined) updates.last_validated = req.body.last_validated;
+    else if (req.body.is_valid === true) updates.last_validated = new Date().toISOString();
+    if (Object.keys(updates).length === 0) {
+      return res.json({ success: true, credencial: existing });
+    }
+    const { data: updated, error } = await supabaseAdmin
+      .from('user_evolution_apis')
+      .update(updates)
+      .eq('id', id)
+      .select()
+      .single();
+    if (error) throw error;
+    res.json({ success: true, credencial: updated });
+  } catch (error) {
+    console.error('❌ Erro ao atualizar Evolution API:', error);
+    res.status(500).json({ success: false, error: error.message || 'Erro ao atualizar' });
+  }
+});
+
+app.delete('/api/settings/evolution-apis/:id', requireAuth, async (req, res) => {
+  try {
+    const { user, error: authError } = await getUserFromRequest(req);
+    if (authError || !user) {
+      return res.status(401).json({ success: false, error: 'Não autenticado' });
+    }
+    const { data: profile } = await supabaseAdmin.from('user_profiles').select('role').eq('id', user.id).maybeSingle();
+    const isAdmin = profile?.role === 'admin' || user.isAdmin === true;
+
+    const id = req.params.id;
+    const { data: existing } = await supabaseAdmin.from('user_evolution_apis').select('user_id').eq('id', id).maybeSingle();
+    if (!existing) {
+      return res.status(404).json({ success: false, error: 'Credencial não encontrada' });
+    }
+    if (!isAdmin && existing.user_id !== user.id) {
+      return res.status(403).json({ success: false, error: 'Sem permissão para excluir esta credencial' });
+    }
+    const { error } = await supabaseAdmin.from('user_evolution_apis').delete().eq('id', id);
+    if (error) throw error;
+    res.json({ success: true });
+  } catch (error) {
+    console.error('❌ Erro ao excluir Evolution API:', error);
+    res.status(500).json({ success: false, error: error.message || 'Erro ao excluir' });
+  }
+});
+
+// ========== CONFIGURAÇÕES DE DISPARO DE TODOS OS USUÁRIOS (para Settings) ==========
+app.get('/api/settings/disparo-configs', requireAuth, async (req, res) => {
+  try {
+    // Buscar configurações do banco de dados (persistentes)
+    const { data: dbConfigs, error: dbError } = await supabaseAdmin
+      .from('user_disparo_configs')
+      .select('user_id, threshold, window_ms, cooldown_ms, updated_at');
+    
+    if (dbError) {
+      console.warn('⚠️ Erro ao buscar configs do banco:', dbError.message);
+    }
+    
+    // Combinar com configurações em memória (cooldown state)
+    const userIdsFromDb = new Set((dbConfigs || []).map(c => c.user_id));
+    const userIdsFromMemory = new Set([
+      ...userDisparoConfig.keys(),
+      ...userDisparoState.keys()
+    ]);
+    const allUserIds = new Set([...userIdsFromDb, ...userIdsFromMemory]);
+    
+    console.log('📊 Configurações encontradas - DB:', userIdsFromDb.size, 'Memória:', userIdsFromMemory.size, 'Total:', allUserIds.size);
+    
+    const list = [];
+    for (const uid of allUserIds) {
+      const config = await getUserConfig(uid);
+      const cooldown = getCooldownStatus(uid);
+      const windowMinutes = Math.round((config.windowMs || DEFAULT_DISPARO_CONFIG.windowMs) / 60000);
+      const cooldownMinutes = Math.round((config.cooldownMs || DEFAULT_DISPARO_CONFIG.cooldownMs) / 60000);
+      const threshold = config.threshold ?? DEFAULT_DISPARO_CONFIG.threshold;
+      list.push({
+        userId: uid,
+        threshold,
+        windowMinutes,
+        cooldownMinutes,
+        delayMin: config.delayMin ?? DEFAULT_DISPARO_CONFIG.delayMin,
+        delayMax: config.delayMax ?? DEFAULT_DISPARO_CONFIG.delayMax,
+        simulateTyping: !!(config.simulateTyping ?? DEFAULT_DISPARO_CONFIG.simulateTyping),
+        randomMessageAI: !!(config.randomMessageAI ?? DEFAULT_DISPARO_CONFIG.randomMessageAI),
+        allowUserEdit: !!(config.allowUserEdit ?? DEFAULT_DISPARO_CONFIG.allowUserEdit),
+        cooldownActive: cooldown.active === true,
+        remainingMinutes: cooldown.active && cooldown.remainingMs ? Math.ceil(cooldown.remainingMs / 60000) : null,
+        cooldownUntil: cooldown.active && cooldown.cooldownUntil ? new Date(cooldown.cooldownUntil).toISOString() : null
+      });
+    }
+    
+    const ids = [...allUserIds].filter(Boolean);
+    let nameMap = {};
+    if (ids.length > 0) {
+      try {
+        const { data: profiles, error: profileError } = await supabaseAdmin
+          .from('user_profiles')
+          .select('id, nome, email')
+          .in('id', ids);
+        
+        if (profileError) {
+          console.warn('⚠️ Erro ao buscar perfis:', profileError.message);
+        } else if (profiles) {
+          profiles.forEach(p => {
+            nameMap[p.id] = (p.nome && p.nome.trim()) || p.email || p.id;
+          });
+        }
+      } catch (e) {
+        console.warn('⚠️ Erro ao buscar nomes para disparo-configs:', e.message);
+      }
+    }
+    
+    list.forEach(row => {
+      row.userName = nameMap[row.userId] || (row.userId && row.userId.includes('@') ? row.userId : (row.userId || '').substring(0, 20) + (row.userId && row.userId.length > 20 ? '…' : ''));
+    });
+    
+    console.log('✅ Retornando', list.length, 'configuração(ões) de disparo');
+    res.json({ success: true, configs: list });
+  } catch (error) {
+    console.error('❌ Erro ao listar configurações de disparo:', error);
+    res.status(500).json({ success: false, error: 'Erro ao carregar configurações de disparo' });
+  }
+});
+
+// PUT /api/settings/disparo-configs/:userId — admin atualiza config de um usuário
+app.put('/api/settings/disparo-configs/:userId', async (req, res) => {
+  try {
+    const { user, error: authError } = await getUserFromRequest(req);
+    if (authError || !user) {
+      return res.status(401).json({ success: false, error: 'Não autenticado' });
+    }
+    const { data: profile } = await supabaseAdmin
+      .from('user_profiles')
+      .select('role')
+      .eq('id', user.id)
+      .maybeSingle();
+    const isAdmin = profile?.role === 'admin' || user.isAdmin === true;
+    if (!isAdmin) {
+      return res.status(403).json({ success: false, error: 'Apenas administradores podem alterar configurações de disparo.' });
+    }
+
+    const targetUserId = req.params.userId;
+    if (!targetUserId) {
+      return res.status(400).json({ success: false, error: 'userId é obrigatório' });
+    }
+
+    const b = req.body || {};
+    const overrides = {};
+    if (b.threshold != null && Number.isFinite(Number(b.threshold))) overrides.threshold = Math.max(1, Math.min(1000, Math.floor(Number(b.threshold))));
+    if (b.windowMinutes != null && Number.isFinite(Number(b.windowMinutes))) overrides.windowMs = Math.max(1, Math.min(120, Math.floor(Number(b.windowMinutes)))) * 60 * 1000;
+    if (b.cooldownMinutes != null && Number.isFinite(Number(b.cooldownMinutes))) overrides.cooldownMs = Math.max(1, Math.min(240, Math.floor(Number(b.cooldownMinutes)))) * 60 * 1000;
+    if (b.delayMin != null && Number.isFinite(Number(b.delayMin))) overrides.delayMin = Math.max(1, Math.min(600, Math.floor(Number(b.delayMin))));
+    if (b.delayMax != null && Number.isFinite(Number(b.delayMax))) overrides.delayMax = Math.max(1, Math.min(600, Math.floor(Number(b.delayMax))));
+    if (typeof b.simulateTyping === 'boolean') overrides.simulateTyping = b.simulateTyping;
+    if (typeof b.randomMessageAI === 'boolean') overrides.randomMessageAI = b.randomMessageAI;
+    if (typeof b.allowUserEdit === 'boolean') overrides.allowUserEdit = b.allowUserEdit;
+
+    if (Object.keys(overrides).length === 0) {
+      return res.status(400).json({ success: false, error: 'Nenhum campo válido para atualizar' });
+    }
+
+    await setUserConfig(targetUserId, overrides);
+    const config = await getUserConfig(targetUserId);
+    const windowMinutes = Math.round((config.windowMs || DEFAULT_DISPARO_CONFIG.windowMs) / 60000);
+    const cooldownMinutes = Math.round((config.cooldownMs || DEFAULT_DISPARO_CONFIG.cooldownMs) / 60000);
+    res.json({
+      success: true,
+      config: {
+        userId: targetUserId,
+        threshold: config.threshold,
+        windowMinutes,
+        cooldownMinutes,
+        delayMin: config.delayMin,
+        delayMax: config.delayMax,
+        simulateTyping: config.simulateTyping,
+        randomMessageAI: config.randomMessageAI,
+        allowUserEdit: config.allowUserEdit
+      }
+    });
+  } catch (err) {
+    console.error('❌ Erro ao atualizar config disparo:', err);
+    res.status(500).json({ success: false, error: err.message || 'Erro ao atualizar configuração' });
+  }
+});
+
+// ========== CONFIG DE DISPARO DO PAINEL (GET = ler, PUT = salvar) ==========
+app.get('/api/disparo/config', async (req, res) => {
+  try {
+    const { user, error: authError } = await getUserFromRequest(req);
+    if (authError || !user) {
+      return res.status(401).json({ success: false, error: 'Não autenticado' });
+    }
+    const userId = user.id || user.user_id;
+    if (!userId) {
+      return res.status(401).json({ success: false, error: 'Usuário não identificado' });
+    }
+    const config = await getUserConfig(userId);
+    const windowMinutes = Math.round((config.windowMs || DEFAULT_DISPARO_CONFIG.windowMs) / 60000);
+    const cooldownMinutes = Math.round((config.cooldownMs || DEFAULT_DISPARO_CONFIG.cooldownMs) / 60000);
+    res.json({
+      success: true,
+      config: {
+        delayMin: config.delayMin ?? DEFAULT_DISPARO_CONFIG.delayMin,
+        delayMax: config.delayMax ?? DEFAULT_DISPARO_CONFIG.delayMax,
+        messageLimit: config.threshold ?? DEFAULT_DISPARO_CONFIG.threshold,
+        windowMinutes,
+        cooldownMinutes,
+        simulateTyping: !!(config.simulateTyping ?? DEFAULT_DISPARO_CONFIG.simulateTyping),
+        randomMessageAI: !!(config.randomMessageAI ?? DEFAULT_DISPARO_CONFIG.randomMessageAI),
+        allowUserEdit: !!(config.allowUserEdit ?? DEFAULT_DISPARO_CONFIG.allowUserEdit)
+      }
+    });
+  } catch (err) {
+    console.error('❌ Erro ao buscar config disparo:', err);
+    res.status(500).json({ success: false, error: err.message || 'Erro ao carregar configuração' });
+  }
+});
+
+app.put('/api/disparo/config', express.json(), async (req, res) => {
+  try {
+    const { user, error: authError } = await getUserFromRequest(req);
+    if (authError || !user) {
+      return res.status(401).json({ success: false, error: 'Não autenticado' });
+    }
+    const userId = user.id || user.user_id;
+    if (!userId) {
+      return res.status(401).json({ success: false, error: 'Usuário não identificado' });
+    }
+
+    const config = await getUserConfig(userId);
+    const allowUserEdit = !!(config.allowUserEdit ?? DEFAULT_DISPARO_CONFIG.allowUserEdit);
+
+    let isAdmin = false;
+    try {
+      const { data: profile } = await supabaseAdmin
+        .from('user_profiles')
+        .select('role')
+        .eq('id', user.id)
+        .maybeSingle();
+      isAdmin = profile?.role === 'admin' || user.isAdmin === true;
+    } catch (_) {}
+
+    if (!allowUserEdit && !isAdmin) {
+      return res.status(403).json({
+        success: false,
+        error: 'As configurações de disparo estão bloqueadas pelo administrador. Entre em contato para alterações.'
+      });
+    }
+
+    const b = req.body || {};
+    const overrides = {};
+    if (b.delayMin != null && Number.isFinite(Number(b.delayMin))) overrides.delayMin = Math.max(1, Math.min(600, Math.floor(Number(b.delayMin))));
+    if (b.delayMax != null && Number.isFinite(Number(b.delayMax))) overrides.delayMax = Math.max(1, Math.min(600, Math.floor(Number(b.delayMax))));
+    if (b.messageLimit != null && Number.isFinite(Number(b.messageLimit))) overrides.threshold = Math.max(1, Math.min(1000, Math.floor(Number(b.messageLimit))));
+    if (b.windowMinutes != null && Number.isFinite(Number(b.windowMinutes))) overrides.windowMs = Math.max(1, Math.min(120, Math.floor(Number(b.windowMinutes)))) * 60 * 1000;
+    if (b.cooldownMinutes != null && Number.isFinite(Number(b.cooldownMinutes))) overrides.cooldownMs = Math.max(1, Math.min(240, Math.floor(Number(b.cooldownMinutes)))) * 60 * 1000;
+    if (typeof b.simulateTyping === 'boolean') overrides.simulateTyping = b.simulateTyping;
+    if (typeof b.randomMessageAI === 'boolean') overrides.randomMessageAI = b.randomMessageAI;
+    if (isAdmin && typeof b.allowUserEdit === 'boolean') overrides.allowUserEdit = b.allowUserEdit;
+
+    if (Object.keys(overrides).length === 0) {
+      return res.status(400).json({ success: false, error: 'Nenhum campo válido para atualizar' });
+    }
+
+    await setUserConfig(userId, overrides);
+    const updated = await getUserConfig(userId);
+    const windowMinutes = Math.round((updated.windowMs || DEFAULT_DISPARO_CONFIG.windowMs) / 60000);
+    const cooldownMinutes = Math.round((updated.cooldownMs || DEFAULT_DISPARO_CONFIG.cooldownMs) / 60000);
+    res.json({
+      success: true,
+      config: {
+        delayMin: updated.delayMin,
+        delayMax: updated.delayMax,
+        messageLimit: updated.threshold,
+        windowMinutes,
+        cooldownMinutes,
+        simulateTyping: !!updated.simulateTyping,
+        randomMessageAI: !!updated.randomMessageAI,
+        allowUserEdit: !!updated.allowUserEdit
+      }
+    });
+  } catch (err) {
+    console.error('❌ Erro ao salvar config disparo:', err);
+    res.status(500).json({ success: false, error: err.message || 'Erro ao salvar configuração' });
   }
 });
 
